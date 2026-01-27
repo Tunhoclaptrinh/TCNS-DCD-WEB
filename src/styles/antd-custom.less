@@ -1,0 +1,116 @@
+/* Ant Design Custom Overrides */
+@primary-color: #8b1d1d; 
+
+@link-color: @primary-color;
+@success-color: #22C55E;
+@warning-color: #F97316;
+
+.ant-layout {
+    background: white;
+}
+
+.ant-menu-light {
+    background: transparent;
+}
+
+.ant-pro-layout .ant-pro-layout-content {
+    padding-block: 16px;
+    padding-inline: 24px;
+}
+
+.ant-menu-item-selected::after {
+    border-right-color: @primary-color !important;
+}
+
+.ant-menu-item:hover,
+.ant-menu-item-selected {
+    color: @primary-color !important;
+    background-color: transparent !important;
+}
+
+.ant-menu-item-selected {
+    font-weight: 600;
+}
+
+.ant-btn-primary {
+    background-color: @primary-color;
+    border-color: @primary-color;
+
+    &:hover,
+    &:focus {
+        filter: brightness(90%);
+    }
+}
+
+.ant-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+}
+
+.ant-input,
+.ant-select-selector,
+.ant-picker {
+    border-radius: 4px !important;
+
+    &:hover {
+        border-color: @primary-color !important;
+    }
+}
+
+.ant-input-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused .ant-picker {
+    border-color: @primary-color !important;
+    box-shadow: 0 0 0 2px fade(@primary-color, 20%) !important;
+}
+
+/* Global Select Option Overrides */
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background-color: fade(@primary-color, 10%) !important;
+    color: @primary-color !important;
+    font-weight: 600;
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+    background-color: fade(@primary-color, 5%) !important;
+}
+
+/* ==================== Layout Customizations ==================== */
+.ant-layout-header {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ant-layout-footer {
+    background: #fafafa;
+    border-top: 1px solid #e8e8e8;
+}
+
+/* ==================== Table Customizations ==================== */
+.ant-table {
+    background: white;
+}
+
+.ant-table-thead>tr>th {
+    background-color: #fafafa;
+    border-bottom-color: #e8e8e8;
+}
+
+/* ==================== Form Customizations ==================== */
+.ant-form-item-required::before {
+    color: @primary-color;
+}
+
+.ant-checkbox-inner {
+    border-color: @primary-color;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+    background-color: @primary-color;
+    border-color: @primary-color;
+}
