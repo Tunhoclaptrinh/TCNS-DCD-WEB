@@ -123,7 +123,6 @@ export const TIMELINE_CATEGORY_LABELS = {
 
 export const PAGINATION_OPTIONS = [10, 20, 50, 100] as const;
 export const DEFAULT_PAGE_SIZE = 10;
-export const API_BASE_URL = 'http://localhost:3000/api';
 
 // Game System Constants
 export const SCREEN_TYPES = {
@@ -189,3 +188,4 @@ export type QuestType = (typeof QUEST_TYPES)[keyof typeof QUEST_TYPES];
 export type LevelDifficulty = (typeof LEVEL_DIFFICULTY)[keyof typeof LEVEL_DIFFICULTY];
 export type LevelType = (typeof LEVEL_TYPES)[keyof typeof LEVEL_TYPES];
 export type PetalState = (typeof PETAL_STATES)[keyof typeof PETAL_STATES];
+

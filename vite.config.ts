@@ -44,7 +44,9 @@ export default defineConfig({
     },
     allowedHosts: true,
   },
-
+  optimizeDeps: {
+    include: ["pixi.js", "@pixi/react"],
+  },
   build: {
     outDir: "dist",
     sourcemap: false,
@@ -54,7 +56,8 @@ export default defineConfig({
         manualChunks: {
           "react-vendor": ["react", "react-dom", "react-router-dom"],
           "ui-vendor": ["antd", "@ant-design/icons", "framer-motion"],
-          "utils-vendor": ["axios", "lodash"],
+          "utils-vendor": ["axios", "dayjs", "lodash"],
+          "game-vendor": ["pixi.js", "@pixi/react"],
         },
       },
     },

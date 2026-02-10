@@ -1,11 +1,13 @@
 /* Global Styles */
-@import "../assets/styles/variables.css"; /* Import CSS variables if needed, usually passed via root */
+@import "./variables.less";
 
 :root {
-  --primary-color: #8b1d1d;
+  /* BINDING: Map LESS variable to CSS variable */
+  /* This ensures that changing @primary-color in variables.less updates this CSS var automatically */
+  --primary-color: @primary-color;
 }
 
-/* @import "antd/dist/reset.css"; V5 imports reset automatically or via ConfigProvider */
+@import "antd/dist/reset.css";
 
 * {
   margin: 0;

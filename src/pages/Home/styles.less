@@ -1,0 +1,335 @@
+@import "../../styles/variables.less";
+
+.home-page {
+  min-height: 100vh;
+  background: linear-gradient(
+    357.93deg,
+    #fff4ec 1.72%,
+    #f6f5f3
+  ); // Light beige background for the whole page
+  overflow-x: hidden;
+
+  // General Typography
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family:
+      "Aleo", serif; // Use a serif font for headings if available, or fallback
+  }
+
+  // Section specific
+  section {
+    position: relative;
+    width: 100%;
+  }
+
+  .header-title {
+    color: var(--primary-color) !important;
+  }
+
+  
+  // Hero Section
+  .hero-section {
+    position: relative;
+    width: 100%;
+    // min-height: 800px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: white;
+    padding: 100px 20px 180px;
+    background: url("/images/Zero_home.png") no-repeat bottom center;
+    background-size: cover;
+    margin-bottom: 0;
+
+    // Fading border at the bottom
+    &::after {
+      content: "";
+      position: absolute;
+      bottom: -36px;
+      left: 0;
+      width: 100%;
+      height: 36px; 
+      background: linear-gradient(to bottom, #e232325e, rgba(255, 250, 226, 0));
+      z-index: 10;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 900px;
+      margin: 0 auto;
+
+      .brand-title {
+        img {
+          height: 240px;
+          object-fit: cover;
+        }
+      }
+
+      .hero-subtitle {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 48px;
+        color: #e1ac66;
+        text-shadow: 0 2px 4px rgba(245, 243, 243, 0.3);
+      }
+
+      .cta-button {
+        height: 56px;
+        padding: 0 48px;
+        font-size: 18px;
+        border-radius: 28px;
+        background: #c4efa1; // Light green from design
+        color: #2d5a27; // Dark green text
+        border: none;
+        font-weight: 700;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+          background: #d4f5ba;
+        }
+      }
+    }
+
+    // Lotus decorations at bottom
+    .hero-decor-bottom {
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 100%;
+      z-index: 3;
+      img {
+        width: 100%;
+        height: auto;
+      }
+    }
+  }
+
+  // Mission Section (Sứ mệnh của Sen)
+  .mission-section {
+    padding: 160px 0;
+    background: transparent;
+    z-index: 10;
+
+    // Decorative spinning drum background
+    .bg-drum {
+      position: absolute;
+      top: -100px;
+      left: -200px;
+      width: 600px;
+      height: 600px;
+      opacity: 0.1;
+      animation: spin 60s linear infinite;
+      z-index: -1;
+    }
+
+    .mission-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 60px;
+
+      @media (max-width: 992px) {
+        flex-direction: column;
+      }
+
+      .mission-image-col {
+        flex: 1;
+        position: relative;
+
+        .mission-main-img {
+          width: 100%;
+          border-radius: 20px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+          border: 2px solid #fff;
+        }
+      }
+
+      .mission-text-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+
+        .sub-header {
+          color: #2d5a27;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          margin-bottom: 16px;
+          display: block;
+        }
+
+        h2 {
+          font-size: 42px;
+          color: #333;
+          margin-bottom: 24px;
+          font-weight: 700;
+
+          @media (max-width: 768px) {
+            font-size: 32px;
+          }
+        }
+
+        .mission-desc {
+          font-size: 16px;
+          line-height: 1.8;
+          color: #666;
+          margin-bottom: 32px;
+        }
+
+        .mission-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+
+          .action-btn {
+            height: 50px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+
+            &.green-btn {
+              background: #c4efa1;
+              color: #2d5a27;
+              &:hover {
+                background: #b0e08a;
+              }
+            }
+
+            &.light-green-btn {
+              background: #b8f2ba; // Slightly different shade or same
+              color: #2d5a27;
+              &:hover {
+                background: #a5e3a7;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .mission-bg-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 160%;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden; // Prevent scrollbars if image spins out
+  }
+
+  .mission-drum-img {
+    position: absolute;
+    top: -10%;
+    left: -20%; // Adjust to position it similarly to before
+    width: 100%; // Large size
+    max-width: 1000px; // Constraint
+    opacity: 0.6;
+    transition: transform 1s ease-out;
+    transform-origin: center center; // Spin around its own center
+
+    &.shaking {
+      animation: wobble 4s ease-in-out infinite;
+    }
+  }
+
+  @keyframes wobble {
+    0% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(3deg);
+    } // Slightly more visible rotation
+    50% {
+      transform: rotate(0deg);
+    }
+    75% {
+      transform: rotate(-3deg);
+    }
+    100% {
+      transform: rotate(0deg);
+    }
+  }
+
+  // ==========================================
+  // CTA Section
+  // ==========================================
+  .bottom-cta-section {
+    position: relative;
+    padding: 100px 0;
+    text-align: center;
+    overflow: hidden;
+
+    // Divider
+    &::before {
+      content: "";
+      display: block;
+      width: 60%;
+      height: 4px;
+      background: var(--primary-color);
+      margin: 0 auto 60px;
+      border-radius: 2px;
+    }
+
+    .cta-content {
+      position: relative;
+      z-index: 10;
+
+      h2 {
+        font-size: 32px;
+        margin-bottom: 16px;
+        position: relative;
+      }
+
+      p {
+        font-size: 18px;
+        color: #555;
+        margin-bottom: 32px;
+      }
+
+      .main-cta-btn {
+        height: 56px;
+        padding: 0 48px;
+        font-size: 18px;
+        border-radius: 8px;
+        background: #c4efa1;
+        color: #2d5a27;
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(45, 90, 39, 0.2);
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: #b0e08a;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 16px rgba(45, 90, 39, 0.3);
+        }
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
