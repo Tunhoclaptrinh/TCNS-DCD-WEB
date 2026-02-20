@@ -13,8 +13,7 @@ const Home = lazy(() => import("@/pages/Home"));
 const Login = lazy(() => import("@/pages/Auth"));
 
 // Profile Pages
-const Profile = lazy(() => import("@/pages/Profile/Profile"));
-const FavoritesPage = lazy(() => import("@/pages/Profile/FavoritesPage"));
+const Profile = lazy(() => import("@/pages/Profile/Profile/index"));
 const NotificationsPage = lazy(() => import("@/pages/Notifications"));
 
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -97,10 +96,6 @@ const routes: RouteObject[] = [
       {
         index: true,
         element: <Profile />,
-      },
-      {
-        path: "favorites",
-        element: <FavoritesPage />,
       },
     ],
   },

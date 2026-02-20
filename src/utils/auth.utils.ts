@@ -1,10 +1,11 @@
 
 // Authentication Utilities
 
+import { STORAGE_KEYS } from '../config/constants';
 
-const TOKEN_KEY = 'sen_auth_token';
-const USER_KEY = 'sen_user';
-const REFRESH_TOKEN_KEY = 'sen_refresh_token';
+const TOKEN_KEY = STORAGE_KEYS.TOKEN;
+const USER_KEY = STORAGE_KEYS.USER;
+const REFRESH_TOKEN_KEY = STORAGE_KEYS.REFRESH_TOKEN;
 
 /**
  * Token Storage Management

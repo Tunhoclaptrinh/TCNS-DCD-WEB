@@ -43,11 +43,11 @@ const SupportPage: React.FC = () => {
     },
     {
       question: 'Ứng dụng có miễn phí không?',
-      answer: 'Phần lớn các nội dung trên SEN là hoàn toàn miễn phí để phục vụ cộng đồng. Tuy nhiên, một số tính năng nâng cao hoặc nội dung chuyên sâu có thể yêu cầu tài khoản thành viên.',
+      answer: 'Phần lớn các nội dung trên ứng dụng là hoàn toàn miễn phí để phục vụ cộng đồng. Tuy nhiên, một số tính năng nâng cao hoặc nội dung chuyên sâu có thể yêu cầu tài khoản thành viên.',
     },
     {
       question: 'Làm cách nào để liên hệ với ban quản trị?',
-      answer: 'Bạn có thể liên hệ với chúng tôi qua form bên dưới, hoặc gửi email đến support@sen.com. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.',
+      answer: 'Bạn có thể liên hệ với chúng tôi qua form bên dưới, hoặc gửi email đến support@baseproject.dev. Chúng tôi sẽ phản hồi trong thời gian sớm nhất.',
     },
   ];
 
@@ -58,7 +58,7 @@ const SupportPage: React.FC = () => {
         <div className="hero-content">
           <Title level={1}>Chúng tôi có thể giúp gì cho bạn?</Title>
           <p className="hero-subtitle">
-            Khám phá các câu hỏi thường gặp hoặc liên hệ trực tiếp với đội ngũ hỗ trợ của SEN.
+            Khám phá các câu hỏi thường gặp hoặc liên hệ trực tiếp với đội ngũ hỗ trợ của chúng tôi.
           </p>
         </div>
       </section>
@@ -103,7 +103,7 @@ const SupportPage: React.FC = () => {
                 <div className="contact-method">
                   <MailOutlined className="icon" />
                   <h4>Email</h4>
-                  <p>support@sen.com</p>
+                  <p>support@baseproject.dev</p>
                   <Text type="secondary" style={{ fontSize: 13 }}>
                     Chúng tôi sẽ phản hồi trong vòng 24 giờ
                   </Text>

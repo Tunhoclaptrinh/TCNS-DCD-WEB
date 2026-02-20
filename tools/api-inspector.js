@@ -4,7 +4,7 @@ import https from 'https';
 const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 /**
- * Simple API Inspector for SEN Backend
+ * Simple API Inspector for Base Backend
  * Usage: node tools/api-inspector.js /artifacts/stats/summary
  */
 async function inspect(endpoint) {

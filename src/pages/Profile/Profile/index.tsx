@@ -1,5 +1,4 @@
-// import React, { useState, useEffect } from "react";
-import { useState, useEffect } from "react"; // React unused but imports kept for hook usage
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Form,
@@ -8,14 +7,11 @@ import {
   Spin,
   Row,
   Col,
-  // Upload,
-  // Avatar,
   Timeline,
   Alert
 } from "antd";
-import Button from "@/components/common/Button"; // Core Component
+import Button from "@/components/common/Button";
 import {
-  // CameraOutlined,
   SaveOutlined,
   LockOutlined,
   UserOutlined,
@@ -23,40 +19,24 @@ import {
   PhoneOutlined,
   SafetyCertificateOutlined,
   HistoryOutlined,
-  HeartOutlined,
   CheckCircleOutlined
 } from "@ant-design/icons";
 import { useSelector, useDispatch } from "react-redux";
 import userService from "@services/user.service";
-
-// import favoriteService, { FavoriteStats } from "@services/favorite.service";
-// import apiClient from "@config/axios.config";
 import { getMe } from "@store/slices/authSlice";
 import { RootState, AppDispatch } from "@/store";
-import StatisticsCard from "@/components/common/StatisticsCard"; // Core Component
 import ProfileHeader from "../ProfileHeader";
 import "./styles.less";
 
 const Profile = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
-  
+
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
-  
-  // Loading States
+
   const [loading, setLoading] = useState(false);
-
-  // const [favoritesLoading, setFavoritesLoading] = useState(false);
-  const [favoritesLoading] = useState<boolean>(false);
   const [activityLoading, setActivityLoading] = useState(false);
-
-  // Data States
-
-  // Favorites list moved to LibraryPage, keeping stats only
-  const [favoriteStats, setFavoriteStats] = useState<any | null>(null);
-  // const [activities, setActivities] = useState<any[]>([]); // Unused for now
-  // const [avatar, setAvatar] = useState(user?.avatar);
   const [passwordStrength, setPasswordStrength] = useState(0);
 
   useEffect(() => {
@@ -67,34 +47,14 @@ const Profile = () => {
         phone: user.phone,
         bio: user.bio,
       });
-      // setAvatar(user.avatar);
-      fetchDashboardData();
-
     }
   }, [user]);
-
-  const fetchDashboardData = async () => {
-    try {
-      // Fetch stats summary initially
-      // const statsRes = await favoriteService.getStats();
-      // if (statsRes.success) setFavoriteStats(statsRes.data || null);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    }
-  };
-
-
 
   const fetchActivity = async () => {
     if (!user?.id) return;
     setActivityLoading(true);
     try {
-        // Mock activity data if API is not fully implemented for list
-        // Or fetch real activity if available
-        const res = await userService.getActivity(user.id);
-        if (res.success && Array.isArray(res.data)) {
-            // setActivities(res.data); // State unused, just logic for now
-        }
+      await userService.getActivity(user.id);
     } catch (error) {
       console.error("Error fetching activity:", error);
     } finally {
@@ -146,19 +106,12 @@ const Profile = () => {
     setPasswordStrength(strength);
   };
 
-
-
-
-
-  // --- Render Sections ---
-
-  // --- 4. Render Main ---
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "profile";
 
   useEffect(() => {
     if (activeTab === 'activity') {
-        fetchActivity();
+      fetchActivity();
     }
   }, [activeTab]);
 
@@ -168,7 +121,7 @@ const Profile = () => {
 
   const renderProfileTab = () => (
     <Row gutter={[24, 24]}>
-      <Col xs={24} md={16}>
+      <Col xs={24} md={24}>
         <div className="profile-card">
           <div className="card-title">
             <UserOutlined /> Thông tin Cá nhân
@@ -204,9 +157,9 @@ const Profile = () => {
                 </Form.Item>
               </Col>
               <Col xs={24}>
-                 <Form.Item label="Giới thiệu bản thân" name="bio">
-                    <Input.TextArea rows={4} placeholder="Chia sẻ đôi điều về bạn..." />
-                 </Form.Item>
+                <Form.Item label="Giới thiệu bản thân" name="bio">
+                  <Input.TextArea rows={4} placeholder="Chia sẻ đôi điều về bạn..." />
+                </Form.Item>
               </Col>
             </Row>
             <Form.Item style={{ textAlign: 'center', marginTop: 16 }}>
@@ -216,21 +169,6 @@ const Profile = () => {
             </Form.Item>
           </Form>
         </div>
-      </Col>
-      <Col xs={24} md={8}>
-         <StatisticsCard 
-            title="Thống Kê"
-            loading={favoritesLoading}
-            colSpan={{ span: 24 } as any}
-            data={[
-              {
-                title: "Đã yêu thích",
-                value: favoriteStats?.total || 0,
-                icon: <HeartOutlined />,
-                valueColor: "#ff4d4f",
-              }
-            ]}
-         />
       </Col>
     </Row>
   );
@@ -243,7 +181,7 @@ const Profile = () => {
             <LockOutlined /> Đổi mật khẩu
           </div>
           <Alert message="Lưu ý quan trọng" description="Mật khẩu mới cần có ít nhất 6 ký tự, bao gồm chữ hoa, chữ thường và số để đảm bảo an toàn." type="warning" showIcon style={{ marginBottom: 24 }} />
-          
+
           <Form
             form={passwordForm}
             layout="vertical"
@@ -254,7 +192,7 @@ const Profile = () => {
               label="Mật khẩu hiện tại"
               rules={[{ required: true, message: "Vui lòng nhập mật khẩu hiện tại" }]}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder="Nhập mật khẩu hiện tại" size="large"/>
+              <Input.Password prefix={<LockOutlined />} placeholder="Nhập mật khẩu hiện tại" size="large" />
             </Form.Item>
 
             <Form.Item
@@ -265,24 +203,23 @@ const Profile = () => {
                 { min: 6, message: "Mật khẩu phải ít nhất 6 ký tự" }
               ]}
             >
-              <Input.Password 
-                prefix={<LockOutlined />} 
-                placeholder="Nhập mật khẩu mới" 
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder="Nhập mật khẩu mới"
                 size="large"
                 onChange={(e) => checkPasswordStrength(e.target.value)}
               />
             </Form.Item>
-            
-            {/* Password Strength Indicator */}
+
             {passwordForm.getFieldValue("newPassword") && (
-                <div className="password-strength">
-                    <div className="strength-bar">
-                        <div className={`strength-fill ${['', 'weak', 'medium', 'strong', 'strong'][passwordStrength] || 'weak'}`} />
-                    </div>
-                    <div className={`strength-text ${['', 'weak', 'medium', 'strong', 'strong'][passwordStrength] || 'weak'}`}>
-                        Độ mạnh: {['', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'][passwordStrength]}
-                    </div>
+              <div className="password-strength">
+                <div className="strength-bar">
+                  <div className={`strength-fill ${['', 'weak', 'medium', 'strong', 'strong'][passwordStrength] || 'weak'}`} />
                 </div>
+                <div className={`strength-text ${['', 'weak', 'medium', 'strong', 'strong'][passwordStrength] || 'weak'}`}>
+                  Độ mạnh: {['', 'Yếu', 'Trung bình', 'Mạnh', 'Rất mạnh'][passwordStrength]}
+                </div>
+              </div>
             )}
 
             <Form.Item
@@ -290,7 +227,7 @@ const Profile = () => {
               label="Xác nhận mật khẩu mới"
               rules={[{ required: true, message: "Vui lòng xác nhận mật khẩu" }]}
             >
-              <Input.Password prefix={<CheckCircleOutlined />} placeholder="Nhập lại mật khẩu mới" size="large"/>
+              <Input.Password prefix={<CheckCircleOutlined />} placeholder="Nhập lại mật khẩu mới" size="large" />
             </Form.Item>
 
             <Form.Item>
@@ -302,82 +239,60 @@ const Profile = () => {
         </div>
       </Col>
       <Col xs={24} md={10}>
-          <div className="security-tips">
-              <h4><SafetyCertificateOutlined /> Bảo mật Tài khoản</h4>
-              <p style={{ color: '#8c6e1f', marginBottom: 16 }}>Giữ an toàn cho tài khoản của bạn là ưu tiên hàng đầu của chúng tôi.</p>
-              <ul>
-                  <li>Sử dụng mật khẩu mạnh bao gồm chữ hoa, thường, số và ký tự đặc biệt.</li>
-                  <li>Không chia sẻ mật khẩu của bạn với bất kỳ ai, kể cả nhân viên hỗ trợ.</li>
-                  <li>Đổi mật khẩu định kỳ 3 tháng một lần.</li>
-                  <li>Kích hoạt xác thực 2 lớp (2FA) để tăng cường bảo mật (Sắp ra mắt).</li>
-              </ul>
-              <div style={{ marginTop: 24, padding: 16, background: 'rgba(255,255,255,0.6)', borderRadius: 12 }}>
-                  <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>Lần đăng nhập cuối cùng</div>
-                  <div style={{ fontWeight: 600, color: '#333' }}>
-                      {user?.lastLogin 
-                        ? new Date(user.lastLogin).toLocaleString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) 
-                        : "Chưa có thông tin"}
-                  </div>
-              </div>
+        <div className="security-tips">
+          <h4><SafetyCertificateOutlined /> Bảo mật Tài khoản</h4>
+          <p style={{ color: '#8c6e1f', marginBottom: 16 }}>Giữ an toàn cho tài khoản của bạn là ưu tiên hàng đầu của chúng tôi.</p>
+          <ul>
+            <li>Sử dụng mật khẩu mạnh bao gồm chữ hoa, thường, số và ký tự đặc biệt.</li>
+            <li>Không chia sẻ mật khẩu của bạn với bất kỳ ai, kể cả nhân viên hỗ trợ.</li>
+            <li>Đổi mật khẩu định kỳ 3 tháng một lần.</li>
+            <li>Kích hoạt xác thực 2 lớp (2FA) để tăng cường bảo mật (Sắp ra mắt).</li>
+          </ul>
+          <div style={{ marginTop: 24, padding: 16, background: 'rgba(255,255,255,0.6)', borderRadius: 12 }}>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>Lần đăng nhập cuối cùng</div>
+            <div style={{ fontWeight: 600, color: '#333' }}>
+              {user?.lastLogin
+                ? new Date(user.lastLogin).toLocaleString("vi-VN", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : "Chưa có thông tin"}
+            </div>
           </div>
+        </div>
       </Col>
     </Row>
   );
 
   const renderActivityTab = () => (
-      <div className="profile-card">
-          <div className="card-title"><HistoryOutlined /> Lịch sử Hoạt động</div>
-          <p style={{ color: '#666', marginBottom: 32 }}>Theo dõi các hoạt động gần đây của bạn trên hệ thống.</p>
-          
-          <div className="activity-timeline">
-            {activityLoading ? <div style={{ padding: 40, textAlign: 'center' }}><Spin /></div> : (
-                <Timeline mode="left">
-                    {/* Mock activities layout */}
-                    <Timeline.Item color="green" label={new Date().toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'})}>
-                        <div className="timeline-content">
-                            <div className="activity-title">Đăng nhập thành công</div>
-                            <div className="activity-desc">Bạn đã đăng nhập vào hệ thống từ thiết bị mới.</div>
-                            <div className="activity-time">{new Date().toLocaleDateString("vi-VN")}</div>
-                        </div>
-                    </Timeline.Item>
-                    <Timeline.Item color="blue" label="Hôm qua">
-                        <div className="timeline-content">
-                            <div className="activity-title">Cập nhật hồ sơ cá nhân</div>
-                            <div className="activity-desc">Bạn đã thay đổi ảnh đại diện và thông tin giới thiệu.</div>
-                            <div className="activity-time">{new Date(Date.now() - 86400000).toLocaleDateString("vi-VN")}</div>
-                        </div>
-                    </Timeline.Item>
-                    <Timeline.Item color="red" label="3 ngày trước">
-                        <div className="timeline-content">
-                            <div className="activity-title">Yêu thích di sản</div>
-                            <div className="activity-desc">Bạn đã thêm <strong>"Trống Đồng Đông Sơn"</strong> vào danh sách yêu thích.</div>
-                            <div className="activity-time">{new Date(Date.now() - 172800000).toLocaleDateString("vi-VN")}</div>
-                        </div>
-                    </Timeline.Item>
-                    <Timeline.Item color="gray" label="Tuần trước">
-                        <div className="timeline-content">
-                            <div className="activity-title">Tạo bộ sưu tập</div>
-                            <div className="activity-desc">Bạn đã tạo bộ sưu tập mới <strong>"Cổ vật Triều Nguyễn"</strong>.</div>
-                            <div className="activity-time">{new Date(Date.now() - 604800000).toLocaleDateString("vi-VN")}</div>
-                        </div>
-                    </Timeline.Item>
-                </Timeline>
-            )}
-            <div style={{ textAlign: 'center', marginTop: 20 }}>
-                <Button variant="outline">Xem thêm hoạt động cũ hơn</Button>
-            </div>
-          </div>
+    <div className="profile-card">
+      <div className="card-title"><HistoryOutlined /> Lịch sử Hoạt động</div>
+      <p style={{ color: '#666', marginBottom: 32 }}>Theo dõi các hoạt động gần đây của bạn trên hệ thống.</p>
+
+      <div className="activity-timeline">
+        {activityLoading ? <div style={{ padding: 40, textAlign: 'center' }}><Spin /></div> : (
+          <Timeline mode="left">
+            <Timeline.Item color="green" label={new Date().toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}>
+              <div className="timeline-content">
+                <div className="activity-title">Đăng nhập hệ thống</div>
+                <div className="activity-desc">Bạn vừa đăng nhập vào hệ thống.</div>
+                <div className="activity-time">{new Date().toLocaleDateString("vi-VN")}</div>
+              </div>
+            </Timeline.Item>
+          </Timeline>
+        )}
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <Button variant="outline">Xem thêm hoạt động cũ hơn</Button>
+        </div>
       </div>
+    </div>
   )
 
   return (
     <div className="profile-page">
-      <ProfileHeader 
-        user={user} 
-        activeTab={activeTab} 
-        onTabChange={handleTabChange} 
+      <ProfileHeader
+        user={user}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
       />
-      
+
       <div className="profile-content">
         <div className="profile-container">
           {activeTab === 'profile' && renderProfileTab()}

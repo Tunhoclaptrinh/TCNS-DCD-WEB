@@ -12,7 +12,7 @@ const env: EnvConfig = {
     API_TIMEOUT: Number(import.meta.env.VITE_API_TIMEOUT) || 30000,
     ENABLE_MOCK: import.meta.env.VITE_ENABLE_MOCK === 'true',
     ENABLE_LOGGING: import.meta.env.VITE_ENABLE_LOGGING === 'true' || import.meta.env.DEV,
-    APP_NAME: import.meta.env.VITE_APP_NAME || 'SEN Web',
+    APP_NAME: import.meta.env.VITE_APP_NAME || 'Base Web',
     APP_VERSION: import.meta.env.VITE_APP_VERSION || '2.0.0',
 };
 

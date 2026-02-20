@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Upload, message, Modal } from "antd";
 import { PlusOutlined, LoadingOutlined } from "@ant-design/icons";
 import type { RcFile, UploadFile, UploadProps } from "antd/es/upload/interface";
+import { STORAGE_KEYS } from "../../../config/constants";
 
 interface ImageUploadProps {
   value?: string | string[]; // URL string or array of URL strings
@@ -122,7 +123,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     formData.append("image", file);
 
     try {
-      const token = localStorage.getItem("sen_token");
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       const xhr = new XMLHttpRequest();
       const apiBase =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";

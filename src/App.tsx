@@ -9,6 +9,8 @@ import routes from "./routes/routes.config";
 import Loading from "./components/common/Loading";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import { ToastProvider } from "./components/common/Toast";
+import { STORAGE_KEYS } from "./config/constants";
+
 const App: React.FC = () => {
   console.log("App component rendering...");
   const dispatch = useDispatch();
@@ -30,7 +32,7 @@ const App: React.FC = () => {
   // Listen for Storage Changes (Multi-tab Logout)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "base_token" && !e.newValue) {
+      if (e.key === STORAGE_KEYS.TOKEN && !e.newValue) {
         dispatch(forceLogout());
         navigate("/login");
       }

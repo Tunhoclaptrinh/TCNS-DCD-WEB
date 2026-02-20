@@ -2,7 +2,7 @@
 export * from "./auth.types";
 // export * from "./common.types";
 // export * from "./model.types"; // Comment out or remove if causing issues with User name
-export type {User, UserRole} from "./auth.types"; // Explicit re-export
+export type { User, UserRole } from "./auth.types"; // Explicit re-export
 export * from "./api.types";
 export * from "./user.types";
 
@@ -33,7 +33,7 @@ export interface FilterParams {
   [key: string]: any;
 }
 
-export interface QueryParams extends PaginationParams, SortParams, SearchParams, FilterParams {}
+export interface QueryParams extends PaginationParams, SortParams, SearchParams, FilterParams { }
 
 export interface Pagination {
   page: number;
@@ -106,7 +106,7 @@ export interface FilterConfig {
   placeholder: string;
   width?: number;
   colSpan?: number;
-  options: Array<{label: string; value: any}>;
+  options: Array<{ label: string; value: any }>;
   disabled?: boolean;
   loading?: boolean;
   value?: any;
@@ -117,122 +117,6 @@ export interface FilterConfig {
 export interface RootState {
   auth: any; // Will be replaced with AuthState
   ui: any;
-  collection: any;
-}
-
-export interface AsyncThunkConfig {
-  rejectValue: string;
-}
-
-// API Response Types
-
-export interface SuccessResponse<T = any> {
-  success: true;
-  data: T;
-  message?: string;
-  pagination?: Pagination;
-  metadata?: Metadata;
-}
-
-export interface ErrorResponse {
-  success: false;
-  message: string;
-  statusCode?: number;
-  errors?: Array<{
-    field: string;
-    message: string;
-  }>;
-}
-
-export type ApiResponse<T = any> = SuccessResponse<T> | ErrorResponse;
-
-// Route Types
-
-export interface RouteConfig {
-  path: string;
-  element: React.ReactNode;
-  children?: RouteConfig[];
-  index?: boolean;
-  requireAuth?: boolean;
-  requiredRoles?: string[];
-}
-
-// Storage Types
-
-export interface StorageKeys {
-  TOKEN: string;
-  USER: string;
-  THEME: string;
-}
-
-// Utility Types
-
-export type Nullable<T> = T | null;
-export type Optional<T> = T | undefined;
-export type Maybe<T> = T | null | undefined;
-
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
-export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> &
-  {
-    [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>>;
-  }[Keys];
-
-// Event Types
-
-export type ChangeHandler = (value: any) => void;
-export type SubmitHandler<T = any> = (values: T) => void | Promise<void>;
-export type ClickHandler = (event: React.MouseEvent) => void;
-
-// Table Types
-
-export interface TableColumn<T = any> {
-  title: string;
-  dataIndex?: string;
-  key: string;
-  width?: number | string;
-  fixed?: "left" | "right";
-  sorter?: boolean;
-  render?: (value: any, record: T, index: number) => React.ReactNode;
-  ellipsis?: boolean;
-  filters?: Array<{text: string; value: any}>;
-}
-
-export interface TablePaginationConfig {
-  current: number;
-  pageSize: number;
-  total: number;
-  showSizeChanger?: boolean;
-  showQuickJumper?: boolean;
-  showTotal?: (total: number) => string;
-  pageSizeOptions?: string[];
-}
-
-// Character/Animation Types
-
-export interface Position {
-  x: number;
-  y: number;
-}
-
-export interface Accessories {
-  hat: boolean;
-  glasses: boolean;
-  bag: boolean;
-  coat: boolean;
-}
-
-export type MouthState = "smile" | "open" | "close" | "sad" | "angry" | "half";
-
-export interface CharacterState {
-  position: Position;
-  scale: number;
-  accessories: Accessories;
-  mouthState: MouthState;
-  isTalking: boolean;
-  controlled: boolean;
 }
 
 // Notification Types

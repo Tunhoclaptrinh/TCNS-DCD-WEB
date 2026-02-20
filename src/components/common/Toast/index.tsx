@@ -27,7 +27,7 @@ message.config({
     top: 24,
     duration: 3,
     maxCount: 3,
-    prefixCls: 'sen-message',
+    prefixCls: 'base-message',
 });
 
 /**

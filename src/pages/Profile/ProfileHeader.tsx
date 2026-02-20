@@ -1,18 +1,12 @@
 import React from "react";
 import { Avatar, Tabs, Upload, message } from "antd";
-import { UserOutlined, CameraOutlined, EditOutlined } from "@ant-design/icons";
+import { UserOutlined, CameraOutlined } from "@ant-design/icons";
 import { useDispatch } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
 import apiClient from "@config/axios.config";
 import userService from "@services/user.service";
 import { getMe } from "@store/slices/authSlice";
 import { AppDispatch } from "@/store";
-import "./styles.less"; // Reuse existing styles or we should move styles to a common place? 
-// For now, assume styles are global or imported in parent.
-// Actually, I should probably copy the necessary styles or import the less file.
-// But styles.less is in Profile/Profile.
-// I'll assume usage within the same module area or make it shared. 
-// Given the user wants it to be "ok hẳn" (solid), I should probably move styles to a shared file or ensure this component imports them.
+import "./styles.less";
 
 interface ProfileHeaderProps {
     user: any;
@@ -23,10 +17,7 @@ interface ProfileHeaderProps {
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabChange, showTabs = true }) => {
     const dispatch = useDispatch<AppDispatch>();
-    const navigate = useNavigate();
-    const location = useLocation();
 
-    // Helper to handle avatar update
     const handleAvatarUpload = async (file: File, onSuccess: any, onError: any) => {
         const formData = new FormData();
         formData.append("file", file);
@@ -47,27 +38,10 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
         }
     };
 
-    // const handleTabClick = (key: string) => {
-    //     if (onTabChange) {
-    //         onTabChange(key);
-    //     } else {
-    //          // Navigation logic if props not provided, or specific routing
-    //          if (key === 'library') {
-    //              navigate('/profile/library');
-    //          } else if (key === 'profile') {
-    //              navigate('/profile');
-    //          }
-    //     }
-    // };
-
-    const isLibraryPage = location.pathname.includes('/profile/library');
-
     return (
         <div className="profile-header-section">
-
             <div className="profile-info-bar">
                 <div className="cover-overlay" />
-
                 <div className="profile-container">
                     <div className="profile-layout-row">
                         <div className="left-col-avatar">
@@ -94,50 +68,18 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
                                     <span className="user-role-badge">
                                         {user?.role === "admin" ? "🛡️ Quản trị viên" : "Thành viên"}
                                     </span>
-                                    {/* Edit Button - Only show if not on profile page, or always show? 
-                                        User said: "thêm nút chỉnh sửa thông tin cá nhân để chuyển đến trang profile"
-                                        This implies if I am on library page, I click this to go to profile. 
-                                    */}
-                                    {isLibraryPage && (
-                                        <div
-                                            className="edit-profile-btn"
-                                            onClick={() => navigate('/profile')}
-                                            style={{
-                                                marginLeft: 'auto',
-                                                cursor: 'pointer',
-                                                color: '#666',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 4,
-                                                fontSize: 14,
-                                                background: '#f5f5f5',
-                                                padding: '4px 12px',
-                                                borderRadius: 20
-                                            }}
-                                        >
-                                            <EditOutlined /> <span>Chỉnh sửa</span>
-                                        </div>
-                                    )}
                                 </div>
                                 <p className="join-date">
                                     Tham gia từ: {(user?.createdAt || user?.created_at) ? new Date(user.createdAt || user.created_at).toLocaleDateString("vi-VN") : "Thành viên mới"}
                                 </p>
                             </div>
 
-                            {/* Integrated Tab Navigation using Ant Design Tabs */}
                             {showTabs && (
                                 <Tabs
                                     className="profile-header-tabs"
-                                    activeKey={isLibraryPage ? 'library' : activeTab}
+                                    activeKey={activeTab}
                                     onChange={(key) => {
-                                        if (key === 'library') {
-                                            navigate('/profile/library');
-                                        } else if (isLibraryPage) {
-                                            // Ensure we preserve the tab selection when navigating back to profile
-                                            navigate(`/profile?tab=${key}`);
-                                        } else {
-                                            onTabChange && onTabChange(key);
-                                        }
+                                        onTabChange && onTabChange(key);
                                     }}
                                     items={[
                                         { label: 'Hồ sơ', key: 'profile' },

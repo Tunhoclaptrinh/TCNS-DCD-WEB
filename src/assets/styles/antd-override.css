@@ -60,7 +60,8 @@
 .ant-select-focused .ant-select-selector,
 .ant-picker-focused .ant-picker {
   border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 2px rgba(139, 29, 29, 0.2) !important; /* Approximation of alpha primary */
+  box-shadow: 0 0 0 2px rgba(139, 29, 29, 0.2) !important;
+  /* Approximation of alpha primary */
 }
 
 /* ==================== Layout Customizations ==================== */
@@ -142,18 +143,18 @@
   }
 }
 
-/* Heritage Detail Modal Tabs Override */
-.heritage-detail-modal-tabs .ant-tabs-nav .ant-tabs-tab:hover {
-    color: var(--primary-color) !important;
+/* Item Detail Modal Tabs Override */
+.item-detail-modal-tabs .ant-tabs-nav .ant-tabs-tab:hover {
+  color: var(--primary-color) !important;
 }
 
-.heritage-detail-modal-tabs .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
-    color: var(--primary-color) !important;
-    text-shadow: 0 0 0.5px currentColor;
+.item-detail-modal-tabs .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--primary-color) !important;
+  text-shadow: 0 0 0.5px currentColor;
 }
 
-.heritage-detail-modal-tabs .ant-tabs-nav .ant-tabs-ink-bar {
-    background: var(--primary-color) !important;
+.item-detail-modal-tabs .ant-tabs-nav .ant-tabs-ink-bar {
+  background: var(--primary-color) !important;
 }
 
 /* ==================== Switch ==================== */

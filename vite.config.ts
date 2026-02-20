@@ -38,7 +38,7 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://sen-backend-dev:3000",
+        target: "http://base-backend-dev:3000",
         changeOrigin: true,
         secure: false,
       },

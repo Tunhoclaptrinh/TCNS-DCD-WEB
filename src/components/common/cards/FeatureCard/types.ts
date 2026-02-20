@@ -1,36 +1,19 @@
-export interface HeritageSite {
-    id: number;
-    name: string;
-    description: string;
-    image?: string;
-    region: string;
-    type: string;
-    rating?: number;
-    total_reviews?: number;
-    unesco_listed?: boolean;
-}
-
 export interface CommonCardData {
     id: number | string;
     name: string;
     image?: string;
     main_image?: string;
-    type?: string; 
-    rating?: number;
-    total_reviews?: number;
-    unesco_listed?: boolean;
-    region?: string;
-    dynasty?: string;
+    type?: string;
+    status?: string;
     description?: string;
     author?: string;
     publishDate?: string;
     shortDescription?: string;
-    commentCount?: number;
     [key: string]: any;
 }
 
 export interface FeatureCardProps {
     data: CommonCardData;
-    cardType?: 'heritage' | 'artifact';
     variant?: 'portrait' | 'landscape';
+    cardType?: string;
 }
