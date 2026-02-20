@@ -2,6 +2,7 @@ import React from 'react';
 import {
     DashboardOutlined,
     UserOutlined,
+
 } from '@ant-design/icons';
 
 export interface IMenuItem {
@@ -30,6 +31,7 @@ export const adminMenu: IMenuItem[] = [
         name: 'Người dùng',
         icon: <UserOutlined />,
     },
+
 ];
 
 // ================= CUSTOMER MENU =================

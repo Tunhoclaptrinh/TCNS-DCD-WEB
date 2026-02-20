@@ -10,9 +10,12 @@ import Loading from "./components/common/Loading";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import { ToastProvider } from "./components/common/Toast";
 const App: React.FC = () => {
+  console.log("App component rendering...");
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  console.log("Hooks initialized");
   const routing = useRoutes(routes);
+  console.log("Routes initialized");
 
   const { isInitialized, loading } = useSelector(
     (state: RootState) => state.auth,
@@ -27,7 +30,7 @@ const App: React.FC = () => {
   // Listen for Storage Changes (Multi-tab Logout)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "sen_token" && !e.newValue) {
+      if (e.key === "base_token" && !e.newValue) {
         dispatch(forceLogout());
         navigate("/login");
       }

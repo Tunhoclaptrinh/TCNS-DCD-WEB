@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { authService } from "../../services";
+import authService from "../../services/auth.service";
 import { STORAGE_KEYS } from "../../config/constants";
 import type { User, LoginCredentials, RegisterData } from "../../types";
 
@@ -70,14 +70,17 @@ export const login = createAsyncThunk<
 >("auth/login", async (credentials, { rejectWithValue }) => {
   try {
     const response = await authService.login(credentials);
-    // authService.login đã throw error nếu !success, nhưng check lại cho chắc
     if (!response.success) {
       return rejectWithValue(response.message || "Đăng nhập thất bại");
     }
 
-    const { user, token } = response.data;
-    saveAuthToStorage(token, user);
-    return { user, token };
+    const { user, token, permissions } = response.data;
+    // Map permissions into user if they came separately (depending on API)
+    // Based on my backend change, they're in response.data.permissions
+    const userWithPermissions = { ...user, permissions: permissions || user.permissions };
+
+    saveAuthToStorage(token, userWithPermissions);
+    return { user: userWithPermissions, token };
   } catch (error: any) {
     return rejectWithValue(error.message || "Đăng nhập thất bại");
   }
@@ -91,10 +94,8 @@ export const register = createAsyncThunk<
   try {
     const response = await authService.register(userData);
     if (!response.success) {
-      return rejectWithValue(response.message || "Đăng ký thất bại");
+      return rejectWithValue(response.message || "Đăng kỳ thất bại");
     }
-
-    // No auto-login after registration
     return { message: response.message || "Registration successful" };
   } catch (error: any) {
     return rejectWithValue(error.message || "Đăng ký thất bại");
@@ -111,6 +112,8 @@ export const getMe = createAsyncThunk<User, void, { rejectValue: string }>(
           response.message || "Lỗi khi tải thông tin người dùng",
         );
       }
+
+      // Backend returns { ...user, permissions: [...] } in response.data
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -174,7 +177,6 @@ const authSlice = createSlice({
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(state.user));
       }
     },
-    // Action này được gọi từ axios interceptor khi refresh token thành công
     refreshTokenSuccess: (state, action: PayloadAction<string>) => {
       state.token = action.payload;
       localStorage.setItem(STORAGE_KEYS.TOKEN, action.payload);
@@ -223,7 +225,6 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(register.fulfilled, (state) => {
-        // Registration successful but user is NOT logged in
         state.loading = false;
         state.isAuthenticated = false;
         state.user = null;

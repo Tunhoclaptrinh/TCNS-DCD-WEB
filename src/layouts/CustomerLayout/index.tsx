@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from 'antd';
 import {
     UserOutlined,
-    BookOutlined
+
 } from '@ant-design/icons';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,16 +30,7 @@ const CustomerLayout: React.FC = () => {
             label: 'Hồ sơ',
             onClick: () => navigate('/profile'),
         },
-        // Collections can remain if generic, otherwise remove
-        {
-            key: 'collections',
-            icon: <BookOutlined />,
-            label: 'Bộ sưu tập',
-            onClick: () => navigate('/collections'),
-        },
-        {
-            type: 'divider',
-        },
+
     ];
 
     return (

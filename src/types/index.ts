@@ -5,7 +5,7 @@ export * from "./auth.types";
 export type {User, UserRole} from "./auth.types"; // Explicit re-export
 export * from "./api.types";
 export * from "./user.types";
-export * from "./collection.types";
+
 export * from "./notification.types";
 
 // Common Types

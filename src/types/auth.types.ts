@@ -12,6 +12,7 @@ export interface User {
   lastLogin?: string;
   address?: string;
   bio?: string;
+  permissions?: string[];
 }
 
 export enum UserRole {
@@ -53,6 +54,7 @@ export interface AuthResponse {
   success: boolean;
   data: {
     user: User;
+    permissions?: string[];
     token: string;
   };
   message?: string;

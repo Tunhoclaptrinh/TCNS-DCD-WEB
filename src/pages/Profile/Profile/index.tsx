@@ -24,14 +24,12 @@ import {
   SafetyCertificateOutlined,
   HistoryOutlined,
   HeartOutlined,
-  AppstoreOutlined,
   CheckCircleOutlined
 } from "@ant-design/icons";
 import { useSelector, useDispatch } from "react-redux";
 import userService from "@services/user.service";
-import collectionService from "@services/collection.service";
-import { Collection } from "@/types/collection.types";
-import favoriteService, { FavoriteStats } from "@services/favorite.service";
+
+// import favoriteService, { FavoriteStats } from "@services/favorite.service";
 // import apiClient from "@config/axios.config";
 import { getMe } from "@store/slices/authSlice";
 import { RootState, AppDispatch } from "@/store";
@@ -48,15 +46,15 @@ const Profile = () => {
   
   // Loading States
   const [loading, setLoading] = useState(false);
-  const [collectionsLoading, setCollectionsLoading] = useState(false);
+
   // const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [favoritesLoading] = useState<boolean>(false);
   const [activityLoading, setActivityLoading] = useState(false);
 
   // Data States
-  const [collections, setCollections] = useState<Collection[]>([]);
+
   // Favorites list moved to LibraryPage, keeping stats only
-  const [favoriteStats, setFavoriteStats] = useState<FavoriteStats | null>(null);
+  const [favoriteStats, setFavoriteStats] = useState<any | null>(null);
   // const [activities, setActivities] = useState<any[]>([]); // Unused for now
   // const [avatar, setAvatar] = useState(user?.avatar);
   const [passwordStrength, setPasswordStrength] = useState(0);
@@ -71,31 +69,21 @@ const Profile = () => {
       });
       // setAvatar(user.avatar);
       fetchDashboardData();
-      fetchCollections(); // Fetch for stats count
+
     }
   }, [user]);
 
   const fetchDashboardData = async () => {
     try {
       // Fetch stats summary initially
-      const statsRes = await favoriteService.getStats();
-      if (statsRes.success) setFavoriteStats(statsRes.data || null);
+      // const statsRes = await favoriteService.getStats();
+      // if (statsRes.success) setFavoriteStats(statsRes.data || null);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     }
   };
 
-  const fetchCollections = async () => {
-    setCollectionsLoading(true);
-    try {
-      const res = await collectionService.getAll();
-      if (res.success) setCollections(res.data || []);
-    } catch (error) {
-      // generic error handling or silent
-    } finally {
-      setCollectionsLoading(false);
-    }
-  };
+
 
   const fetchActivity = async () => {
     if (!user?.id) return;
@@ -232,15 +220,9 @@ const Profile = () => {
       <Col xs={24} md={8}>
          <StatisticsCard 
             title="Thống Kê"
-            loading={favoritesLoading || collectionsLoading}
+            loading={favoritesLoading}
             colSpan={{ span: 24 } as any}
             data={[
-              {
-                title: "Bộ sưu tập",
-                value: collections.length || 0,
-                icon: <AppstoreOutlined />,
-                valueColor: "#1890ff",
-              },
               {
                 title: "Đã yêu thích",
                 value: favoriteStats?.total || 0,

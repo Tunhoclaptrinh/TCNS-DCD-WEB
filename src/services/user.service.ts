@@ -282,4 +282,5 @@ class UserService extends BaseService<User, Partial<User>, UserUpdateDTO> {
   }
 }
 
-export default new UserService();
+export const userService = new UserService();
+export default userService;

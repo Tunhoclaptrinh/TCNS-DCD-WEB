@@ -4,4 +4,6 @@ export { useFilters, default as useFiltersDefault } from './useFilters';
 export { useLocalStorage, default as useLocalStorageDefault } from './useLocalStorage';
 export { usePagination, default as usePaginationDefault } from './usePagination';
 export { usePermission, default as usePermissionDefault } from './usePermission';
+export { useAccess, default as useAccessDefault } from './useAccess';
+export { useAuth, default as useAuthDefault } from './useAuth';
 export { useSearch, default as useSearchDefault } from './useSearch';

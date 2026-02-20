@@ -47,6 +47,24 @@ export const useAuth = () => {
     [user, isAuthenticated],
   );
 
+  const hasPermission = useCallback(
+    (permission: string) => {
+      if (!user || !isAuthenticated) return false;
+      if (user.role === 'admin' || user.permissions?.includes('*')) return true;
+      return user.permissions?.includes(permission) || false;
+    },
+    [user, isAuthenticated],
+  );
+
+  const hasAnyPermission = useCallback(
+    (permissions: string[]) => {
+      if (!user || !isAuthenticated) return false;
+      if (user.role === 'admin' || user.permissions?.includes('*')) return true;
+      return permissions.some(p => user.permissions?.includes(p)) || false;
+    },
+    [user, isAuthenticated],
+  );
+
   return {
     user,
     isAuthenticated,
@@ -59,7 +77,9 @@ export const useAuth = () => {
     updateUserInfo: (info: any) => dispatch(updateUserInfo(info)),
     clearError: clearAuthError,
     hasRole,
-    isAdmin: user?.role === "admin",
+    hasPermission,
+    hasAnyPermission,
+    isAdmin: user?.role === "admin" || user?.permissions?.includes('*'),
   };
 };
 

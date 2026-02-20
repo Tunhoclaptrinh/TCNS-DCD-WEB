@@ -64,7 +64,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
 
     return (
         <div className="profile-header-section">
-            
+
             <div className="profile-info-bar">
                 <div className="cover-overlay" />
 
@@ -76,7 +76,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
                                 <Upload
                                     name="avatar"
                                     showUploadList={false}
-                                    customRequest={async ({ file, onSuccess, onError }) => 
+                                    customRequest={async ({ file, onSuccess, onError }) =>
                                         handleAvatarUpload(file as File, onSuccess, onError)
                                     }
                                 >
@@ -86,7 +86,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
                                 </Upload>
                             </div>
                         </div>
-                        
+
                         <div className="right-col-info">
                             <div className="user-main-info">
                                 <div className="name-role-wrapper">
@@ -99,11 +99,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
                                         This implies if I am on library page, I click this to go to profile. 
                                     */}
                                     {isLibraryPage && (
-                                        <div 
-                                            className="edit-profile-btn" 
+                                        <div
+                                            className="edit-profile-btn"
                                             onClick={() => navigate('/profile')}
-                                            style={{ 
-                                                marginLeft: 'auto', 
+                                            style={{
+                                                marginLeft: 'auto',
                                                 cursor: 'pointer',
                                                 color: '#666',
                                                 display: 'flex',
@@ -143,7 +143,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
                                         { label: 'Hồ sơ', key: 'profile' },
                                         { label: 'Hoạt động', key: 'activity' },
                                         { label: 'Bảo mật', key: 'security' },
-                                        { label: 'Kho lưu Trữ', key: 'library' },
                                     ]}
                                 />
                             )}

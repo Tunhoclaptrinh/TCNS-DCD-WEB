@@ -148,8 +148,7 @@ export const errorLogger = {
      * Log error to external service (e.g., Sentry)
      */
     logToService(error: ParsedError, context?: string): void {
-        // TODO: Implement external logging service
-        // Example: Sentry.captureException(error.originalError);
+        // Example for production: Sentry.captureException(error.originalError);
         this.log(error, context);
     },
 };

@@ -36,12 +36,5 @@ export { default as SearchBar } from "./SearchBar";
 export { default as StatisticsCard } from "./StatisticsCard";
 export { default as CardGrid } from "./CardGrid";
 
-// Chat
-export { default as ChatOverlay } from "./ChatOverlay";
-export { default as AIChatPanel } from "./AIChatPanel";
-export { default as AIChatFloatingButton } from "./AIChatFloatingButton";
-export { default as SenCustomizationSettings } from "./SenCustomizationSettings";
-
-
 // Guards
 export { default as AuthGuard } from "./guards/AuthGuard";

@@ -22,8 +22,9 @@ const Support = lazy(() => import("@/pages/Support"));
 
 
 // Admin/Manager Pages (DataTables)
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Dashboard = lazy(() => import("@/pages/Dashboard/DashboardMain"));
 const UserManagement = lazy(() => import("@/pages/Users"));
+
 
 
 // Wrapper component for Suspense
@@ -35,6 +36,20 @@ const routes: RouteObject[] = [
   // ============ AUTH ROUTES ============
   {
     path: "/login",
+    element: (
+      <LazyLoadWrapper>
+        <AuthLayout />
+      </LazyLoadWrapper>
+    ),
+    children: [
+      {
+        index: true,
+        element: <Login />,
+      },
+    ],
+  },
+  {
+    path: "/register",
     element: (
       <LazyLoadWrapper>
         <AuthLayout />
@@ -61,7 +76,7 @@ const routes: RouteObject[] = [
         index: true,
         element: <Home />,
       },
-       {
+      {
         path: "support",
         element: <Support />,
       },
@@ -127,6 +142,7 @@ const routes: RouteObject[] = [
         path: "users",
         element: <UserManagement />,
       },
+
     ],
   },
 

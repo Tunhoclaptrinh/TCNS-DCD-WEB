@@ -26,7 +26,7 @@ export const logger = {
             console.error(...args);
         }
 
-        // TODO: Send to external logging service in production (e.g., Sentry)
+        // Example: Send to external logging service in production (e.g., Sentry)
         if (isProd) {
             // Example: Sentry.captureException(args[0]);
         }

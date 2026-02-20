@@ -7,14 +7,18 @@ interface AuthGuardProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   requiredRoles?: string[];
+  requiredPermissions?: string[];
+  anyPermission?: string[];
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({
   children,
   requireAuth = true,
   requiredRoles = [],
+  requiredPermissions = [],
+  anyPermission = [],
 }) => {
-  const { isAuthenticated, isInitialized, hasRole, loading } = useAuth();
+  const { isAuthenticated, isInitialized, hasRole, hasPermission, hasAnyPermission, loading } = useAuth();
   const location = useLocation();
 
   // 1. Chờ Auth khởi tạo xong (check token từ local storage)
@@ -27,14 +31,23 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3. Nếu đã đăng nhập nhưng route yêu cầu Roles cụ thể
+  // 3. Check Roles
   if (requireAuth && requiredRoles.length > 0 && !hasRole(requiredRoles)) {
-    // User không đủ quyền -> Chuyển về trang 403 hoặc Home
-    // Ở đây tạm thời chuyển về Home và báo lỗi (có thể thêm state notification)
     return <Navigate to="/" replace />;
   }
 
-  // 4. Nếu route public (ví dụ Login) mà user đã đăng nhập -> Redirect vào trong
+  // 4. Check specific Permissions (All required)
+  if (requireAuth && requiredPermissions.length > 0) {
+    const hasAll = requiredPermissions.every(p => hasPermission(p));
+    if (!hasAll) return <Navigate to="/" replace />;
+  }
+
+  // 5. Check "Any" Permission
+  if (requireAuth && anyPermission.length > 0 && !hasAnyPermission(anyPermission)) {
+    return <Navigate to="/" replace />;
+  }
+
+  // 6. Nếu route public (ví dụ Login) mà user đã đăng nhập -> Redirect vào trong
   if (!requireAuth && isAuthenticated) {
     return <Navigate to="/" replace />;
   }

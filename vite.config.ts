@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+// Force Vite Reload - Fix Dynamic Import
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,9 +45,7 @@ export default defineConfig({
     },
     allowedHosts: true,
   },
-  optimizeDeps: {
-    include: ["pixi.js", "@pixi/react"],
-  },
+
   build: {
     outDir: "dist",
     sourcemap: false,
@@ -57,8 +56,14 @@ export default defineConfig({
           "react-vendor": ["react", "react-dom", "react-router-dom"],
           "ui-vendor": ["antd", "@ant-design/icons", "framer-motion"],
           "utils-vendor": ["axios", "dayjs", "lodash"],
-          "game-vendor": ["pixi.js", "@pixi/react"],
         },
+      },
+    },
+  },
+  css: {
+    preprocessorOptions: {
+      less: {
+        javascriptEnabled: true,
       },
     },
   },
