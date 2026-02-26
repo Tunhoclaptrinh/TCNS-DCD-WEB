@@ -77,7 +77,7 @@ const CategoryPage = () => {
                 columns={columns}
                 dataSource={data}
                 pagination={pagination}
-                onChange={(p) => setPagination(p)}
+                onChange={(p: any) => setPagination(p)}
                 onAdd={openCreate}
                 onRefresh={() => fetchAll()}
                 onEdit={openEdit}
@@ -85,8 +85,9 @@ const CategoryPage = () => {
             />
 
             <FormModal
-                visible={isModalVisible}
+                open={isModalVisible}
                 title={editingId ? "Edit Category" : "Create Category"}
+                form={form}
                 onCancel={() => setIsModalVisible(false)}
                 onOk={onOk}
             >
