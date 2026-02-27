@@ -1,4 +1,5 @@
 import React from 'react';
+import type { ColumnType } from 'antd/es/table';
 
 export interface FilterOption {
     label: string;
@@ -16,10 +17,21 @@ export interface FilterConfig {
     colSpan?: number; // Grid span (default 12 or 24)
 }
 
+/**
+ * DataTable Column with custom resizable & searchable properties
+ */
+export interface DataTableColumn<T = any> extends ColumnType<T> {
+    sortable?: boolean;
+    resizable?: boolean; // Enable column resizing (default: false)
+    searchable?: boolean; // Enable search filter (default: false)
+    minWidth?: number; // Min width for resizable column
+    maxWidth?: number; // Max width for resizable column
+}
+
 export interface DataTableProps {
     data?: any[];
     loading?: boolean;
-    columns?: any[];
+    columns?: DataTableColumn[];
     onAdd?: () => void;
     onView?: (record: any) => void;
     onEdit?: (record: any) => void;
@@ -72,5 +84,8 @@ export interface DataTableProps {
     showAlert?: boolean;
     alertMessage?: string;
     alertType?: "success" | "info" | "warning" | "error";
+    saveColumnWidths?: boolean;
+    columnResizeKey?: string;
+    onColumnResize?: (key: string, width: number) => void;
     [key: string]: any;
 }

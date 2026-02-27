@@ -496,6 +496,37 @@
     padding: 16px;
 }
 
+/* Resizable column headers */
+.data-table-wrapper .react-resizable {
+    position: relative;
+}
+
+.data-table-wrapper .react-resizable-handle {
+    position: absolute;
+    right: -6px;
+    top: 0;
+    height: 100%;
+    width: 12px;
+    cursor: col-resize;
+    background-image: none!important;
+    z-index: 2;
+}
+
+.data-table-wrapper .react-resizable-handle::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    top: 20%;
+    width: 1px;
+    height: 60%;
+    background: #d9d9d9;
+    border-radius: 1px;
+}
+
+.data-table-wrapper .react-resizable-handle:hover::after {
+    background: @primary-color;
+}
+
 /* Override standard Ant Table Filter Dropdown Selected Item Color */
 .ant-table-filter-dropdown .ant-dropdown-menu-item-selected {
     background-color: fade(@primary-color, 10%) !important;

@@ -31,6 +31,7 @@ import { useDebounce } from "@/hooks";
 import "./styles.less";
 import ExportModal from "./ExportModal"; // Import the modal
 import FilterBuilder from "./FilterBuilder";
+import ResizableTitle from "./ResizableTitle";
 
 /**
  * DataTable Component
@@ -85,6 +86,9 @@ const DataTable: React.FC<DataTableProps> = ({
   alertMessage,
   alertType = "info",
   actionColumnProps, // New Prop
+  saveColumnWidths = false,
+  columnResizeKey,
+  onColumnResize,
   ...tableProps
 }) => {
   const [internalSearchText, setInternalSearchText] = useState(searchValue);
@@ -92,6 +96,11 @@ const DataTable: React.FC<DataTableProps> = ({
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [operators, setOperators] = useState<Record<string, string>>({});
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const storageKey = columnResizeKey
+    ? `datatable-widths:${columnResizeKey}`
+    : undefined;
+  const hasResizableColumn = columns.some((col: any) => col?.resizable === true);
 
   // Dynamic filters state - start EMPTY, user adds as needed
   const [activeFilters, setActiveFilters] = useState<FilterConfig[]>([]);
@@ -104,6 +113,31 @@ const DataTable: React.FC<DataTableProps> = ({
       return initial;
     },
   );
+
+  React.useEffect(() => {
+    if (!saveColumnWidths || !storageKey || !hasResizableColumn) return;
+
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        setColumnWidths(parsed);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, [saveColumnWidths, storageKey]);
+
+  React.useEffect(() => {
+    if (!saveColumnWidths || !storageKey || !hasResizableColumn) return;
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(columnWidths));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [columnWidths, saveColumnWidths, storageKey]);
 
   const getActiveFilterKey = (filterKey: string, op?: string) => {
     const filterConfig = filters.find((f) => f.key === filterKey);
@@ -184,6 +218,25 @@ const DataTable: React.FC<DataTableProps> = ({
   const handleFilterChange = (key: string, value: any) => {
     if (onFilterChange) {
       onFilterChange(key, value);
+    }
+  };
+
+  const handleResize = (key: string) => (_: React.SyntheticEvent, data: any) => {
+    const nextWidth = data?.size?.width;
+    if (typeof nextWidth !== "number") return;
+
+    setColumnWidths((prev) => ({ ...prev, [key]: nextWidth }));
+    if (onColumnResize) onColumnResize(key, nextWidth);
+  };
+
+  // NEW: Handle double-click to reset column width
+  const handleResetColumnWidth = (e: React.MouseEvent, key: string, defaultWidth?: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (defaultWidth) {
+      setColumnWidths((prev) => ({ ...prev, [key]: defaultWidth }));
+      if (onColumnResize) onColumnResize(key, defaultWidth);
     }
   };
 
@@ -337,9 +390,9 @@ const DataTable: React.FC<DataTableProps> = ({
           // Merge user properties if defined
           ...userActionColumn,
           ...actionColumnProps, // Keep this for backward compat or explicit override
-          render: (_: any, record: any) => {
+          render: (_: any, record: any, index: number) => {
             if (userActionColumn && userActionColumn.render) {
-              return userActionColumn.render(_, record);
+              return userActionColumn.render(_, record, index);
             }
 
             return (
@@ -415,7 +468,7 @@ const DataTable: React.FC<DataTableProps> = ({
       // If this is the action column, return the merged one
       if (col.key === "actions") return mergedActionsColumn;
       
-      const colKey = col.key || col.dataIndex;
+      const colKey = String(col.key || col.dataIndex);
       // Get controlled value from parent filterValues if available
       // Check both exact key match or just dataIndex match
       const controlledVal = filterValues?.[colKey];
@@ -432,10 +485,10 @@ const DataTable: React.FC<DataTableProps> = ({
                 ? controlledVal
                 : [controlledVal],
             }
-          : { filteredValue: null }), // Explicitly null to clear if not in state
+          : { filteredValue: null }),
           
-        ...(isSearchable
-          ? getColumnSearchProps(col.dataIndex, col.title as string)
+        ...(isSearchable && col.dataIndex
+          ? getColumnSearchProps(String(col.dataIndex), col.title as string)
           : {}),
       };
     }),
@@ -445,6 +498,47 @@ const DataTable: React.FC<DataTableProps> = ({
       ? [mergedActionsColumn]
       : []),
   ];
+
+  const tableColumns = finalColumns
+    .filter(Boolean)
+    .map((col: any, index: number) => {
+      if (!hasResizableColumn) return col;
+
+      const colKey = String(col.key ?? col.dataIndex ?? index);
+      const savedWidth = columnWidths[colKey];
+      const width =
+        typeof savedWidth === "number"
+          ? savedWidth
+          : typeof col.width === "number"
+          ? col.width
+          : undefined;
+      
+      // NEW: Calculate default min/max if not provided
+      const defaultMinWidth = col.minWidth || (width ? Math.round(width * 0.8) : 80);
+      const defaultMaxWidth = col.maxWidth || (width ? Math.round(width * 1.2) : 160);
+      
+      const isResizable =
+        col.key !== "actions" && col.resizable === true && typeof width === "number";
+
+      if (!isResizable) {
+        return width ? { ...col, width } : col;
+      }
+
+      const onHeaderCell = (column: any) => ({
+        ...(typeof col.onHeaderCell === "function" ? col.onHeaderCell(column) : {}),
+        width,
+        minWidth: defaultMinWidth,
+        maxWidth: defaultMaxWidth,
+        onResize: handleResize(colKey),
+        onDoubleClick: (e: React.MouseEvent) => handleResetColumnWidth(e, colKey, col.width), // FIX: Pass event
+      });
+
+      return {
+        ...col,
+        width,
+        onHeaderCell,
+      };
+    });
 
   const batchActionsMenu = (
     <Menu>
@@ -515,7 +609,7 @@ const DataTable: React.FC<DataTableProps> = ({
       )}
 
       <Card
-        styles={{body: { borderRadius: 12, padding: 0 }}}
+        bodyStyle={{ borderRadius: 12, padding: 0 }}
         hoverable={false}
       >
         {/* Header Content inside Card for seamless look */}
@@ -735,7 +829,10 @@ const DataTable: React.FC<DataTableProps> = ({
         <Table
           className="main-table"
           rowKey={rowKey}
-          columns={finalColumns}
+          columns={tableColumns}
+          components={
+            hasResizableColumn ? { header: { cell: ResizableTitle } } : undefined
+          }
           dataSource={data}
           loading={loading}
           size={size}

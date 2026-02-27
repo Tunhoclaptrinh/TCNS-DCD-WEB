@@ -3,6 +3,7 @@ import { Form, Input, Switch, Tag } from 'antd';
 import { useCRUD } from '../../hooks/useCRUD';
 import DataTable from '../../components/common/DataTable';
 import FormModal from '../../components/common/FormModal';
+import { DataTableColumn } from '../../components/common/DataTable/types';
 import userService from '../../services/user.service';
 import { User } from '../../types';
 import { useAccess } from '../../hooks';
@@ -42,23 +43,31 @@ const UserPage = () => {
         await update(record.id, { isActive: checked });
     };
 
-    const columns = [
+    const columns: DataTableColumn<User>[] = [
         {
             title: "Tên người dùng",
+            maxWidth: 300,
             dataIndex: "name",
             key: "name",
+            minWidth: 210,
+            width: 220,
+            resizable: true,
             searchable: true,
         },
         {
             title: "Email",
             dataIndex: "email",
             key: "email",
+            width: 260,
+            resizable: true,
             searchable: true,
         },
         {
             title: "Vai trò",
             dataIndex: "role",
             key: "role",
+            width: 140,
+            resizable: true,
             render: (role: string) => {
                 const color = role === 'admin' ? 'volcano' : role === 'staff' ? 'blue' : 'gray';
                 return <Tag color={color}>{role.toUpperCase()}</Tag>;
@@ -69,6 +78,7 @@ const UserPage = () => {
             dataIndex: "isActive",
             key: "isActive",
             width: 150,
+            resizable: true,
             render: (isActive: boolean, record: User) => (
                 <Switch
                     checkedChildren="Bật"
@@ -148,6 +158,9 @@ const UserPage = () => {
                 dataSource={data}
                 pagination={pagination}
                 onPaginationChange={handleTableChange}
+                tableLayout="fixed"
+                saveColumnWidths
+                columnResizeKey="users-table"
                 onAdd={hasPermission('users:create') ? openCreate : undefined}
                 onRefresh={() => fetchAll()}
                 onEdit={hasPermission('users:update') ? openEdit : undefined}
