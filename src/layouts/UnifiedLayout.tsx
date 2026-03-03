@@ -4,12 +4,13 @@ import { Dropdown, Avatar, theme } from "antd";
 import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import logo from "@/assets/images/logo.png";
-
 export interface UnifiedLayoutProps extends ProLayoutProps {
   user?: {
     name?: string;
     avatar?: string;
   };
+  logoName?: string;
+  showLogoName?: boolean;
   onLogout?: () => void;
   userMenuExtraItems?: any[];
   actionsRender?: (props: any) => React.ReactNode[];
@@ -18,6 +19,8 @@ export interface UnifiedLayoutProps extends ProLayoutProps {
 
 const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   user,
+  logoName = "Base Web",
+  showLogoName = true,
   onLogout,
   userMenuExtraItems = [],
   actionsRender,
@@ -42,7 +45,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
 
   return (
     <ProLayout
-      title=""
+      title={showLogoName ? (logoName ?? "") : false}
       logo={logo}
       layout="mix"
       splitMenus={false}

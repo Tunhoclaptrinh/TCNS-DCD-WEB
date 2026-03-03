@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Resizable, ResizeCallbackData } from "react-resizable";
 import "react-resizable/css/styles.css";
 
