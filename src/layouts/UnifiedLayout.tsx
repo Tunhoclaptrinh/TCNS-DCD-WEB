@@ -11,6 +11,7 @@ export interface UnifiedLayoutProps extends ProLayoutProps {
   };
   logoName?: string;
   showLogoName?: boolean;
+  logoNameColor?: string;
   onLogout?: () => void;
   userMenuExtraItems?: any[];
   actionsRender?: (props: any) => React.ReactNode[];
@@ -21,6 +22,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   user,
   logoName = "Base Web",
   showLogoName = true,
+  logoNameColor,
   onLogout,
   userMenuExtraItems = [],
   actionsRender,
@@ -45,7 +47,7 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
 
   return (
     <ProLayout
-      title={showLogoName ? (logoName ?? "") : false}
+      title={false}
       logo={logo}
       layout="mix"
       splitMenus={false}
@@ -55,6 +57,23 @@ const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
         pathname: location.pathname,
       }}
       onMenuHeaderClick={() => navigate('/')}
+      menuHeaderRender={false}
+      headerTitleRender={(logoDom) => (
+        <div
+          style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+          onClick={() => navigate('/')}
+        >
+          {logoDom}
+          {showLogoName && (
+            <span
+              className="unified-layout-logo-name"
+              style={{ color: logoNameColor ?? "var(--primary-color)" }}
+            >
+              {logoName}
+            </span>
+          )}
+        </div>
+      )}
       menuItemRender={(item, dom) => {
         if (item.disabled) {
           return (
