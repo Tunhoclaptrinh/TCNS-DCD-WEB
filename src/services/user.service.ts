@@ -2,7 +2,7 @@ import BaseService from './base.service';
 import apiClient from '@/config/axios.config';
 import type {
   User,
-
+  UserCreateDTO,
   UserUpdateDTO,
   UserActivity,
   UserStats,
@@ -16,7 +16,7 @@ import { logger } from '@/utils/logger.utils';
  * User Service
  * Handles all operations related to Users
  */
-class UserService extends BaseService<User, Partial<User>, UserUpdateDTO> {
+class UserService extends BaseService<User, UserCreateDTO, UserUpdateDTO> {
   constructor() {
     super('/users');
   }

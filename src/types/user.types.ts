@@ -2,6 +2,7 @@ import { BaseEntity, TimestampEntity } from "./index";
 
 export enum UserRole {
   ADMIN = "admin",
+  STAFF = "staff",
   CUSTOMER = "customer",
   RESEARCHER = "researcher",
   CURATOR = "curator",
@@ -10,9 +11,11 @@ export enum UserRole {
 export interface User extends BaseEntity, TimestampEntity {
   email: string;
   name: string;
-  phone?: string;
+  phone: string;
   address?: string;
   avatar?: string;
+  bio?: string;
+  lastLogin?: string;
   role: UserRole;
   isActive: boolean;
 }
@@ -29,16 +32,32 @@ export interface UserProfile {
 
 export interface UserUpdateDTO {
   name?: string;
+  email?: string;
   phone?: string;
   address?: string;
+  role?: UserRole;
+  bio?: string;
   avatar?: string;
+  isActive?: boolean;
+  password?: string;
+  newPassword?: string;
+}
+
+export interface UserCreateDTO {
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+  role?: UserRole;
+  bio?: string;
+  avatar?: string;
+  isActive?: boolean;
 }
 
 export interface UserActivity {
-  totalOrders: number;
-  completedOrders: number;
-  totalReviews: number;
-  avgRating: number;
+  user: User;
+  joinedAt?: string;
+  lastLogin?: string;
 }
 
 export interface UserStats {

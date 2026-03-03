@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { Form, Input, Switch, Tag } from 'antd';
+import { Form, Image, Switch, Tag } from 'antd';
 import { useCRUD } from '../../hooks/useCRUD';
 import DataTable from '../../components/common/DataTable';
-import FormModal from '../../components/common/FormModal';
 import { DataTableColumn } from '../../components/common/DataTable/types';
 import userService from '../../services/user.service';
 import { User } from '../../types';
 import { useAccess } from '../../hooks';
+import UsersForm from './components/Form';
 
 const UserPage = () => {
+    const avatarFallback = `data:image/svg+xml;utf8,${encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#f0f0f0"/><circle cx="20" cy="15" r="6" fill="#bfbfbf"/><path d="M8 33c2.5-5 7-8 12-8s9.5 3 12 8" fill="#bfbfbf"/></svg>'
+    )}`;
+
     const {
         data,
         loading,
@@ -39,11 +43,49 @@ const UserPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
 
-    const handleToggleStatus = async (checked: boolean, record: User) => {
-        await update(record.id, { isActive: checked });
+    const handleToggleStatus = async (record: User) => {
+        try {
+            setEditingId(record.id);
+            await userService.toggleStatus(record.id);
+            await fetchAll();
+        } finally {
+            setEditingId(null);
+        }
     };
 
     const columns: DataTableColumn<User>[] = [
+        {
+            title: "Avatar",
+            dataIndex: "avatar",
+            key: "avatar",
+            width: 80,
+            render: (avatar: string) => (
+                <div
+                    style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        background: '#f0f0f0',
+                        display: 'inline-block',
+                    }}
+                >
+                    <Image
+                        src={avatar || avatarFallback}
+                        alt="avatar"
+                        width={40}
+                        height={40}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        onError={(event) => {
+                            const target = event.currentTarget;
+                            if (target.src !== avatarFallback) {
+                                target.src = avatarFallback;
+                            }
+                        }}
+                    />
+                </div>
+            ),
+        },
         {
             title: "Tên người dùng",
             maxWidth: 300,
@@ -69,7 +111,7 @@ const UserPage = () => {
             width: 140,
             resizable: true,
             render: (role: string) => {
-                const color = role === 'admin' ? 'volcano' : role === 'staff' ? 'blue' : 'gray';
+                const color = role === 'admin' ? 'volcano' : role === 'staff' ? 'blue' : 'gold';
                 return <Tag color={color}>{role.toUpperCase()}</Tag>;
             },
         },
@@ -84,7 +126,8 @@ const UserPage = () => {
                     checkedChildren="Bật"
                     unCheckedChildren="Tắt"
                     checked={isActive}
-                    onChange={(checked) => handleToggleStatus(checked, record)}
+                    onChange={() => handleToggleStatus(record)}
+                    disabled={!hasPermission('users:manage_status')}
                     loading={loading && editingId === record.id}
                 />
             ),
@@ -98,8 +141,8 @@ const UserPage = () => {
             type: "select" as const,
             options: [
                 { label: "Admin", value: "admin" },
-                { label: "User", value: "user" },
                 { label: "Staff", value: "staff" },
+                { label: "Customer", value: "customer" },
             ],
         },
         {
@@ -120,7 +163,7 @@ const UserPage = () => {
     const openCreate = () => {
         setEditingId(null);
         form.resetFields();
-        form.setFieldsValue({ isActive: true, role: 'user' });
+        form.setFieldsValue({ isActive: true, role: 'customer' });
         setIsModalVisible(true);
     };
 
@@ -186,31 +229,13 @@ const UserPage = () => {
                 onDownloadTemplate={downloadTemplate}
             />
 
-            <FormModal
+            <UsersForm
                 open={isModalVisible}
-                title={editingId ? "Cập nhật người dùng" : "Thêm mới người dùng"}
-                onCancel={() => setIsModalVisible(false)}
-                onOk={onOk}
+                editingId={editingId}
                 form={form}
-            >
-                <Form.Item name="name" label="Tên" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
-                    <Input placeholder="Nhập tên người dùng" />
-                </Form.Item>
-                <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Email không hợp lệ!' }]}>
-                    <Input placeholder="example@domain.com" />
-                </Form.Item>
-                {!editingId && (
-                    <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, message: 'Vui lòng nhập mật khẩu!' }]}>
-                        <Input.Password placeholder="Nhập mật khẩu" />
-                    </Form.Item>
-                )}
-                <Form.Item name="role" label="Vai trò">
-                    <Input placeholder="admin/user/staff" />
-                </Form.Item>
-                <Form.Item name="isActive" label="Trạng thái tài khoản" valuePropName="checked">
-                    <Switch checkedChildren="Hoạt động" unCheckedChildren="Khóa" />
-                </Form.Item>
-            </FormModal>
+                onOk={onOk}
+                onCancel={() => setIsModalVisible(false)}
+            />
         </>
     );
 };
