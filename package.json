@@ -1,7 +1,7 @@
 {
-  "name": "base-web",
+  "name": "tcns-dcd-ptit-web",
   "version": "1.0.0",
-  "description": "Base Web Application Project",
+  "description": "Tổ chức nhân sự Đội Cờ Đỏ PTIT Project",
   "private": true,
   "type": "module",
   "scripts": {

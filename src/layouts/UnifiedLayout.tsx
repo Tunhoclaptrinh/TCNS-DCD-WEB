@@ -20,7 +20,7 @@ export interface UnifiedLayoutProps extends ProLayoutProps {
 
 const UnifiedLayout: React.FC<UnifiedLayoutProps> = ({
   user,
-  logoName = "Base Web",
+  logoName = "Tổ chức nhân sự Đội Cờ Đỏ PTIT",
   showLogoName = true,
   logoNameColor,
   onLogout,

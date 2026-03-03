@@ -56,8 +56,8 @@ const Header: React.FC = () => {
         style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
         onClick={() => navigate("/")}
       >
-        <img src={logo} alt="Base Web" style={{ width: 28, height: 28, objectFit: "contain" }} />
-        <span className="unified-layout-logo-name">Base Web</span>
+        <img src={logo} alt="Tổ chức nhân sự Đội Cờ Đỏ PTIT" style={{ width: 28, height: 28, objectFit: "contain" }} />
+        <span className="unified-layout-logo-name">Tổ chức nhân sự Đội Cờ Đỏ PTIT</span>
       </div>
 
       <div className="right-section">
