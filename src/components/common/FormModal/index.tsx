@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Form, Spin } from 'antd';
 import { FormModalProps } from './types';
+import Button from '../Button';
 
 /**
  * Universal Form Modal Component
@@ -24,9 +25,9 @@ const FormModal: React.FC<FormModalProps> = ({
   children,
 
   // Customization
-  okText = 'Lưu',
+  okText = 'Lưu lại',
   cancelText = 'Hủy',
-  centered = true,
+  centered = false,
   destroyOnClose = true,
   maskClosable = false,
   preserve = true,
@@ -54,6 +55,29 @@ const FormModal: React.FC<FormModalProps> = ({
     }
   };
 
+  const defaultFooter = (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
+      <Button
+        variant="outline"
+        buttonSize="small"
+        onClick={handleCancel}
+        disabled={loading}
+        style={{ minWidth: 88 }}
+      >
+        {cancelText}
+      </Button>
+      <Button
+        variant="primary"
+        buttonSize="small"
+        onClick={handleOk}
+        loading={loading}
+        style={{ minWidth: 88 }}
+      >
+        {okText}
+      </Button>
+    </div>
+  );
+
   return (
     <Modal
       title={title}
@@ -67,7 +91,7 @@ const FormModal: React.FC<FormModalProps> = ({
       centered={centered}
       destroyOnClose={destroyOnClose}
       maskClosable={maskClosable}
-      footer={footer}
+      footer={footer ?? defaultFooter}
       {...modalProps}
     >
       <Spin spinning={loading}>

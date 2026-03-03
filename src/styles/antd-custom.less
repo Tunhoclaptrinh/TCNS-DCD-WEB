@@ -39,13 +39,20 @@
 .ant-btn-primary {
     background-color: @primary-color;
     border-color: @primary-color;
+    box-shadow: none !important;
+    text-shadow: none !important;
 
     &:hover,
     &:focus {
         // background-color: darken(@primary-color, 10%); // Cannot use darken with css var
         // border-color: darken(@primary-color, 10%);
         filter: brightness(90%);
+        box-shadow: none !important;
     }
+}
+
+.ant-btn {
+    box-shadow: none !important;
 }
 
 .ant-card {

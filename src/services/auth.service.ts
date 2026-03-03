@@ -19,9 +19,14 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
+      const normalizedCredentials: LoginCredentials = {
+        ...credentials,
+        email: credentials.email.trim().toLowerCase(),
+      };
+
       const response = await apiClient.post<AuthResponse>(
         "/auth/login",
-        credentials,
+        normalizedCredentials,
       );
 
       if (!response.success) {

@@ -8,6 +8,9 @@ import {
 } from "antd";
 import {
   UserOutlined,
+  TeamOutlined,
+  StopOutlined,
+  SafetyOutlined,
   ProjectOutlined,
   CheckCircleOutlined,
   RiseOutlined,
@@ -17,26 +20,41 @@ import Access from "@/components/common/Access";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { userService } from "@/services/user.service";
+import type { UserStats } from "@/types";
 
 const { Title, Paragraph } = Typography;
 
 const DashboardPage: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
-  const [userCount, setUserCount] = useState<number>(0);
+  const [stats, setStats] = useState<UserStats>({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    recentSignups: 0,
+    withReviews: 0,
+    byRole: {} as UserStats["byRole"],
+  });
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchUserCount = async () => {
+    const fetchUserStats = async () => {
       try {
-        const response = await userService.getAll();
-        setUserCount(response.data?.length || 0);
+        const response = await userService.getStats();
+        const statsData = response.data || (response as any);
+
+        setStats((prev) => ({
+          ...prev,
+          ...statsData,
+          byRole: statsData?.byRole || {},
+        }));
       } catch (error) {
-        console.error("Failed to fetch user count:", error);
+        console.error("Failed to fetch user stats:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchUserCount();
+
+    fetchUserStats();
   }, []);
 
   return (
@@ -50,16 +68,53 @@ const DashboardPage: React.FC = () => {
 
       <Access permission="dashboard:view">
         <StatisticsCard
+          title="Thống kê người dùng"
           loading={loading}
           data={[
             {
               title: "Tổng số người dùng",
-              value: userCount,
-              icon: <UserOutlined />,
+              value: stats.total || 0,
+              icon: <TeamOutlined />,
               valueColor: "var(--primary-color)",
             },
+            {
+              title: "Đang hoạt động",
+              value: stats.active || 0,
+              icon: <CheckCircleOutlined />,
+              valueColor: "#22c55e",
+            },
+            {
+              title: "Đang khóa",
+              value: stats.inactive || 0,
+              icon: <StopOutlined />,
+              valueColor: "#ef4444",
+            },
+            {
+              title: "Mới 7 ngày",
+              value: stats.recentSignups || 0,
+              icon: <RiseOutlined />,
+              valueColor: "#1890ff",
+            },
+            {
+              title: "Admin",
+              value: stats.byRole?.admin || 0,
+              icon: <SafetyOutlined />,
+              valueColor: "#fa541c",
+            },
+            {
+              title: "Staff",
+              value: stats.byRole?.staff || 0,
+              icon: <UserOutlined />,
+              valueColor: "#1677ff",
+            },
+            {
+              title: "Customer",
+              value: stats.byRole?.customer || 0,
+              icon: <UserOutlined />,
+              valueColor: "#faad14",
+            },
           ]}
-          colSpan={{ xs: 24, sm: 12, md: 8 }}
+          colSpan={{ xs: 24, sm: 12, md: 8, lg: 6 }}
           statShadow
         />
       </Access>
@@ -113,7 +168,7 @@ const DashboardPage: React.FC = () => {
 
             <Divider dashed />
             <Paragraph type="secondary" style={{ fontStyle: 'italic', textAlign: 'center' }}>
-              "Mục tiêu của Base là lập trung tối đa vào việc giải quyết các bài toán nghiệp vụ cốt lõi."
+              Mục tiêu của Base là lập trung tối đa vào việc giải quyết các bài toán nghiệp vụ cốt lõi.
             </Paragraph>
           </Card>
         </Col>

@@ -33,6 +33,20 @@ import ExportModal from "./ExportModal"; // Import the modal
 import FilterBuilder from "./FilterBuilder";
 import ResizableTitle from "./ResizableTitle";
 
+const OPERATOR_TO_SUFFIX: Record<string, string> = {
+  eq: "",
+  ne: "_ne",
+  gte: "_gte",
+  lte: "_lte",
+  like: "_like",
+  in: "_in",
+  ilike: "_like",
+  gt: "_gte",
+  lt: "_lte",
+};
+
+const FILTER_SUFFIXES = ["", "_ne", "_gte", "_lte", "_like", "_in"];
+
 /**
  * DataTable Component
  * Enhanced table with lotus pink theme, centered headers, and filter modal
@@ -106,6 +120,15 @@ const DataTable: React.FC<DataTableProps> = ({
   const [activeFilters, setActiveFilters] = useState<FilterConfig[]>([]);
   const [availableFilters] = useState(filters); // Keep all available filters
 
+  const searchableColumnKeys = React.useMemo(() => {
+    return new Set(
+      columns
+        .filter((col: any) => col?.searchable)
+        .map((col: any) => String(col.key ?? col.dataIndex))
+        .filter(Boolean),
+    );
+  }, [columns]);
+
   const [enabledFilters, setEnabledFilters] = useState<Record<string, boolean>>(
     () => {
       const initial: Record<string, boolean> = {};
@@ -113,6 +136,27 @@ const DataTable: React.FC<DataTableProps> = ({
       return initial;
     },
   );
+
+  React.useEffect(() => {
+    if (!filterModalOpen) return;
+
+    const hasFilterValue = (key: string) => {
+      return FILTER_SUFFIXES.some((suffix) => {
+        const value = filterValues?.[`${key}${suffix}`];
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== undefined && value !== null && value !== "";
+      });
+    };
+
+    const appliedFilters = availableFilters.filter((filter) => hasFilterValue(filter.key));
+    if (appliedFilters.length > 0) {
+      setActiveFilters((prev) => {
+        const map = new Map(prev.map((item) => [item.key, item]));
+        appliedFilters.forEach((item) => map.set(item.key, item));
+        return Array.from(map.values());
+      });
+    }
+  }, [filterModalOpen, availableFilters, filterValues]);
 
   React.useEffect(() => {
     if (!saveColumnWidths || !storageKey || !hasResizableColumn) return;
@@ -143,7 +187,8 @@ const DataTable: React.FC<DataTableProps> = ({
     const filterConfig = filters.find((f) => f.key === filterKey);
     const defaultOp = filterConfig?.defaultOperator || "eq";
     const currentOp = op || operators[filterKey] || defaultOp;
-    return currentOp === "eq" ? filterKey : `${filterKey}_${currentOp}`;
+    const suffix = OPERATOR_TO_SUFFIX[currentOp] ?? "";
+    return `${filterKey}${suffix}`;
   };
 
   const handleOperatorChange = (filterKey: string, newOp: string) => {
@@ -155,8 +200,8 @@ const DataTable: React.FC<DataTableProps> = ({
 
     setOperators((prev) => ({ ...prev, [filterKey]: newOp }));
 
-    const oldKey = oldOp === "eq" ? filterKey : `${filterKey}_${oldOp}`;
-    const newKey = newOp === "eq" ? filterKey : `${filterKey}_${newOp}`;
+    const oldKey = getActiveFilterKey(filterKey, oldOp);
+    const newKey = getActiveFilterKey(filterKey, newOp);
     const currentValue = filterValues[oldKey];
 
     if (
@@ -188,14 +233,10 @@ const DataTable: React.FC<DataTableProps> = ({
 
   const removeFilterCondition = (filterKey: string) => {
     setActiveFilters((prev) => prev.filter((f) => f.key !== filterKey));
-    // Also clear the filter value
-    const filterConfig = filters.find((f) => f.key === filterKey);
-    const defaultOp = filterConfig?.defaultOperator || "eq";
-    const currentOp = operators[filterKey] || defaultOp;
-    
-    const activeKey =
-      currentOp === "eq" ? filterKey : `${filterKey}_${currentOp}`;
-    handleFilterChange(activeKey, undefined);
+    FILTER_SUFFIXES.forEach((suffix) => {
+      handleFilterChange(`${filterKey}${suffix}`, undefined);
+    });
+
     // Remove from enabled filters
     setEnabledFilters((prev) => {
       const newEnabled = { ...prev };
@@ -257,26 +298,7 @@ const DataTable: React.FC<DataTableProps> = ({
     const onChange = (e: any) => {
       const val = e.target.value;
       setValue(val);
-      
-      // If cleared (empty), trigger instant refresh
-      if (val === "") {
-        setSelectedKeys([]);
-        confirm();
-      }
     };
-
-    // Debounce Auto-Search for typing
-    React.useEffect(() => {
-      const timer = setTimeout(() => {
-        const currentKey = selectedKeys[0] || "";
-        // Only debounce if value is NOT empty (empty is handled instantly by onChange)
-        if (value !== currentKey && value !== "") {
-           setSelectedKeys([value]);
-           confirm({ closeDropdown: false });
-        }
-      }, 600);
-      return () => clearTimeout(timer);
-    }, [value, selectedKeys, confirm, setSelectedKeys]);
 
     const onSearch = (val: string) => {
         setValue(val); 
@@ -333,6 +355,31 @@ const DataTable: React.FC<DataTableProps> = ({
     },
   });
 
+  const normalizeTableFilters = (tableFilters: Record<string, any> = {}) => {
+    const normalized: Record<string, any> = {};
+
+    Object.entries(tableFilters).forEach(([key, value]) => {
+      if (searchableColumnKeys.has(key)) {
+        const keyword = Array.isArray(value) ? value[0] : value;
+        normalized[`${key}_like`] = keyword;
+        return;
+      }
+
+      normalized[key] = value;
+    });
+
+    return normalized;
+  };
+
+  const handleServerTableChange = (
+    newPagination: any,
+    newFilters: Record<string, any>,
+    newSorter: any,
+  ) => {
+    if (!onPaginationChange) return;
+    onPaginationChange(newPagination, normalizeTableFilters(newFilters), newSorter);
+  };
+
   const handleClearFilters = () => {
     if (onClearFilters) {
       onClearFilters();
@@ -342,6 +389,20 @@ const DataTable: React.FC<DataTableProps> = ({
     filters.forEach((f) => (allEnabled[f.key] = true));
     setEnabledFilters(allEnabled);
     setFilterModalOpen(false);
+  };
+
+  const handleApplyCustomFilters = () => {
+    activeFilters.forEach((filter) => {
+      if (enabledFilters[filter.key] !== false) return;
+      FILTER_SUFFIXES.forEach((suffix) => {
+        handleFilterChange(`${filter.key}${suffix}`, undefined);
+      });
+    });
+
+    setFilterModalOpen(false);
+    if (onRefresh) {
+      onRefresh();
+    }
   };
 
   // Resolve selectedRowKeys from direct prop or rowSelection object
@@ -469,11 +530,11 @@ const DataTable: React.FC<DataTableProps> = ({
       if (col.key === "actions") return mergedActionsColumn;
       
       const colKey = String(col.key || col.dataIndex);
-      // Get controlled value from parent filterValues if available
-      // Check both exact key match or just dataIndex match
-      const controlledVal = filterValues?.[colKey];
-
       const isSearchable = col.searchable;
+      const searchFilterKey = `${colKey}_like`;
+      const controlledVal = isSearchable
+        ? filterValues?.[searchFilterKey] ?? filterValues?.[colKey]
+        : filterValues?.[colKey];
       return {
         ...col,
         align: col.align || ("center" as const),
@@ -847,7 +908,7 @@ const DataTable: React.FC<DataTableProps> = ({
               pageSizeOptions: ["10", "20", "50", "100"],
             } as any
           }
-          onChange={onPaginationChange}
+          onChange={handleServerTableChange}
           scroll={scroll || { x: "max-content" }}
           locale={{
             emptyText: emptyText,
@@ -876,7 +937,7 @@ const DataTable: React.FC<DataTableProps> = ({
             onFilterChange={handleFilterValueChange}
             onOperatorChange={handleOperatorChange}
             onToggleFilter={toggleFilterEnabled}
-            onApply={() => setFilterModalOpen(false)}
+            onApply={handleApplyCustomFilters}
             onClear={handleClearFilters}
             onCancel={() => setFilterModalOpen(false)}
           />

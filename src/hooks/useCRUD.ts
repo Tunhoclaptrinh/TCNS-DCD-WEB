@@ -72,17 +72,25 @@ export const useCRUD = (service: any, options: any = {}) => {
         // Process filters
         Object.keys(filters).forEach(key => {
             const value = filters[key];
+            const hasOperatorSuffix = /_(gte|lte|ne|like|ilike|in)$/.test(key);
             if (Array.isArray(value)) {
-                // Handle special operators like _like (search) which shouldn't use _in
-                if (key.includes('_like') || key.includes('_ilike')) {
-                     // Safety check: if array is empty or value[0] is empty, don't set param
-                     if (value.length > 0 && value[0]) {
-                        params[key] = value[0];
-                     }
-                } 
-                // For other filters (typically select/checkbox), use _in for multiple values
-                else if (value.length > 0) {
-                     params[`${key}_in`] = value.join(',');
+                if (value.length === 0) {
+                    return;
+                }
+
+                // Preserve backend operator keys when already present
+                if (hasOperatorSuffix) {
+                    if (key.includes('_like') || key.includes('_ilike')) {
+                        if (value[0]) {
+                            params[key] = value[0];
+                        }
+                    } else {
+                        params[key] = value.join(',');
+                    }
+                }
+                // For plain array filters, default to backend _in operator
+                else {
+                    params[`${key}_in`] = value.join(',');
                 }
             } else {
                 params[key] = value;

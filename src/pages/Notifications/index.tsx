@@ -15,6 +15,7 @@ import {
 import { notificationService } from '@/services/notification.service';
 import type { Notification } from '@/types/notification.types';
 import { formatRelativeTime } from '@/utils/formatters';
+import './styles.less';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -126,28 +127,11 @@ const NotificationsPage: React.FC = () => {
     };
 
     return (
-        <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 60, paddingTop: 20 }}>
+        <div className="notifications-page">
             {/* Premium Header */}
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 24,
-                background: 'rgba(255,255,255,0.8)',
-                backdropFilter: 'blur(10px)',
-                padding: '24px 32px',
-                borderRadius: 24,
-                border: '1px solid rgba(255,255,255,0.3)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.04)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{
-                        width: 56, height: 56,
-                        borderRadius: 20,
-                        background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 8px 16px rgba(255, 107, 107, 0.25)'
-                    }}>
+            <div className="notifications-page__header">
+                <div className="notifications-page__header-left">
+                    <div className="notifications-page__icon-wrap">
                         <BellOutlined style={{ fontSize: 26, color: '#fff' }} />
                     </div>
                     <div>
@@ -163,7 +147,7 @@ const NotificationsPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div className="notifications-page__actions">
                     <Tooltip title="Đánh dấu tất cả là đã đọc">
                         <Button
                             icon={<ReadOutlined />}
@@ -192,7 +176,7 @@ const NotificationsPage: React.FC = () => {
             </div>
 
             {/* Content Card */}
-            <Card bordered={false} style={{ borderRadius: 24, overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.03)' }}>
+            <Card bordered={false} className="notifications-page__content-card">
                 <Tabs
                     activeKey={activeTab}
                     onChange={(key) => {
@@ -324,16 +308,6 @@ const NotificationsPage: React.FC = () => {
                     </div>
                 )}
             </Card>
-            <style>
-                {`
-                .notification-list-item:hover {
-                    background-color: #fafafa !important; 
-                }
-                .delete-btn-hover:hover {
-                    background-color: #fff1f0 !important;
-                }
-                `}
-            </style>
         </div>
     );
 };

@@ -5,6 +5,23 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button } from "@/components/common";
 import { FilterConfig } from "./types";
 
+const BACKEND_OPERATOR_OPTIONS = [
+  { label: "Bằng", value: "eq" },
+  { label: "Khác", value: "ne" },
+  { label: "Lớn hơn hoặc bằng", value: "gte" },
+  { label: "Nhỏ hơn hoặc bằng", value: "lte" },
+  { label: "Chứa", value: "like" },
+  { label: "Trong", value: "in" },
+];
+
+const normalizeOperator = (operator?: string) => {
+  if (!operator) return "eq";
+  if (operator === "gt") return "gte";
+  if (operator === "lt") return "lte";
+  if (operator === "ilike") return "like";
+  return operator;
+};
+
 interface FilterBuilderProps {
   filters: FilterConfig[]; // All available filters
   activeFilters: FilterConfig[]; // Currently added filter rows
@@ -37,7 +54,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   onApply,
   onClear,
   onCancel,
-  applyText = "Áp dụng bộ lọc",
+  applyText = "Áp dụng",
   hideFooter = false
 }) => {
   return (
@@ -55,11 +72,23 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
           <div className="filter-conditions-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {activeFilters.map((filter) => {
               const label = filter.label || filter.placeholder;
-              const currentOp =
-                operators[filter.key] || filter.defaultOperator || "eq";
-              const activeKey =
-                currentOp === "eq" ? filter.key : `${filter.key}_${currentOp}`;
+              const currentOp = normalizeOperator(
+                operators[filter.key] || filter.defaultOperator || "eq",
+              );
+              const operatorSuffix: Record<string, string> = {
+                eq: "",
+                ne: "_ne",
+                gte: "_gte",
+                lte: "_lte",
+                like: "_like",
+                in: "_in",
+              };
+              const activeKey = `${filter.key}${operatorSuffix[currentOp] || ""}`;
               const isEnabled = enabledFilters[filter.key] !== false;
+              const allowedOperators = (filter.operators?.length
+                ? Array.from(new Set(filter.operators.map((op) => normalizeOperator(String(op)))))
+                : ["eq", "like"]
+              ) as string[];
 
               return (
                 <div
@@ -92,18 +121,8 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                     <Select
                       value={currentOp}
                       onChange={(val) => onOperatorChange(filter.key, val)}
-                      options={[
-                        { label: "Bằng", value: "eq" },
-                        { label: "Lớn hơn", value: "gt" },
-                        { label: "Lớn hơn hoặc bằng", value: "gte" },
-                        { label: "Nhỏ hơn", value: "lt" },
-                        { label: "Nhỏ hơn hoặc bằng", value: "lte" },
-                        { label: "Chứa (phân biệt hoa thường)", value: "like" },
-                        { label: "Chứa (không phân biệt)", value: "ilike" },
-                        { label: "Khác", value: "ne" },
-                        { label: "Trong", value: "in" },
-                      ].filter((op) =>
-                        filter.operators?.includes(op.value as any)
+                      options={BACKEND_OPERATOR_OPTIONS.filter((op) =>
+                        allowedOperators.includes(op.value)
                       )}
                       style={{ width: 140 }}
                       size="middle"
@@ -188,7 +207,12 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
             disabled={filters.length === activeFilters.length}
             trigger={['click']}
           >
-            <Button variant="outline" style={{ width: "100%", borderStyle: 'dashed' }} icon={<PlusOutlined />}>
+            <Button
+              variant="outline"
+              buttonSize="small"
+              style={{ width: "100%", borderStyle: 'dashed' }}
+              icon={<PlusOutlined />}
+            >
               Thêm điều kiện lọc
             </Button>
           </Dropdown>
@@ -197,13 +221,13 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
 
       {!hideFooter && (
         <div className="filter-builder-footer" style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 24, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-            <Button variant="outline" onClick={onCancel}>
+            <Button variant="outline" buttonSize="small" onClick={onCancel} style={{ minWidth: 96 }}>
             Hủy
             </Button>
-            <Button variant="outline" onClick={onClear}>
+            <Button variant="outline" buttonSize="small" onClick={onClear} style={{ minWidth: 96 }}>
             Bỏ lọc
             </Button>
-            <Button variant="primary" onClick={onApply}>
+            <Button variant="primary" buttonSize="small" onClick={onApply} style={{ minWidth: 96 }}>
             {applyText}
             </Button>
         </div>

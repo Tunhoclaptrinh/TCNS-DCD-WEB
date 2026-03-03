@@ -1,0 +1,78 @@
+.notifications-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 60px;
+}
+
+.notifications-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  gap: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+}
+
+.notifications-page__header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.notifications-page__icon-wrap {
+  border-radius: 4px;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px rgba(255, 107, 107, 0.25);
+}
+
+.notifications-page__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.notifications-page__content-card {
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
+}
+
+.notification-list-item:hover {
+  background-color: #fafafa !important;
+}
+
+.delete-btn-hover:hover {
+  background-color: #fff1f0 !important;
+}
+
+@media (max-width: 992px) {
+  .notifications-page {
+    padding: 16px;
+  }
+
+  .notifications-page__header {
+    padding: 18px 20px;
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .notifications-page__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .notifications-page__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

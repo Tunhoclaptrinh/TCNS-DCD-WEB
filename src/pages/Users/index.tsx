@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Form, Image, Switch, Tag } from 'antd';
+import { CheckCircleOutlined, RiseOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
 import { useCRUD } from '../../hooks/useCRUD';
 import DataTable from '../../components/common/DataTable';
-import { DataTableColumn } from '../../components/common/DataTable/types';
+import StatisticsCard from '../../components/common/StatisticsCard';
+import { DataTableColumn, FilterConfig } from '../../components/common/DataTable/types';
 import userService from '../../services/user.service';
-import { User } from '../../types';
+import { User, UserStats } from '../../types';
 import { useAccess } from '../../hooks';
 import UsersForm from './components/Form';
+import UsersDetailModal from './components/Detail';
 
 const UserPage = () => {
+    const formatDateTime = (value?: string) => {
+        if (!value) return '--';
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return '--';
+        return parsed.toLocaleString('vi-VN');
+    };
+
     const avatarFallback = `data:image/svg+xml;utf8,${encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#f0f0f0"/><circle cx="20" cy="15" r="6" fill="#bfbfbf"/><path d="M8 33c2.5-5 7-8 12-8s9.5 3 12 8" fill="#bfbfbf"/></svg>'
     )}`;
@@ -41,13 +51,49 @@ const UserPage = () => {
 
     const [form] = Form.useForm();
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [viewingUser, setViewingUser] = useState<User | null>(null);
+    const [statsLoading, setStatsLoading] = useState(false);
+    const [stats, setStats] = useState<UserStats>({
+        total: 0,
+        active: 0,
+        inactive: 0,
+        recentSignups: 0,
+        byRole: {} as any,
+        withReviews: 0,
+    });
+
+    const fetchUserStats = async () => {
+        if (!hasPermission('users:view_stats')) return;
+
+        try {
+            setStatsLoading(true);
+            const response = await userService.getStats();
+            const statsData = response.data || (response as any);
+
+            setStats((prev) => ({
+                ...prev,
+                ...statsData,
+                byRole: statsData?.byRole || {},
+            }));
+        } catch (error) {
+            console.error('Failed to fetch user stats:', error);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserStats();
+    }, []);
 
     const handleToggleStatus = async (record: User) => {
         try {
             setEditingId(record.id);
             await userService.toggleStatus(record.id);
             await fetchAll();
+            await fetchUserStats();
         } finally {
             setEditingId(null);
         }
@@ -95,6 +141,8 @@ const UserPage = () => {
             width: 220,
             resizable: true,
             searchable: true,
+            ellipsis: true,
+            align:'left'
         },
         {
             title: "Email",
@@ -103,13 +151,50 @@ const UserPage = () => {
             width: 260,
             resizable: true,
             searchable: true,
+            ellipsis: true,
+            align:'left'
         },
+        {
+            title: "Số điện thoại",
+            dataIndex: "phone",
+            key: "phone",
+            width: 150,
+            resizable: true,
+            searchable: true,
+        },
+        // {
+        //     title: "Địa chỉ",
+        //     dataIndex: "address",
+        //     key: "address",
+        //     width: 220,
+        //     resizable: true,
+        //     searchable: true,
+        //     ellipsis: true,
+        //     render: (address?: string) => address || '--',
+        // },
+
+        // {
+        //     title: "Tiểu sử",
+        //     dataIndex: "bio",
+        //     key: "bio",
+        //     width: 240,
+        //     resizable: true,
+        //     searchable: true,
+        //     ellipsis: true,
+        //     render: (bio?: string) => bio || '--',
+        // },
         {
             title: "Vai trò",
             dataIndex: "role",
             key: "role",
-            width: 140,
+            width: 100,
             resizable: true,
+            sortable: false,
+            filters: [
+                { text: 'Admin', value: 'admin' },
+                { text: 'Staff', value: 'staff' },
+                { text: 'Customer', value: 'customer' },
+            ],
             render: (role: string) => {
                 const color = role === 'admin' ? 'volcano' : role === 'staff' ? 'blue' : 'gold';
                 return <Tag color={color}>{role.toUpperCase()}</Tag>;
@@ -119,8 +204,14 @@ const UserPage = () => {
             title: "Trạng thái",
             dataIndex: "isActive",
             key: "isActive",
-            width: 150,
+            width: 110,
             resizable: true,
+            sortable: false,
+            filters: [
+                { text: 'Hoạt động', value: true },
+                { text: 'Khóa', value: false },
+            ],
+            filterMultiple: false,
             render: (isActive: boolean, record: User) => (
                 <Switch
                     checkedChildren="Bật"
@@ -132,13 +223,38 @@ const UserPage = () => {
                 />
             ),
         },
+        {
+            title: "Đăng nhập gần nhất",
+            dataIndex: "lastLogin",
+            key: "lastLogin",
+            width: 180,
+            resizable: true,
+            render: (value?: string) => formatDateTime(value),
+        },
+        {
+            title: "Ngày tạo",
+            dataIndex: "createdAt",
+            key: "createdAt",
+            width: 180,
+            resizable: true,
+            render: (value?: string) => formatDateTime(value),
+        },
+        {
+            title: "Cập nhật",
+            dataIndex: "updatedAt",
+            key: "updatedAt",
+            width: 180,
+            resizable: true,
+            render: (value?: string) => formatDateTime(value),
+        },
     ];
 
-    const filters = [
+    const filters: FilterConfig[] = [
         {
             key: "role",
             label: "Vai trò",
             type: "select" as const,
+            operators: ['eq', 'in'],
             options: [
                 { label: "Admin", value: "admin" },
                 { label: "Staff", value: "staff" },
@@ -149,15 +265,70 @@ const UserPage = () => {
             key: "isActive",
             label: "Trạng thái",
             type: "select" as const,
+            operators: ['eq'],
             options: [
                 { label: "Hoạt động", value: true },
                 { label: "Khóa", value: false },
             ],
         },
+        {
+            key: "name",
+            label: "Tên người dùng",
+            type: "input" as const,
+            operators: ['like', 'eq'],
+        },
+        {
+            key: "email",
+            label: "Email",
+            type: "input" as const,
+            operators: ['like', 'eq'],
+        },
+        {
+            key: "phone",
+            label: "Số điện thoại",
+            type: "input" as const,
+            operators: ['like', 'eq'],
+        },
+        {
+            key: "address",
+            label: "Địa chỉ",
+            type: "input" as const,
+            operators: ['like', 'eq'],
+        },
+        {
+            key: "bio",
+            label: "Tiểu sử",
+            type: "input" as const,
+            operators: ['like'],
+        },
+        {
+            key: "createdAt",
+            label: "Ngày tạo",
+            type: "date" as const,
+            operators: ['gte', 'lte'],
+            defaultOperator: 'gte',
+        },
+        {
+            key: "updatedAt",
+            label: "Ngày cập nhật",
+            type: "date" as const,
+            operators: ['gte', 'lte'],
+            defaultOperator: 'gte',
+        },
+        {
+            key: "lastLogin",
+            label: "Đăng nhập gần nhất",
+            type: "date" as const,
+            operators: ['gte', 'lte'],
+            defaultOperator: 'gte',
+        },
     ];
 
-    const handleDelete = (id: number) => {
-        remove(id);
+    const handleDelete = async (id: number) => {
+        const success = await remove(id);
+        if (success) {
+            await fetchUserStats();
+        }
     };
 
     const openCreate = () => {
@@ -173,6 +344,11 @@ const UserPage = () => {
         setIsModalVisible(true);
     };
 
+    const openView = (record: User) => {
+        setViewingUser(record);
+        setIsDetailModalVisible(true);
+    };
+
     const onOk = async () => {
         try {
             const values = await form.validateFields();
@@ -186,6 +362,7 @@ const UserPage = () => {
             if (success) {
                 setIsModalVisible(false);
                 form.resetFields();
+                await fetchUserStats();
             }
         } catch (error) {
             console.error("Validate Failed:", error);
@@ -194,7 +371,49 @@ const UserPage = () => {
 
     return (
         <>
+            
             <DataTable
+            headerContent={
+                <>
+                {hasPermission('users:view_stats') && (
+                <div style={{ margin: 16 }}>
+                    <StatisticsCard
+                        loading={statsLoading}
+                        hideCard
+                        data={[
+                            {
+                                title: 'Tổng người dùng',
+                                value: stats.total || 0,
+                                icon: <TeamOutlined />,
+                                valueColor: 'var(--primary-color)',
+                            },
+                            {
+                                title: 'Đang hoạt động',
+                                value: stats.active || 0,
+                                icon: <CheckCircleOutlined />,
+                                valueColor: '#22c55e',
+                            },
+                            {
+                                title: 'Đang khóa',
+                                value: stats.inactive || 0,
+                                icon: <StopOutlined />,
+                                valueColor: '#ef4444',
+                            },
+                            {
+                                title: 'Mới 7 ngày',
+                                value: stats.recentSignups || 0,
+                                icon: <RiseOutlined />,
+                                valueColor: '#1890ff',
+                            },
+                        ]}
+                        colSpan={{ xs: 24, sm: 12, md: 12, lg: 6 }}
+                        rowGutter={12}
+                        statShadow={false}
+                    />
+                </div>
+                )}
+                </>
+            }
                 title="Quản lý người dùng"
                 loading={loading}
                 columns={columns}
@@ -205,8 +424,12 @@ const UserPage = () => {
                 saveColumnWidths
                 columnResizeKey="users-table"
                 onAdd={hasPermission('users:create') ? openCreate : undefined}
-                onRefresh={() => fetchAll()}
+                onRefresh={async () => {
+                    await fetchAll();
+                    await fetchUserStats();
+                }}
                 onEdit={hasPermission('users:update') ? openEdit : undefined}
+                onView={hasPermission('users:list') ? openView : undefined}
                 onDelete={hasPermission('users:delete') ? handleDelete : undefined}
                 // Search & Filter
                 searchable={true}
@@ -220,11 +443,21 @@ const UserPage = () => {
                 batchOperations={hasPermission('users:delete')}
                 selectedRowKeys={selectedIds}
                 onSelectChange={setSelectedIds}
-                onBatchDelete={batchDelete}
+                onBatchDelete={async (ids) => {
+                    const success = await batchDelete(ids);
+                    if (success) {
+                        await fetchUserStats();
+                    }
+                }}
                 // Import/Export
                 importable={hasPermission('users:import_export')}
                 exportable={hasPermission('users:import_export')}
-                onImport={importData}
+                onImport={async (file) => {
+                    const result = await importData(file);
+                    if (result) {
+                        await fetchUserStats();
+                    }
+                }}
                 onExport={exportData}
                 onDownloadTemplate={downloadTemplate}
             />
@@ -235,6 +468,17 @@ const UserPage = () => {
                 form={form}
                 onOk={onOk}
                 onCancel={() => setIsModalVisible(false)}
+            />
+
+            <UsersDetailModal
+                open={isDetailModalVisible}
+                user={viewingUser}
+                avatarFallback={avatarFallback}
+                formatDateTime={formatDateTime}
+                onCancel={() => {
+                    setIsDetailModalVisible(false);
+                    setViewingUser(null);
+                }}
             />
         </>
     );
