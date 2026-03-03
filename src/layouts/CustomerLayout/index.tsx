@@ -40,9 +40,7 @@ const CustomerLayout: React.FC = () => {
                 onLogout={handleLogout}
                 userMenuExtraItems={userMenuExtraItems}
                 navTheme="light"
-                actionsRender={() => [
-                    <NotificationPopover key="notifications" />
-                ]}
+                actionsRender={() => <NotificationPopover />}
             >
                 <Outlet />
             </UnifiedLayout>

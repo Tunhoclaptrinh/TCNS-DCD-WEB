@@ -50,9 +50,7 @@ const AdminLayout = () => {
       onLogout={handleLogout}
       userMenuExtraItems={userMenuExtraItems}
       navTheme="light"
-      actionsRender={() => [
-        <NotificationPopover key="notifications" />
-      ]}
+      actionsRender={() => <NotificationPopover />}
     >
       <Outlet />
     </UnifiedLayout>

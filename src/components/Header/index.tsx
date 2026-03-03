@@ -5,6 +5,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/store/slices/authSlice";
 import { RootState } from "@/store";
+import logo from "@/assets/images/logo.png";
+import NotificationPopover from "@/components/common/NotificationPopover";
 
 const { Header: AntHeader } = Layout;
 
@@ -50,20 +52,27 @@ const Header: React.FC = () => {
         zIndex: 1,
       }}
     >
-      <div className="logo" style={{ fontSize: 18, fontWeight: "bold", cursor: "pointer" }} onClick={() => navigate("/")}>
-        Base Web
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+        onClick={() => navigate("/")}
+      >
+        <img src={logo} alt="Base Web" style={{ width: 28, height: 28, objectFit: "contain" }} />
+        <span className="unified-layout-logo-name">Base Web</span>
       </div>
 
       <div className="right-section">
         {user ? (
-          <Dropdown menu={{ items: menuItems as any }} placement="bottomRight">
-            <Space style={{ cursor: "pointer" }}>
-              <Avatar src={user.avatar} icon={<UserOutlined />} />
-              <span className="username" style={{ color: token.colorText }}>
-                {user.name || "User"}
-              </span>
-            </Space>
-          </Dropdown>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <NotificationPopover />
+            <Dropdown menu={{ items: menuItems as any }} placement="bottomRight">
+              <Space style={{ cursor: "pointer" }}>
+                <Avatar src={user.avatar} icon={<UserOutlined />} />
+                <span className="username" style={{ color: token.colorText }}>
+                  {user.name || "User"}
+                </span>
+              </Space>
+            </Dropdown>
+          </div>
         ) : (
           <Space>
             <Button type="primary" onClick={() => navigate("/login")}>

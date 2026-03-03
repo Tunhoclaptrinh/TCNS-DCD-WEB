@@ -14,7 +14,7 @@ export interface UnifiedLayoutProps extends ProLayoutProps {
   logoNameColor?: string;
   onLogout?: () => void;
   userMenuExtraItems?: any[];
-  actionsRender?: (props: any) => React.ReactNode[];
+  actionsRender?: (props: any) => React.ReactNode | React.ReactNode[];
   children?: React.ReactNode;
 }
 

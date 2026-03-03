@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Badge, Button, List, Popover, Typography, Empty, Spin, Avatar, Tabs, Tooltip, Tag } from 'antd';
+import { Badge, Button, List, Popover, Typography, Empty, Spin, Avatar, Tabs, Tooltip, Tag, theme } from 'antd';
 import {
     BellOutlined,
     CheckCircleOutlined,
@@ -22,12 +22,23 @@ interface Props {
 }
 
 const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
+    const { token } = theme.useToken();
+    const activePrimaryColor = 'var(--primary-color)';
     const navigate = useNavigate();
     const [visible, setVisible] = useState(false);
     const [loading, setLoading] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
+
+    const fetchUnreadCount = async () => {
+        try {
+            const unreadData = await notificationService.getNotifications(1, 1, { is_read: false });
+            setUnreadCount(unreadData.total || 0);
+        } catch (error) {
+            console.error('Failed to fetch unread count', error);
+        }
+    };
 
     const fetchNotifications = async () => {
         setLoading(true);
@@ -36,10 +47,7 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
             const filter = activeTab === 'unread' ? { is_read: false } : {};
             const data = await notificationService.getNotifications(1, 10, filter);
             setNotifications(data.items);
-            // Always update global unread count from the response (it usually comes with the envelope)
-            // Ideally backend returns total unread count regardless of filter, 
-            // but relying on the "unread_count" property from service which maps to backend "unreadCount"
-            setUnreadCount(data.unread_count);
+            await fetchUnreadCount();
         } catch (error) {
             console.error('Failed to fetch notifications', error);
         } finally {
@@ -55,20 +63,34 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
 
     // Poll for unread count only (optimization)
     useEffect(() => {
-        const pollUnread = async () => {
-            try {
-                const data = await notificationService.getNotifications(1, 1);
-                setUnreadCount(data.unread_count);
-            } catch (e) { }
+        fetchUnreadCount();
+
+        const handleFocus = () => {
+            fetchUnreadCount();
         };
 
-        pollUnread();
-        const interval = setInterval(pollUnread, 60000);
-        return () => clearInterval(interval);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchUnreadCount();
+            }
+        };
+
+        const interval = setInterval(fetchUnreadCount, 60000);
+        window.addEventListener('focus', handleFocus);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('focus', handleFocus);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     const handleOpenChange = (newOpen: boolean) => {
         setVisible(newOpen);
+        if (newOpen) {
+            fetchUnreadCount();
+        }
     };
 
     const handleMarkAsRead = async (item: Notification, e?: React.MouseEvent) => {
@@ -304,16 +326,24 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
             overlayInnerStyle={{ borderRadius: 12, padding: 0, boxShadow: '0 9px 28px 8px rgba(0, 0, 0, 0.05), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12)' }}
         >
             <Badge count={unreadCount} overflowCount={99} size="small" offset={[-6, 6]}>
-                <Button
-                    type="text"
-                    shape="circle"
+                <span
+                    className="notification-trigger"
+                    role="button"
+                    tabIndex={0}
                     style={{
-                        width: 40, height: 40,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: visible ? '#1890ff' : '#64748b'
+                        width: 40,
+                        height: 40,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        color: visible ? activePrimaryColor : token.colorTextSecondary,
+                        transition: 'color 0.2s ease',
                     }}
-                    icon={<BellOutlined style={{ fontSize: 22 }} />}
-                />
+                >
+                    <BellOutlined style={{ fontSize: 20, color: visible ? activePrimaryColor : token.colorTextSecondary }} />
+                </span>
             </Badge>
         </Popover>
     );
