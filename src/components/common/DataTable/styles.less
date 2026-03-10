@@ -100,6 +100,8 @@
     }
 }
 
+
+
 .data-table-wrapper .ant-pagination-item:hover {
     border-color: @primary-color;
     a {
@@ -541,4 +543,40 @@
 .ant-table-filter-dropdown .ant-checkbox-checked .ant-checkbox-inner {
     background-color: @primary-color !important;
     border-color: @primary-color !important;
+}
+
+.data-table-header-content {
+    margin: 16px 16px 0 16px;
+
+    .ant-tabs-nav {
+        margin-bottom: 0 !important;
+        &::before {
+            border-bottom: none !important;
+        }
+    }
+
+    .ant-tabs-tab {
+        padding: 8px 0 !important;        
+
+        .ant-tabs-tab-btn {
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        &:hover .ant-tabs-tab-btn {
+            color: @primary-color;
+        }
+    }
+
+    .ant-tabs-tab-active .ant-tabs-tab-btn {
+        color: @primary-color !important;
+        font-weight: 600;
+    }
+
+    .ant-tabs-ink-bar {
+        background: @primary-color;
+        height: 2px !important;
+        border-radius: 2px 2px 0 0;
+    }
 }

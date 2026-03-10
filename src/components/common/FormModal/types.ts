@@ -11,4 +11,6 @@ export interface FormModalProps extends ModalProps {
     layout?: FormLayout;
     children?: ReactNode;
     preserve?: boolean;
+    onValuesChange?: (changedValues: any, allValues: any) => void;
+    size?: 'small' | 'middle' | 'large';
 }

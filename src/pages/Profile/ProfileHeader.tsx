@@ -70,7 +70,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, activeTab, onTabCha
                                     </span>
                                 </div>
                                 <p className="join-date">
-                                    Tham gia từ: {(user?.createdAt || user?.created_at) ? new Date(user.createdAt || user.created_at).toLocaleDateString("vi-VN") : "Thành viên mới"}
+                                    Tham gia từ: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("vi-VN") : "Thành viên mới"}
                                 </p>
                             </div>
 

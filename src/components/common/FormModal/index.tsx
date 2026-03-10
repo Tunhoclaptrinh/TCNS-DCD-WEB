@@ -100,6 +100,8 @@ const FormModal: React.FC<FormModalProps> = ({
           layout={layout}
           initialValues={initialValues}
           preserve={preserve}
+          onValuesChange={modalProps.onValuesChange}
+          size={modalProps.size}
         >
           {children}
         </Form>

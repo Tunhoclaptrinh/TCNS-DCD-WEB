@@ -2,7 +2,7 @@
 export * from "./auth.types";
 // export * from "./common.types";
 // export * from "./model.types"; // Comment out or remove if causing issues with User name
-export type { User, UserRole } from "./auth.types"; // Explicit re-export
+export type { UserRole, AuthenticatedUser } from "./auth.types"; // Re-export as AuthenticatedUser
 export * from "./api.types";
 export * from "./user.types";
 
@@ -53,14 +53,14 @@ export interface Metadata {
 
 export interface BaseEntity {
   id: number;
-  created_at: string;
-  updated_at?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface TimestampEntity {
-  created_at: string;
-  updated_at?: string;
-  deleted_at?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
 }
 
 // Component Props

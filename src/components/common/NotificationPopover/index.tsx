@@ -259,7 +259,7 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                             <Text strong={!item.is_read} style={{ fontSize: 14, color: '#262626' }}>{item.title}</Text>
                                             <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'nowrap', marginLeft: 8 }}>
-                                                {formatRelativeTime(item.created_at)}
+                                                {formatRelativeTime(item.createdAt)}
                                             </Text>
                                         </div>
                                         <Paragraph

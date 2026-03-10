@@ -411,9 +411,21 @@ class BaseService<T = any, CreateDTO = Partial<T>, UpdateDTO = Partial<T>> {
   async getStats(): Promise<BaseApiResponse<any>> {
     try {
       const response = await apiClient.get<BaseApiResponse<any>>(`${this.endpoint}/stats/summary`);
+      
+      // Normalization logic for Base compatibility
+      let statsData = response.data || (response as any);
+      
+      // Handle legacy flat format if necessary
+      if (statsData && typeof statsData === 'object' && statsData.total !== undefined && !statsData.global) {
+        statsData = {
+          global: { ...statsData },
+          byDepartment: {}
+        };
+      }
+
       return {
         success: response.success ?? true,
-        data: response.data ?? (response as any),
+        data: statsData,
       };
     } catch (error) {
       logger.warn(`[${this.endpoint}] getStats not supported`);

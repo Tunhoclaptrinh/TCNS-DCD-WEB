@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Form, Image, Switch, Tag } from 'antd';
-import { CheckCircleOutlined, RiseOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
+import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, AutoComplete, Input } from 'antd';
+import { 
+    CheckCircleOutlined, 
+    RiseOutlined, 
+    StopOutlined, 
+    TeamOutlined, 
+    EditOutlined, 
+    DeleteOutlined, 
+    EyeOutlined,
+    UserDeleteOutlined,
+    MenuOutlined,
+    SafetyOutlined
+} from '@ant-design/icons';
 import { useCRUD } from '../../hooks/useCRUD';
 import DataTable from '../../components/common/DataTable';
 import StatisticsCard from '../../components/common/StatisticsCard';
@@ -10,6 +21,20 @@ import { User, UserStats } from '../../types';
 import { useAccess } from '../../hooks';
 import UsersForm from './components/Form';
 import UsersDetailModal from './components/Detail';
+
+import { Button } from '@/components/common';
+
+const POSITION_LEVELS = ['ctc', 'tv', 'tvb', 'pb', 'tb', 'dt'];
+const POSITION_LABELS: Record<string, string> = {
+    ctc: 'Cộng tác viên',
+    tv: 'Thành viên',
+    tvb: 'Thành viên ban',
+    pb: 'Phó ban',
+    tb: 'Trưởng ban',
+    dt: 'Đội trưởng'
+};
+
+const DEPARTMENT_OPTIONS = ['Tài chính', 'Truyền thông', 'Nhân sự'];
 
 const UserPage = () => {
     const formatDateTime = (value?: string) => {
@@ -52,16 +77,31 @@ const UserPage = () => {
     const [form] = Form.useForm();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+    const [isPromoteModalVisible, setIsPromoteModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [viewingUser, setViewingUser] = useState<User | null>(null);
+    const [promotingUser, setPromotingUser] = useState<User | null>(null);
+    const [targetPosition, setTargetPosition] = useState<string>('');
+    const [targetDepartment, setTargetDepartment] = useState<string>('');
+    const [activeTab, setActiveTab] = useState<string>('all');
     const [statsLoading, setStatsLoading] = useState(false);
-    const [stats, setStats] = useState<UserStats>({
+    
+    const initialStatObject = {
         total: 0,
         active: 0,
         inactive: 0,
+        dismissed: 0,
+        ctv: 0,
+        official: 0,
+        management: 0,
         recentSignups: 0,
-        byRole: {} as any,
-        withReviews: 0,
+        byRole: {},
+        byPosition: {},
+    };
+
+    const [stats, setStats] = useState<UserStats>({
+        global: initialStatObject,
+        byDepartment: {},
     });
 
     const fetchUserStats = async () => {
@@ -72,11 +112,9 @@ const UserPage = () => {
             const response = await userService.getStats();
             const statsData = response.data || (response as any);
 
-            setStats((prev) => ({
-                ...prev,
-                ...statsData,
-                byRole: statsData?.byRole || {},
-            }));
+            if (statsData) {
+                setStats(statsData);
+            }
         } catch (error) {
             console.error('Failed to fetch user stats:', error);
         } finally {
@@ -99,12 +137,100 @@ const UserPage = () => {
         }
     };
 
+    const handlePromote = (record: User) => {
+        setPromotingUser(record);
+        setTargetPosition(record.position || 'ctc');
+        setTargetDepartment(record.department || '');
+        setIsPromoteModalVisible(true);
+    };
+
+    const onPromoteOk = async () => {
+        if (!promotingUser) return;
+        
+        try {
+            const updateData: any = { position: targetPosition };
+            const isBanRole = ['tvb', 'pb', 'tb'].includes(targetPosition);
+            
+            if (isBanRole) {
+                if (!targetDepartment) {
+                    message.error('Vui lòng nhập tên ban');
+                    return;
+                }
+                updateData.department = targetDepartment;
+            } else {
+                updateData.department = null; // Clear department if not a ban role
+            }
+
+            await update(promotingUser.id, updateData);
+            message.success(`Đã cập nhật chức vụ cho ${promotingUser.name}`);
+            setIsPromoteModalVisible(false);
+            setPromotingUser(null);
+            setTargetDepartment('');
+            await fetchAll();
+            
+            // Update viewing user if open
+            if (viewingUser?.id === promotingUser.id) {
+                setViewingUser({ ...viewingUser, ...updateData } as User);
+            }
+        } catch (error) {
+            console.error('Promotion failed:', error);
+        }
+    };
+
+    const handleDismiss = async (record: User) => {
+        let reason = '';
+        Modal.confirm({
+            title: 'Xác nhận khai trừ',
+            icon: <StopOutlined style={{ color: '#ff4d4f' }} />,
+            content: (
+                <div style={{ marginTop: 16 }}>
+                    <p>Cảnh báo: Bạn đang thực hiện khai trừ <strong>{record.name}</strong>. Thành viên này sẽ bị chuyển trạng thái vĩnh viễn sang KHAI TRỪ.</p>
+                    <div style={{ marginTop: 12 }}>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Lý do khai trừ (bắt buộc):</label>
+                        <Input.TextArea 
+                            placeholder="Nhập lý do khai trừ..."
+                            rows={3}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => { reason = e.target.value; }}
+                        />
+                    </div>
+                </div>
+            ),
+            okText: 'Xác nhận Khai trừ',
+            cancelText: 'Hủy',
+            okButtonProps: { danger: true },
+            width: 480,
+            onOk: async () => {
+                if (!reason.trim()) {
+                    message.error('Vui lòng nhập lý do khai trừ');
+                    throw new Error('Reason is required');
+                }
+                const updatedBio = record.bio 
+                    ? `${record.bio}\n[KHAI TRỪ - ${new Date().toLocaleDateString('vi-VN')}]: ${reason}`
+                    : `[KHAI TRỪ - ${new Date().toLocaleDateString('vi-VN')}]: ${reason}`;
+                
+                await update(record.id, { 
+                    status: 'dismissed' as any, 
+                    isActive: false,
+                    bio: updatedBio
+                });
+                
+                message.warning('Đã khai trừ thành viên');
+                await fetchAll();
+                await fetchUserStats();
+                if (viewingUser?.id === record.id) {
+                    setViewingUser({ ...record, status: 'dismissed', isActive: false, bio: updatedBio } as User);
+                }
+            }
+        });
+    };
+
     const columns: DataTableColumn<User>[] = [
         {
             title: "Avatar",
             dataIndex: "avatar",
             key: "avatar",
             width: 80,
+            searchable: false,
             render: (avatar: string) => (
                 <div
                     style={{
@@ -133,16 +259,29 @@ const UserPage = () => {
             ),
         },
         {
-            title: "Tên người dùng",
+            title: "Tên thành viên",
             maxWidth: 300,
-            dataIndex: "name",
-            key: "name",
+            key: "fullName",
             minWidth: 210,
             width: 220,
             resizable: true,
             searchable: true,
             ellipsis: true,
-            align:'left'
+            align: 'left',
+            render: (_: any, record: User) => {
+                if (record.lastName || record.firstName) {
+                    return `${record.lastName || ''} ${record.firstName || ''}`.trim();
+                }
+                return record.name;
+            }
+        },
+        {
+            title: "Mã SV",
+            dataIndex: "studentId",
+            key: "studentId",
+            width: 120,
+            resizable: true,
+            searchable: true,
         },
         {
             title: "Email",
@@ -152,7 +291,7 @@ const UserPage = () => {
             resizable: true,
             searchable: true,
             ellipsis: true,
-            align:'left'
+            align: 'left'
         },
         {
             title: "Số điện thoại",
@@ -162,27 +301,27 @@ const UserPage = () => {
             resizable: true,
             searchable: true,
         },
-        // {
-        //     title: "Địa chỉ",
-        //     dataIndex: "address",
-        //     key: "address",
-        //     width: 220,
-        //     resizable: true,
-        //     searchable: true,
-        //     ellipsis: true,
-        //     render: (address?: string) => address || '--',
-        // },
-
-        // {
-        //     title: "Tiểu sử",
-        //     dataIndex: "bio",
-        //     key: "bio",
-        //     width: 240,
-        //     resizable: true,
-        //     searchable: true,
-        //     ellipsis: true,
-        //     render: (bio?: string) => bio || '--',
-        // },
+        {
+            title: "Hạng/Chức vụ",
+            key: "position",
+            dataIndex: "position",
+            width: 140,
+            resizable: true,
+            filters: Object.entries(POSITION_LABELS).map(([value, label]) => ({ text: label, value })),
+            render: (value: string) => {
+                if (!value) return '--';
+                return <Tag color="cyan">{POSITION_LABELS[value] || value.toUpperCase()}</Tag>;
+            }
+        },
+        {
+            title: "Tên Ban",
+            dataIndex: "department",
+            key: "department",
+            width: 150,
+            resizable: true,
+            filters: DEPARTMENT_OPTIONS.map(d => ({ text: d, value: d })),
+            render: (dept: string) => dept ? <Tag color="blue">{dept}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>
+        },
         {
             title: "Vai trò",
             dataIndex: "role",
@@ -202,26 +341,25 @@ const UserPage = () => {
         },
         {
             title: "Trạng thái",
-            dataIndex: "isActive",
-            key: "isActive",
-            width: 110,
+            key: "statusDisplay",
+            width: 130,
             resizable: true,
             sortable: false,
-            filters: [
-                { text: 'Hoạt động', value: true },
-                { text: 'Khóa', value: false },
-            ],
-            filterMultiple: false,
-            render: (isActive: boolean, record: User) => (
-                <Switch
-                    checkedChildren="Bật"
-                    unCheckedChildren="Tắt"
-                    checked={isActive}
-                    onChange={() => handleToggleStatus(record)}
-                    disabled={!hasPermission('users:manage_status')}
-                    loading={loading && editingId === record.id}
-                />
-            ),
+            render: (_: any, record: User) => {
+                if (record.status === 'dismissed') {
+                    return <Tag color="magenta">KHAI TRỪ</Tag>;
+                }
+                return (
+                    <Switch
+                        checkedChildren="Bật"
+                        unCheckedChildren="Tắt"
+                        checked={record.isActive}
+                        onChange={() => handleToggleStatus(record)}
+                        disabled={!hasPermission('users:manage_status')}
+                        loading={loading && editingId === record.id}
+                    />
+                );
+            },
         },
         {
             title: "Đăng nhập gần nhất",
@@ -240,19 +378,103 @@ const UserPage = () => {
             render: (value?: string) => formatDateTime(value),
         },
         {
-            title: "Cập nhật",
-            dataIndex: "updatedAt",
-            key: "updatedAt",
-            width: 180,
-            resizable: true,
-            render: (value?: string) => formatDateTime(value),
+            title: "Thao tác",
+            key: "actions",
+            width: 120,
+            fixed: 'right',
+            align: 'center',
+            render: (_: any, record: User) => (
+                <Space size="small">
+                    <Tooltip title="Xem chi tiết">
+                        <Button 
+                            variant="ghost" 
+                            buttonSize="small" 
+                            style={{ color: 'var(--primary-color)', padding: '4px' }} 
+                            onClick={() => openView(record)}
+                        >
+                            <EyeOutlined style={{ fontSize: 16 }} />
+                        </Button>
+                    </Tooltip>
+                    <Dropdown 
+                        trigger={['click']}
+                        placement="bottomRight"
+                        overlay={
+                            <Menu>
+                                <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                                    Chỉnh sửa
+                                </Menu.Item>
+                                <Menu.Item 
+                                    key="promote" 
+                                    icon={<RiseOutlined />} 
+                                    onClick={() => handlePromote(record)}
+                                    disabled={record.position === 'dt'}
+                                    style={{ color: '#52c41a' }}
+                                >
+                                    Nâng hạng
+                                </Menu.Item>
+                                <Menu.Item 
+                                    key="dismiss" 
+                                    icon={<UserDeleteOutlined />} 
+                                    onClick={() => handleDismiss(record)}
+                                    disabled={record.status === 'dismissed'}
+                                    danger
+                                >
+                                    Khai trừ
+                                </Menu.Item>
+                                {hasPermission('users:delete') && (
+                                    <>
+                                        <Menu.Divider />
+                                        <Menu.Item 
+                                            key="delete" 
+                                            icon={<DeleteOutlined />} 
+                                            onClick={() => handleDelete(record.id)}
+                                            danger
+                                        >
+                                            Xóa vĩnh viễn
+                                        </Menu.Item>
+                                    </>
+                                )}
+                            </Menu>
+                        }
+                    >
+                        <Button variant="ghost" buttonSize="small" style={{ padding: '4px' }}>
+                            <MenuOutlined style={{ fontSize: 16 }} />
+                        </Button>
+                    </Dropdown>
+                </Space>
+            ),
         },
     ];
 
     const filters: FilterConfig[] = [
         {
+            key: "position",
+            label: "Hạng/Chức vụ",
+            type: "select" as const,
+            operators: ['eq', 'in'],
+            options: Object.entries(POSITION_LABELS).map(([value, label]) => ({ label, value })),
+        },
+        {
+            key: "department",
+            label: "Tên Ban",
+            type: "select" as const,
+            operators: ['eq', 'like', 'in'],
+            options: DEPARTMENT_OPTIONS.map(d => ({ label: d, value: d })),
+        },
+        {
+            key: "status",
+            label: "Trạng thái thành viên",
+            type: "select" as const,
+            operators: ['eq'],
+            options: [
+                { label: "Hoạt động", value: "active" },
+                { label: "Không hoạt động", value: "inactive" },
+                { label: "Khai trừ", value: "dismissed" },
+            ],
+        },
+        {
             key: "role",
-            label: "Vai trò",
+            label: "Vai trò hệ thống",
             type: "select" as const,
             operators: ['eq', 'in'],
             options: [
@@ -263,19 +485,31 @@ const UserPage = () => {
         },
         {
             key: "isActive",
-            label: "Trạng thái",
+            label: "Tài khoản (Bật/Tắt)",
             type: "select" as const,
             operators: ['eq'],
             options: [
-                { label: "Hoạt động", value: true },
-                { label: "Khóa", value: false },
+                { label: "Bật", value: true },
+                { label: "Tắt", value: false },
             ],
         },
         {
-            key: "name",
-            label: "Tên người dùng",
+            key: "studentId",
+            label: "Mã SV",
             type: "input" as const,
             operators: ['like', 'eq'],
+        },
+        {
+            key: "lastName",
+            label: "Họ",
+            type: "input" as const,
+            operators: ['like'],
+        },
+        {
+            key: "firstName",
+            label: "Tên",
+            type: "input" as const,
+            operators: ['like'],
         },
         {
             key: "email",
@@ -369,52 +603,119 @@ const UserPage = () => {
         }
     };
 
+    const currentStats = activeTab === 'all'
+        ? (stats?.global || initialStatObject)
+        : activeTab === 'others'
+        ? Object.keys(stats?.byDepartment || {}).reduce((acc, key) => {
+            // Aggregate all departments NOT in DEPARTMENT_OPTIONS, including __unassigned__
+            if (!DEPARTMENT_OPTIONS.includes(key) || key === '__unassigned__') {
+                const deptStats = stats.byDepartment[key];
+                acc.total += deptStats.total || 0;
+                acc.active += deptStats.active || 0;
+                acc.inactive += deptStats.inactive || 0;
+                acc.dismissed += deptStats.dismissed || 0;
+                acc.ctv += deptStats.ctv || 0;
+                acc.official += deptStats.official || 0;
+                acc.management += deptStats.management || 0;
+                acc.recentSignups += deptStats.recentSignups || 0;
+            }
+            return acc;
+          }, { ...initialStatObject })
+        : (stats?.byDepartment?.[activeTab] || initialStatObject);
+
+    const onTabChange = (key: string) => {
+        setActiveTab(key);
+        if (key === 'all') {
+            updateFilters({ department: undefined, department_nin: undefined });
+        } else if (key === 'others') {
+            updateFilters({ department: undefined, department_nin: DEPARTMENT_OPTIONS });
+        } else {
+            updateFilters({ department: key, department_nin: undefined });
+        }
+    };
+
     return (
         <>
-            
             <DataTable
-            headerContent={
+                headerContent={
                 <>
                 {hasPermission('users:view_stats') && (
-                <div style={{ margin: 16 }}>
+                <div>
                     <StatisticsCard
                         loading={statsLoading}
                         hideCard
                         data={[
                             {
-                                title: 'Tổng người dùng',
-                                value: stats.total || 0,
+                                title: 'Tổng nhân sự',
+                                value: currentStats.total || 0,
                                 icon: <TeamOutlined />,
                                 valueColor: 'var(--primary-color)',
                             },
                             {
-                                title: 'Đang hoạt động',
-                                value: stats.active || 0,
+                                title: 'Thành viên chính thức',
+                                value: currentStats.official || 0,
                                 icon: <CheckCircleOutlined />,
-                                valueColor: '#22c55e',
+                                valueColor: '#1890ff', // Blue
+                            },
+                            {
+                                title: 'Cộng tác viên',
+                                value: currentStats.ctv || 0,
+                                icon: <TeamOutlined />,
+                                valueColor: '#fa8c16', // Orange
+                            },
+                            {
+                                title: activeTab === 'all' ? 'Ban quản lý' : `Quản lý (${activeTab === 'others' ? 'Khác' : activeTab})`,
+                                value: currentStats.management || 0,
+                                icon: <SafetyOutlined />,
+                                valueColor: '#eb2f96', // Pink/Magenta
+                            },
+                            {
+                                title: activeTab === 'all' ? 'Đang hoạt động' : `Hoạt động (${activeTab === 'others' ? 'Khác' : activeTab})`,
+                                value: currentStats.active || 0,
+                                icon: <RiseOutlined />,
+                                valueColor: '#52c41a', // Green
                             },
                             {
                                 title: 'Đang khóa',
-                                value: stats.inactive || 0,
+                                value: currentStats.inactive || 0,
                                 icon: <StopOutlined />,
-                                valueColor: '#ef4444',
+                                valueColor: '#da2a2aff', // Gray
+                            },
+                            {
+                                title: 'Đã khai trừ',
+                                value: currentStats.dismissed || 0,
+                                icon: <UserDeleteOutlined />,
+                                valueColor: '#ff4d4f', // Red
                             },
                             {
                                 title: 'Mới 7 ngày',
-                                value: stats.recentSignups || 0,
+                                value: currentStats.recentSignups || 0,
                                 icon: <RiseOutlined />,
-                                valueColor: '#1890ff',
+                                valueColor: '#722ed1', // Purple
                             },
                         ]}
-                        colSpan={{ xs: 24, sm: 12, md: 12, lg: 6 }}
+                        colSpan={{ xs: 24, sm: 12, md: 8, lg: 6 }}
                         rowGutter={12}
                         statShadow={false}
+                    />
+                    <Tabs
+                        style={{ marginTop: 8 }}
+                        activeKey={activeTab} 
+                        onChange={onTabChange}
+                        items={[
+                            { label: 'Tất cả thành viên', key: 'all' },
+                            ...DEPARTMENT_OPTIONS.map(dept => ({ 
+                                label: `Ban ${dept}`, 
+                                key: dept 
+                            })),
+                            { label: 'Khác', key: 'others' }
+                        ]}
                     />
                 </div>
                 )}
                 </>
             }
-                title="Quản lý người dùng"
+            title="Quản lý người dùng"
                 loading={loading}
                 columns={columns}
                 dataSource={data}
@@ -475,11 +776,53 @@ const UserPage = () => {
                 user={viewingUser}
                 avatarFallback={avatarFallback}
                 formatDateTime={formatDateTime}
+                onPromote={handlePromote}
+                onDismiss={handleDismiss}
                 onCancel={() => {
                     setIsDetailModalVisible(false);
                     setViewingUser(null);
                 }}
             />
+
+            <Modal
+                title="Cập nhật chức vụ"
+                open={isPromoteModalVisible}
+                onOk={onPromoteOk}
+                onCancel={() => setIsPromoteModalVisible(false)}
+                width={360}
+                centered
+                destroyOnClose
+            >
+                <div style={{ padding: '8px 0' }}>
+                    <div style={{ marginBottom: 12 }}>
+                        Chọn chức vụ mới cho <strong>{promotingUser?.lastName || promotingUser?.firstName ? `${promotingUser?.lastName || ''} ${promotingUser?.firstName || ''}`.trim() : promotingUser?.name}</strong>:
+                    </div>
+                    <Select
+                        style={{ width: '100%', marginBottom: 12 }}
+                        value={targetPosition}
+                        onChange={setTargetPosition}
+                        options={POSITION_LEVELS.map(val => ({
+                            label: POSITION_LABELS[val],
+                            value: val
+                        }))}
+                    />
+                    {['tvb', 'pb', 'tb'].includes(targetPosition) && (
+                        <div style={{ marginTop: 12 }}>
+                            <div style={{ marginBottom: 4 }}>Chọn hoặc nhập tên ban:</div>
+                            <AutoComplete
+                                style={{ width: '100%' }}
+                                placeholder="Tài chính, Truyền thông, Nhân sự..."
+                                value={targetDepartment}
+                                onChange={setTargetDepartment}
+                                options={DEPARTMENT_OPTIONS.map(d => ({ value: d }))}
+                                filterOption={(inputValue, option) =>
+                                    String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+                                }
+                            />
+                        </div>
+                    )}
+                </div>
+            </Modal>
         </>
     );
 };

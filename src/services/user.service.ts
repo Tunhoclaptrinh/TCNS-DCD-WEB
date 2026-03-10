@@ -102,24 +102,8 @@ class UserService extends BaseService<User, UserCreateDTO, UserUpdateDTO> {
     }
   }
 
-  /**
-   * Get user statistics (admin only)
-   */
   async getStats(): Promise<BaseApiResponse<UserStats>> {
-    try {
-      const response = await apiClient.get<BaseApiResponse<UserStats>>(
-        `${this.endpoint}/stats/summary`
-      );
-
-      return {
-        success: response.success ?? true,
-        data: response.data ?? (response as any),
-        message: response.message,
-      };
-    } catch (error) {
-      logger.error('[User] getStats error:', error);
-      throw error;
-    }
+    return super.getStats();
   }
 
   /**

@@ -674,10 +674,10 @@ const DataTable: React.FC<DataTableProps> = ({
         hoverable={false}
       >
         {/* Header Content inside Card for seamless look */}
-        {tableProps.headerContent && <div>{tableProps.headerContent}</div>}
+        {tableProps.headerContent && <div className="data-table-header-content">{tableProps.headerContent}</div>}
 
         {/* ... existing toolbar ... */}
-        <div className="data-table-toolbar">
+        <div className="data-table-toolbar" style={{ marginTop: tableProps.headerContent ? 0 : undefined }}>
           {/* Left Side: Primary Actions (Add, Import, Export, Batch) */}
           <Space wrap>
             {onAdd && (

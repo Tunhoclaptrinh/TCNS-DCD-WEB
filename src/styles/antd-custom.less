@@ -6,168 +6,185 @@
 // @primary-color: var(--primary-color); // REMOVED: This breaks LESS color functions.
 
 @link-color: @primary-color;
-@success-color: #22C55E;
-@warning-color: #F97316;
+@success-color: #22c55e;
+@warning-color: #f97316;
 
 .ant-layout {
-    background: white;
+  background: white;
 }
 
 .ant-menu-light {
-    background: transparent;
+  background: transparent;
 }
 
 .ant-pro-layout .ant-pro-layout-content {
-    padding-block: 16px;
-    padding-inline: 24px;
+  padding-block: 16px;
+  padding-inline: 24px;
 }
 
 .ant-menu-item-selected::after {
-    border-right-color: var(--primary-color) !important;
+  border-right-color: var(--primary-color) !important;
 }
 
 .ant-menu-item:hover,
 .ant-menu-item-selected {
-    color: var(--primary-color) !important;
-    background-color: transparent !important;
+  color: var(--primary-color) !important;
+  background-color: transparent !important;
 }
 
 .ant-menu-item-selected {
-    font-weight: 600;
+  font-weight: 600;
 }
 
 .ant-btn-primary {
-    background-color: @primary-color;
-    border-color: @primary-color;
-    box-shadow: none !important;
-    text-shadow: none !important;
+  background-color: @primary-color;
+  border-color: @primary-color;
+  box-shadow: none !important;
+  text-shadow: none !important;
 
-    &:hover,
-    &:focus {
-        // background-color: darken(@primary-color, 10%); // Cannot use darken with css var
-        // border-color: darken(@primary-color, 10%);
-        filter: brightness(90%);
-        box-shadow: none !important;
-    }
+  &:hover,
+  &:focus {
+    // background-color: darken(@primary-color, 10%); // Cannot use darken with css var
+    // border-color: darken(@primary-color, 10%);
+    filter: brightness(90%);
+    box-shadow: none !important;
+  }
 }
 
 .ant-btn {
-    box-shadow: none !important;
+  box-shadow: none !important;
 }
 
 .ant-card {
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: box-shadow 0.3s ease;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s ease;
 
-    &:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
 }
 
 .ant-input,
 .ant-select-selector,
-.ant-picker {
-    border-radius: 4px !important;
+.ant-picker,
+.ant-picker-input > input {
+  border-radius: 8px;
 
-    &:hover {
-        border-color: @primary-color !important;
-    }
+  &:hover {
+    border-color: @primary-color !important;
+  }
 }
 
 .ant-input-focused,
 .ant-select-focused .ant-select-selector,
 .ant-picker-focused .ant-picker {
-    border-color: @primary-color !important;
-    box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.2) !important;
+  border-color: @primary-color !important;
+  box-shadow: 0 0 0 1px rgba(212, 165, 116, 0.2) !important;
 }
 
 /* Global Select Option Overrides */
 .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-    background-color: fade(@primary-color, 10%) !important;
-    color: @primary-color !important;
-    font-weight: 600;
+  background-color: fade(@primary-color, 10%) !important;
+  color: @primary-color !important;
+  font-weight: 600;
 }
 
 .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-    background-color: fade(@primary-color, 5%) !important;
+  background-color: fade(@primary-color, 5%) !important;
 }
 
 /* ==================== Layout Customizations ==================== */
 .ant-layout-header {
-    background: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .ant-layout-footer {
-    background: #fafafa;
-    border-top: 1px solid #e8e8e8;
+  background: #fafafa;
+  border-top: 1px solid #e8e8e8;
 }
 
 /* ==================== Table Customizations ==================== */
 .ant-table {
-    background: white;
+  background: white;
 }
 
-.ant-table-thead>tr>th {
-    background-color: #fafafa;
-    border-bottom-color: #e8e8e8;
+.ant-table-thead > tr > th {
+  background-color: #fafafa;
+  border-bottom-color: #e8e8e8;
+}
+
+/* ==================== Descriptions Customizations ==================== */
+.ant-descriptions-bordered .ant-descriptions-item-label {
+  background-color: #fafafa;
+  color: #595959;
+  font-weight: 500;
+  width: 150px;
+}
+
+.ant-descriptions-bordered .ant-descriptions-view {
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 /* ==================== Form Customizations ==================== */
 .ant-form-item-required::before {
-    color: @primary-color;
+  color: var(--primary-color) !important;
 }
 
-.ant-checkbox-inner {
-    border-color: @primary-color;
-}
+.ant-divider-horizontal.ant-divider-with-text-left {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 16px 0 !important;
 
-.ant-checkbox-checked .ant-checkbox-inner {
-    background-color: @primary-color;
-    border-color: @primary-color;
+  &::before,
+  &::after {
+    border-top: 1px solid #f0f0f0 !important;
+  }
 }
 
 /* ==================== Utilities ==================== */
 .text-center {
-    text-align: center;
+  text-align: center;
 }
 
 .text-muted {
-    color: #8c8c8c;
+  color: #8c8c8c;
 }
 
 .mt-16 {
-    margin-top: 16px;
+  margin-top: 16px;
 }
 
 .mt-24 {
-    margin-top: 24px;
+  margin-top: 24px;
 }
 
 .mb-16 {
-    margin-bottom: 16px;
+  margin-bottom: 16px;
 }
 
 .mb-24 {
-    margin-bottom: 24px;
+  margin-bottom: 24px;
 }
 
 /* ==================== Responsive ==================== */
 @media (max-width: 768px) {
-    body {
-        font-size: 14px;
-    }
+  body {
+    font-size: 14px;
+  }
 
-    h1 {
-        font-size: 24px;
-    }
+  h1 {
+    font-size: 24px;
+  }
 
-    h2 {
-        font-size: 20px;
-    }
+  h2 {
+    font-size: 20px;
+  }
 
-    .ant-layout-header {
-        padding: 0 16px;
-    }
+  .ant-layout-header {
+    padding: 0 16px;
+  }
 }

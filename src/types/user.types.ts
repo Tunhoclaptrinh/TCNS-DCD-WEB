@@ -8,9 +8,33 @@ export enum UserRole {
   CURATOR = "curator",
 }
 
+export enum UserPosition {
+  CTC = "ctc",
+  TV = "tv",
+  TVB = "tvb",
+  PB = "pb",
+  TB = "tb",
+  DT = "dt",
+}
+
+export enum UserStatus {
+  ACTIVE = "active",
+  INACTIVE = "inactive",
+  DISMISSED = "dismissed",
+}
+
 export interface User extends BaseEntity, TimestampEntity {
   email: string;
   name: string;
+  lastName?: string;
+  firstName?: string;
+  dob?: string;
+  studentId?: string;
+  classId?: string;
+  hometown?: string;
+  position?: UserPosition;
+  department?: string;
+  status?: UserStatus;
   phone: string;
   address?: string;
   avatar?: string;
@@ -32,6 +56,15 @@ export interface UserProfile {
 
 export interface UserUpdateDTO {
   name?: string;
+  lastName?: string;
+  firstName?: string;
+  dob?: string;
+  studentId?: string;
+  classId?: string;
+  hometown?: string;
+  position?: UserPosition;
+  department?: string;
+  status?: UserStatus;
   email?: string;
   phone?: string;
   address?: string;
@@ -45,6 +78,15 @@ export interface UserUpdateDTO {
 
 export interface UserCreateDTO {
   name: string;
+  lastName?: string;
+  firstName?: string;
+  dob?: string;
+  studentId?: string;
+  classId?: string;
+  hometown?: string;
+  position?: UserPosition;
+  department?: string;
+  status?: UserStatus;
   email: string;
   password: string;
   phone: string;
@@ -60,11 +102,20 @@ export interface UserActivity {
   lastLogin?: string;
 }
 
-export interface UserStats {
+export interface UserStatItem {
   total: number;
   active: number;
   inactive: number;
-  byRole: Record<UserRole, number>;
-  withReviews: number;
+  dismissed: number;
+  ctv: number;
+  official: number;
+  management: number;
   recentSignups: number;
+  byRole: Record<string, number>;
+  byPosition: Record<string, number>;
+}
+
+export interface UserStats {
+  global: UserStatItem;
+  byDepartment: Record<string, UserStatItem>;
 }

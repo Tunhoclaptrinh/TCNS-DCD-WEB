@@ -288,7 +288,7 @@ const NotificationsPage: React.FC = () => {
                                     description={
                                         <div>
                                             <Paragraph style={{ margin: '4px 0 10px', color: '#595959', fontSize: 14, lineHeight: 1.6 }}>{item.message}</Paragraph>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>{formatRelativeTime(item.created_at)}</Text>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{formatRelativeTime(item.createdAt)}</Text>
                                         </div>
                                     }
                                 />

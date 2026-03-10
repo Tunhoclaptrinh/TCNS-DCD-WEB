@@ -1,4 +1,4 @@
-export interface User {
+export interface AuthenticatedUser {
   id: number;
   email: string;
   name: string;
@@ -7,8 +7,7 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   createdAt?: string;
-  created_at?: string;
-  updated_at?: string;
+  updatedAt?: string;
   lastLogin?: string;
   address?: string;
   bio?: string;
@@ -24,7 +23,7 @@ export enum UserRole {
 }
 
 export interface AuthState {
-  user: User | null;
+  user: AuthenticatedUser | null;
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
@@ -54,7 +53,7 @@ export interface ChangePasswordData {
 export interface AuthResponse {
   success: boolean;
   data: {
-    user: User;
+    user: AuthenticatedUser;
     permissions?: string[];
     token: string;
   };

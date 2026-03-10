@@ -140,6 +140,10 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                         }
                         options={filter.options}
                         allowClear
+                        showSearch
+                        filterOption={(input, option) =>
+                          (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                        }
                         mode={currentOp === "in" ? "multiple" : undefined}
                         style={{ width: "100%" }}
                         size="middle"

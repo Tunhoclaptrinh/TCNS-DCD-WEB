@@ -82,20 +82,43 @@ const App: React.FC = () => {
           },
           components: {
             Button: {
-              controlHeight: 40,
+              controlHeight: 32,
               fontSize: 14,
               borderRadius: 8,
               primaryColor: "#FFFFFF",
             },
             Input: {
-              controlHeight: 40,
+              controlHeight: 32,
               fontSize: 14,
               borderRadius: 8,
             },
             Select: {
-              controlHeight: 40,
+              controlHeight: 32,
               fontSize: 14,
               borderRadius: 8,
+            },
+            DatePicker: {
+              controlHeight: 32,
+              fontSize: 14,
+              borderRadius: 8,
+            },
+            Descriptions: {
+              labelBg: "#fafafa",
+              titleColor: "var(--primary-color)",
+              fontSize: 14,
+              paddingXS: 8,
+            },
+            Tabs: {
+              titleFontSize: 14,
+              horizontalItemPadding: "12px 16px",
+            },
+            Tag: {
+              borderRadiusSM: 4,
+              fontSize: 12,
+            },
+            Divider: {
+              textPaddingInline: 8,
+              colorSplit: "#f0f0f0",
             },
             Card: {
               borderRadiusLG: 12,
