@@ -53,12 +53,12 @@ export interface Metadata {
 
 export interface BaseEntity {
   id: number;
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
 }
 
 export interface TimestampEntity {
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
 }

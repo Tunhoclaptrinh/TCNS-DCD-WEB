@@ -35,13 +35,14 @@ export interface User extends BaseEntity, TimestampEntity {
   position?: UserPosition;
   department?: string;
   status?: UserStatus;
-  phone: string;
+  phone?: string;
   address?: string;
   avatar?: string;
   bio?: string;
   lastLogin?: string;
   role: UserRole;
   isActive: boolean;
+  permissions?: string[];
 }
 
 export interface UserProfile {
@@ -89,7 +90,7 @@ export interface UserCreateDTO {
   status?: UserStatus;
   email: string;
   password: string;
-  phone: string;
+  phone?: string;
   role?: UserRole;
   bio?: string;
   avatar?: string;

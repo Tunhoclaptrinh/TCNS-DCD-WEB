@@ -217,7 +217,7 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.isAuthenticated = false;
-        state.error = action.payload || "Đăng nhập thất bại";
+        state.error = (action.payload as string) || "Đăng nhập thất bại";
       })
       // Register
       .addCase(register.pending, (state) => {
