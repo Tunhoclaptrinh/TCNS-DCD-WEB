@@ -88,9 +88,9 @@ const UsersForm: React.FC<UsersFormProps> = ({
               label="Ngày sinh"
               style={{ marginBottom: 12 }}
               getValueProps={(value) => ({
-                value: value ? dayjs(value, 'DD/MM/YYYY') : undefined,
+                value: value ? dayjs(value) : undefined,
               })}
-              getValueFromEvent={(value) => (value ? value.format('DD/MM/YYYY') : '')}
+              getValueFromEvent={(value) => (value ? value.format('YYYY-MM-DD') : '')}
             >
               <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày sinh" style={{ width: '100%' }} />
             </Form.Item>
