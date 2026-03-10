@@ -2,6 +2,7 @@ import { Descriptions, Image, Modal, Tag, Space, Divider } from 'antd';
 import { RiseOutlined, StopOutlined } from '@ant-design/icons';
 import Button from '../../../components/common/Button';
 import { User } from '../../../types';
+import { formatDate } from '../../../utils/formatters';
 
 interface UsersDetailModalProps {
   open: boolean;
@@ -95,7 +96,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
             <Descriptions.Item label="Mã lớp">{user.classId || '--'}</Descriptions.Item>
             <Descriptions.Item label="Họ tên đệm">{user.lastName || '--'}</Descriptions.Item>
             <Descriptions.Item label="Tên">{user.firstName || '--'}</Descriptions.Item>
-            <Descriptions.Item label="Ngày sinh">{user.dob || '--'}</Descriptions.Item>
+            <Descriptions.Item label="Ngày sinh">{formatDate(user.dob) || '--'}</Descriptions.Item>
             <Descriptions.Item label="Quê quán">{user.hometown || '--'}</Descriptions.Item>
           </Descriptions>
 
