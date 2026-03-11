@@ -23,8 +23,10 @@ const Support = lazy(() => import("@/pages/Support"));
 // Admin/Manager Pages (DataTables)
 const Dashboard = lazy(() => import("@/pages/Dashboard/DashboardMain"));
 const UserManagement = lazy(() => import("@/pages/Users"));
-
-
+const DutyPage = lazy(() => import("@/pages/Duty"));
+const RewardPenaltyPage = lazy(() => import("@/pages/RewardPenalty"));
+const ReportsPage = lazy(() => import("@/pages/Reports"));
+const NotificationsManagementPage = lazy(() => import("@/pages/NotificationsManagement"));
 
 // Wrapper component for Suspense
 const LazyLoadWrapper: React.FC<{ children: React.ReactNode }> = ({
@@ -137,7 +139,22 @@ const routes: RouteObject[] = [
         path: "users",
         element: <UserManagement />,
       },
-
+      {
+        path: "duty",
+        element: <DutyPage />,
+      },
+      {
+        path: "reward-penalty",
+        element: <RewardPenaltyPage />,
+      },
+      {
+        path: "reports",
+        element: <ReportsPage />,
+      },
+      {
+        path: "notifications",
+        element: <NotificationsManagementPage />,
+      },
     ],
   },
 

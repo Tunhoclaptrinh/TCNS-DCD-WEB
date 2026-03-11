@@ -66,7 +66,7 @@ const DashboardPage: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ padding: "24px" }}>
+    <>
       <div style={{ marginBottom: "24px" }}>
         <Title level={2}>Bảng Quản Trị Hệ Thống</Title>
         <Paragraph>
@@ -281,7 +281,7 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
-    </div>
+    </>
   );
 };
 

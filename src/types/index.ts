@@ -7,6 +7,9 @@ export * from "./api.types";
 export * from "./user.types";
 
 export * from "./notification.types";
+export * from "./duty.types";
+export * from "./reward-penalty.types";
+export * from "./report.types";
 
 // Common Types
 

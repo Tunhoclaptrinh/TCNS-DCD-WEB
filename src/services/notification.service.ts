@@ -40,13 +40,13 @@ class NotificationService extends BaseService {
   }
 
   async getPreferences(): Promise<NotificationPreferences> {
-    const response = await this.get('/preferences');
-    return response.data;
+    const response = await this.get<NotificationPreferences>('/settings');
+    return response;
   }
 
   async updatePreferences(data: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
-    const response = await this.put('/preferences', data);
-    return response.data;
+    const response = await this.put<NotificationPreferences>('/settings', data);
+    return response;
   }
 }
 

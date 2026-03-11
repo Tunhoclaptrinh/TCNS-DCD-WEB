@@ -2,7 +2,10 @@ import React from 'react';
 import {
     DashboardOutlined,
     UserOutlined,
-
+    ScheduleOutlined,
+    TrophyOutlined,
+    BarChartOutlined,
+    BellOutlined,
 } from '@ant-design/icons';
 
 export interface IMenuItem {
@@ -31,7 +34,30 @@ export const adminMenu: IMenuItem[] = [
         name: 'Người dùng',
         icon: <UserOutlined />,
     },
-
+    {
+        key: 'duty',
+        path: '/admin/duty',
+        name: 'Lịch trực',
+        icon: <ScheduleOutlined />,
+    },
+    {
+        key: 'reward-penalty',
+        path: '/admin/reward-penalty',
+        name: 'Thưởng phạt',
+        icon: <TrophyOutlined />,
+    },
+    {
+        key: 'reports',
+        path: '/admin/reports',
+        name: 'Báo cáo',
+        icon: <BarChartOutlined />,
+    },
+    {
+        key: 'notifications-mgmt',
+        path: '/admin/notifications',
+        name: 'Thông báo',
+        icon: <BellOutlined />,
+    },
 ];
 
 // ================= CUSTOMER MENU =================
