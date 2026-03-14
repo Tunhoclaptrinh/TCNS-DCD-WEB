@@ -1,11 +1,9 @@
-import { Col, Form, Input, Row, Select, Switch, Divider, DatePicker, Tooltip, AutoComplete, Upload, Avatar, message } from 'antd';
+import { Col, Form, Input, Row, Select, Switch, Divider, DatePicker, AutoComplete, Tooltip } from 'antd';
 import type { FormInstance } from 'antd';
-import type { RcFile } from 'antd/es/upload/interface';
-import { UserOutlined, TeamOutlined, SettingOutlined, InfoCircleOutlined, UploadOutlined, LoadingOutlined, PictureOutlined } from '@ant-design/icons';
+import { UserOutlined, TeamOutlined, SettingOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useState } from 'react';
 import FormModal from '../../../components/common/FormModal';
-import userService from '../../../services/user.service';
+import AvatarUploadGroup from './AvatarUploadGroup';
 
 interface UsersFormProps {
   open: boolean;
@@ -24,39 +22,6 @@ const UsersForm: React.FC<UsersFormProps> = ({
   onOk,
   onCancel,
 }) => {
-  const avatarUrl = Form.useWatch('avatar', form);
-  const [uploading, setUploading] = useState(false);
-
-  const handleUploadAvatar = async (file: RcFile): Promise<false> => {
-    const isImage = file.type.startsWith('image/');
-    if (!isImage) {
-      message.error('Chỉ được tải lên file ảnh (JPG, PNG, GIF, WEBP...)');
-      return false;
-    }
-    const isLt5M = file.size / 1024 / 1024 < 5;
-    if (!isLt5M) {
-      message.error('Ảnh phải nhỏ hơn 5MB!');
-      return false;
-    }
-
-    setUploading(true);
-    try {
-      const res = await userService.uploadAvatar(file);
-      const url = res.data?.url;
-      if (url) {
-        form.setFieldValue('avatar', url);
-        message.success('Tải ảnh đại diện thành công!');
-      } else {
-        message.error('Không lấy được URL ảnh sau khi upload.');
-      }
-    } catch (err: any) {
-      message.error(err?.message || 'Tải ảnh thất bại, vui lòng thử lại.');
-    } finally {
-      setUploading(false);
-    }
-    return false; // prevent default antd upload behavior
-  };
-
 
   return (
     <FormModal
@@ -138,61 +103,8 @@ const UsersForm: React.FC<UsersFormProps> = ({
             </Form.Item>
           </Col>
           <Col xs={24} md={16}>
-            <Form.Item label="Ảnh đại diện" style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {/* Preview avatar */}
-                <Avatar
-                  size={64}
-                  src={avatarUrl || undefined}
-                  icon={!avatarUrl ? <UserOutlined /> : undefined}
-                  style={{ flexShrink: 0, border: '1px solid #f0f0f0', background: !avatarUrl ? '#f0f0f0' : undefined }}
-                />
-                {/* URL input + Upload button */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Form.Item name="avatar" style={{ marginBottom: 0 }}>
-                    <Input
-                      placeholder="https://example.com/photo.jpg"
-                      prefix={<PictureOutlined style={{ color: '#bfbfbf' }} />}
-                      allowClear
-                    />
-                  </Form.Item>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Upload
-                      name="image"
-                      showUploadList={false}
-                      beforeUpload={handleUploadAvatar}
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                      disabled={uploading}
-                    >
-                      <button
-                        type="button"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '3px 12px',
-                          border: '1px solid #d9d9d9',
-                          borderRadius: 6,
-                          background: '#fafafa',
-                          cursor: uploading ? 'not-allowed' : 'pointer',
-                          fontSize: 12,
-                          color: '#555',
-                          opacity: uploading ? 0.65 : 1,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {uploading ? <LoadingOutlined /> : <UploadOutlined />}
-                        {uploading ? 'Đang tải...' : 'Tải ảnh lên'}
-                      </button>
-                    </Upload>
-                    <span style={{ fontSize: 11, color: '#8c8c8c' }}>
-                      {avatarUrl
-                        ? <span style={{ color: '#52c41a' }}>✓ Đã có ảnh</span>
-                        : 'JPG, PNG, GIF, WEBP – tối đa 5MB'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <Form.Item name="avatar" label="Ảnh đại diện" style={{ marginBottom: 12 }}>
+              <AvatarUploadGroup />
             </Form.Item>
           </Col>
 
