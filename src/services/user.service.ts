@@ -213,7 +213,7 @@ class UserService extends BaseService<User, UserCreateDTO, UserUpdateDTO> {
   async uploadAvatar(file: File): Promise<BaseApiResponse<{ url: string }>> {
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('image', file);
 
       const response = await apiClient.post<BaseApiResponse<{ url: string }>>(
         '/upload/avatar',
