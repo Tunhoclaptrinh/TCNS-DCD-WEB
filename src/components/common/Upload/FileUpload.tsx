@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Upload, message, Modal, Avatar, Image, Button } from "antd";
+import { Upload, message, Modal, Image, Button } from "antd";
 import { 
   PlusOutlined, 
   LoadingOutlined, 
