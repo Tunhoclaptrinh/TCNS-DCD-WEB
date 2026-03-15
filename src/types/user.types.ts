@@ -29,6 +29,7 @@ export interface User extends BaseEntity, TimestampEntity {
   lastName?: string;
   firstName?: string;
   dob?: string;
+  gender?: 'male' | 'female' | 'other';
   studentId?: string;
   classId?: string;
   hometown?: string;
@@ -60,6 +61,7 @@ export interface UserUpdateDTO {
   lastName?: string;
   firstName?: string;
   dob?: string;
+  gender?: 'male' | 'female' | 'other';
   studentId?: string;
   classId?: string;
   hometown?: string;
@@ -82,6 +84,7 @@ export interface UserCreateDTO {
   lastName?: string;
   firstName?: string;
   dob?: string;
+  gender?: 'male' | 'female' | 'other';
   studentId?: string;
   classId?: string;
   hometown?: string;

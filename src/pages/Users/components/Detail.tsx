@@ -97,6 +97,9 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
             <Descriptions.Item label="Họ tên đệm">{user.lastName || '--'}</Descriptions.Item>
             <Descriptions.Item label="Tên">{user.firstName || '--'}</Descriptions.Item>
             <Descriptions.Item label="Ngày sinh">{formatDate(user.dob) || '--'}</Descriptions.Item>
+            <Descriptions.Item label="Giới tính">
+              {user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : user.gender === 'other' ? 'Khác' : '--'}
+            </Descriptions.Item>
             <Descriptions.Item label="Quê quán">{user.hometown || '--'}</Descriptions.Item>
           </Descriptions>
 
