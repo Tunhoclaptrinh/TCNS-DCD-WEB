@@ -42,14 +42,23 @@ export interface DutySlot {
   endPeriod?: number;
   shiftId?: number;
   attendedUserIds?: number[];
+  dayId?: number; // Added dayId
+}
+
+export interface DutyDay {
+  id: number;
+  date: string;
+  note?: string;
+  status: 'open' | 'locked';
+  shiftTemplateIds?: number[];
 }
 
 class DutyService {
   /**
    * Get weekly schedule
    */
-  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<DutySlot[]>> {
-    const response = await apiClient.get<BaseApiResponse<DutySlot[]>>("/duty/week", {
+  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[] }>> {
+    const response = await apiClient.get<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[] }>>("/duty/week", {
       params: { weekStart }
     });
     return response;
@@ -83,7 +92,7 @@ class DutyService {
    * Delete duty slot
    */
   async deleteSlot(id: number) {
-    const res = await apiClient.delete(`/duty/slots-week`, { data: { id } });
+    const res = await apiClient.delete(`/duty/slots/${id}`);
     return res.data;
   }
 
@@ -165,25 +174,27 @@ class DutyService {
   }
 
   /**
-   * Generate slots for a specific week
+   * Generate slots for a specific range from templates
    */
-  async generateWeekSlots(weekStart: string): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.post<BaseApiResponse<any>>("/duty/generate", { weekStart });
+  async generateRangeSlots(startDate: string, endDate: string): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.post<BaseApiResponse<any>>("/duty/generate-range", { startDate, endDate });
     return response;
   }
 
   /**
-   * Generate slots for a specific day from templates
+   * Delete slots for a specific range
    */
-  async generateDaySlots(date: string): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.post<BaseApiResponse<any>>("/duty/generate-day", { date });
+  async deleteRangeSlots(startDate: string, endDate: string): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.delete<BaseApiResponse<any>>("/duty/slots-range", {
+      data: { startDate, endDate }
+    });
     return response;
   }
 
   /**
    * Copy slots from one week to another
    */
-  async copyWeek(sourceWeek: string, targetWeek: string): Promise<BaseApiResponse<any>> {
+  async copyWeekSchedule(sourceWeek: string, targetWeek: string): Promise<BaseApiResponse<any>> {
     const response = await apiClient.post<BaseApiResponse<any>>("/duty/templates/copy", { sourceWeek, targetWeek });
     return response;
   }
@@ -199,9 +210,19 @@ class DutyService {
   /**
    * Clear all slots for a specific week
    */
-  async clearWeek(weekStart: string): Promise<BaseApiResponse<any>> {
+  async deleteWeeklySlots(weekStart: string): Promise<BaseApiResponse<any>> {
     const response = await apiClient.delete<BaseApiResponse<any>>("/duty/slots-week", {
       data: { weekStart }
+    });
+    return response;
+  }
+
+  /**
+   * Delete all slots for a specific shift on a specific day
+   */
+  async deleteShiftSlots(date: string, shiftId: number): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.delete<BaseApiResponse<any>>("/duty/slots-shift", {
+      data: { date, shiftId }
     });
     return response;
   }
