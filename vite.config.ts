@@ -26,7 +26,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3001,
+    port: 3002,
     open: false, // Disabled for Docker compatibility
     host: true, // Listen on all interfaces for Docker
     watch: {
@@ -38,7 +38,7 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://base-backend-dev:3000",
+        target: "http://127.0.0.1:3001",
         changeOrigin: true,
         secure: false,
       },

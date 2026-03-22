@@ -23,6 +23,7 @@ const Support = lazy(() => import("@/pages/Support"));
 // Admin/Manager Pages (DataTables)
 const Dashboard = lazy(() => import("@/pages/Dashboard/DashboardMain"));
 const UserManagement = lazy(() => import("@/pages/Users"));
+const DutyManagement = lazy(() => import("@/pages/Duty"));
 
 
 
@@ -137,7 +138,10 @@ const routes: RouteObject[] = [
         path: "users",
         element: <UserManagement />,
       },
-
+      {
+        path: "duty",
+        element: <DutyManagement />,
+      },
     ],
   },
 
