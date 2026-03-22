@@ -265,14 +265,12 @@
     flex-wrap: wrap;
     gap: 4px;
 
-    .user-abbr {
-      background: rgba(255, 255, 255, 0.9);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #854d0e;
+    .user-avatar-mini {
       border: 1px solid #fde047;
+      background: white;
+      color: #854d0e;
+      font-size: 10px;
+      line-height: 18px;
     }
   }
 
@@ -281,8 +279,36 @@
     border-color: #cbd5e1;
     border-left-color: #94a3b8;
 
-    .slot-title, .slot-time, .user-abbr {
+    .slot-title, .slot-time, .user-avatar-mini {
       color: #64748b;
+      filter: grayscale(1);
+    }
+  }
+
+  /* Quick Join Overlay */
+  .quick-join-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(234, 179, 8, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 20;
+    gap: 4px;
+
+    &.danger {
+      background: rgba(239, 68, 68, 0.9);
+    }
+  }
+
+  &.can-join:hover {
+    .quick-join-overlay {
+      opacity: 1;
     }
   }
 
@@ -417,6 +443,134 @@
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
     z-index: 60;
+  }
+}
+
+/* Matrix (Table) View Styling */
+.matrix-view-container {
+  overflow: auto;
+  max-height: calc(100vh - 240px);
+  background: white;
+
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: 1000px;
+    font-size: 0.85rem;
+
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 12px 8px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #f8fafc;
+
+      th {
+        font-weight: 700;
+        text-align: center;
+        background: #f1f5f9;
+
+        .day-name { color: #64748b; font-size: 0.7rem; text-transform: uppercase; }
+        .day-date { color: #1e293b; font-size: 1rem; }
+
+        &.is-today {
+          background: #fff1f2;
+          border-bottom: 2px solid #ef4444;
+          .day-name, .day-date { color: #ef4444; }
+        }
+      }
+    }
+
+    .sticky-col {
+      position: sticky;
+      left: 0;
+      z-index: 90;
+      background: #f8fafc;
+      width: 160px;
+      min-width: 160px;
+      border-right: 2px solid #e2e8f0;
+    }
+
+    .shift-row-header {
+      background: #f1f5f9;
+      td { padding: 4px 12px; font-size: 0.75rem; color: #475569; }
+    }
+
+    .kip-row {
+      &.row-pink { background: rgba(254, 226, 226, 0.4); } // Pink tint
+      &.row-blue { background: rgba(219, 234, 254, 0.4); } // Blue tint
+
+      &:hover { background: rgba(0, 0, 0, 0.05) !important; }
+
+      .kip-label-col {
+        .kip-name { font-weight: 700; color: #1e293b; }
+        .kip-time { font-size: 0.7rem; color: #64748b; }
+      }
+
+      .matrix-cell {
+        vertical-align: top;
+        cursor: pointer;
+        transition: background 0.2s;
+
+        &:hover { background: rgba(0, 0, 0, 0.02); }
+
+        &.has-slot { border-top: 2px solid transparent; }
+        &.is-past { opacity: 0.6; cursor: not-allowed; background: #f8fafc !important; }
+
+        .cell-slot-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-height: 40px;
+
+          .assigned-users-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+
+          .user-row-mini {
+            display: flex;
+            align-items: center;
+            justify-content: center; // Center similar to Excel
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #1e293b;
+            padding: 4px;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+
+            &:last-child { border-bottom: none; }
+            
+            span {
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+
+          .slot-capacity-tag {
+            text-align: center;
+            margin-top: auto;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            padding-top: 4px;
+          }
+        }
+
+        .add-slot-placeholder {
+          color: #cbd5e1;
+          font-style: italic;
+          text-align: center;
+          font-size: 0.75rem;
+          padding: 8px 0;
+        }
+      }
+    }
   }
 }
 

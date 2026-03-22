@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Form, Input, InputNumber, Space, message, Typography, TimePicker, Select, Tabs, Divider, Alert, DatePicker, Row, Col, Tooltip, Table, Tag, Checkbox, Badge } from 'antd';
+import { Card, Button, Modal, Form, Input, InputNumber, Space, message, Typography, TimePicker, Select, Tabs, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   ScheduleOutlined, SettingOutlined,
   InboxOutlined,
-  LeftOutlined, RightOutlined, LayoutOutlined
+  LeftOutlined, RightOutlined, LayoutOutlined,
+  QuestionCircleOutlined,
+  TeamOutlined, LockOutlined, UnlockOutlined,
+  ProjectOutlined, ExclamationCircleOutlined,
+  CalendarOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import dutyService, { DutyShift } from '@/services/duty.service';
+import DataTable from '@/components/common/DataTable';
+import StatisticsCard from '@/components/common/StatisticsCard';
 
 const { Text, Title } = Typography;
 
@@ -18,11 +24,10 @@ const DutyManagement: React.FC = () => {
   const [slots, setSlots] = useState<any[]>([]);
   const [slotLoading, setSlotLoading] = useState(false);
   const [slotFilterWeek, setSlotFilterWeek] = useState(dayjs().startOf('isoWeek' as any));
-  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
-  const [leaveLoading, setLeaveLoading] = useState(false);
 
   // Modals Visibility
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isKipModalOpen, setIsKipModalOpen] = useState(false);
   const [isSlotEditModalOpen, setIsSlotEditModalOpen] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
@@ -41,7 +46,7 @@ const DutyManagement: React.FC = () => {
   const [selectedShiftTemplate, setSelectedShiftTemplate] = useState<number | null>(null);
   const [previewDates, setPreviewDates] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('1');
-  const [selectedDate, setSelectedDate] = useState(dayjs().startOf('day'));
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(dayjs().startOf('day'));
 
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }).map((_, i) => slotFilterWeek.add(i, 'day')),
@@ -51,7 +56,6 @@ const DutyManagement: React.FC = () => {
   useEffect(() => {
     fetchTemplates();
     fetchSlots();
-    fetchLeaveRequests();
   }, [slotFilterWeek]);
 
   const fetchTemplates = async () => {
@@ -70,14 +74,18 @@ const DutyManagement: React.FC = () => {
     finally { setSlotLoading(false); }
   };
 
-  const fetchLeaveRequests = async () => {
-    setLeaveLoading(true);
-    try {
-      const res = await dutyService.getLeaveRequests({ status: 'pending' });
-      if (res.success) setLeaveRequests(res.data);
-    } catch (err) { }
-    finally { setLeaveLoading(false); }
-  };
+  // Derived stats for the current selected date
+  const currentDaySlots = useMemo(() => {
+    if (!selectedDate) return slots;
+    return slots.filter(s => dayjs(s.shiftDate).isSame(selectedDate, 'day'));
+  }, [slots, selectedDate]);
+
+  const dailyStats = useMemo(() => ({
+    total: currentDaySlots.length,
+    locked: currentDaySlots.filter(s => s.status === 'locked').length,
+    open: currentDaySlots.filter(s => s.status === 'open').length,
+    personnel: currentDaySlots.reduce((acc, s) => acc + (s.maxCapacity || 0), 0)
+  }), [currentDaySlots]);
 
   const handleSubmitShift = async (values: any) => {
     const { timeRange, ...rest } = values;
@@ -140,117 +148,322 @@ const DutyManagement: React.FC = () => {
     });
   };
 
-  const handleResolveLeave = async (id: number, status: 'approved' | 'rejected') => {
-    let reason = '';
-    if (status === 'rejected') {
-      reason = prompt('Lý do từ chối:') || '';
-      if (!reason) return;
-    }
-    try {
-      const res = await dutyService.resolveLeaveRequest(id, status, reason);
-      if (res.success) {
-        message.success('Đã xử lý');
-        fetchLeaveRequests();
-      }
-    } catch (err) { message.error('Lỗi xử lý'); }
-  };
-
   const tabItems = [
     {
       key: '1',
-      label: <span><InboxOutlined /> Quản lý Ca đã lập</span>,
+      label: <span><InboxOutlined /> Quản lý ca & kíp</span>,
       children: (
-        <Card
-          title={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <Space><InboxOutlined /><Title level={5} style={{ margin: 0 }}>Lịch trực Chi tiết</Title></Space>
-              <Divider type="vertical" style={{ height: 24 }} />
-              <Space>
-                <Button icon={<LeftOutlined />} onClick={() => setSlotFilterWeek(slotFilterWeek.subtract(1, 'week'))} />
-                <DatePicker picker="week" value={slotFilterWeek} allowClear={false} onChange={(val) => val && setSlotFilterWeek(val.startOf('isoWeek' as any))} format="[Tuần] ww (DD/MM)" style={{ width: 160 }} />
-                <Button icon={<RightOutlined />} onClick={() => setSlotFilterWeek(slotFilterWeek.add(1, 'week'))} />
-                <Tooltip title="Về tuần hiện tại theo thời gian hệ thống">
-                  <Button type="primary" ghost onClick={() => setSlotFilterWeek(dayjs().startOf('isoWeek' as any))}>Hiện tại</Button>
-                </Tooltip>
-              </Space>
+        <DataTable
+          loading={slotLoading}
+          dataSource={currentDaySlots}
+          rowKey="id"
+          pagination={{ total: currentDaySlots.length, pageSize: 10, showSizeChanger: true }}
+          searchable={false}
+          onRefresh={fetchSlots}
+          headerContent={
+            <div>
+              {/* NEW TOP ROW: Week Selection & Title */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 8,
+                backgroundColor: '#ffffff',
+              }}>
+                <Space size="middle">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, backgroundColor: '#f5f5f5', padding: '2px 8px', borderRadius: 8 }}>
+                    <Button icon={<LeftOutlined />} size="small" type="text" onClick={() => setSlotFilterWeek(slotFilterWeek.subtract(1, 'week'))} />
+                    <DatePicker
+                      picker="week"
+                      value={slotFilterWeek}
+                      allowClear={false}
+                      bordered={false}
+                      onChange={(val) => val && setSlotFilterWeek(val.startOf('isoWeek' as any))}
+                      format="[Tuần] ww"
+                      style={{ width: 85, fontWeight: 700, padding: 0 }}
+                    />
+                    <Button icon={<RightOutlined />} size="small" type="text" onClick={() => setSlotFilterWeek(slotFilterWeek.add(1, 'week'))} />
+                    <Divider type="vertical" />
+                    <Button
+                      size="small"
+                      type="text"
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: slotFilterWeek.isSame(dayjs().startOf('isoWeek' as any), 'week')
+                          ? 'var(--primary-color)'
+                          : '#8c8c8c'
+                      }}
+                      onClick={() => {
+                        const today = dayjs();
+                        setSlotFilterWeek(today.startOf('isoWeek' as any));
+                        setSelectedDate(null);
+                      }}
+                    >
+                      Tuần này
+                    </Button>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, }}>
+                    <ScheduleOutlined style={{ color: 'var(--primary-color)', fontSize: 16 }} />
+                    <Text strong style={{ fontSize: '13px', color: '#1e293b' }}>
+                      {selectedDate ? selectedDate.locale('vi').format('dddd, DD/MM/YYYY') : `Tất cả các ca trong tuần từ ${slotFilterWeek.format('DD/MM')} đến ${slotFilterWeek.add(6, 'day').format('DD/MM/YYYY')}`}
+                    </Text>
+                  </div>
+                </Space>
+
+                <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                  {slotFilterWeek.format('[Tuần] ww, YYYY')}
+                </Tag>
+              </div>
+
+              <div>
+                {/* Day selection UI - At the Top */}
+                <div style={{
+                  display: 'flex',
+                  gap: 16,
+                  marginBottom: 16,
+                  width: '100%',
+                  alignItems: 'center'
+                }}>
+                  {/* "Cả tuần" (All Week) Selection Card */}
+                  <div
+                    onClick={() => setSelectedDate(null)}
+                    style={{
+                      flex: '0 0 100px',
+                      padding: '8px 4px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      borderRadius: 8,
+                      border: !selectedDate ? '2.5px solid var(--primary-color)' : '1px solid #d9d9d9',
+                      backgroundColor: !selectedDate ? 'rgba(var(--primary-rgb, 201, 33, 39), 0.03)' : '#fff',
+                      color: !selectedDate ? 'var(--primary-color)' : 'rgba(0,0,0,0.85)',
+                      transition: 'all 0.15s ease',
+                      boxShadow: 'none',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: 64,
+                      zIndex: !selectedDate ? 2 : 1,
+                      marginRight: 4
+                    }}
+                    onMouseEnter={(e) => { if (selectedDate) e.currentTarget.style.borderColor = 'var(--primary-color)'; }}
+                    onMouseLeave={(e) => { if (selectedDate) e.currentTarget.style.borderColor = '#d9d9d9'; }}
+                  >
+                    <CalendarOutlined style={{ fontSize: '1rem', marginBottom: 2, color: !selectedDate ? 'var(--primary-color)' : '#8c8c8c' }} />
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Cả tuần</div>
+                  </div>
+
+                  <Divider type="vertical" style={{ height: 40, borderLeft: '3px solid var(--primary-color)', margin: '0 8px', opacity: 0.8 }} />
+
+                  {weekDays.map(d => {
+                    const isSelected = selectedDate && d.isSame(selectedDate, 'day');
+                    const daySlotsCount = slots.filter(s => dayjs(s.shiftDate).isSame(d, 'day')).length;
+                    const isToday = d.isSame(dayjs(), 'day');
+
+                    return (
+                      <div
+                        key={d.toISOString()}
+                        onClick={() => setSelectedDate(d)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 4px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          borderRadius: 8,
+                          border: isSelected ? '2.5px solid var(--primary-color)' : '1px solid #d9d9d9',
+                          backgroundColor: isSelected ? 'rgba(var(--primary-rgb, 201, 33, 39), 0.03)' : (isToday ? '#fff1f0' : '#fff'),
+                          color: isSelected ? 'var(--primary-color)' : 'rgba(0,0,0,0.85)',
+                          transition: 'all 0.15s ease',
+                          boxShadow: 'none',
+                          position: 'relative',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: 64,
+                          zIndex: isSelected ? 2 : 1
+                        }}
+                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.borderColor = 'var(--primary-color)'; }}
+                        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.borderColor = '#d9d9d9'; }}
+                      >
+                        <div style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          marginBottom: 4,
+                          color: isSelected ? 'var(--primary-color)' : '#8c8c8c'
+                        }}>
+                          {d.locale('vi').format('ddd')}
+                        </div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700 }}>{d.format('DD/MM')}</div>
+
+                        {daySlotsCount > 0 && (
+                          <div style={{ position: 'absolute', top: 8, right: 10 }}>
+                            <Badge
+                              count={daySlotsCount}
+                              size="small"
+                              style={{
+                                backgroundColor: isSelected ? 'var(--primary-color)' : '#64748b',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                fontSize: '10px',
+                                height: '18px',
+                                minWidth: '18px',
+                                lineHeight: '18px',
+                                border: 'none'
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {isToday && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 4,
+                            left: 10,
+                            fontSize: '8px',
+                            fontWeight: 700,
+                            color: isSelected ? 'var(--primary-color)' : '#ef4444',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            padding: '1px 4px',
+                            borderRadius: 4,
+                            backgroundColor: isSelected ? 'transparent' : 'rgba(239, 68, 68, 0.05)'
+                          }}>
+                            Hôm nay
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Daily Statistics */}
+                <StatisticsCard
+                  hideCard
+                  loading={slotLoading}
+                  rowGutter={16}
+                  // borderleft={true}
+                  colSpan={{ xs: 12, sm: 12, md: 6 }}
+                  data={[
+                    {
+                      title: 'Tổng số ca',
+                      value: dailyStats.total,
+                      // icon: <ProjectOutlined />,
+                      valueColor: 'var(--primary-color)'
+                    },
+                    {
+                      title: 'Đang mở',
+                      value: dailyStats.open,
+                      // icon: <UnlockOutlined />,
+                      valueColor: '#52c41a'
+                    },
+                    {
+                      title: 'Đã khóa',
+                      value: dailyStats.locked,
+                      // icon: <LockOutlined />,
+                      valueColor: '#ff4d4f'
+                    },
+                    {
+                      title: 'Tổng nhân sự',
+                      value: dailyStats.personnel,
+                      // icon: <TeamOutlined />,
+                      valueColor: '#1890ff'
+                    }
+                  ]}
+                />
+              </div>
             </div>
           }
-          className="hifi-border"
-          extra={<Button icon={<ScheduleOutlined />} onClick={fetchSlots}>Làm mới</Button>}
-        >
-          <div style={{ marginBottom: 20 }}>
-            <Space wrap>
-              {weekDays.map(d => {
-                const isSelected = d.isSame(selectedDate, 'day');
-                const slotCount = slots.filter(s => dayjs(s.shiftDate).isSame(d, 'day')).length;
-                return (
-                  <Button
-                    key={d.toISOString()}
-                    type={isSelected ? 'primary' : 'default'}
-                    onClick={() => setSelectedDate(d)}
-                    style={{ height: 48, minWidth: 80 }}
-                  >
-                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>{d.locale('vi').format('ddd')}</div>
-                    <div><b>{d.format('DD/MM')}</b> {slotCount > 0 && <Badge count={slotCount} size="small" offset={[5, -5]} />}</div>
-                  </Button>
-                );
-              })}
-            </Space>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Title level={5} style={{ margin: 0 }}>Cấu hình cho {selectedDate.locale('vi').format('dddd, [ngày] DD/MM')}</Title>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => {
-              manualSlotForm.setFieldsValue({ date: selectedDate });
-              setActiveTab('2'); // Fallback to manual add in Tab 2 or I can add a dedicated modal here
+          title={null}
+          filters={[]}
+          extra={
+            <Button type="primary" icon={<PlusOutlined />} className="hifi-button" onClick={() => {
+              manualSlotForm.setFieldsValue({ date: selectedDate || dayjs() });
+              setActiveTab('2');
               message.info('Vui lòng thêm ca tại phần "Thêm Ca đơn lẻ" phía dưới');
-            }}>Thêm ca cho ngày này</Button>
-          </div>
-
-          <Table
-            loading={slotLoading}
-            dataSource={slots.filter(s => dayjs(s.shiftDate).isSame(selectedDate, 'day'))}
-            rowKey="id"
-            size="middle"
-            pagination={false}
-            columns={[
-              {
-                title: 'Khung giờ',
-                render: (_, r) => <Text strong>{r.startTime} - {r.endTime}</Text>
-              },
-              { title: 'Ca & Kíp', dataIndex: 'shiftLabel' },
-              { title: 'Trạng thái', dataIndex: 'status', render: (s) => <Tag color={s === 'locked' ? 'red' : 'green'}>{s === 'locked' ? 'Đã khóa' : 'Đang mở'}</Tag> },
-              {
-                title: 'Thao tác', render: (_, r) => (
-                  <Space>
-                    <Tooltip title="Chỉnh sửa nhanh thông tin ca này (nhãn, giờ)">
-                      <Button type="link" icon={<EditOutlined />} onClick={() => {
-                        setEditingSlot(r);
-                        slotEditForm.setFieldsValue({
-                          ...r,
-                          shiftDate: dayjs(r.shiftDate),
-                          timeRange: r.startTime && r.endTime ? [dayjs(r.startTime, 'HH:mm'), dayjs(r.endTime, 'HH:mm')] : []
-                        });
-                        setIsSlotEditModalOpen(true);
-                      }} />
-                    </Tooltip>
-                    <Tooltip title="Xóa ca trực này khỏi lịch trình">
-                      <Button type="link" danger icon={<DeleteOutlined />} onClick={() => {
-                        Modal.confirm({
-                          title: 'Xóa ca này?',
-                          onOk: async () => {
-                            const res = await dutyService.deleteSlot(r.id);
-                            if (res.success) { message.success('Đã xóa'); fetchSlots(); }
-                          }
-                        });
-                      }} />
-                    </Tooltip>
-                  </Space>
-                )
-              }
-            ]}
-          />
-        </Card>
+            }}>Thêm ca</Button>
+          }
+          columns={[
+            ...(!selectedDate ? [{
+              title: 'Ngày trực',
+              dataIndex: 'shiftDate',
+              key: 'shiftDate',
+              width: 140,
+              render: (date: string) => (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <Text strong>{dayjs(date).locale('vi').format('dddd')}</Text>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>{dayjs(date).format('DD/MM/YYYY')}</Text>
+                </div>
+              )
+            }] : []),
+            {
+              title: 'Khung giờ',
+              key: 'time',
+              width: 180,
+              render: (_, r: any) => (
+                <Tag color="processing" style={{ borderRadius: 6, padding: '4px 12px', fontSize: '14px', fontWeight: 600 }}>
+                  {r.startTime} - {r.endTime}
+                </Tag>
+              )
+            },
+            {
+              title: 'Ca & Kíp',
+              dataIndex: 'shiftLabel',
+              key: 'label',
+              render: (val) => <Text strong style={{ color: '#1e293b' }}>{val}</Text>
+            },
+            {
+              title: 'Trạng thái',
+              dataIndex: 'status',
+              key: 'status',
+              align: 'center',
+              width: 140,
+              render: (s) => (
+                <Tag color={s === 'locked' ? 'error' : 'success'} style={{ borderRadius: 10, padding: '0 12px' }}>
+                  {s === 'locked' ? 'Đã khóa' : 'Đang mở'}
+                </Tag>
+              )
+            },
+            {
+              title: 'Thao tác',
+              key: 'actions',
+              width: 120,
+              align: 'center',
+              render: (_, r: any) => (
+                <Space>
+                  <Tooltip title="Chỉnh sửa">
+                    <Button type="text" shape="circle" icon={<EditOutlined />} style={{ color: '#6366f1' }} onClick={() => {
+                      setEditingSlot(r);
+                      slotEditForm.setFieldsValue({
+                        ...r,
+                        shiftDate: dayjs(r.shiftDate),
+                        timeRange: r.startTime && r.endTime ? [dayjs(r.startTime, 'HH:mm'), dayjs(r.endTime, 'HH:mm')] : []
+                      });
+                      setIsSlotEditModalOpen(true);
+                    }} />
+                  </Tooltip>
+                  <Popconfirm
+                    title="Xác nhận xóa ca này?"
+                    description="Hành động này không thể hoàn tác."
+                    onConfirm={async () => {
+                      const res = await dutyService.deleteSlot(r.id);
+                      if (res.success) { message.success('Đã xóa'); fetchSlots(); }
+                    }}
+                    okText="Xóa"
+                    cancelText="Hủy"
+                    okButtonProps={{ danger: true }}
+                    icon={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
+                  >
+                    <Button type="text" shape="circle" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </Space>
+              )
+            }
+          ]}
+        />
       )
     },
     {
@@ -345,29 +558,6 @@ const DutyManagement: React.FC = () => {
       )
     },
     {
-      key: '4',
-      label: <span><InboxOutlined /> Duyệt đơn nghỉ {leaveRequests.length > 0 && <span style={{ color: 'red' }}>({leaveRequests.length})</span>}</span>,
-      children: (
-        <Card title="Đang chờ phê duyệt" className="hifi-border">
-          <Table
-            loading={leaveLoading}
-            dataSource={leaveRequests}
-            rowKey="id"
-            columns={[
-              { title: 'Nhân sự', render: (_, r) => <b>{r.user?.name}</b> },
-              { title: 'Ca trực', render: (_, r) => <span>{r.slot?.shiftLabel} ({dayjs(r.slot?.shiftDate).format('DD/MM')})</span> },
-              { title: 'Lý do', dataIndex: 'reason' },
-              {
-                title: 'Thao tác', render: (_, r) => (
-                  <Space><Button type="primary" size="small" onClick={() => handleResolveLeave(r.id, 'approved')}>Duyệt</Button><Button danger size="small" onClick={() => handleResolveLeave(r.id, 'rejected')}>Từ chối</Button></Space>
-                )
-              }
-            ]}
-          />
-        </Card>
-      )
-    },
-    {
       key: '5',
       label: <span><SettingOutlined /> Cài đặt chung</span>,
       children: (
@@ -383,26 +573,16 @@ const DutyManagement: React.FC = () => {
   ];
 
   return (
-    <div className="duty-management-page" style={{ padding: '24px 40px' }}>
-      <div style={{ marginBottom: 32 }}>
-        <Title level={2}>Thiết lập & Điều phối Trực</Title>
-        <Text type="secondary">Quản lý bản mẫu ca kíp, lập lịch hàng loạt và phê duyệt đơn nghỉ</Text>
+    <div className="duty-management-page">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Thiết lập lịch trực</Title>
+        <Button
+          icon={<QuestionCircleOutlined />}
+          onClick={() => setIsGuideModalOpen(true)}
+        >
+          Hướng dẫn
+        </Button>
       </div>
-
-      <Alert
-        message="Hướng dẫn Quản lý"
-        description={
-          <ul>
-            <li>Sử dụng <b>Bản mẫu</b> để định nghĩa khung giờ cố định.</li>
-            <li>Dùng <b>Lập lịch Hàng loạt</b> để tự động phủ kín lịch cho tháng/tuần mới.</li>
-            <li>Các ca trực có thể được điều chỉnh thủ công tại tab <b>Quản lý Ca đã lập</b>.</li>
-          </ul>
-        }
-        type="info"
-        showIcon
-        closable
-        style={{ marginBottom: 24 }}
-      />
 
       <Tabs
         activeKey={activeTab}
@@ -434,14 +614,62 @@ const DutyManagement: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal title="Chỉnh sửa Ca trực trực tiếp" open={isSlotEditModalOpen} onCancel={() => setIsSlotEditModalOpen(false)} onOk={() => slotEditForm.submit()} width={500}>
+      <Modal
+        title="Chỉnh sửa Ca trực trực tiếp"
+        open={isSlotEditModalOpen}
+        onCancel={() => setIsSlotEditModalOpen(false)}
+        onOk={() => slotEditForm.submit()}
+        width={500}
+      >
         <Form form={slotEditForm} layout="vertical" onFinish={async (v) => {
-          const res = await dutyService.updateSlot(editingSlot.id, { ...v, shiftDate: v.shiftDate.format('YYYY-MM-DD'), startTime: v.timeRange?.[0]?.format('HH:mm'), endTime: v.timeRange?.[1]?.format('HH:mm') });
-          if (res.success) { message.success('Cập nhật thành công'); setIsSlotEditModalOpen(false); fetchSlots(); }
+          try {
+            const res = await dutyService.updateSlot(editingSlot?.id, {
+              ...v,
+              shiftDate: v.shiftDate?.format('YYYY-MM-DD'),
+              startTime: v.timeRange?.[0]?.format('HH:mm'),
+              endTime: v.timeRange?.[1]?.format('HH:mm')
+            });
+            if (res.success) {
+              message.success('Cập nhật thành công');
+              setIsSlotEditModalOpen(false);
+              fetchSlots();
+            }
+          } catch (err) {
+            message.error('Lỗi khi cập nhật');
+          }
         }}>
           <Form.Item label="Tên hiển thị" name="shiftLabel"><Input /></Form.Item>
-          <Form.Item label="Thời gian" name="timeRange"><TimePicker.RangePicker format="HH:mm" /></Form.Item>
+          <Form.Item label="Ngày trực" name="shiftDate"><DatePicker style={{ width: '100%' }} /></Form.Item>
+          <Form.Item label="Thời gian" name="timeRange"><TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} /></Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Hướng dẫn Quản lý Lịch trực"
+        open={isGuideModalOpen}
+        onCancel={() => setIsGuideModalOpen(false)}
+        footer={[<Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)}>Đã hiểu</Button>]}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <p>Hệ thống lập lịch trực hoạt động dựa trên quy trình 3 bước:</p>
+          <ul style={{ paddingLeft: 20 }}>
+            <li style={{ marginBottom: 8 }}>
+              <b>1. Thiết lập Bản mẫu:</b> Định nghĩa các Ca (Sáng/Chiều/Tối) và các Kíp trực (Kíp 1, Kíp 2...) với khung giờ và số người (chỉ tiêu) cố định.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              <b>2. Lập lịch Hàng loạt:</b> Dựa trên bản mẫu, hệ thống sẽ tự động tạo ra các "Slot" trực cho cả tuần hoặc tháng chỉ với vài click.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              <b>3. Điều phối & Phê duyệt:</b> Bạn có thể chỉnh sửa thủ công từng ca trực lẻ hoặc phê duyệt các đơn xin nghỉ của thành viên.
+            </li>
+          </ul>
+          <Alert
+            message="Lưu ý quan trọng"
+            description="Mọi thay đổi trên Bản mẫu sẽ không ảnh hưởng đến các ca trực đã lập. Để áp dụng thay đổi mới, bạn cần lập lịch lại cho tuần đó."
+            type="warning"
+            showIcon
+          />
+        </div>
       </Modal>
     </div>
   );

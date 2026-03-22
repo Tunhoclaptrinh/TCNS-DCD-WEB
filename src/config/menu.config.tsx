@@ -36,6 +36,25 @@ export const adminMenu: IMenuItem[] = [
         path: '/admin/duty',
         name: 'Lịch trực',
         icon: <CalendarOutlined />,
+        children: [
+            {
+                key: 'duty-calendar',
+                path: '/admin/duty/calendar',
+                name: 'Lịch trực tuần',
+            },
+            {
+                key: 'duty-setup',
+                path: '/admin/duty/setup',
+                name: 'Thiết lập',
+                accessFilter: ['admin'],
+            },
+            {
+                key: 'duty-leave',
+                path: '/admin/duty/leave',
+                name: 'Duyệt đơn nghỉ',
+                accessFilter: ['admin'],
+            },
+        ]
     },
 ];
 
