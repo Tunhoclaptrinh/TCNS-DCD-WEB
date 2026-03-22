@@ -256,7 +256,6 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
       kipId: prefilledKip?.id,
       shiftLabel: prefilledShift && prefilledKip ? `${prefilledShift.name} - ${prefilledKip.name}` : '',
       timeRange: [dayjs(time, 'HH:mm'), dayjs(time, 'HH:mm').add(2, 'hour')],
-      capacity: prefilledKip?.capacity || 1
     });
 
     if (prefilledKip) {
@@ -283,7 +282,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
       icon: null,
       content: (
         <div style={{ marginTop: 16 }}>
-          <p>Bạn muốn thực hiện thao tác nào cho toàn bộ ca trực này?</p>
+          <p>Bạn muốn thực hiện thao tác nào cho toàn bộ ca này?</p>
           <Alert
             message="Xóa ca sẽ xóa tất cả kíp hiện có thuộc ca này trong ngày hôm nay."
             type="warning"
@@ -344,7 +343,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
       };
       const res = await dutyService.createSlot(payload);
       if (res.success) {
-        message.success('Đã tạo ca trực');
+        message.success('Đã tạo kíp trực');
         setIsQuickCreateVisible(false);
         fetchSchedule();
       }
@@ -386,7 +385,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
 
   const handleDeleteSlot = async (slotId: number) => {
     Modal.confirm({
-      title: 'Xóa ca trực?',
+      title: 'Xóa kíp trực?',
       okText: 'Xóa',
       okType: 'danger',
       onOk: async () => {
@@ -408,7 +407,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
     try {
       const res = await dutyService.registerToSlot(slotId);
       if (res.success && res.data) {
-        message.success('Đã đăng ký ca trực');
+        message.success('Đã đăng ký kíp trực');
         if (isSlotDetailOpen) {
           setSelectedSlot(res.data);
         }
@@ -439,7 +438,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
       // Backend expects an array of IDs for attended users. 
       // For a member checking in themselves:
       await dutyService.markAttendance(slotId, [currentUserId]);
-      message.success('Điểm danh thành công! Chúc bạn ca trực vui vẻ.');
+      message.success('Điểm danh thành công! Chúc bạn kíp trực vui vẻ.');
       fetchSchedule();
       setIsSlotDetailOpen(false);
     } catch (err: any) {
@@ -542,10 +541,10 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     </div>
                                   ))}
                                 </div>
-                                {slot.assignedUserIds.length < slot.capacity && !isPast && (
+                                {slot.assignedUserIds.length < (slot.kip?.capacity || 0) && !isPast && (
                                   <div className="slot-capacity-tag">
                                     <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 2 }}>
-                                      {slot.assignedUserIds.length}/{slot.capacity} người
+                                      {slot.assignedUserIds.length}/{slot.kip?.capacity || 0} người
                                     </div>
                                     {slot.assignedUserIds.includes(currentUserId) ?
                                       <Button size="small" type="link" danger onClick={(e) => { e.stopPropagation(); handleUnregister(slot.id); }}>Hủy đ.ký</Button> :
@@ -553,9 +552,9 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     }
                                   </div>
                                 )}
-                                {slot.assignedUserIds.length >= slot.capacity && (
+                                {slot.assignedUserIds.length >= (slot.kip?.capacity || 0) && (
                                   <div className="slot-capacity-tag">
-                                    <Tag color="default">{slot.assignedUserIds.length}/{slot.capacity} đủ</Tag>
+                                    <Tag color="default">{slot.assignedUserIds.length}/{slot.kip?.capacity || 0} đủ</Tag>
                                   </div>
                                 )}
                               </div>
@@ -741,7 +740,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0 }}
-                                className={`calendar-slot-box ${slot.status === 'locked' || isPastSlot ? 'locked' : ''} ${!isAdmin && !slot.assignedUserIds?.includes(currentUserId) && (slot.assignedUserIds?.length || 0) < slot.capacity ? 'can-join' : ''}`}
+                                className={`calendar-slot-box ${slot.status === 'locked' || isPastSlot ? 'locked' : ''} ${!isAdmin && !slot.assignedUserIds?.includes(currentUserId) && (slot.assignedUserIds?.length || 0) < (slot.kip?.capacity || 0) ? 'can-join' : ''}`}
                                 style={{
                                   top: `${getTimeTop(slot.startTime)}px`,
                                   height: `${getTimeHeight(slot.startTime, slot.endTime)}px`
@@ -754,7 +753,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     {slot.note && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#fff' }} /></Tooltip>}
                                   </span>
                                   <span className="slot-count" style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 10 }}>
-                                    {slot.assignedUserIds?.length || 0}/{slot.capacity}
+                                    {slot.assignedUserIds?.length || 0}/{slot.kip?.capacity || 0}
                                   </span>
                                 </div>
                                 <div className="slot-time">{slot.startTime} - {slot.endTime}</div>
@@ -765,7 +764,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     </Tooltip>
                                   ))}
                                   {(!slot.assignedUsers || slot.assignedUsers.length === 0) && (
-                                    <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{slot.capacity} người</span>
+                                    <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{slot.kip?.capacity || 0} người</span>
                                   )}
                                 </div>
                                 {(!isAdmin && !isPastSlot && slot.assignedUserIds?.includes(currentUserId)) && (
@@ -773,7 +772,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     <ClearOutlined /> Hủy đ.ký
                                   </div>
                                 )}
-                                {(!isAdmin && !isPastSlot && !slot.assignedUserIds?.includes(currentUserId) && (slot.assignedUserIds?.length || 0) < slot.capacity) && (
+                                {(!isAdmin && !isPastSlot && !slot.assignedUserIds?.includes(currentUserId) && (slot.assignedUserIds?.length || 0) < (slot.kip?.capacity || 0)) && (
                                   <div className="quick-join-overlay" onClick={(e) => { e.stopPropagation(); handleRegister(slot.id); }}>
                                     <PlusOutlined /> Đăng ký
                                   </div>
@@ -818,7 +817,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         title={
           <Space>
             <PlusCircleOutlined style={{ color: '#52c41a' }} />
-            <span>Tạo ca trực nhanh ({quickCreateDate?.format('DD/MM/YYYY')})</span>
+            <span>Tạo kíp trực nhanh ({quickCreateDate?.format('DD/MM/YYYY')})</span>
           </Space>
         }
         open={isQuickCreateVisible}
@@ -886,7 +885,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
               </Card>
             ) : (
               <Alert
-                message="Tạo ca trực tự do (Không theo bản mẫu)"
+                message="Tạo kíp trực tự do (Không theo bản mẫu)"
                 type="warning"
                 showIcon
                 style={{ marginBottom: 16 }}
@@ -899,16 +898,22 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
           </Form.Item>
 
           <Row gutter={16}>
-            <Col span={16}>
-              <Form.Item name="timeRange" label="Thời gian thực tế" rules={[{ required: true }]}>
+            <Col span={12}>
+              <Form.Item name="timeRange" label="Thời gian" rules={[{ required: true }]}>
                 <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={8}>
-              <Form.Item name="capacity" label="Số người">
-                <InputNumber min={1} style={{ width: '100%' }} />
+            <Col span={12}>
+              <Form.Item label="Trạng thái" name="status" initialValue="open">
+                <Select options={[{ label: 'Mở (Đăng ký tự do)', value: 'open' }, { label: 'Khóa (Admin)', value: 'locked' }]} />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}><Form.Item label="Tiết bắt đầu" name="order"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+            <Col span={8}><Form.Item label="Tiết kết thúc" name="endPeriod"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+            <Col span={8}><Form.Item label="Sĩ số tối đa" name="capacity"><InputNumber min={1} placeholder="Theo kíp" style={{ width: '100%' }} /></Form.Item></Col>
           </Row>
           <Form.Item name="note" label="Ghi chú / Địa điểm">
             <Input.TextArea rows={2} />
@@ -966,7 +971,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         title={
           <Space>
             <InfoCircleOutlined style={{ color: '#1890ff' }} />
-            <span>Chi tiết ca trực</span>
+            <span>Chi tiết kíp trực</span>
           </Space>
         }
         open={isSlotDetailOpen}
@@ -997,7 +1002,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                     <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)}>Xin nghỉ</Button>
                   </Space>
                 ) : (
-                  (selectedSlot.assignedUserIds?.length || 0) < selectedSlot.capacity && (
+                  (selectedSlot.assignedUserIds?.length || 0) < (selectedSlot.kip?.capacity || 0) && (
                     <Button type="primary" icon={<PlusOutlined />} onClick={() => handleRegister(selectedSlot.id)}>Đăng ký ca này</Button>
                   )
                 )
@@ -1023,7 +1028,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
               style={{ marginBottom: 16 }}
             />
             {isAdmin ? (
-              <Form form={detailForm} layout="vertical" onFinish={handleUpdateDetail} disabled={dayjs(selectedSlot.shiftDate).isBefore(dayjs().startOf('day'))}>
+              <Form form={detailForm} layout="vertical" onFinish={handleUpdateDetail} disabled={dayjs(selectedSlot?.shiftDate).isBefore(dayjs().startOf('day'))}>
                 <Row gutter={16}>
                   <Col span={10}>
                     <Form.Item label="Ngày trực" name="shiftDate" rules={[{ required: true }]}>
@@ -1035,14 +1040,23 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                   </Col>
                 </Row>
                 <Row gutter={16}>
-                  <Col span={16}>
+                  <Col span={12}>
                     <Form.Item label="Khung giờ" name="timeRange" rules={[{ required: true }]}><TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} /></Form.Item>
                   </Col>
-                  <Col span={8}>
-                    <Form.Item label="Số người" name="capacity"><InputNumber min={1} style={{ width: '100% ' }} /></Form.Item>
+                  <Col span={12}>
+                    <Form.Item label="Trạng thái" name="status">
+                      <Select options={[{ label: 'Mở (Tự do)', value: 'open' }, { label: 'Khóa (Admin)', value: 'locked' }]} />
+                    </Form.Item>
                   </Col>
                 </Row>
-                <Form.Item label="Ghi chú" name="note"><Input.TextArea rows={2} /></Form.Item>
+
+                <Row gutter={16}>
+                  <Col span={8}><Form.Item label="Tiết đầu" name="order"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+                  <Col span={8}><Form.Item label="Tiết cuối" name="endPeriod"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+                  <Col span={8}><Form.Item label="Đè sĩ số" name="capacity"><InputNumber min={1} placeholder="Lấy từ kíp" style={{ width: '100%' }} /></Form.Item></Col>
+                </Row>
+                
+                <Form.Item label="Ghi chú / Địa điểm" name="note"><Input.TextArea rows={2} /></Form.Item>
 
                 <Form.Item label="Gán người trực (Admin)" name="assignedUserIds">
                   <Select
@@ -1050,12 +1064,32 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                     placeholder="Chọn thành viên"
                     style={{ width: '100%' }}
                     optionLabelProp="label"
+                    filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
                   >
                     {allUsers.map(u => (
                       <Option key={u.id} value={u.id} label={u.name}>
                         <Space>
-                          <Avatar size="small" src={u.avatar} />
-                          {u.name} ({u.role})
+                          <Avatar size="small" src={u.avatar}>{u.name?.charAt(0)}</Avatar>
+                          {u.name} ({u.studentId || u.email})
+                        </Space>
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+
+                <Form.Item label="Điểm danh (Admin)" name="attendedUserIds">
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn thành viên đã trực"
+                    style={{ width: '100%' }}
+                    optionLabelProp="label"
+                    filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
+                  >
+                    {allUsers.map(u => (
+                      <Option key={u.id} value={u.id} label={u.name}>
+                        <Space>
+                          <Avatar size="small" src={u.avatar}>{u.name?.charAt(0)}</Avatar>
+                          {u.name} ({u.studentId || u.email})
                         </Space>
                       </Option>
                     ))}
@@ -1064,26 +1098,26 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
               </Form>
             ) : (
               <div style={{ marginBottom: 24, padding: '16px', background: '#f8fafc', borderRadius: 8 }}>
-                <Title level={4} style={{ margin: 0 }}>{selectedSlot.shiftLabel}</Title>
+                <Title level={4} style={{ margin: 0 }}>{selectedSlot?.shiftLabel}</Title>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                  {selectedSlot.startTime} - {selectedSlot.endTime}
+                  {selectedSlot?.startTime} - {selectedSlot?.endTime}
                 </Text>
-                {selectedSlot.note && (
+                {selectedSlot?.note && (
                   <div style={{ marginTop: 8 }}>
                     <Text strong>Ghi chú: </Text>
-                    <Text>{selectedSlot.note}</Text>
+                    <Text>{selectedSlot?.note}</Text>
                   </div>
                 )}
               </div>
             )}
 
             <Divider style={{ margin: '12px 0' }} />
-            <Title level={5}>Thành viên hiện tại ({selectedSlot.assignedUsers?.length || 0}/{selectedSlot.capacity})</Title>
+            <Title level={5}>Thành viên hiện tại ({selectedSlot?.assignedUsers?.length || 0}/{(selectedSlot as any)?.capacity || (selectedSlot as any)?.kip?.capacity || 0})</Title>
             <Space wrap>
-              {selectedSlot.assignedUsers?.length ? selectedSlot.assignedUsers.map((u: any) => (
+              {selectedSlot?.assignedUsers?.length ? selectedSlot.assignedUsers.map((u: any) => (
                 <Tag key={u.id} color={u.id === currentUserId ? "orange" : "blue"} style={{ padding: '4px 8px', borderRadius: 16 }}>
                   <Space>
-                    <Avatar size="small" src={u.avatar}>{u.name.charAt(0)}</Avatar>
+                    <Avatar size="small" src={u.avatar}>{u.name?.charAt(0)}</Avatar>
                     {u.name} {u.id === currentUserId && "(Bạn)"}
                   </Space>
                 </Tag>
@@ -1101,7 +1135,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         onOk={() => leaveForm.submit()}
       >
         <Alert
-          message="Lưu ý: Bạn nên tìm người thay thế trước khi xin nghỉ để đảm bảo quân số cho ca trực."
+          message="Lưu ý: Bạn nên tìm người thay thế trước khi xin nghỉ để đảm bảo quân số cho kíp trực."
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}

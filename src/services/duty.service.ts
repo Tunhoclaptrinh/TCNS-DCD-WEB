@@ -30,19 +30,20 @@ export interface DutySlot {
   weekStart: string;
   shiftDate: string;
   kipId?: number;
+  shiftId?: number;
   shiftLabel: string;
-  startTime?: string;
-  endTime?: string;
-  capacity: number;
+  startTime: string;
+  endTime: string;
   assignedUserIds: number[];
   assignedUsers?: any[];
-  status: 'open' | 'locked';
+  kip?: DutyKip;
   note?: string;
+  status: 'open' | 'locked';
   order?: number;
   endPeriod?: number;
-  shiftId?: number;
+  capacity?: number;
   attendedUserIds?: number[];
-  dayId?: number; // Added dayId
+  dayId?: number;
 }
 
 export interface DutyDay {

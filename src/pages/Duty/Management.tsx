@@ -13,6 +13,7 @@ import {
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import dutyService, { DutyShift } from '@/services/duty.service';
+import userService from '@/services/user.service';
 import DataTable from '@/components/common/DataTable';
 import StatisticsCard from '@/components/common/StatisticsCard';
 
@@ -47,6 +48,7 @@ const DutyManagement: React.FC = () => {
   const [previewDates, setPreviewDates] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('1');
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(dayjs().startOf('day'));
+  const [allUsers, setAllUsers] = useState<any[]>([]);
 
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }).map((_, i) => slotFilterWeek.add(i, 'day')),
@@ -56,7 +58,15 @@ const DutyManagement: React.FC = () => {
   useEffect(() => {
     fetchTemplates();
     fetchSlots();
+    fetchUsers();
   }, [slotFilterWeek]);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await userService.getAll({ _limit: 1000 });
+      if (res.success && res.data) setAllUsers(res.data);
+    } catch (err) { console.error('Lỗi tải danh sách người dùng'); }
+  };
 
   const fetchTemplates = async () => {
     try {
@@ -84,7 +94,7 @@ const DutyManagement: React.FC = () => {
     total: currentDaySlots.length,
     locked: currentDaySlots.filter(s => s.status === 'locked').length,
     open: currentDaySlots.filter(s => s.status === 'open').length,
-    personnel: currentDaySlots.reduce((acc, s) => acc + (s.maxCapacity || 0), 0)
+    personnel: currentDaySlots.reduce((acc, s) => acc + (s.capacity || s.kip?.capacity || 0), 0)
   }), [currentDaySlots]);
 
   const handleSubmitShift = async (values: any) => {
@@ -99,7 +109,7 @@ const DutyManagement: React.FC = () => {
         ? await dutyService.updateShiftTemplate(editingShift.id, data)
         : await dutyService.createShiftTemplate(data);
       if (res.success) {
-        message.success('Đã lưu ca trực');
+        message.success('Đã lưu kíp trực');
         setIsShiftModalOpen(false);
         fetchTemplates();
       }
@@ -127,7 +137,7 @@ const DutyManagement: React.FC = () => {
 
   const handleDeleteShift = (id: number) => {
     Modal.confirm({
-      title: 'Xóa bản mẫu ca trực?',
+      title: 'Xóa bản mẫu Ca?',
       content: 'Tất cả kíp thuộc ca này cũng sẽ bị xóa.',
       okType: 'danger',
       onOk: async () => {
@@ -146,6 +156,27 @@ const DutyManagement: React.FC = () => {
         if (res.success) { message.success('Đã xóa'); fetchTemplates(); }
       }
     });
+  };
+
+  const toggleSlotStatus = async (slot: any) => {
+    const res = await dutyService.updateSlot(slot.id, {
+      ...slot,
+      status: slot.status === 'locked' ? 'open' : 'locked'
+    });
+    if (res.success) {
+      message.success('Đã cập nhật trạng thái');
+      fetchSlots();
+    }
+  };
+
+  const openSlotEdit = (slot: any) => {
+    setEditingSlot(slot);
+    slotEditForm.setFieldsValue({
+      ...slot,
+      shiftDate: dayjs(slot.shiftDate),
+      timeRange: slot.startTime && slot.endTime ? [dayjs(slot.startTime, 'HH:mm'), dayjs(slot.endTime, 'HH:mm')] : []
+    });
+    setIsSlotEditModalOpen(true);
   };
 
   const tabItems = [
@@ -430,20 +461,26 @@ const DutyManagement: React.FC = () => {
             {
               title: 'Thao tác',
               key: 'actions',
-              width: 120,
+              width: 150,
               align: 'center',
               render: (_, r: any) => (
                 <Space>
+                  <Tooltip title={r.status === 'locked' ? 'Mở khóa' : 'Khóa ca'}>
+                    <Button 
+                      type="text" 
+                      shape="circle" 
+                      icon={r.status === 'locked' ? <LockOutlined /> : <UnlockOutlined />} 
+                      onClick={() => toggleSlotStatus(r)}
+                    />
+                  </Tooltip>
                   <Tooltip title="Chỉnh sửa">
-                    <Button type="text" shape="circle" icon={<EditOutlined />} style={{ color: '#6366f1' }} onClick={() => {
-                      setEditingSlot(r);
-                      slotEditForm.setFieldsValue({
-                        ...r,
-                        shiftDate: dayjs(r.shiftDate),
-                        timeRange: r.startTime && r.endTime ? [dayjs(r.startTime, 'HH:mm'), dayjs(r.endTime, 'HH:mm')] : []
-                      });
-                      setIsSlotEditModalOpen(true);
-                    }} />
+                    <Button 
+                      type="text" 
+                      shape="circle" 
+                      icon={<EditOutlined />} 
+                      style={{ color: '#6366f1' }} 
+                      onClick={() => openSlotEdit(r)} 
+                    />
                   </Tooltip>
                   <Popconfirm
                     title="Xác nhận xóa ca này?"
@@ -493,7 +530,7 @@ const DutyManagement: React.FC = () => {
                   setLoading(true); try {
                     for (const d of previewDates.filter(x => x.isSelected)) {
                       for (const k of d.kips) {
-                        await dutyService.createSlot({ shiftDate: d.date.format('YYYY-MM-DD'), shiftLabel: `${k.shiftName} - ${k.name}`, startTime: k.startTime || k.sStart, endTime: k.endTime || k.sEnd, capacity: k.capacity, order: k.order, kipId: k.id, shiftId: k.shiftId });
+                        await dutyService.createSlot({ shiftDate: d.date.format('YYYY-MM-DD'), shiftLabel: `${k.shiftName} - ${k.name}`, startTime: k.startTime || k.sStart, endTime: k.endTime || k.sEnd, order: k.order, kipId: k.id, shiftId: k.shiftId });
                       }
                     }
                     message.success('Đã tạo lịch'); setIsReviewMode(false); fetchSlots();
@@ -517,7 +554,7 @@ const DutyManagement: React.FC = () => {
               const res = await dutyService.createSlot({
                 shiftDate: v.date.format('YYYY-MM-DD'),
                 shiftLabel: v.shiftLabel || `${s?.name} - ${k?.name}`,
-                startTime: k?.startTime || s?.startTime, endTime: k?.endTime || s?.endTime, capacity: k?.capacity || 1, order: k?.order, kipId: k?.id, shiftId: s?.id
+                startTime: k?.startTime || s?.startTime, endTime: k?.endTime || s?.endTime, order: k?.order, kipId: k?.id, shiftId: s?.id
               });
               if (res.success) { message.success('Đã thêm'); manualSlotForm.resetFields(); fetchSlots(); }
             }}>
@@ -526,7 +563,7 @@ const DutyManagement: React.FC = () => {
                 <Col span={8}><Form.Item name="shiftId" label="Ca Bản mẫu"><Select onChange={v => setSelectedShiftTemplate(v)} options={templates.map(s => ({ label: s.name, value: s.id }))} /></Form.Item></Col>
                 <Col span={8}><Form.Item name="kipId" label="Kíp"><Select options={templates.find(s => s.id === selectedShiftTemplate)?.kips.map(k => ({ label: k.name, value: k.id })) || []} /></Form.Item></Col>
               </Row>
-              <Button type="primary" htmlType="submit" block>Tạo ca trực này</Button>
+              <Button type="primary" htmlType="submit" block>Tạo kíp trực này</Button>
             </Form>
           </Card>
         </div>
@@ -538,7 +575,7 @@ const DutyManagement: React.FC = () => {
       children: (
         <div className="templates-tab">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-            <div><Title level={4} style={{ margin: 0 }}>Bản mẫu Ca trực</Title><Text type="secondary">Cấu hình khung giờ cố định</Text></div>
+            <div><Title level={4} style={{ margin: 0 }}>Bản mẫu Ca & Kíp</Title><Text type="secondary">Cấu hình khung giờ cố định</Text></div>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }}>Thêm Ca mới</Button>
           </div>
           {templates.map(s => (
@@ -615,11 +652,11 @@ const DutyManagement: React.FC = () => {
       </Modal>
 
       <Modal
-        title="Chỉnh sửa Ca trực trực tiếp"
+        title="Chỉnh sửa Kíp trực trực tiếp"
         open={isSlotEditModalOpen}
         onCancel={() => setIsSlotEditModalOpen(false)}
         onOk={() => slotEditForm.submit()}
-        width={500}
+        width={650}
       >
         <Form form={slotEditForm} layout="vertical" onFinish={async (v) => {
           try {
@@ -638,9 +675,47 @@ const DutyManagement: React.FC = () => {
             message.error('Lỗi khi cập nhật');
           }
         }}>
-          <Form.Item label="Tên hiển thị" name="shiftLabel"><Input /></Form.Item>
-          <Form.Item label="Ngày trực" name="shiftDate"><DatePicker style={{ width: '100%' }} /></Form.Item>
-          <Form.Item label="Thời gian" name="timeRange"><TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} /></Form.Item>
+          <Row gutter={16}>
+            <Col span={16}><Form.Item label="Tên hiển thị" name="shiftLabel"><Input /></Form.Item></Col>
+            <Col span={8}>
+              <Form.Item label="Trạng thái" name="status">
+                <Select options={[{ label: 'Mở (Đăng ký tự do)', value: 'open' }, { label: 'Khóa (Admin quản lý)', value: 'locked' }]} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}><Form.Item label="Ngày trực" name="shiftDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
+            <Col span={12}><Form.Item label="Thời gian" name="timeRange"><TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} /></Form.Item></Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}><Form.Item label="Tiết bắt đầu" name="order"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+            <Col span={8}><Form.Item label="Tiết kết thúc" name="endPeriod"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+            <Col span={8}><Form.Item label="Sĩ số tối đa" name="capacity"><InputNumber min={1} placeholder="Lấy từ kíp" style={{ width: '100%' }} /></Form.Item></Col>
+          </Row>
+
+          <Form.Item label="Nhân sự trực (Thủ công)" name="assignedUserIds">
+            <Select 
+              mode="multiple" 
+              placeholder="Thêm nhân sự trực tiếp"
+              style={{ width: '100%' }}
+              filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
+              options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
+            />
+          </Form.Item>
+
+          <Form.Item label="Xác nhận điểm danh (Thủ công)" name="attendedUserIds">
+            <Select 
+              mode="multiple" 
+              placeholder="Chọn thành viên đã trực"
+              style={{ width: '100%' }}
+              filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
+              options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
+            />
+          </Form.Item>
+
+          <Form.Item label="Ghi chú / Địa điểm" name="note"><Input.TextArea rows={3} /></Form.Item>
         </Form>
       </Modal>
 
@@ -660,12 +735,12 @@ const DutyManagement: React.FC = () => {
               <b>2. Lập lịch Hàng loạt:</b> Dựa trên bản mẫu, hệ thống sẽ tự động tạo ra các "Slot" trực cho cả tuần hoặc tháng chỉ với vài click.
             </li>
             <li style={{ marginBottom: 8 }}>
-              <b>3. Điều phối & Phê duyệt:</b> Bạn có thể chỉnh sửa thủ công từng ca trực lẻ hoặc phê duyệt các đơn xin nghỉ của thành viên.
+              <b>3. Điều phối & Phê duyệt:</b> Bạn có thể chỉnh sửa thủ công từng kíp trực lẻ hoặc phê duyệt các đơn xin nghỉ của thành viên.
             </li>
           </ul>
           <Alert
             message="Lưu ý quan trọng"
-            description="Mọi thay đổi trên Bản mẫu sẽ không ảnh hưởng đến các ca trực đã lập. Để áp dụng thay đổi mới, bạn cần lập lịch lại cho tuần đó."
+            description="Mọi thay đổi trên Bản mẫu sẽ không ảnh hưởng đến các kíp trực đã lập. Để áp dụng thay đổi mới, bạn cần lập lịch lại cho tuần đó."
             type="warning"
             showIcon
           />

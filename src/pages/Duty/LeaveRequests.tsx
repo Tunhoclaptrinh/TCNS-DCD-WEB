@@ -56,7 +56,7 @@ const LeaveRequestsPage: React.FC = () => {
       )
     },
     {
-      title: 'Ca trực',
+      title: 'Kíp trực',
       key: 'slot',
       render: (_: any, r: any) => (
         <Space direction="vertical" size={0}>
@@ -149,10 +149,10 @@ const LeaveRequestsPage: React.FC = () => {
               <b>Giao diện:</b> Danh sách mặc định chỉ hiển thị các đơn đang ở trạng thái <b>Chờ duyệt</b>.
             </li>
             <li style={{ marginBottom: 8 }}>
-              <b>Phê duyệt:</b> Bấm dấu tích xanh để chấp thuận. Hệ thống sẽ tự động gỡ người này khỏi ca trực tương ứng.
+              <b>Phê duyệt:</b> Bấm dấu tích xanh để chấp thuận. Hệ thống sẽ tự động gỡ người này khỏi kíp trực tương ứng.
             </li>
             <li style={{ marginBottom: 8 }}>
-              <b>Từ chối:</b> Bấm dấu X đỏ để từ chối yêu cầu. Thành viên vẫn sẽ phải tham gia ca trực như cũ.
+              <b>Từ chối:</b> Bấm dấu X đỏ để từ chối yêu cầu. Thành viên vẫn sẽ phải tham gia kíp trực như cũ.
             </li>
           </ul>
         </div>
