@@ -12,6 +12,10 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 import dutyService, { DutyShift } from '@/services/duty.service';
 import userService from '@/services/user.service';
 import DataTable from '@/components/common/DataTable';
@@ -21,6 +25,8 @@ const { Text, Title } = Typography;
 
 const DutyManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [templateGroups, setTemplateGroups] = useState<any[]>([]);
+  const [currentTemplateId, setCurrentTemplateId] = useState<number | null>(null);
   const [templates, setTemplates] = useState<DutyShift[]>([]);
   const [slots, setSlots] = useState<any[]>([]);
   const [slotLoading, setSlotLoading] = useState(false);
@@ -30,12 +36,14 @@ const DutyManagement: React.FC = () => {
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isKipModalOpen, setIsKipModalOpen] = useState(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isSlotEditModalOpen, setIsSlotEditModalOpen] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
 
   // Forms
   const [shiftForm] = Form.useForm();
   const [kipForm] = Form.useForm();
+  const [groupForm] = Form.useForm();
   const [slotEditForm] = Form.useForm();
   const [coordinationForm] = Form.useForm();
   const [manualSlotForm] = Form.useForm();
@@ -43,6 +51,7 @@ const DutyManagement: React.FC = () => {
   // Selected Items for Editing
   const [editingShift, setEditingShift] = useState<DutyShift | null>(null);
   const [editingKip, setEditingKip] = useState<any>(null);
+  const [editingGroup, setEditingGroup] = useState<any>(null);
   const [editingSlot, setEditingSlot] = useState<any>(null);
   const [selectedShiftTemplate, setSelectedShiftTemplate] = useState<number | null>(null);
   const [previewDates, setPreviewDates] = useState<any[]>([]);
@@ -56,21 +65,39 @@ const DutyManagement: React.FC = () => {
   );
 
   useEffect(() => {
-    fetchTemplates();
+    fetchGroups();
     fetchSlots();
     fetchUsers();
   }, [slotFilterWeek]);
 
+  useEffect(() => {
+    fetchTemplates();
+  }, [currentTemplateId]);
+
   const fetchUsers = async () => {
     try {
-      const res = await userService.getAll({ _limit: 1000 });
+      const res = await userService.getAll({ _limit: 100 });
       if (res.success && res.data) setAllUsers(res.data);
     } catch (err) { console.error('Lỗi tải danh sách người dùng'); }
   };
 
-  const fetchTemplates = async () => {
+  const fetchGroups = async () => {
     try {
-      const res = await dutyService.getTemplates();
+      const res = await dutyService.getTemplateGroups();
+      if (res.success && res.data) {
+        setTemplateGroups(res.data);
+        if (!currentTemplateId && res.data.length > 0) {
+          const def = res.data.find((g: any) => g.isDefault) || res.data[0];
+          setCurrentTemplateId(def.id);
+        }
+      }
+    } catch (err) { message.error('Lỗi tải nhóm bản mẫu'); }
+  };
+
+  const fetchTemplates = async () => {
+    if (!currentTemplateId) return;
+    try {
+      const res = await dutyService.getShiftTemplates(currentTemplateId);
       if (res.success && res.data) setTemplates(res.data);
     } catch (err) { message.error('Lỗi tải bản mẫu'); }
   };
@@ -101,6 +128,7 @@ const DutyManagement: React.FC = () => {
     const { timeRange, ...rest } = values;
     const data = {
       ...rest,
+      templateId: currentTemplateId,
       startTime: timeRange[0].format('HH:mm'),
       endTime: timeRange[1].format('HH:mm')
     };
@@ -114,6 +142,35 @@ const DutyManagement: React.FC = () => {
         fetchTemplates();
       }
     } catch (err) { message.error('Lỗi khi lưu'); }
+  };
+
+  const handleSubmitGroup = async (values: any) => {
+    try {
+      const res = editingGroup
+        ? await dutyService.updateTemplateGroup(editingGroup.id, values)
+        : await dutyService.createTemplateGroup(values);
+      if (res.success) {
+        message.success('Đã lưu nhóm bản mẫu');
+        setIsGroupModalOpen(false);
+        fetchGroups();
+      }
+    } catch (err) { message.error('Lỗi khi lưu nhóm bản mẫu'); }
+  };
+
+  const handleDeleteGroup = (id: number) => {
+    Modal.confirm({
+      title: 'Xóa nhóm bản mẫu?',
+      content: 'Tất cả các ca và kíp thuộc nhóm này sẽ bị xóa vĩnh viễn.',
+      okType: 'danger',
+      onOk: async () => {
+        const res = await dutyService.deleteTemplateGroup(id);
+        if (res.success) {
+          message.success('Đã xóa nhóm bản mẫu');
+          if (currentTemplateId === id) setCurrentTemplateId(null);
+          fetchGroups();
+        }
+      }
+    });
   };
 
   const handleCreateKip = async (values: any) => {
@@ -435,7 +492,7 @@ const DutyManagement: React.FC = () => {
               key: 'time',
               width: 180,
               render: (_, r: any) => (
-                <Tag color="processing" style={{ borderRadius: 6, padding: '4px 12px', fontSize: '14px', fontWeight: 600 }}>
+                <Tag color={r.kipId ? "processing" : "error"} style={{ borderRadius: 6, padding: '4px 12px', fontSize: '14px', fontWeight: 600 }}>
                   {r.startTime} - {r.endTime}
                 </Tag>
               )
@@ -444,7 +501,12 @@ const DutyManagement: React.FC = () => {
               title: 'Ca & Kíp',
               dataIndex: 'shiftLabel',
               key: 'label',
-              render: (val) => <Text strong style={{ color: '#1e293b' }}>{val}</Text>
+              render: (val, r: any) => (
+                <Space direction="vertical" size={0}>
+                  <Text strong style={{ color: r.kipId ? '#1e293b' : '#ef4444' }}>{val}</Text>
+                  {!r.kipId && <Text type="danger" style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 700 }}>Chế độ Ca (Shift)</Text>}
+                </Space>
+              )
             },
             {
               title: 'Trạng thái',
@@ -466,20 +528,20 @@ const DutyManagement: React.FC = () => {
               render: (_, r: any) => (
                 <Space>
                   <Tooltip title={r.status === 'locked' ? 'Mở khóa' : 'Khóa ca'}>
-                    <Button 
-                      type="text" 
-                      shape="circle" 
-                      icon={r.status === 'locked' ? <LockOutlined /> : <UnlockOutlined />} 
+                    <Button
+                      type="text"
+                      shape="circle"
+                      icon={r.status === 'locked' ? <LockOutlined /> : <UnlockOutlined />}
                       onClick={() => toggleSlotStatus(r)}
                     />
                   </Tooltip>
                   <Tooltip title="Chỉnh sửa">
-                    <Button 
-                      type="text" 
-                      shape="circle" 
-                      icon={<EditOutlined />} 
-                      style={{ color: '#6366f1' }} 
-                      onClick={() => openSlotEdit(r)} 
+                    <Button
+                      type="text"
+                      shape="circle"
+                      icon={<EditOutlined />}
+                      style={{ color: '#6366f1' }}
+                      onClick={() => openSlotEdit(r)}
                     />
                   </Tooltip>
                   <Popconfirm
@@ -510,37 +572,126 @@ const DutyManagement: React.FC = () => {
         <div className="coordination-tab">
           <Card title={<Space><ScheduleOutlined /><span>Lập lịch Hàng loạt</span></Space>} className="hifi-border">
             {!isReviewMode ? (
-              <Form form={coordinationForm} layout="vertical" onFinish={(v) => {
+              <Form form={coordinationForm} layout="vertical" onFinish={async (v) => {
                 const [start, end] = v.range;
-                const days = [];
-                let curr = dayjs(start);
-                while (curr.isBefore(end) || curr.isSame(end, 'day')) {
-                  const dayKips = templates.flatMap(s => s.kips.map(k => ({ ...k, shiftName: s.name, sStart: s.startTime, sEnd: s.endTime, shiftId: s.id }))).filter(k => (k.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes((curr.day() + 6) % 7));
-                  days.push({ date: curr.clone(), kips: dayKips, isSelected: dayKips.length > 0 });
-                  curr = curr.add(1, 'day');
+                const genTemplateId = v.templateId; // Can be undefined
+                const genMode = v.mode || 'kips';
+
+                const proceedPreview = async (targetTemplates: any[]) => {
+                  // Fetch assignments to show accurate preview
+                  let assignments: any[] = [];
+                  try {
+                    const res = await dutyService.getTemplateAssignments();
+                    if (res.success && res.data) assignments = res.data;
+                  } catch (e) { console.error(e); }
+
+                  const days = [];
+                  let curr = dayjs(start);
+                  while (curr.isBefore(end) || curr.isSame(end, 'day')) {
+                    const dateStr = curr.format('YYYY-MM-DD');
+                    const dayOfWeek = (curr.day() + 6) % 7;
+                    const daySlots: any[] = [];
+                    
+                    // Determine which template to use for this day
+                    let effectiveTemplates = targetTemplates;
+                    
+                    if (!genTemplateId) {
+                      const assignment = assignments.find(a => 
+                        dayjs(dateStr).isSameOrAfter(dayjs(a.startDate), 'day') && 
+                        dayjs(dateStr).isSameOrBefore(dayjs(a.endDate), 'day')
+                      );
+                      
+                      if (assignment) {
+                        const assignedShifts = await dutyService.getShiftTemplates(assignment.templateId);
+                        if (assignedShifts.success && assignedShifts.data) effectiveTemplates = assignedShifts.data;
+                      }
+                    }
+
+                    effectiveTemplates.forEach(s => {
+                      const shiftDays = s.daysOfWeek || [0, 1, 2, 3, 4, 5, 6];
+                      if (!shiftDays.includes(dayOfWeek)) return;
+                      if (genMode === 'shifts' || genMode === 'all') {
+                        daySlots.push({ name: s.name, startTime: s.startTime, endTime: s.endTime, isShift: true });
+                      }
+                      if (genMode === 'kips' || genMode === 'all') {
+                        s.kips.forEach((k: any) => {
+                          const kipDays = k.daysOfWeek || [0, 1, 2, 3, 4, 5, 6];
+                          if (kipDays.includes(dayOfWeek)) {
+                            daySlots.push({ ...k, shiftName: s.name, sStart: s.startTime, sEnd: s.endTime, isShift: false });
+                          }
+                        });
+                      }
+                    });
+                    days.push({ date: curr.clone(), kips: daySlots, isSelected: daySlots.length > 0 });
+                    curr = curr.add(1, 'day');
+                  }
+                  setPreviewDates(days); setIsReviewMode(true);
+                };
+
+                if (genTemplateId !== currentTemplateId) {
+                  setLoading(true);
+                  dutyService.getShiftTemplates(genTemplateId).then((res: any) => {
+                    if (res.success && res.data) proceedPreview(res.data);
+                    else message.error('Không thể lấy thông tin bản mẫu');
+                  }).finally(() => setLoading(false));
+                } else {
+                  proceedPreview(templates);
                 }
-                setPreviewDates(days); setIsReviewMode(true);
               }}>
-                <Form.Item name="range" label="Khoảng ngày áp dụng" rules={[{ required: true }]}><DatePicker.RangePicker style={{ width: '100% ' }} size="large" /></Form.Item>
+                <Row gutter={16}>
+                  <Col span={10}>
+                    <Form.Item name="range" label="Khoảng ngày áp dụng" rules={[{ required: true }]}><DatePicker.RangePicker style={{ width: '100% ' }} size="large" /></Form.Item>
+                  </Col>
+                  <Col span={7}>
+                    <Form.Item name="templateId" label="Sử dụng Bản mẫu" tooltip="Để trống để tự động áp dụng theo Giai đoạn (nếu đã gắn Bản mẫu)">
+                      <Select 
+                        size="large" 
+                        allowClear 
+                        placeholder="Theo Giai đoạn (Automatic)"
+                        options={templateGroups.map(g => ({ label: g.name, value: g.id }))} 
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={7}>
+                    <Form.Item name="mode" label="Chế độ khởi tạo" initialValue="kips">
+                      <Select size="large" options={[
+                        { label: 'Chi tiết Kíp (Kips)', value: 'kips' },
+                        { label: 'Chỉ Ca (Shifts)', value: 'shifts' },
+                        { label: 'Toàn bộ (Both)', value: 'all' }
+                      ]} />
+                    </Form.Item>
+                  </Col>
+                </Row>
                 <Space><Button type="primary" htmlType="submit" size="large">Xem trước</Button><Button danger ghost size="large" onClick={() => { const r = coordinationForm.getFieldValue('range'); if (r) dutyService.deleteRangeSlots(r[0].format('YYYY-MM-DD'), r[1].format('YYYY-MM-DD')).then(() => message.success('Đã xóa')); }}>Xóa vùng chọn</Button></Space>
               </Form>
             ) : (
               <div>
                 <Space style={{ marginBottom: 16 }}><Button onClick={() => setIsReviewMode(false)}>Quay lại</Button><Button type="primary" loading={loading} onClick={async () => {
                   setLoading(true); try {
-                    for (const d of previewDates.filter(x => x.isSelected)) {
-                      for (const k of d.kips) {
-                        await dutyService.createSlot({ shiftDate: d.date.format('YYYY-MM-DD'), shiftLabel: `${k.shiftName} - ${k.name}`, startTime: k.startTime || k.sStart, endTime: k.endTime || k.sEnd, order: k.order, kipId: k.id, shiftId: k.shiftId });
-                      }
+                    const range = coordinationForm.getFieldValue('range');
+                    const genTemplateId = coordinationForm.getFieldValue('templateId') || currentTemplateId;
+                    const genMode = coordinationForm.getFieldValue('mode') || 'kips';
+                    const res = await dutyService.generateRangeSlots(
+                      range[0].format('YYYY-MM-DD'),
+                      range[1].format('YYYY-MM-DD'),
+                      genTemplateId,
+                      genMode
+                    );
+                    if (res.success) {
+                      message.success('Đã lập lịch thành công');
+                      setIsReviewMode(false);
+                      fetchSlots();
                     }
-                    message.success('Đã tạo lịch'); setIsReviewMode(false); fetchSlots();
-                  } catch (e) { message.error('Lỗi'); } finally { setLoading(false); }
+                  } catch (e) { message.error('Lỗi khi lập lịch'); } finally { setLoading(false); }
                 }}>Xác nhận tạo {previewDates.filter(x => x.isSelected).length} ngày</Button></Space>
                 <div style={{ maxHeight: 400, overflowY: 'auto', border: '1px solid #eee', borderRadius: 8 }}>
                   {previewDates.map((d, i) => (
                     <div key={i} style={{ padding: '8px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between' }}>
                       <Checkbox checked={d.isSelected} onChange={e => { const n = [...previewDates]; n[i].isSelected = e.target.checked; setPreviewDates(n); }}>{d.date.format('DD/MM')} ({d.date.locale('vi').format('dd')})</Checkbox>
-                      <Text type="secondary">{d.kips.length} ca</Text>
+                      <Space>
+                        {d.kips.filter((x: any) => x.isShift).length > 0 && <Text type="danger" strong>{d.kips.filter((x: any) => x.isShift).length} ca</Text>}
+                        {d.kips.filter((x: any) => !x.isShift).length > 0 && <Text type="secondary">{d.kips.filter((x: any) => !x.isShift).length} kíp</Text>}
+                      </Space>
                     </div>
                   ))}
                 </div>
@@ -574,12 +725,56 @@ const DutyManagement: React.FC = () => {
       label: <span><LayoutOutlined /> Cấu hình Bản mẫu</span>,
       children: (
         <div className="templates-tab">
+          <Card className="hifi-border mb-4" style={{ marginBottom: 24, background: '#f8fafc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Title level={5} style={{ margin: 0 }}>Nhóm bản mẫu:</Title>
+                <Select
+                  style={{ width: 220 }}
+                  value={currentTemplateId}
+                  onChange={setCurrentTemplateId}
+                  options={templateGroups.map(g => ({ label: g.isDefault ? `${g.name} (Mặc định)` : g.name, value: g.id }))}
+                />
+                <Button icon={<EditOutlined />} onClick={() => {
+                  const g = templateGroups.find(x => x.id === currentTemplateId);
+                  if (g) {
+                    setEditingGroup(g);
+                    groupForm.setFieldsValue(g);
+                    setIsGroupModalOpen(true);
+                  }
+                }} />
+                <Button icon={<PlusOutlined />} type="dashed" onClick={() => {
+                  setEditingGroup(null);
+                  groupForm.resetFields();
+                  setIsGroupModalOpen(true);
+                }}>Thêm mới</Button>
+
+                <Divider type="vertical" />
+
+                <Button
+                  type="primary"
+                  icon={<ScheduleOutlined />}
+                  className="hifi-button"
+                  onClick={() => {
+                    coordinationForm.setFieldsValue({ templateId: currentTemplateId });
+                    setActiveTab('2');
+                  }}
+                >
+                  Áp dụng hàng loạt
+                </Button>
+              </div>
+              {currentTemplateId && (
+                <Button danger type="text" icon={<DeleteOutlined />} onClick={() => handleDeleteGroup(currentTemplateId!)}>Xóa nhóm hiện tại</Button>
+              )}
+            </div>
+          </Card>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-            <div><Title level={4} style={{ margin: 0 }}>Bản mẫu Ca & Kíp</Title><Text type="secondary">Cấu hình khung giờ cố định</Text></div>
+            <div><Title level={4} style={{ margin: 0 }}>Bản mẫu Ca & Kíp</Title><Text type="secondary">Cấu hình khung giờ cố định cho nhóm đã chọn</Text></div>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }}>Thêm Ca mới</Button>
           </div>
           {templates.map(s => (
-            <Card key={s.id} className="hifi-border" style={{ marginBottom: 20 }} title={<Space><Text strong>{s.name}</Text><Tag color="blue">{s.startTime} - {s.endTime}</Tag></Space>} extra={<Space><Button size="small" icon={<EditOutlined />} onClick={() => { setEditingShift(s); shiftForm.setFieldsValue({ ...s, timeRange: [dayjs(s.startTime, 'HH:mm'), dayjs(s.endTime, 'HH:mm')] }); setIsShiftModalOpen(true); }} /><Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteShift(s.id)} /></Space>}>
+            <Card key={s.id} className="hifi-border hifi-shift-card" style={{ marginBottom: 20 }} title={<Space><Text strong>{s.name}</Text><Tag color="red">{s.startTime} - {s.endTime}</Tag></Space>} extra={<Space><Button size="small" icon={<EditOutlined />} onClick={() => { setEditingShift(s); shiftForm.setFieldsValue({ ...s, timeRange: [dayjs(s.startTime, 'HH:mm'), dayjs(s.endTime, 'HH:mm')] }); setIsShiftModalOpen(true); }} /><Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteShift(s.id)} /></Space>}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}><Text strong>Danh sách Kíp</Text><Button type="link" size="small" icon={<PlusOutlined />} onClick={() => { setEditingKip({ shiftId: s.id }); kipForm.resetFields(); kipForm.setFieldsValue({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm Kíp</Button></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {s.kips.map(k => (
@@ -629,12 +824,33 @@ const DutyManagement: React.FC = () => {
         className="hifi-tabs"
       />
 
-      {/* Modals for Shift, Kip, Slot Edit */}
+      {/* Modals for Group, Shift, Kip, Slot Edit */}
+      <Modal
+        title={editingGroup ? "Sửa Nhóm Bản mẫu" : "Thêm Nhóm Bản mẫu mới"}
+        open={isGroupModalOpen}
+        onCancel={() => setIsGroupModalOpen(false)}
+        onOk={() => groupForm.submit()}
+        destroyOnClose
+      >
+        <Form form={groupForm} layout="vertical" onFinish={handleSubmitGroup}>
+          <Form.Item name="name" label="Tên nhóm" rules={[{ required: true }]}><Input placeholder="VD: Mùa Đông, Mùa Hè" /></Form.Item>
+          <Form.Item name="isDefault" valuePropName="checked"><Checkbox>Đặt làm bản mẫu mặc định</Checkbox></Form.Item>
+          <Form.Item name="description" label="Mô tả"><Input.TextArea rows={2} /></Form.Item>
+        </Form>
+      </Modal>
+
       <Modal title={editingShift ? "Sửa Bản mẫu Ca" : "Thêm Ca mới"} open={isShiftModalOpen} onCancel={() => setIsShiftModalOpen(false)} onOk={() => shiftForm.submit()} destroyOnClose>
         <Form form={shiftForm} layout="vertical" onFinish={handleSubmitShift}>
           <Form.Item name="name" label="Tên Ca" rules={[{ required: true }]}><Input placeholder="VD: Ca Sáng" /></Form.Item>
           <Form.Item name="timeRange" label="Khung giờ" rules={[{ required: true }]}><TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} /></Form.Item>
-          <Form.Item name="order" label="Thứ tự"><InputNumber min={0} /></Form.Item>
+          <Row gutter={16}>
+            <Col span={12}><Form.Item name="order" label="Thứ tự"><InputNumber min={0} style={{ width: '100% ' }} /></Form.Item></Col>
+            <Col span={12}>
+              <Form.Item name="daysOfWeek" label="Ngày áp dụng" initialValue={[0, 1, 2, 3, 4, 5, 6]}>
+                <Select mode="multiple" options={[{ label: 'Thứ 2', value: 0 }, { label: 'Thứ 3', value: 1 }, { label: 'Thứ 4', value: 2 }, { label: 'Thứ 5', value: 3 }, { label: 'Thứ 6', value: 4 }, { label: 'Thứ 7', value: 5 }, { label: 'Chủ Nhật', value: 6 }]} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -696,8 +912,8 @@ const DutyManagement: React.FC = () => {
           </Row>
 
           <Form.Item label="Nhân sự trực (Thủ công)" name="assignedUserIds">
-            <Select 
-              mode="multiple" 
+            <Select
+              mode="multiple"
               placeholder="Thêm nhân sự trực tiếp"
               style={{ width: '100%' }}
               filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -706,8 +922,8 @@ const DutyManagement: React.FC = () => {
           </Form.Item>
 
           <Form.Item label="Xác nhận điểm danh (Thủ công)" name="attendedUserIds">
-            <Select 
-              mode="multiple" 
+            <Select
+              mode="multiple"
               placeholder="Chọn thành viên đã trực"
               style={{ width: '100%' }}
               filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}

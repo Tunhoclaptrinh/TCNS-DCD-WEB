@@ -1,6 +1,13 @@
 import apiClient from "@/config/axios.config";
 import type { BaseApiResponse } from "@/types";
 
+export interface DutyTemplate {
+  id: number;
+  name: string;
+  isDefault: boolean;
+  description?: string;
+}
+
 export interface DutyKip {
   id: number;
   shiftId: number;
@@ -17,11 +24,13 @@ export interface DutyKip {
 
 export interface DutyShift {
   id: number;
+  templateId?: number;
   name: string;
   startTime: string;
   endTime: string;
   order: number;
   description?: string;
+  daysOfWeek?: number[];
   kips: DutyKip[];
 }
 
@@ -58,8 +67,8 @@ class DutyService {
   /**
    * Get weekly schedule
    */
-  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[] }>> {
-    const response = await apiClient.get<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[] }>>("/duty/week", {
+  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[] }>> {
+    const response = await apiClient.get<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[] }>>("/duty/week", {
       params: { weekStart }
     });
     return response;
@@ -119,10 +128,35 @@ class DutyService {
   }
 
   /**
-   * Get all shift and kip templates
+   * Get all background template groups (Winter/Summer etc)
    */
-  async getTemplates(): Promise<BaseApiResponse<DutyShift[]>> {
-    const response = await apiClient.get<BaseApiResponse<DutyShift[]>>("/duty/templates");
+  async getTemplateGroups(): Promise<BaseApiResponse<DutyTemplate[]>> {
+    const response = await apiClient.get<BaseApiResponse<DutyTemplate[]>>("/duty/templates/groups");
+    return response;
+  }
+
+  async createTemplateGroup(data: Partial<DutyTemplate>): Promise<BaseApiResponse<DutyTemplate>> {
+    const response = await apiClient.post<BaseApiResponse<DutyTemplate>>("/duty/templates/groups", data);
+    return response;
+  }
+
+  async updateTemplateGroup(id: number, data: Partial<DutyTemplate>): Promise<BaseApiResponse<DutyTemplate>> {
+    const response = await apiClient.put<BaseApiResponse<DutyTemplate>>(`/duty/templates/groups/${id}`, data);
+    return response;
+  }
+
+  async deleteTemplateGroup(id: number): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/templates/groups/${id}`);
+    return response;
+  }
+
+  /**
+   * Get all shift and kip templates for a group
+   */
+  async getShiftTemplates(templateId?: number | null): Promise<BaseApiResponse<DutyShift[]>> {
+    const response = await apiClient.get<BaseApiResponse<DutyShift[]>>("/duty/templates", {
+      params: { templateId }
+    });
     return response;
   }
 
@@ -177,8 +211,8 @@ class DutyService {
   /**
    * Generate slots for a specific range from templates
    */
-  async generateRangeSlots(startDate: string, endDate: string): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.post<BaseApiResponse<any>>("/duty/generate-range", { startDate, endDate });
+  async generateRangeSlots(startDate: string, endDate: string, templateId?: number, mode: string = 'kips'): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.post<BaseApiResponse<any>>('/duty/generate-range', { startDate, endDate, templateId, mode });
     return response;
   }
 
@@ -225,6 +259,48 @@ class DutyService {
     const response = await apiClient.delete<BaseApiResponse<any>>("/duty/slots-shift", {
       data: { date, shiftId }
     });
+    return response;
+  }
+
+  /**
+   * Remove a specific shift boundary from a day
+   */
+  async removeShiftFromDay(date: string, shiftId: number): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.delete<BaseApiResponse<any>>("/duty/template-shifts-day", {
+      data: { date, shiftId }
+    });
+    return response;
+  }
+
+  /**
+   * Get all template assignments
+   */
+  async getTemplateAssignments(): Promise<BaseApiResponse<any[]>> {
+    const response = await apiClient.get<BaseApiResponse<any[]>>("/duty/template-assignments");
+    return response;
+  }
+
+  /**
+   * Create template assignment
+   */
+  async createTemplateAssignment(data: any): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.post<BaseApiResponse<any>>("/duty/template-assignments", data);
+    return response;
+  }
+
+  /**
+   * Update template assignment
+   */
+  async updateTemplateAssignment(id: number, data: any): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.put<BaseApiResponse<any>>(`/duty/template-assignments/${id}`, data);
+    return response;
+  }
+
+  /**
+   * Delete template assignment
+   */
+  async deleteTemplateAssignment(id: number): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/template-assignments/${id}`);
     return response;
   }
 }

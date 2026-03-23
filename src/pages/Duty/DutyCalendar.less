@@ -312,6 +312,43 @@
     }
   }
 
+  &.is-shift {
+    left: 0;
+    right: 0;
+    background: rgba(239, 68, 68, 0.05);
+    border: none;
+    border-top: 2px solid #ef4444;
+    border-bottom: 2px solid #ef4444;
+    border-radius: 0;
+    box-shadow: none;
+    z-index: 10;
+
+    .slot-title {
+      color: #ef4444;
+      font-weight: 800;
+    }
+
+    .slot-time {
+      color: #f87171;
+    }
+
+    .user-avatar-mini {
+      border-color: #fecaca;
+      color: #ef4444;
+    }
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.1);
+      transform: none; // Don't scale full-width shift boxes
+    }
+
+    &.locked {
+      border-top-color: #94a3b8;
+      border-bottom-color: #94a3b8;
+      background: #f8fafc;
+    }
+  }
+
   &.draft {
     background: rgba(248, 250, 252, 0.5);
     border: 1px dashed #cbd5e1;
