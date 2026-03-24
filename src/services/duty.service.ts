@@ -102,29 +102,29 @@ class DutyService {
    * Delete duty slot
    */
   async deleteSlot(id: number) {
-    const res = await apiClient.delete(`/duty/slots/${id}`);
-    return res.data;
+    const response = await apiClient.delete(`/duty/slots/${id}`);
+    return response;
   }
 
   // Attendance & Leave
   async markAttendance(slotId: number, attendedUserIds: number[]) {
-    const res = await apiClient.post(`/duty/slots/${slotId}/attendance`, { ids: attendedUserIds });
-    return res.data;
+    const response = await apiClient.post(`/duty/slots/${slotId}/attendance`, { ids: attendedUserIds });
+    return response;
   }
 
   async requestLeave(slotId: number, reason: string) {
-    const res = await apiClient.post(`/duty/leave-request`, { slotId, reason });
-    return res.data;
+    const response = await apiClient.post(`/duty/leave-request`, { slotId, reason });
+    return response;
   }
 
   async getLeaveRequests(params: any = {}) {
-    const res = await apiClient.get(`/duty/leave-requests`, { params });
-    return res.data;
+    const response = await apiClient.get(`/duty/leave-requests`, { params });
+    return response;
   }
 
   async resolveLeaveRequest(requestId: number, status: 'approved' | 'rejected', rejectionReason?: string) {
-    const res = await apiClient.patch(`/duty/leave-requests/${requestId}/resolve`, { status, rejectionReason });
-    return res.data;
+    const response = await apiClient.patch(`/duty/leave-requests/${requestId}/resolve`, { status, rejectionReason });
+    return response;
   }
 
   /**
@@ -262,43 +262,31 @@ class DutyService {
     return response;
   }
 
-  /**
-   * Remove a specific shift boundary from a day
-   */
-  async removeShiftFromDay(date: string, shiftId: number): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.delete<BaseApiResponse<any>>("/duty/template-shifts-day", {
-      data: { date, shiftId }
-    });
+  async addShiftToDay(date: string, shiftId: number): Promise<any> {
+    const response = await apiClient.post('/duty/template-shifts-day', { date, shiftId });
     return response;
   }
 
-  /**
-   * Get all template assignments
-   */
+  async removeShiftFromDay(date: string, shiftId: number): Promise<any> {
+    const response = await apiClient.delete('/duty/template-shifts-day', { data: { date, shiftId } });
+    return response;
+  }
+
   async getTemplateAssignments(): Promise<BaseApiResponse<any[]>> {
     const response = await apiClient.get<BaseApiResponse<any[]>>("/duty/template-assignments");
     return response;
   }
 
-  /**
-   * Create template assignment
-   */
   async createTemplateAssignment(data: any): Promise<BaseApiResponse<any>> {
     const response = await apiClient.post<BaseApiResponse<any>>("/duty/template-assignments", data);
     return response;
   }
 
-  /**
-   * Update template assignment
-   */
   async updateTemplateAssignment(id: number, data: any): Promise<BaseApiResponse<any>> {
     const response = await apiClient.put<BaseApiResponse<any>>(`/duty/template-assignments/${id}`, data);
     return response;
   }
 
-  /**
-   * Delete template assignment
-   */
   async deleteTemplateAssignment(id: number): Promise<BaseApiResponse<any>> {
     const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/template-assignments/${id}`);
     return response;

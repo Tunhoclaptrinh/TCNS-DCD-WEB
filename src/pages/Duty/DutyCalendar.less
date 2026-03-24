@@ -388,9 +388,27 @@
   padding: 2px 4px;
   transition: all 0.2s;
 
+  &.draft {
+    background: rgba(100, 116, 139, 0.05); // Slate-500 tint
+    border-top: 2px dashed #94a3b8; // Slate-400
+    border-bottom: 2px dashed #94a3b8;
+    opacity: 0.6;
+
+    .shift-tag {
+      color: #94a3b8;
+      font-style: italic;
+      font-weight: 500;
+    }
+  }
+
   &:hover {
     background: rgba(239, 68, 68, 0.08);
     z-index: 8;
+
+    &.draft {
+      background: rgba(100, 116, 139, 0.1);
+      opacity: 1;
+    }
   }
 
   .shift-tag {
@@ -599,12 +617,45 @@
           }
         }
 
-        .add-slot-placeholder {
-          color: #cbd5e1;
-          font-style: italic;
+        .shift-active-indicator {
+          font-size: 0.65rem;
+          color: #f87171;
           text-align: center;
+          font-style: italic;
+          padding: 4px 0;
+        }
+
+        .stamp-hint {
+          border: 1px dashed #cbd5e1;
+          background: #f8fafc;
+          color: #64748b;
           font-size: 0.75rem;
-          padding: 8px 0;
+          padding: 8px 4px;
+          border-radius: 4px;
+          text-align: center;
+          transition: all 0.2s;
+          &:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #3b82f6;
+          }
+        }
+
+        .add-kip-hint {
+          border: 1px dashed #fecaca;
+          background: rgba(239, 68, 68, 0.02);
+          color: #ef4444;
+          font-size: 0.75rem;
+          padding: 6px 4px;
+          border-radius: 4px;
+          text-align: center;
+          opacity: 0.4;
+          transition: all 0.2s;
+          &:hover {
+            opacity: 1;
+            background: rgba(239, 68, 68, 0.08);
+            border-style: solid;
+          }
         }
       }
     }

@@ -1,44 +1,41 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Form, Input, InputNumber, Space, message, Typography, TimePicker, Select, Tooltip, Avatar, Tag, Checkbox, Spin, Divider, Row, Col, Alert, DatePicker, Switch } from 'antd';
+import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Avatar, Tag, Spin, Switch } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
   LeftOutlined,
   RightOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-  CopyOutlined,
-  SettingOutlined,
-  CloudDownloadOutlined,
-  QuestionCircleOutlined,
-  ClearOutlined,
-  InfoCircleOutlined,
-  EditOutlined,
-  PlusCircleOutlined,
   SyncOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
   CalendarOutlined,
-  ClockCircleOutlined,
-  ExclamationCircleOutlined,
-  CloseOutlined
+  InfoCircleOutlined,
+  SettingOutlined,
+  PlusOutlined,
+  ClearOutlined,
+  CloseOutlined,
+  PlusSquareOutlined,
+  CloudDownloadOutlined,
 } from '@ant-design/icons';
-import { List } from 'antd';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import 'dayjs/locale/vi';
+
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
+
 import { motion, AnimatePresence } from 'framer-motion';
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
-import userService from '@/services/user.service';
 import './DutyCalendar.less';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
+// Child Components
+import QuickCreateModal from './components/QuickCreateModal';
+import SlotDetailModal from './components/SlotDetailModal';
+import SetupWeekModal from './components/SetupWeekModal';
+import AssignTemplateModal from './components/AssignTemplateModal';
+
+const { Title } = Typography;
 
 interface DutyCalendarProps {
   isAdmin?: boolean;
@@ -54,11 +51,10 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
   const [loading, setLoading] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(dayjs().startOf('isoWeek' as any));
   const [slots, setSlots] = useState<DutySlot[]>([]);
-  const [dutyDays, setDutyDays] = useState<any[]>([]); // Added dutyDays state
-  const [assignments, setAssignments] = useState<any[]>([]); // Added assignments state
+  const [dutyDays, setDutyDays] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
   const [templates, setTemplates] = useState<DutyShift[]>([]);
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
 
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }).map((_, i) => currentWeek.add(i, 'day')),
@@ -67,22 +63,15 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
 
   const [isQuickCreateVisible, setIsQuickCreateVisible] = useState(false);
   const [isSetupModalVisible, setIsSetupModalVisible] = useState(false);
-  const [quickCreateForm] = Form.useForm();
-  const [setupForm] = Form.useForm();
-  const [detailForm] = Form.useForm();
   const [isSlotDetailOpen, setIsSlotDetailOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<DutySlot | null>(null);
   const [quickCreateDate, setQuickCreateDate] = useState<dayjs.Dayjs | null>(null);
-  const [selectedShiftTemplate, setSelectedShiftTemplate] = useState<number | null>(null);
-  const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
+  const [quickCreateContext, setQuickCreateContext] = useState<any>(null);
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
-  const [assignForm] = Form.useForm();
-  const [previewShifts, setPreviewShifts] = useState<any[]>([]);
-  const [leaveForm] = Form.useForm();
 
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
-  const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(true);
+  const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(dayjs()), 60000);
@@ -98,22 +87,12 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
       const gRes = await dutyService.getTemplateGroups();
       if (gRes.success && gRes.data) {
         setTemplateGroups(gRes.data);
-        const defaultGroup = gRes.data.find(g => g.isDefault);
-        if (defaultGroup) setupForm.setFieldsValue({ templateId: defaultGroup.id });
       }
     } catch (err) {
       console.error('Lỗi tải bản mẫu');
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const res = await userService.getAll({ _limit: 100 });
-      if (res.success) setAllUsers(res.data || []);
-    } catch (err) {
-      console.error('Failed to fetch users');
-    }
-  };
 
   const fetchSchedule = async () => {
     setLoading(true);
@@ -134,383 +113,115 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
 
   useEffect(() => {
     fetchTemplates();
-    if (isAdmin) fetchUsers();
   }, [isAdmin]);
 
   useEffect(() => {
     fetchSchedule();
   }, [currentWeek]);
 
-  const handleCreateAssignment = async () => {
-    try {
-      const values = await assignForm.validateFields();
-
-      const payload = {
-        templateId: values.templateId,
-        startDate: values.startDate.startOf('day').toISOString(),
-        endDate: values.endDate.endOf('day').toISOString(),
-        note: values.note
-      };
-
-      // Simple overlap check
-      const overlaps = assignments.some(a => {
-        const s = dayjs(a.startDate).startOf('day');
-        const e = dayjs(a.endDate).endOf('day');
-        const ns = dayjs(payload.startDate);
-        const ne = dayjs(payload.endDate);
-        return (ns.isSameOrBefore(e) && ne.isSameOrAfter(s));
-      });
-
-      if (overlaps) {
-        message.warning('Khoảng thời gian này đã có bản mẫu khác áp dụng. Vui lòng kiểm tra lại.');
-      }
-
-      const res = await dutyService.createTemplateAssignment(payload);
-      if (res.success) {
-        message.success("Đã gắn bản mẫu cho giai đoạn");
-        setIsAssignModalVisible(false);
-        assignForm.resetFields();
-        setPreviewShifts([]);
-        fetchSchedule();
-      }
-    } catch (err: any) {
-      if (err.name !== 'FieldsValidationError') {
-        message.error("Lỗi khi gắn bản mẫu: " + (err.response?.data?.message || err.message));
-      }
-    }
-  };
-
-  const handleDeleteAssignment = async (id: number) => {
-    try {
-      const res = await dutyService.deleteTemplateAssignment(id);
-      if (res.success) {
-        message.success("Đã xóa gắn bản mẫu");
-        fetchSchedule();
-      }
-    } catch (err: any) {
-      message.error("Lỗi khi xóa: " + (err.response?.data?.message || err.message));
-    }
-  };
-
-  // Actions
-  const handlePrevWeek = () => setCurrentWeek(currentWeek.subtract(1, 'week'));
-  const handleNextWeek = () => setCurrentWeek(currentWeek.add(1, 'week'));
-  const handleToday = () => setCurrentWeek(dayjs().startOf('isoWeek' as any));
-
-  const handleClearWeek = async () => {
-    Modal.confirm({
-      title: 'Xác nhận xóa sạch lịch tuần này?',
-      okText: 'Xóa sạch',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          const start = currentWeek.startOf('isoWeek' as any).format('YYYY-MM-DD');
-          const res = await dutyService.deleteWeeklySlots(start);
-          if (res.success) {
-            message.success('Đã xóa lịch tuần');
-            fetchSchedule();
-            setIsSetupModalVisible(false);
-          }
-        } catch (err) {
-          message.error('Lỗi khi xóa lịch');
-        }
-      }
-    });
-  };
-
-  const handleCopyWeek = async (force: boolean = false) => {
-    try {
-      const prevWeekStart = currentWeek.subtract(1, 'week').startOf('isoWeek' as any).format('YYYY-MM-DD');
-      const targetStart = currentWeek.startOf('isoWeek' as any).format('YYYY-MM-DD');
-
-      const res = await dutyService.copyWeekSchedule(prevWeekStart, targetStart);
-      if (res.success) {
-        message.success('Đã sao chép lịch tuần trước');
-        setIsSetupModalVisible(false);
-        fetchSchedule();
-      }
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.message || err.message || '';
-      if (errorMsg === 'Target week already has slots' && !force) {
-        Modal.confirm({
-          title: 'Tuần này đã có lịch trực',
-          content: 'Bạn có muốn XÓA TOÀN BỘ lịch hiện tại của tuần này và sao chép lại từ tuần trước không?',
-          okText: 'Xóa và Sao chép',
-          okType: 'danger',
-          cancelText: 'Hủy',
-          onOk: async () => {
-            try {
-              const start = currentWeek.startOf('isoWeek' as any).format('YYYY-MM-DD');
-              await dutyService.deleteWeeklySlots(start);
-              return handleCopyWeek(true);
-            } catch (e: any) {
-              message.error('Lỗi khi dọn dẹp lịch cũ: ' + (e.response?.data?.message || e.message));
-            }
-          }
-        });
-      } else {
-        message.error('Lỗi khi sao chép: ' + errorMsg);
-      }
-    }
-  };
-
-  const generateScheduleFromTemplates = async (force: boolean = false) => {
-    try {
-      const values = await setupForm.validateFields();
-      const start = currentWeek.startOf('isoWeek' as any).format('YYYY-MM-DD');
-      const end = currentWeek.endOf('isoWeek' as any).format('YYYY-MM-DD');
-      const res = await dutyService.generateRangeSlots(start, end, values.templateId, values.mode);
-      if (res.success) {
-        message.success('Đã khởi tạo từ bản mẫu');
-        setIsSetupModalVisible(false);
-        fetchSchedule();
-      }
-    } catch (err: any) {
-      if (err.errorFields) return; // Form validation error
-      const errorMsg = err.response?.data?.message || err.message || '';
-      if ((errorMsg.includes('already has slots') || errorMsg.includes('already exists')) && !force) {
-        Modal.confirm({
-          title: 'Tuần này đã có lịch trực',
-          content: 'Bạn có muốn XÓA TOÀN BỘ lịch hiện tại của tuần này và khởi tạo lại theo bản mẫu không?',
-          okText: 'Xóa và Khởi tạo',
-          okType: 'danger',
-          onOk: () => generateScheduleFromTemplates(true)
-        });
-      } else {
-        message.error('Lỗi khi khởi tạo: ' + errorMsg);
-      }
-    }
-  };
 
   const getEffectiveTemplatesForDay = (day: dayjs.Dayjs) => {
     const targetStr = day.format('YYYY-MM-DD');
     const dIdx = (day.day() + 6) % 7; // 0=Mon, ..., 6=Sun
     const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === targetStr);
+    
+    // Determine the "Authorized" template group for this day (Assigned or Global Default)
+    const assignment = assignments.find(a => {
+      const startStr = dayjs(a.startDate).format('YYYY-MM-DD');
+      const endStr = dayjs(a.endDate).format('YYYY-MM-DD');
+      return targetStr >= startStr && targetStr <= endStr;
+    });
+    const defaultGroup = templateGroups.find(g => g.isDefault);
+    const activeGroupId = assignment?.templateId || defaultGroup?.id;
+
     let candidates: any[] = [];
 
     // 1. Check for manual/stamped day record (The "Stencil" source of truth)
     if (dayData) {
-      const stringIds = (dayData.shiftTemplateIds || []).map((id: any) => String(id));
-      candidates = templates.filter(t => stringIds.includes(String(t.id)));
-    } else {
-      // 2. Fallback to range-based assignment or default (Only for un-stamped/un-modified days)
-      const assignment = assignments.find(a => {
-        const startStr = dayjs(a.startDate).format('YYYY-MM-DD');
-        const endStr = dayjs(a.endDate).format('YYYY-MM-DD');
-        return targetStr >= startStr && targetStr <= endStr;
-      });
-
+      // Map IDs back to objects (IDs now point to persistent clones or originals)
+      const templateIds = (dayData.shiftTemplateIds || []);
+      candidates = templateIds.map((id: number) => {
+        const t = templates.find(temp => String(temp.id) === String(id));
+        return t ? { ...t, isStamped: true } : null;
+      }).filter(Boolean);
+    } else if (showDefaultBoundaries) {
+      // 2. Fallback to range-based assignment or default (Only if toggle is ON)
       if (assignment) {
-        candidates = templates.filter(t => String(t.templateId) === String(assignment.templateId));
-      } else if (showDefaultBoundaries) {
-        // 3. Fallback to default group
-        const defaultGroup = templateGroups.find(g => g.isDefault);
-        if (defaultGroup) {
-          candidates = templates.filter(t => String(t.templateId) === String(defaultGroup.id));
-        }
+        // Option A: Assigned group for this range (Exclude ad-hoc instances)
+        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(assignment.templateId)).map(t => ({ ...t, isStamped: false }));
+      } else if (defaultGroup) {
+        // Option B: Global default group (Exclude ad-hoc instances)
+        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(defaultGroup.id)).map(t => ({ ...t, isStamped: false }));
       }
     }
 
-    // CRITICAL: Filter candidates by their specific daysOfWeek setting
-    return candidates.filter(shift => (shift.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dIdx));
+    // Filter candidates by their specific daysOfWeek setting
+    const filtered = candidates.filter(shift => (shift.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dIdx));
+    
+    return { shifts: filtered, activeGroupId };
   };
 
-  const openQuickCreate = (day: dayjs.Dayjs, top: number) => {
-    if (!isAdmin) return;
-    setQuickCreateDate(day);
-
-    const getTimeFromTop = (yOffset: number) => {
-      const totalMinutes = Math.floor((yOffset / PX_PER_HOUR) * 60);
-      const h = START_HOUR + Math.floor(totalMinutes / 60);
-      const m = Math.floor((totalMinutes % 60) / 15) * 15;
-      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    };
-
-    const time = getTimeFromTop(top);
-    const dayOfWeek = (day.day() + 6) % 7; // Monday = 0
-    const relevantTemplates = getEffectiveTemplatesForDay(day);
-
-    // Auto-detect template for this time
-    let prefilledShift: any = null;
-    let prefilledKip: any = null;
-
-    for (const shift of relevantTemplates) {
-      const shiftKips = shift.kips || [];
-      for (const kip of shiftKips) {
-        if ((kip.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dayOfWeek)) {
-          const kStart = kip.startTime || shift.startTime;
-          const kEnd = kip.endTime || shift.endTime;
-          // click time within kip range
-          if (time >= kStart && time <= kEnd) {
-            prefilledShift = shift;
-            prefilledKip = kip;
-            break;
-          }
-        }
-      }
-      if (prefilledShift) break;
-    }
-
-    quickCreateForm.resetFields();
-    quickCreateForm.setFieldsValue({
-      date: day,
-      shiftId: prefilledShift?.id,
-      kipId: prefilledKip?.id,
-      shiftLabel: prefilledShift && prefilledKip ? `${prefilledShift.name} - ${prefilledKip.name}` : '',
-      timeRange: [dayjs(time, 'HH:mm'), dayjs(time, 'HH:mm').add(2, 'hour')],
-    });
-
-    if (prefilledKip) {
-      const kStart = prefilledKip.startTime || prefilledShift.startTime;
-      const kEnd = prefilledKip.endTime || prefilledShift.endTime;
-      quickCreateForm.setFieldsValue({
-        timeRange: [dayjs(kStart, 'HH:mm'), dayjs(kEnd, 'HH:mm')]
-      });
-    }
-
-    setSelectedShiftTemplate(prefilledShift?.id || null);
-    setIsQuickCreateVisible(true);
-  };
-
-
-  const handleQuickCreate = async (values: any) => {
-    try {
-      const { timeRange, ...rest } = values;
-      const payload = {
-        ...rest,
-        shiftDate: quickCreateDate?.format('YYYY-MM-DD'),
-        weekStart: currentWeek.format('YYYY-MM-DD'),
-        startTime: timeRange?.[0]?.format('HH:mm'),
-        endTime: timeRange?.[1]?.format('HH:mm'),
-        status: 'open' as const
-      };
-      const res = await dutyService.createSlot(payload);
-      if (res.success) {
-        message.success('Đã tạo kíp trực');
-        setIsQuickCreateVisible(false);
-        fetchSchedule();
-      }
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Tạo thất bại');
-    }
-  };
-
-  const handleRemoveShiftFromDay = async (date: string, shiftId: number) => {
-    try {
-      await dutyService.removeShiftFromDay(date, shiftId);
-      message.success('Đã xóa khung ca trực khỏi ngày này');
-      fetchSchedule(); // Changed from fetchData to fetchSchedule
-    } catch (error) {
-      console.error(error);
-      message.error('Không thể xóa khung ca trực');
-    }
-  };
-
-  const openSlotDetail = (slot: DutySlot) => {
-    setSelectedSlot(slot);
-    detailForm.setFieldsValue({
-      ...slot,
-      shiftDate: dayjs(slot.shiftDate),
-      timeRange: slot.startTime && slot.endTime ? [dayjs(slot.startTime, 'HH:mm'), dayjs(slot.endTime, 'HH:mm')] : undefined
-    });
-    setIsSlotDetailOpen(true);
-  };
-
-  const handleUpdateDetail = async (values: any) => {
-    if (!selectedSlot) return;
-    try {
-      const { timeRange, shiftDate, ...rest } = values;
-      const data = {
-        ...rest,
-        shiftDate: shiftDate.format('YYYY-MM-DD'),
-        startTime: timeRange?.[0]?.format('HH:mm'),
-        endTime: timeRange?.[1]?.format('HH:mm'),
-      };
-      const res = await dutyService.updateSlot(selectedSlot.id, data);
-      if (res.success) {
-        message.success('Đã cập nhật');
-        setIsSlotDetailOpen(false);
-        fetchSchedule();
-      }
-    } catch (err) {
-      message.error('Lỗi khi cập nhật');
-    }
-  };
-
-  const handleDeleteSlot = async (slotId: number) => {
-    Modal.confirm({
-      title: 'Xóa kíp trực?',
-      okText: 'Xóa',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          const res = await dutyService.deleteSlot(slotId);
-          if (res.success) {
-            message.success('Đã xóa');
-            fetchSchedule();
-            setIsSlotDetailOpen(false);
-          }
-        } catch (err) {
-          message.error('Xóa thất bại');
-        }
-      }
-    });
-  };
+  const handlePrevWeek = () => setCurrentWeek(prev => prev.subtract(1, 'week'));
+  const handleNextWeek = () => setCurrentWeek(next => next.add(1, 'week'));
+  const handleToday = () => setCurrentWeek(dayjs().startOf('isoWeek' as any));
 
   const handleRegister = async (slotId: number) => {
     try {
       const res = await dutyService.registerToSlot(slotId);
-      if (res.success && res.data) {
-        message.success('Đã đăng ký kíp trực');
-        if (isSlotDetailOpen) {
-          setSelectedSlot(res.data);
-        }
+      if (res.success) {
+        message.success('Đăng ký thành công');
         fetchSchedule();
       }
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Đăng ký thất bại');
+    } catch (err) {
+      message.error('Lỗi khi đăng ký');
     }
   };
 
   const handleUnregister = async (slotId: number) => {
     try {
       const res = await dutyService.cancelRegistration(slotId);
-      if (res.success && res.data) {
-        message.success('Đã hủy đăng ký');
-        if (isSlotDetailOpen) {
-          setSelectedSlot(res.data);
-        }
+      if (res.success) {
+        message.success('Hủy đăng ký thành công');
         fetchSchedule();
       }
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Hủy thất bại');
+    } catch (err) {
+      message.error('Lỗi khi hủy đăng ký');
     }
   };
 
-  const handleAttendance = async (slotId: number) => {
+  const handleStampShift = async (day: dayjs.Dayjs, shiftId: number) => {
     try {
-      // Backend expects an array of IDs for attended users. 
-      // For a member checking in themselves:
-      await dutyService.markAttendance(slotId, [currentUserId]);
-      message.success('Điểm danh thành công! Chúc bạn kíp trực vui vẻ.');
-      fetchSchedule();
-      setIsSlotDetailOpen(false);
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Điểm danh thất bại');
+      const res = await dutyService.addShiftToDay(day.format('YYYY-MM-DD'), shiftId);
+      if (res.success) {
+        message.success('Áp dụng ca thành công');
+        fetchSchedule();
+      }
+    } catch (err) {
+      message.error('Lỗi khi áp dụng ca');
     }
   };
 
-  const handleLeaveRequest = async (values: { reason: string }) => {
-    if (!selectedSlot) return;
+  const handleRemoveShiftFromDay = async (date: string, shiftId: number) => {
     try {
-      await dutyService.requestLeave(selectedSlot.id, values.reason);
-      message.success('Đã gửi yêu cầu xin nghỉ. Vui lòng chờ Admin phê duyệt.');
-      setIsLeaveModalVisible(false);
-      fetchSchedule();
-      setIsSlotDetailOpen(false);
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Gửi yêu cầu thất bại');
+      const res = await dutyService.removeShiftFromDay(date, shiftId);
+      if (res.success) {
+        message.success('Đã xóa khung ca');
+        fetchSchedule();
+      }
+    } catch (err) {
+      message.error('Lỗi khi xóa khung ca');
     }
+  };
+
+  const openQuickCreate = (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any) => {
+    setQuickCreateDate(day);
+    setQuickCreateContext({ day, yOffset, shift: shiftArg, kip: kipArg });
+    setIsQuickCreateVisible(true);
+  };
+
+  const openSlotDetail = (slot: DutySlot) => {
+    setSelectedSlot(slot);
+    setIsSlotDetailOpen(true);
   };
 
   const START_HOUR = 5;
@@ -563,7 +274,6 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                 <tr className="shift-row-header">
                   <td colSpan={8}><strong>{shift.name}</strong> ({shift.startTime} - {shift.endTime})</td>
                 </tr>
-                {/* Virtual row for Shift-only slots (no kipId) */}
                 <tr className="kip-row row-shift-only">
                   <td className="kip-label-col sticky-col" style={{ background: '#fff1f2' }}>
                     <div className="kip-name" style={{ color: '#ef4444' }}>Dữ liệu Ca (Chung)</div>
@@ -571,17 +281,29 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                   </td>
                   {weekDays.map((day, dIdx) => {
                     const dateStr = day.format('YYYY-MM-DD');
+                    const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === dateStr);
+                    const isStamped = (dayData?.shiftTemplateIds || []).map(String).includes(String(shift.id));
                     const slot = slots.find(s => !s.kipId && s.shiftId === shift.id && dayjs(s.shiftDate).format('YYYY-MM-DD') === dateStr);
                     const isPast = day.isBefore(dayjs().startOf('day'));
 
                     return (
                       <td
                         key={dIdx}
-                        className={`matrix-cell ${slot ? 'has-slot' : 'empty-slot'} ${isPast ? 'is-past' : ''}`}
-                        style={slot ? { borderTop: '2px solid #ef4444', background: 'rgba(239, 68, 68, 0.05)' } : {}}
+                        className={`matrix-cell ${slot ? 'has-slot' : 'empty-slot'} ${isPast ? 'is-past' : ''} ${isStamped ? 'shift-stamped' : ''}`}
+                        style={isStamped ? { borderTop: '2px solid #ef4444', background: 'rgba(239, 68, 68, 0.05)' } : {}}
                         onClick={() => {
                           if (slot) openSlotDetail(slot);
-                          else if (isAdmin && !isPast) openQuickCreate(day, getTimeTop(shift.startTime));
+                          else if (isAdmin && !isPast) {
+                            if (!isStamped) {
+                              Modal.confirm({
+                                title: 'Áp dụng Ca trực?',
+                                content: `Bạn có muốn áp dụng "${shift.name}" cho ngày ${day.format('DD/MM')} không? Sau khi áp dụng bạn có thể thêm các Kíp chi tiết.`,
+                                onOk: () => handleStampShift(day, shift.id)
+                              });
+                            } else {
+                              openQuickCreate(day, getTimeTop(shift.startTime), shift);
+                            }
+                          }
                         }}
                       >
                         {slot ? (
@@ -594,16 +316,13 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                 </div>
                               ))}
                             </div>
-                            {slot.assignedUserIds.length < (slot.capacity || 0) && !isPast && (
-                              <div className="slot-capacity-tag">
-                                <div style={{ fontSize: '0.75rem', color: '#ef4444', marginBottom: 2 }}>
-                                  {slot.assignedUserIds.length}/{slot.capacity || 0}
-                                </div>
-                                <Button size="small" type="link" danger onClick={(e) => { e.stopPropagation(); handleRegister(slot.id); }}>+ Đăng ký</Button>
-                              </div>
-                            )}
                           </div>
-                        ) : null}
+                        ) : (isStamped && isAdmin && !isPast ? (
+                          <div className="add-kip-hint"><PlusOutlined /> Thêm Kíp</div>
+                        ) : (!slot && isStamped ? <div className="shift-active-indicator">Ca Trống</div> : null))}
+                        {!isStamped && isAdmin && !isPast && (
+                          <div className="stamp-hint"><PlusSquareOutlined /> Áp dụng Ca</div>
+                        )}
                       </td>
                     );
                   })}
@@ -619,16 +338,25 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                       </td>
                       {weekDays.map((day, dIdx) => {
                         const dateStr = day.format('YYYY-MM-DD');
+                        const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === dateStr);
+                        const isStamped = (dayData?.shiftTemplateIds || []).map(String).includes(String(shift.id));
                         const slot = slots.find(s => s.kipId === kip.id && dayjs(s.shiftDate).format('YYYY-MM-DD') === dateStr);
                         const isPast = day.isBefore(dayjs().startOf('day')) || (day.isSame(dayjs(), 'day') && dayjs(`${dateStr} ${kip.startTime || shift.startTime}`).isBefore(dayjs()));
 
                         return (
                           <td
                             key={dIdx}
-                            className={`matrix-cell ${slot ? 'has-slot' : 'empty-slot'} ${isPast ? 'is-past' : ''}`}
+                            className={`matrix-cell ${slot ? 'has-slot' : 'empty-slot'} ${isPast ? 'is-past' : ''} ${isStamped ? 'shift-stamped' : ''}`}
+                            style={isStamped ? { borderLeft: '2px dashed #fecaca', borderRight: '1px dashed #fecaca' } : { borderLeft: '1px solid #f1f5f9' }}
                             onClick={() => {
                               if (slot) openSlotDetail(slot);
-                              else if (isAdmin && !isPast) openQuickCreate(day, 0);
+                              else if (isAdmin && !isPast) {
+                                if (!isStamped) {
+                                  message.warning(`Cần áp dụng "${shift.name}" trước khi tạo Kíp.`);
+                                } else {
+                                  openQuickCreate(day, 0, shift, kip);
+                                }
+                              }
                             }}
                           >
                             {slot ? (
@@ -641,10 +369,10 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     </div>
                                   ))}
                                 </div>
-                                {slot.assignedUserIds.length < (slot.kip?.capacity || 0) && !isPast && (
+                                {slot.assignedUserIds.length < (slot.capacity || slot.kip?.capacity || 0) && !isPast && (
                                   <div className="slot-capacity-tag">
                                     <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 2 }}>
-                                      {slot.assignedUserIds.length}/{slot.kip?.capacity || 0} người
+                                      {slot.assignedUserIds.length}/{slot.capacity || slot.kip?.capacity || 0} người
                                     </div>
                                     {slot.assignedUserIds.includes(currentUserId) ?
                                       <Button size="small" type="link" danger onClick={(e) => { e.stopPropagation(); handleUnregister(slot.id); }}>Hủy đ.ký</Button> :
@@ -652,9 +380,9 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     }
                                   </div>
                                 )}
-                                {slot.assignedUserIds.length >= (slot.kip?.capacity || 0) && (
+                                {slot.assignedUserIds.length >= (slot.capacity || slot.kip?.capacity || 0) && (
                                   <div className="slot-capacity-tag">
-                                    <Tag color="default">{slot.assignedUserIds.length}/{slot.kip?.capacity || 0} đủ</Tag>
+                                    <Tag color="default">{slot.assignedUserIds.length}/{slot.capacity || slot.kip?.capacity || 0} đủ</Tag>
                                   </div>
                                 )}
                               </div>
@@ -809,8 +537,18 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
 
 
 
+                    const { shifts: effectiveShifts, activeGroupId } = getEffectiveTemplatesForDay(day);
+                    const effectiveShiftIds = effectiveShifts.map(s => String(s.id));
+
+                    // Only show ghost kips if they belong to the ACTIVE group (Default or Assigned)
                     const dayTemplates = templates.flatMap(s => (s.kips || []).map(k => ({ ...k, shiftId: s.id, shiftName: s.name, sStart: s.startTime, sEnd: s.endTime })))
-                      .filter(k => (k.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dIdx));
+                      .filter(k => {
+                        const shiftParent = templates.find(s => s.id === k.shiftId);
+                        // 1. Must be in effectiveShiftIds (Belong to a valid boundary on this day)
+                        if (!effectiveShiftIds.includes(String(k.shiftId))) return false;
+                        // 2. Must belong to the Authorized/Active Group for this day
+                        return String(shiftParent?.templateId) === String(activeGroupId);
+                      });
 
                     return (
                       <div key={dIdx} className={`day-column ${isToday ? 'is-today' : ''} ${isPastDay ? 'is-past' : ''}`}>
@@ -828,14 +566,12 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                         />
 
                         {/* Shift (Ca) Backgrounds */}
-                        {getEffectiveTemplatesForDay(day).map(shift => {
-                          const hasKipToday = (shift.kips || []).length === 0 || (shift.kips || []).some((k: any) => (k.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dIdx));
-                          if (!hasKipToday) return null;
-
+                        {effectiveShifts.map((shift, sIdx) => {
+                          const isDraftShift = !shift.isStamped;
                           return (
                             <div
-                              key={`shift-${shift.id}-${dIdx}`}
-                              className="calendar-shift-box"
+                              key={`shift-${shift.id}-${dIdx}-${sIdx}`}
+                              className={`calendar-shift-box ${isDraftShift ? 'draft' : ''}`}
                               style={{
                                 top: `${getTimeTop(shift.startTime)}px`,
                                 height: `${getTimeHeight(shift.startTime, shift.endTime)}px`,
@@ -845,7 +581,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openQuickCreate(day, getTimeTop(shift.startTime));
+                                openQuickCreate(day, getTimeTop(shift.startTime), shift);
                               }}
                             >
                               <div className="shift-tag" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -879,7 +615,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0 }}
-                                className={`calendar-slot-box ${!slot.kipId ? 'is-shift' : ''} ${slot.status === 'locked' || isPastSlot ? 'locked' : ''} ${!isAdmin && !slot.assignedUserIds?.includes(currentUserId) && (slot.assignedUserIds?.length || 0) < (slot.kip?.capacity || 0) ? 'can-join' : ''}`}
+                                className={`calendar-slot-box ${slot.status === 'locked' || isPastSlot ? 'locked' : ''} ${!isAdmin && !slot.assignedUserIds?.includes(currentUserId) && (slot.assignedUserIds?.length || 0) < (slot.capacity || slot.kip?.capacity || 0) ? 'can-join' : ''}`}
                                 style={{
                                   top: `${getTimeTop(slot.startTime)}px`,
                                   height: `${getTimeHeight(slot.startTime, slot.endTime)}px`
@@ -892,7 +628,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     {slot.note && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#fff' }} /></Tooltip>}
                                   </span>
                                   <span className="slot-count" style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 10 }}>
-                                    {slot.assignedUserIds?.length || 0}/{slot.kip?.capacity || 0}
+                                    {slot.assignedUserIds?.length || 0}/{slot.capacity || slot.kip?.capacity || 0}
                                   </span>
                                 </div>
                                 <div className="slot-time">{slot.startTime} - {slot.endTime}</div>
@@ -903,7 +639,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     </Tooltip>
                                   ))}
                                   {(!slot.assignedUsers || slot.assignedUsers.length === 0) && (
-                                    <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{slot.kip?.capacity || 0} người</span>
+                                    <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{slot.capacity || slot.kip?.capacity || 0} người</span>
                                   )}
                                 </div>
                                 {(!isAdmin && !isPastSlot && slot.assignedUserIds?.includes(currentUserId)) && (
@@ -921,7 +657,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                           })}
                         </AnimatePresence>
 
-                        {dayTemplates.map(kip => {
+                        {showDefaultBoundaries && dayTemplates.map(kip => {
                           const kStart = kip.startTime || kip.sStart;
                           const kEnd = kip.endTime || kip.sEnd;
                           const hasRealSlot = daySlots.some(s => {
@@ -934,7 +670,10 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                               key={`draft-${kip.id}`}
                               className="calendar-slot-box draft"
                               style={{ top: `${getTimeTop(kStart)}px`, height: `${getTimeHeight(kStart, kEnd)}px` }}
-                              onClick={() => openQuickCreate(day, getTimeTop(kStart))}
+                              onClick={() => {
+                                const parentShift = templates.find(s => s.id === kip.shiftId);
+                                openQuickCreate(day, getTimeTop(kStart), parentShift, kip);
+                              }}
                             >
                               <div className="slot-title" style={{ fontStyle: 'italic', opacity: 0.7 }}>Bản mẫu: {kip.name}</div>
                               <div className="slot-time">{kStart} - {kEnd}</div>
@@ -951,463 +690,39 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         </Spin>
       </Card>
 
-      {/* Assignment Modal */}
-      <Modal
-        title={
-          <Space>
-            <CalendarOutlined style={{ color: 'var(--primary-color)' }} />
-            <span>Gắn Bản mẫu cho giai đoạn</span>
-          </Space>
-        }
-        open={isAssignModalVisible}
-        onCancel={() => setIsAssignModalVisible(false)}
-        onOk={handleCreateAssignment}
-        width={650}
-        destroyOnClose
-      >
-        <Form form={assignForm} layout="vertical">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="templateId" label="Chọn Bản mẫu" rules={[{ required: true }]}>
-                <Select
-                  placeholder="Chọn Bản mẫu"
-                  onChange={async (val) => {
-                    try {
-                      const res = await dutyService.getShiftTemplates(val);
-                      if (res.success && res.data) setPreviewShifts(res.data);
-                    } catch (e) { console.error(e); }
-                  }}
-                >
-                  {templateGroups.map(g => (
-                    <Select.Option key={g.id} value={g.id}>{g.name}</Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Giai đoạn áp dụng" required>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <Form.Item name="startDate" noStyle rules={[{ required: true }]}>
-                    <DatePicker placeholder="Từ ngày" style={{ flex: 1 }} format="DD/MM/YYYY" />
-                  </Form.Item>
-                  <span>~</span>
-                  <Form.Item name="endDate" noStyle rules={[{ required: true }]}>
-                    <DatePicker placeholder="Đến ngày" style={{ flex: 1 }} format="DD/MM/YYYY" />
-                  </Form.Item>
-                </div>
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="note" label="Ghi chú">
-            <Input.TextArea placeholder="Nhập ghi chú nếu có..." rows={2} />
-          </Form.Item>
-
-          {previewShifts.length > 0 && (
-            <Card size="small" title={<span style={{ fontSize: 13 }}>Khung Ca trực sẽ áp dụng:</span>} style={{ backgroundColor: '#fff7ed', borderColor: '#ffedd5', marginBottom: 16 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {previewShifts.map((s, idx) => (
-                  <Tag key={idx} color="orange" style={{ margin: 0 }}>
-                    <Text strong style={{ color: '#c2410c' }}>{s.name}</Text>: {s.startTime} - {s.endTime}
-                  </Tag>
-                ))}
-              </div>
-              <div style={{ marginTop: 8, fontSize: 11, color: '#9a3412' }}>
-                <ExclamationCircleOutlined /> Toàn bộ khung giờ trên sẽ được làm "Viền đỏ" chặn trên/dưới trong lịch trực.
-              </div>
-            </Card>
-          )}
-        </Form>
-
-        <Divider style={{ margin: '12px 0' }}><Typography.Text type="secondary" style={{ fontSize: 12 }}>CÁC GIAI ĐOẠN ĐÃ THIẾT LẬP</Typography.Text></Divider>
-
-        <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-          <List
-            size="small"
-            dataSource={assignments}
-            renderItem={(item: any) => {
-              const group = templateGroups.find(g => g.id === item.templateId);
-              return (
-                <List.Item
-                  actions={[
-                    <Button
-                      key="delete"
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={() => handleDeleteAssignment(item.id)}
-                    />
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={<Tag color="blue">{group?.name || 'N/A'}</Tag>}
-                    title={
-                      <Space>
-                        <ClockCircleOutlined />
-                        <span>{dayjs(item.startDate).format('DD/MM/YYYY')} - {dayjs(item.endDate).format('DD/MM/YYYY')}</span>
-                      </Space>
-                    }
-                    description={item.note}
-                  />
-                </List.Item>
-              );
-            }}
-          />
-        </div>
-      </Modal>
-
-      {/* Quick Create Modal */}
-      <Modal
-        title={
-          <Space>
-            <PlusCircleOutlined style={{ color: '#52c41a' }} />
-            <span>Tạo kíp trực nhanh ({quickCreateDate?.format('DD/MM/YYYY')})</span>
-          </Space>
-        }
+      <QuickCreateModal
         open={isQuickCreateVisible}
         onCancel={() => setIsQuickCreateVisible(false)}
-        onOk={() => quickCreateForm.submit()}
-        width={500}
-      >
-        <Form form={quickCreateForm} layout="vertical" onFinish={handleQuickCreate} initialValues={{ useTemplate: true }}>
-          <Form.Item name="useTemplate" valuePropName="checked" style={{ marginBottom: 12 }}>
-            <Checkbox onChange={(e) => {
-              if (!e.target.checked) {
-                quickCreateForm.setFieldsValue({ shiftId: undefined, kipId: undefined });
-                setSelectedShiftTemplate(null);
-              }
-            }}>Sử dụng Bản mẫu (Recommended)</Checkbox>
-          </Form.Item>
+        onSuccess={fetchSchedule}
+        date={quickCreateDate}
+        context={quickCreateContext}
+        templates={templates}
+      />
 
-          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.useTemplate !== curr.useTemplate}>
-            {({ getFieldValue }) => getFieldValue('useTemplate') ? (
-              <Card size="small" style={{ marginBottom: 16, backgroundColor: '#f0f5ff' }}>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item name="shiftId" label="1. Chọn Ca" rules={[{ required: true, message: 'Vui lòng chọn Ca' }]}>
-                      <Select
-                        placeholder="Chọn Ca"
-                        onChange={(val) => {
-                          setSelectedShiftTemplate(val);
-                          const shift = templates.find(s => s.id === val);
-                          if (shift) {
-                            quickCreateForm.setFieldsValue({
-                              shiftLabel: shift.name,
-                              timeRange: [dayjs(shift.startTime, 'HH:mm'), dayjs(shift.endTime, 'HH:mm')],
-                              kipId: undefined
-                            });
-                          }
-                        }}
-                        options={templates.map(s => ({ label: s.name, value: s.id }))}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="kipId" label="2. Chọn Kíp" rules={[{ required: true, message: 'Vui lòng chọn Kíp' }]}>
-                      <Select
-                        placeholder="Chọn Kíp"
-                        disabled={!selectedShiftTemplate}
-                        onChange={(val) => {
-                          const shift = templates.find(s => s.id === selectedShiftTemplate);
-                          const kip = shift?.kips.find(k => k.id === val);
-                          if (kip) {
-                            quickCreateForm.setFieldsValue({
-                              shiftLabel: `${shift!.name} - ${kip.name}`,
-                              capacity: kip.capacity,
-                              timeRange: kip.startTime && kip.endTime ? [dayjs(kip.startTime, 'HH:mm'), dayjs(kip.endTime, 'HH:mm')] : [dayjs(shift!.startTime, 'HH:mm'), dayjs(shift!.endTime, 'HH:mm')],
-                            });
-                          }
-                        }}
-                        options={templates.find(s => s.id === selectedShiftTemplate)?.kips.map(k => ({
-                          label: k.name,
-                          value: k.id
-                        })) || []}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Card>
-            ) : (
-              <Alert
-                message="Tạo kíp trực tự do (Không theo bản mẫu)"
-                type="warning"
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
-            )}
-          </Form.Item>
-
-          <Form.Item name="shiftLabel" label="Tên Hiển thị trên Lịch" rules={[{ required: true }]}>
-            <Input placeholder="VD: Ca Sáng - Kíp 1" prefix={<EditOutlined />} />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="timeRange" label="Thời gian" rules={[{ required: true }]}>
-                <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Trạng thái" name="status" initialValue="open">
-                <Select options={[{ label: 'Mở (Đăng ký tự do)', value: 'open' }, { label: 'Khóa (Admin)', value: 'locked' }]} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={8}><Form.Item label="Tiết bắt đầu" name="order"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={8}><Form.Item label="Tiết kết thúc" name="endPeriod"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={8}><Form.Item label="Sĩ số tối đa" name="capacity"><InputNumber min={1} placeholder="Theo kíp" style={{ width: '100%' }} /></Form.Item></Col>
-          </Row>
-          <Form.Item name="note" label="Ghi chú / Địa điểm">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Setup Week Modal */}
-      <Modal
-        title={
-          <Space>
-            <SettingOutlined />
-            <span>Thiết lập lịch trình nhanh (Tuần)</span>
-            <Tooltip title="Các thao tác tác động lên toàn bộ dữ liệu của tuần hiện tại">
-              <QuestionCircleOutlined style={{ fontSize: 14, color: '#1890ff' }} />
-            </Tooltip>
-          </Space>
-        }
-        open={isSetupModalVisible}
-        onCancel={() => setIsSetupModalVisible(false)}
-        footer={null}
-        width={400}
-      >
-        <Form form={setupForm} layout="vertical" initialValues={{ templateId: templateGroups.find(g => g.isDefault)?.id, mode: 'kips' }}>
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <Card size="small" title="Cấu hình Khởi tạo" style={{ backgroundColor: '#f8fafc' }}>
-              <Form.Item name="templateId" label="Chọn Bản mẫu" rules={[{ required: true }]}>
-                <Select placeholder="Chọn nhóm bản mẫu" options={templateGroups.map(g => ({ label: g.name, value: g.id }))} />
-              </Form.Item>
-              <Form.Item name="mode" label="Chế độ khởi tạo" rules={[{ required: true }]}>
-                <Select options={[
-                  { label: 'Chi tiết Kíp (Kips)', value: 'kips' },
-                  { label: 'Chỉ Ca (Shifts)', value: 'shifts' },
-                  { label: 'Toàn bộ (Both)', value: 'all' }
-                ]} />
-              </Form.Item>
-            </Card>
-
-            <Tooltip title="Tự động tạo các khung giờ kíp trực dựa trên cấu hình Bản mẫu đã thiết lập" placement="right">
-              <Button block type="primary" size="large" icon={<SettingOutlined />} onClick={() => {
-                Modal.confirm({
-                  title: 'Xác nhận khởi tạo?',
-                  content: 'Hệ thống sẽ dựa vào Bản mẫu để tạo các kíp trực cho tuần này. Các kíp đã có sẽ không bị ảnh hưởng.',
-                  onOk: generateScheduleFromTemplates
-                });
-              }}>Khởi tạo từ Bản mẫu</Button>
-            </Tooltip>
-
-            <Tooltip title="Lấy dữ liệu kíp trực của tuần trước đó áp dụng cho tuần này" placement="right">
-              <Button block size="large" icon={<CopyOutlined />} onClick={() => {
-                Modal.confirm({
-                  title: 'Xác nhận sao chép?',
-                  content: 'Toàn bộ kíp trực từ tuần trước sẽ được nhân bản sang tuần này.',
-                  onOk: handleCopyWeek
-                });
-              }}>Sao chép từ tuần trước</Button>
-            </Tooltip>
-
-            <Divider style={{ margin: '4px 0' }} />
-
-            <Tooltip title="Xóa toàn bộ các kíp trực trong tuần này để làm lại từ đầu" placement="right">
-              <Button block danger ghost size="large" icon={<ClearOutlined />} onClick={handleClearWeek}>Xóa sạch lịch tuần</Button>
-            </Tooltip>
-          </Space>
-        </Form>
-      </Modal>
-
-      {/* Detail Modal */}
-      <Modal
-        title={
-          <Space>
-            <InfoCircleOutlined style={{ color: '#1890ff' }} />
-            <span>Chi tiết kíp trực</span>
-          </Space>
-        }
+      <SlotDetailModal
         open={isSlotDetailOpen}
         onCancel={() => setIsSlotDetailOpen(false)}
-        footer={selectedSlot && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100% ' }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {isAdmin && <Button danger icon={<DeleteOutlined />} onClick={() => handleDeleteSlot(selectedSlot.id)}>Xóa ca</Button>}
-            </div>
-            <Space>
-              {isAdmin && <Button loading={loading} onClick={() => detailForm.submit()} type="primary" disabled={dayjs(selectedSlot.shiftDate).isBefore(now.startOf('day'))}>Lưu thay đổi</Button>}
-              {!isAdmin && !dayjs(selectedSlot.shiftDate).isBefore(now.startOf('day')) && (
-                selectedSlot.assignedUserIds?.includes(currentUserId) ? (
-                  <Space>
-                    {/* Attendance button if current time is within slot time */}
-                    {(() => {
-                      const slotStart = dayjs(`${dayjs(selectedSlot.shiftDate).format('YYYY-MM-DD')} ${selectedSlot.startTime}`);
-                      const slotEnd = dayjs(`${dayjs(selectedSlot.shiftDate).format('YYYY-MM-DD')} ${selectedSlot.endTime}`);
-                      const isActive = now.isAfter(slotStart.subtract(15, 'minute')) && now.isBefore(slotEnd);
-                      const isAttended = selectedSlot.attendedUserIds?.includes(currentUserId);
+        onSuccess={fetchSchedule}
+        slot={selectedSlot}
+        isAdmin={isAdmin}
+        currentUserId={currentUserId}
+      />
 
-                      if (isAttended) return <Tag color="green" icon={<CheckCircleOutlined />}>Đã điểm danh</Tag>;
-                      if (isActive) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => handleAttendance(selectedSlot.id)}>Điểm danh ngay</Button>;
-                      return null;
-                    })()}
+      <SetupWeekModal
+        open={isSetupModalVisible}
+        onCancel={() => setIsSetupModalVisible(false)}
+        onSuccess={fetchSchedule}
+        currentWeek={currentWeek}
+        templateGroups={templateGroups}
+      />
 
-                    <Button danger icon={<ClearOutlined />} onClick={() => handleUnregister(selectedSlot.id)}>Hủy đăng ký</Button>
-                    <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)}>Xin nghỉ</Button>
-                  </Space>
-                ) : (
-                  (selectedSlot.assignedUserIds?.length || 0) < (selectedSlot.kip?.capacity || 0) && (
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => handleRegister(selectedSlot.id)}>Đăng ký ca này</Button>
-                  )
-                )
-              )}
-              <Button onClick={() => setIsSlotDetailOpen(false)}>Đóng</Button>
-            </Space>
-          </div>
-        )}
-      >
-        {selectedSlot && (
-          <>
-            <Alert
-              message={
-                <span>
-                  Ca này thuộc <b>Tuần {dayjs(selectedSlot.shiftDate).format('ww')}</b> - <b>{dayjs(selectedSlot.shiftDate).format('DD/MM/YYYY')}</b>
-                  {dayjs(selectedSlot.shiftDate).isBefore(dayjs().startOf('day')) && (
-                    <Tag color="error" style={{ marginLeft: 8 }}>Đã quá hạn</Tag>
-                  )}
-                </span>
-              }
-              type={dayjs(selectedSlot.shiftDate).isBefore(dayjs().startOf('day')) ? "warning" : "info"}
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-            {isAdmin ? (
-              <Form form={detailForm} layout="vertical" onFinish={handleUpdateDetail} disabled={dayjs(selectedSlot?.shiftDate).isBefore(dayjs().startOf('day'))}>
-                <Row gutter={16}>
-                  <Col span={10}>
-                    <Form.Item label="Ngày trực" name="shiftDate" rules={[{ required: true }]}>
-                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={14}>
-                    <Form.Item label="Tên ca (Hiển thị)" name="shiftLabel" rules={[{ required: true }]}><Input /></Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Khung giờ" name="timeRange" rules={[{ required: true }]}><TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} /></Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Trạng thái" name="status">
-                      <Select options={[{ label: 'Mở (Tự do)', value: 'open' }, { label: 'Khóa (Admin)', value: 'locked' }]} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={8}><Form.Item label="Tiết đầu" name="order"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
-                  <Col span={8}><Form.Item label="Tiết cuối" name="endPeriod"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
-                  <Col span={8}><Form.Item label="Đè sĩ số" name="capacity"><InputNumber min={1} placeholder="Lấy từ kíp" style={{ width: '100%' }} /></Form.Item></Col>
-                </Row>
-
-                <Form.Item label="Ghi chú / Địa điểm" name="note"><Input.TextArea rows={2} /></Form.Item>
-
-                <Form.Item label="Gán người trực (Admin)" name="assignedUserIds">
-                  <Select
-                    mode="multiple"
-                    placeholder="Chọn thành viên"
-                    style={{ width: '100%' }}
-                    optionLabelProp="label"
-                    filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
-                  >
-                    {allUsers.map(u => (
-                      <Option key={u.id} value={u.id} label={u.name}>
-                        <Space>
-                          <Avatar size="small" src={u.avatar}>{u.name?.charAt(0)}</Avatar>
-                          {u.name} ({u.studentId || u.email})
-                        </Space>
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-
-                <Form.Item label="Điểm danh (Admin)" name="attendedUserIds">
-                  <Select
-                    mode="multiple"
-                    placeholder="Chọn thành viên đã trực"
-                    style={{ width: '100%' }}
-                    optionLabelProp="label"
-                    filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
-                  >
-                    {allUsers.map(u => (
-                      <Option key={u.id} value={u.id} label={u.name}>
-                        <Space>
-                          <Avatar size="small" src={u.avatar}>{u.name?.charAt(0)}</Avatar>
-                          {u.name} ({u.studentId || u.email})
-                        </Space>
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Form>
-            ) : (
-              <div style={{ marginBottom: 24, padding: '16px', background: '#f8fafc', borderRadius: 8 }}>
-                <Title level={4} style={{ margin: 0 }}>{selectedSlot?.shiftLabel}</Title>
-                <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                  {selectedSlot?.startTime} - {selectedSlot?.endTime}
-                </Text>
-                {selectedSlot?.note && (
-                  <div style={{ marginTop: 8 }}>
-                    <Text strong>Ghi chú: </Text>
-                    <Text>{selectedSlot?.note}</Text>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <Divider style={{ margin: '12px 0' }} />
-            <Title level={5}>Thành viên hiện tại ({selectedSlot?.assignedUsers?.length || 0}/{(selectedSlot as any)?.capacity || (selectedSlot as any)?.kip?.capacity || 0})</Title>
-            <Space wrap>
-              {selectedSlot?.assignedUsers?.length ? selectedSlot.assignedUsers.map((u: any) => (
-                <Tag key={u.id} color={u.id === currentUserId ? "orange" : "blue"} style={{ padding: '4px 8px', borderRadius: 16 }}>
-                  <Space>
-                    <Avatar size="small" src={u.avatar}>{u.name?.charAt(0)}</Avatar>
-                    {u.name} {u.id === currentUserId && "(Bạn)"}
-                  </Space>
-                </Tag>
-              )) : <Text type="secondary" italic>Chứa có ai đăng ký</Text>}
-            </Space>
-          </>
-        )}
-      </Modal>
-
-      {/* Leave Request Modal */}
-      <Modal
-        title="Yêu cầu xin nghỉ"
-        open={isLeaveModalVisible}
-        onCancel={() => setIsLeaveModalVisible(false)}
-        onOk={() => leaveForm.submit()}
-      >
-        <Alert
-          message="Lưu ý: Bạn nên tìm người thay thế trước khi xin nghỉ để đảm bảo quân số cho kíp trực."
-          type="warning"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-        <Form form={leaveForm} layout="vertical" onFinish={handleLeaveRequest}>
-          <Form.Item
-            label="Lý do xin nghỉ"
-            name="reason"
-            rules={[{ required: true, message: 'Vui lòng nhập lý do' }]}
-          >
-            <Input.TextArea rows={4} placeholder="Nhập lý do chi tiết..." />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <AssignTemplateModal
+        open={isAssignModalVisible}
+        onCancel={() => setIsAssignModalVisible(false)}
+        onSuccess={fetchSchedule}
+        templateGroups={templateGroups}
+        assignments={assignments}
+      />
     </div>
   );
 };

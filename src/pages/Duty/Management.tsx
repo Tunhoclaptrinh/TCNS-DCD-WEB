@@ -6,9 +6,9 @@ import {
   InboxOutlined,
   LeftOutlined, RightOutlined, LayoutOutlined,
   QuestionCircleOutlined,
-  TeamOutlined, LockOutlined, UnlockOutlined,
-  ProjectOutlined, ExclamationCircleOutlined,
-  CalendarOutlined
+  LockOutlined, UnlockOutlined,
+  ExclamationCircleOutlined,
+  CalendarOutlined, PlusSquareOutlined, InfoCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -648,7 +648,10 @@ const DutyManagement: React.FC = () => {
                         size="large" 
                         allowClear 
                         placeholder="Theo Giai đoạn (Automatic)"
-                        options={templateGroups.map(g => ({ label: g.name, value: g.id }))} 
+                        options={templateGroups.map(g => ({ 
+                          label: g.isDefault ? `${g.name} (Mặc định)` : g.name, 
+                          value: g.id 
+                        }))} 
                       />
                     </Form.Item>
                   </Col>
@@ -698,23 +701,119 @@ const DutyManagement: React.FC = () => {
               </div>
             )}
           </Card>
-          <Card title="Thêm Ca đơn lẻ" style={{ marginTop: 24 }} className="hifi-border">
+          <Card 
+            title={<Space><PlusSquareOutlined style={{ color: 'var(--primary-color)' }} /><span>Thêm Ca/Kíp trực đơn lẻ (Ad-hoc)</span></Space>} 
+            style={{ marginTop: 24, borderRadius: 12 }} 
+            className="hifi-border" 
+            bodyStyle={{ padding: '20px 24px' }}
+          >
             <Form form={manualSlotForm} layout="vertical" onFinish={async (v) => {
-              const s = templates.find(x => x.id === v.shiftId);
-              const k = s?.kips.find(x => x.id === v.kipId);
-              const res = await dutyService.createSlot({
-                shiftDate: v.date.format('YYYY-MM-DD'),
-                shiftLabel: v.shiftLabel || `${s?.name} - ${k?.name}`,
-                startTime: k?.startTime || s?.startTime, endTime: k?.endTime || s?.endTime, order: k?.order, kipId: k?.id, shiftId: s?.id
-              });
-              if (res.success) { message.success('Đã thêm'); manualSlotForm.resetFields(); fetchSlots(); }
-            }}>
-              <Row gutter={16}>
-                <Col span={8}><Form.Item name="date" label="Ngày"><DatePicker style={{ width: '100% ' }} /></Form.Item></Col>
-                <Col span={8}><Form.Item name="shiftId" label="Ca Bản mẫu"><Select onChange={v => setSelectedShiftTemplate(v)} options={templates.map(s => ({ label: s.name, value: s.id }))} /></Form.Item></Col>
-                <Col span={8}><Form.Item name="kipId" label="Kíp"><Select options={templates.find(s => s.id === selectedShiftTemplate)?.kips.map(k => ({ label: k.name, value: k.id })) || []} /></Form.Item></Col>
-              </Row>
-              <Button type="primary" htmlType="submit" block>Tạo kíp trực này</Button>
+              try {
+                const s = templates.find(x => x.id === v.shiftId);
+                const k = s?.kips.find(x => x.id === v.kipId);
+                const res = await dutyService.createSlot({
+                  shiftDate: v.date.format('YYYY-MM-DD'),
+                  shiftLabel: v.shiftLabel || (k ? `${s?.name} - ${k?.name}` : s?.name || 'Kíp trực lẻ'),
+                  startTime: v.timeRange?.[0]?.format('HH:mm') || k?.startTime || s?.startTime,
+                  endTime: v.timeRange?.[1]?.format('HH:mm') || k?.endTime || s?.endTime,
+                  order: v.order || k?.order || s?.order,
+                  endPeriod: v.endPeriod || k?.endPeriod,
+                  capacity: v.capacity || k?.capacity || 1,
+                  kipId: k?.id,
+                  shiftId: s?.id,
+                  status: v.status || 'open'
+                });
+                if (res.success) { 
+                  message.success('Đã thêm kíp trực mới'); 
+                  manualSlotForm.resetFields(); 
+                  fetchSlots(); 
+                }
+              } catch (err) {
+                message.error('Lỗi khi thêm ca lẻ');
+              }
+            }} initialValues={{ status: 'open' }}>
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+                <Row gutter={16}>
+                  <Col span={6}>
+                    <Form.Item name="date" label={<Text strong>Ngày trực</Text>} rules={[{ required: true }]}>
+                      <DatePicker style={{ width: '100%' }} size="large" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={9}>
+                    <Form.Item name="shiftId" label={<Text strong>Chọn khung Ca (Bản mẫu)</Text>} rules={[{ required: true }]}>
+                      <Select 
+                        size="large"
+                        placeholder="Chọn Ca mẫu"
+                        onChange={v => {
+                          setSelectedShiftTemplate(v);
+                          const s = templates.find(x => x.id === v);
+                          if (s) {
+                            manualSlotForm.setFieldsValue({ 
+                              kipId: undefined, 
+                              shiftLabel: s.name,
+                              timeRange: [dayjs(s.startTime, 'HH:mm'), dayjs(s.endTime, 'HH:mm')],
+                              order: s.order
+                            });
+                          }
+                        }} 
+                        options={templates.map(s => ({ label: `${s.name} (${s.startTime}-${s.endTime})`, value: s.id }))} 
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={9}>
+                    <Form.Item name="kipId" label={<Text strong>Chọn Kíp trực (Chi tiết)</Text>} tooltip="Chọn Ca trước để hiện danh sách Kíp">
+                      <Select 
+                        size="large"
+                        placeholder={selectedShiftTemplate ? "Chọn Kíp" : "Vui lòng chọn Ca trước"}
+                        disabled={!selectedShiftTemplate}
+                        onChange={v => {
+                          const s = templates.find(x => x.id === selectedShiftTemplate);
+                          const k = s?.kips.find(x => x.id === v);
+                          if (k) {
+                            manualSlotForm.setFieldsValue({ 
+                              shiftLabel: `${s?.name} - ${k.name}`,
+                              timeRange: k.startTime && k.endTime ? [dayjs(k.startTime, 'HH:mm'), dayjs(k.endTime, 'HH:mm')] : [dayjs(s!.startTime, 'HH:mm'), dayjs(s!.endTime, 'HH:mm')],
+                              order: k.order,
+                              endPeriod: k.endPeriod,
+                              capacity: k.capacity
+                            });
+                          }
+                        }}
+                        options={templates.find(s => s.id === selectedShiftTemplate)?.kips.map(k => ({ label: k.name, value: k.id })) || []} 
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                
+                <Row gutter={16}>
+                  <Col span={10}>
+                    <Form.Item name="shiftLabel" label={<Text strong>Tên hiển thị thực tế</Text>} rules={[{ required: true }]}>
+                      <Input prefix={<EditOutlined />} placeholder="VD: Ca Sáng - Kíp 1" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={14}>
+                    <Form.Item name="timeRange" label={<Text strong>Khoảng thời gian (Thực tế)</Text>} rules={[{ required: true }]}>
+                      <TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} size="large" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </div>
+
+              <div style={{ textAlign: 'center', marginTop: 8 }}>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  size="large" 
+                  icon={<PlusSquareOutlined />} 
+                  className="hifi-button"
+                  style={{ minWidth: 240 }}
+                >
+                  Tạo kíp trực và đưa lên lịch
+                </Button>
+                <div style={{ marginTop: 12, fontSize: 12, color: '#64748b' }}>
+                  <InfoCircleOutlined /> Lưu ý: Ca trực lẻ này sẽ tạo ra bản sao độc lập (Deep Copy), không ảnh hưởng bởi thay đổi bản mẫu gốc sau này.
+                </div>
+              </div>
             </Form>
           </Card>
         </div>
@@ -730,10 +829,19 @@ const DutyManagement: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Title level={5} style={{ margin: 0 }}>Nhóm bản mẫu:</Title>
                 <Select
-                  style={{ width: 220 }}
+                  style={{ width: 280 }}
                   value={currentTemplateId}
                   onChange={setCurrentTemplateId}
-                  options={templateGroups.map(g => ({ label: g.isDefault ? `${g.name} (Mặc định)` : g.name, value: g.id }))}
+                  placeholder="Chọn nhóm bản mẫu"
+                  options={templateGroups.map(g => ({ 
+                    label: (
+                      <Space>
+                        {g.name}
+                        {g.isDefault && <Tag color="gold" style={{ fontSize: '10px', height: '18px', lineHeight: '18px', border: 'none', borderRadius: 4, fontWeight: 700 }}>MẶC ĐỊNH</Tag>}
+                      </Space>
+                    ), 
+                    value: g.id 
+                  }))}
                 />
                 <Button icon={<EditOutlined />} onClick={() => {
                   const g = templateGroups.find(x => x.id === currentTemplateId);
@@ -773,14 +881,93 @@ const DutyManagement: React.FC = () => {
             <div><Title level={4} style={{ margin: 0 }}>Bản mẫu Ca & Kíp</Title><Text type="secondary">Cấu hình khung giờ cố định cho nhóm đã chọn</Text></div>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }}>Thêm Ca mới</Button>
           </div>
-          {templates.map(s => (
-            <Card key={s.id} className="hifi-border hifi-shift-card" style={{ marginBottom: 20 }} title={<Space><Text strong>{s.name}</Text><Tag color="red">{s.startTime} - {s.endTime}</Tag></Space>} extra={<Space><Button size="small" icon={<EditOutlined />} onClick={() => { setEditingShift(s); shiftForm.setFieldsValue({ ...s, timeRange: [dayjs(s.startTime, 'HH:mm'), dayjs(s.endTime, 'HH:mm')] }); setIsShiftModalOpen(true); }} /><Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteShift(s.id)} /></Space>}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}><Text strong>Danh sách Kíp</Text><Button type="link" size="small" icon={<PlusOutlined />} onClick={() => { setEditingKip({ shiftId: s.id }); kipForm.resetFields(); kipForm.setFieldsValue({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm Kíp</Button></div>
+          {templates.length === 0 ? (
+            <Card className="hifi-border" style={{ textAlign: 'center', padding: '40px 0', borderStyle: 'dashed' }}>
+              <InboxOutlined style={{ fontSize: 40, color: '#94a3b8', marginBottom: 16 }} />
+              <div><Text type="secondary">Chưa có bản mẫu Ca trực nào trong nhóm này.</Text></div>
+              <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 16 }} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }}>Bắt đầu tạo Ca</Button>
+            </Card>
+          ) : templates.map(s => (
+            <Card 
+              key={s.id} 
+              className="hifi-border hifi-shift-card" 
+              style={{ marginBottom: 20, borderRadius: 12, overflow: 'hidden' }} 
+              title={
+                <Space>
+                  <Text strong style={{ fontSize: '16px', color: '#1e293b' }}>{s.name}</Text>
+                  <Tag color="red-outline" style={{ borderRadius: 6, fontWeight: 700, backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    {s.startTime} - {s.endTime}
+                  </Tag>
+                  {s.daysOfWeek && s.daysOfWeek.length < 7 && (
+                    <Tag color="blue" style={{ fontSize: '11px' }}>
+                      {s.daysOfWeek.map((d: number) => ['T2','T3','T4','T5','T6','T7','CN'][d]).join(', ')}
+                    </Tag>
+                  )}
+                </Space>
+              } 
+              extra={
+                <Space>
+                  <Button size="small" shape="circle" icon={<EditOutlined />} onClick={() => { setEditingShift(s); shiftForm.setFieldsValue({ ...s, timeRange: [dayjs(s.startTime, 'HH:mm'), dayjs(s.endTime, 'HH:mm')] }); setIsShiftModalOpen(true); }} />
+                  <Popconfirm
+                    title="Xác nhận xóa bản mẫu Ca?"
+                    description="Các kíp trực thuộc ca này cũng sẽ mất vĩnh viễn."
+                    onConfirm={() => handleDeleteShift(s.id)}
+                    okText="Xóa"
+                    cancelText="Hủy"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button size="small" shape="circle" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </Space>
+              }
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text strong style={{ fontSize: '13px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Danh sách Kíp trực chi tiết</Text>
+                <Button type="link" size="small" icon={<PlusOutlined />} style={{ fontWeight: 600 }} onClick={() => { setEditingKip({ shiftId: s.id }); kipForm.resetFields(); kipForm.setFieldsValue({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm Kíp</Button>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {s.kips.map(k => (
-                  <div key={k.id} style={{ padding: '10px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, display: 'flex', justifyContent: 'space-between' }}>
-                    <Space direction="vertical" size={0}><Text strong>{k.name}</Text><Text type="secondary" style={{ fontSize: '0.8rem' }}>Tiết: {k.order} {k.endPeriod ? ` - ${k.endPeriod}` : ''} • Chỉ tiêu: {k.capacity}</Text></Space>
-                    <Space><Button size="small" type="text" icon={<EditOutlined />} onClick={() => { setEditingKip(k); kipForm.setFieldsValue({ ...k, timeRange: k.startTime && k.endTime ? [dayjs(k.startTime, 'HH:mm'), dayjs(k.endTime, 'HH:mm')] : undefined }); setIsKipModalOpen(true); }} /><Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteKip(k.id)} /></Space>
+                {s.kips.length === 0 ? (
+                  <Text type="secondary" style={{ fontStyle: 'italic', fontSize: '12px' }}>Chưa có kíp nào. Hãy nhấp "Thêm Kíp" để chia nhỏ Ca này.</Text>
+                ) : s.kips.map(k => (
+                  <div key={k.id} style={{ 
+                    padding: '12px 16px', 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    borderRadius: 10, 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'all 0.2s',
+                    position: 'relative'
+                  }} className="kip-item-row-hover">
+                    <Space size="middle">
+                       <div style={{ width: 4, height: 24, borderRadius: 2, background: 'var(--primary-color)', opacity: 0.6 }} />
+                       <div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                           <Text strong style={{ color: '#1e293b' }}>{k.name}</Text>
+                           {(k.startTime || k.endTime) && (
+                             <Tag color="cyan" style={{ fontSize: '10px', fontWeight: 600 }}>
+                               Múi giờ riêng: {k.startTime || '??:??'} - {k.endTime || '??:??'}
+                             </Tag>
+                           )}
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2 }}>
+                           <Text type="secondary" style={{ fontSize: '11px' }}>Tiết: <Tag style={{ margin: 0, fontSize: '10px' }}>{k.order} {k.endPeriod ? ` - ${k.endPeriod}` : ''}</Tag></Text>
+                           <Divider type="vertical" />
+                           <Text type="secondary" style={{ fontSize: '11px' }}>Chỉ tiêu: <Text strong style={{ color: '#475569' }}>{k.capacity}</Text> người</Text>
+                           {k.daysOfWeek && k.daysOfWeek.length < 7 && (
+                             <>
+                               <Divider type="vertical" />
+                               <Text type="secondary" style={{ fontSize: '11px' }}>Ngày: <Text strong style={{ color: '#475569' }}>{k.daysOfWeek.map((d: number) => ['T2','T3','T4','T5','T6','T7','CN'][d]).join(', ')}</Text></Text>
+                             </>
+                           )}
+                         </div>
+                       </div>
+                    </Space>
+                    <Space>
+                      <Button size="small" type="text" shape="circle" icon={<EditOutlined />} onClick={() => { setEditingKip(k); kipForm.setFieldsValue({ ...k, timeRange: k.startTime && k.endTime ? [dayjs(k.startTime, 'HH:mm'), dayjs(k.endTime, 'HH:mm')] : undefined }); setIsKipModalOpen(true); }} />
+                      <Button size="small" type="text" shape="circle" danger icon={<DeleteOutlined />} onClick={() => handleDeleteKip(k.id)} />
+                    </Space>
                   </div>
                 ))}
               </div>
@@ -824,55 +1011,144 @@ const DutyManagement: React.FC = () => {
         className="hifi-tabs"
       />
 
-      {/* Modals for Group, Shift, Kip, Slot Edit */}
       <Modal
-        title={editingGroup ? "Sửa Nhóm Bản mẫu" : "Thêm Nhóm Bản mẫu mới"}
+        title={<Space><div style={{ width: 4, height: 18, background: 'var(--primary-color)', borderRadius: 2 }} /><span>{editingGroup ? "Sửa Nhóm Bản mẫu" : "Thêm Nhóm Bản mẫu mới"}</span></Space>}
         open={isGroupModalOpen}
         onCancel={() => setIsGroupModalOpen(false)}
         onOk={() => groupForm.submit()}
         destroyOnClose
       >
-        <Form form={groupForm} layout="vertical" onFinish={handleSubmitGroup}>
-          <Form.Item name="name" label="Tên nhóm" rules={[{ required: true }]}><Input placeholder="VD: Mùa Đông, Mùa Hè" /></Form.Item>
-          <Form.Item name="isDefault" valuePropName="checked"><Checkbox>Đặt làm bản mẫu mặc định</Checkbox></Form.Item>
-          <Form.Item name="description" label="Mô tả"><Input.TextArea rows={2} /></Form.Item>
+        <Form form={groupForm} layout="vertical" onFinish={handleSubmitGroup} className="premium-form">
+          <Form.Item name="name" label={<Text strong>Tên nhóm bản mẫu</Text>} rules={[{ required: true, message: 'VD: Mùa Đông, Mùa Hè...' }]}>
+            <Input placeholder="VD: Mùa Đông, Mùa Hè" prefix={<LayoutOutlined />} />
+          </Form.Item>
+          <Form.Item name="isDefault" valuePropName="checked">
+            <Checkbox><Text strong>Đặt làm bản mẫu mặc định cho toàn hệ thống</Text></Checkbox>
+          </Form.Item>
+          <Form.Item name="description" label={<Text strong>Mô tả chi tiết</Text>}>
+            <Input.TextArea rows={3} placeholder="Mô tả về quy định trực của mùa này..." />
+          </Form.Item>
         </Form>
       </Modal>
 
-      <Modal title={editingShift ? "Sửa Bản mẫu Ca" : "Thêm Ca mới"} open={isShiftModalOpen} onCancel={() => setIsShiftModalOpen(false)} onOk={() => shiftForm.submit()} destroyOnClose>
-        <Form form={shiftForm} layout="vertical" onFinish={handleSubmitShift}>
-          <Form.Item name="name" label="Tên Ca" rules={[{ required: true }]}><Input placeholder="VD: Ca Sáng" /></Form.Item>
-          <Form.Item name="timeRange" label="Khung giờ" rules={[{ required: true }]}><TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} /></Form.Item>
+      <Modal 
+        title={<Space><div style={{ width: 4, height: 18, background: '#ef4444', borderRadius: 2 }} /><span>{editingShift ? "Cấu hình Bản mẫu Ca" : "Thêm Ca trực mới"}</span></Space>} 
+        open={isShiftModalOpen} 
+        onCancel={() => setIsShiftModalOpen(false)} 
+        onOk={() => shiftForm.submit()} 
+        destroyOnClose
+        width={500}
+      >
+        <Form form={shiftForm} layout="vertical" onFinish={handleSubmitShift} className="premium-form">
+          <Form.Item name="name" label={<Text strong>Tên Ca trực</Text>} rules={[{ required: true, message: 'Vui lòng nhập tên ca' }]}>
+            <Input placeholder="VD: Ca Sáng, Ca Chiều..." prefix={<ScheduleOutlined style={{ color: '#ef4444' }} />} />
+          </Form.Item>
+          
+          <Form.Item name="timeRange" label={<Text strong>Khung giờ hoạt động</Text>} rules={[{ required: true, message: 'Khung đỏ bao quanh các kíp trực' }]} extra="Vùng giờ đỏ này giữ cho các kíp của Ca không bị rời rạc">
+            <TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} size="large" />
+          </Form.Item>
+
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="order" label="Thứ tự"><InputNumber min={0} style={{ width: '100% ' }} /></Form.Item></Col>
-            <Col span={12}>
-              <Form.Item name="daysOfWeek" label="Ngày áp dụng" initialValue={[0, 1, 2, 3, 4, 5, 6]}>
-                <Select mode="multiple" options={[{ label: 'Thứ 2', value: 0 }, { label: 'Thứ 3', value: 1 }, { label: 'Thứ 4', value: 2 }, { label: 'Thứ 5', value: 3 }, { label: 'Thứ 6', value: 4 }, { label: 'Thứ 7', value: 5 }, { label: 'Chủ Nhật', value: 6 }]} />
+            <Col span={10}>
+              <Form.Item name="order" label={<Text strong>Thứ tự</Text>} initialValue={1}>
+                <InputNumber min={1} style={{ width: '100% ' }} />
+              </Form.Item>
+            </Col>
+            <Col span={14}>
+              <Form.Item name="daysOfWeek" label={<Text strong>Ngày áp dụng</Text>} initialValue={[0, 1, 2, 3, 4, 5, 6]}>
+                <Select
+                  mode="multiple"
+                  maxTagCount="responsive"
+                  options={[{ label: 'T2', value: 0 }, { label: 'T3', value: 1 }, { label: 'T4', value: 2 }, { label: 'T5', value: 3 }, { label: 'T6', value: 4 }, { label: 'T7', value: 5 }, { label: 'CN', value: 6 }]}
+                />
               </Form.Item>
             </Col>
           </Row>
-        </Form>
-      </Modal>
 
-      <Modal title={editingKip?.id ? "Sửa Kíp" : "Thêm Kíp mới"} open={isKipModalOpen} onCancel={() => setIsKipModalOpen(false)} onOk={() => kipForm.submit()} destroyOnClose>
-        <Form form={kipForm} layout="vertical" onFinish={handleCreateKip}>
-          <Form.Item name="shiftId" hidden><Input /></Form.Item>
-          <Form.Item name="name" label="Tên Kíp" rules={[{ required: true }]}><Input placeholder="VD: Kíp 1" /></Form.Item>
-          <Row gutter={16}>
-            <Col span={12}><Form.Item name="capacity" label="Chỉ tiêu" initialValue={1}><InputNumber min={1} style={{ width: '100% ' }} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="order" label="Tiết bắt đầu" rules={[{ required: true }]}><InputNumber min={1} style={{ width: '100% ' }} /></Form.Item></Col>
-          </Row>
-          <Form.Item name="timeRange" label="Giờ riêng (Tùy chọn)"><TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} /></Form.Item>
-          <Form.Item name="daysOfWeek" label="Ngày áp dụng"><Select mode="multiple" options={[{ label: 'Thứ 2', value: 0 }, { label: 'Thứ 3', value: 1 }, { label: 'Thứ 4', value: 2 }, { label: 'Thứ 5', value: 3 }, { label: 'Thứ 6', value: 4 }, { label: 'Thứ 7', value: 5 }, { label: 'Chủ Nhật', value: 6 }]} /></Form.Item>
+          <Form.Item name="description" label={<Text strong>Ghi chú ca</Text>}>
+            <Input.TextArea placeholder="Địa điểm hoặc lưu ý cho Ca này..." rows={2} />
+          </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title="Chỉnh sửa Kíp trực trực tiếp"
+        title={<Space><div style={{ width: 4, height: 18, background: '#0ea5e9', borderRadius: 2 }} /><span>{editingKip?.id ? "Cấu hình Kíp trực" : "Thêm Kíp trực mới"}</span></Space>}
+        open={isKipModalOpen}
+        onCancel={() => setIsKipModalOpen(false)}
+        onOk={() => kipForm.submit()}
+        destroyOnClose
+        width={500}
+      >
+        <Form form={kipForm} layout="vertical" onFinish={handleCreateKip} className="premium-form">
+          <Form.Item name="shiftId" hidden><Input /></Form.Item>
+
+          <Form.Item name="name" label={<Text strong>Tên Kíp (Chi tiết)</Text>} rules={[{ required: true, message: 'VD: Kíp 1, Kíp 2...' }]}>
+            <Input placeholder="VD: Kíp 1, Trực sảnh, Trực kho..." prefix={<PlusSquareOutlined style={{ color: '#0ea5e9' }} />} />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="capacity" label={<Text strong>Chỉ tiêu (Người)</Text>} initialValue={1}>
+                <InputNumber min={1} style={{ width: '100%' }} prefix={<PlusOutlined />} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="order" label={<Text strong>Tiết BĐ</Text>} rules={[{ required: true }]}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="endPeriod" label={<Text strong>Tiết KT</Text>}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="timeRange"
+            label={
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Text strong>Giờ trực riêng của kíp</Text>
+                <Typography.Link
+                  style={{ fontSize: 12 }}
+                  onClick={() => {
+                    const sId = kipForm.getFieldValue('shiftId');
+                    const shift = templates.find(t => t.id === sId);
+                    if (shift) {
+                      kipForm.setFieldsValue({
+                        timeRange: [dayjs(shift.startTime, 'HH:mm'), dayjs(shift.endTime, 'HH:mm')]
+                      });
+                    }
+                  }}
+                >
+                  Dùng giờ của Ca
+                </Typography.Link>
+              </Space>
+            }
+            extra="Để trống sẽ tự tính theo giờ của Ca"
+          >
+            <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} size="large" />
+          </Form.Item>
+
+          <Form.Item name="daysOfWeek" label={<Text strong>Ngày áp dụng riêng</Text>} extra="Chỉ để trống nếu kíp này áp dụng cho TẤT CẢ các ngày của Ca">
+            <Select
+              mode="multiple"
+              placeholder="Sử dụng cấu hình của Ca"
+              maxTagCount="responsive"
+              options={[{ label: 'T2', value: 0 }, { label: 'T3', value: 1 }, { label: 'T4', value: 2 }, { label: 'T5', value: 3 }, { label: 'T6', value: 4 }, { label: 'T7', value: 5 }, { label: 'CN', value: 6 }]}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={<Space><SettingOutlined style={{ color: '#6366f1' }} /><span>Hiệu chỉnh Kíp trực trên lịch</span></Space>}
         open={isSlotEditModalOpen}
         onCancel={() => setIsSlotEditModalOpen(false)}
         onOk={() => slotEditForm.submit()}
-        width={650}
+        width={700}
+        destroyOnClose
+        className="premium-modal"
       >
         <Form form={slotEditForm} layout="vertical" onFinish={async (v) => {
           try {
@@ -891,52 +1167,65 @@ const DutyManagement: React.FC = () => {
             message.error('Lỗi khi cập nhật');
           }
         }}>
-          <Row gutter={16}>
-            <Col span={16}><Form.Item label="Tên hiển thị" name="shiftLabel"><Input /></Form.Item></Col>
-            <Col span={8}>
-              <Form.Item label="Trạng thái" name="status">
-                <Select options={[{ label: 'Mở (Đăng ký tự do)', value: 'open' }, { label: 'Khóa (Admin quản lý)', value: 'locked' }]} />
-              </Form.Item>
-            </Col>
-          </Row>
+          <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+            <Row gutter={16}>
+              <Col span={16}>
+                <Form.Item label={<Text strong>Tên hiển thị (Trên lịch)</Text>} name="shiftLabel" rules={[{ required: true }]}>
+                  <Input prefix={<EditOutlined />} />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label={<Text strong>Trạng thái</Text>} name="status">
+                  <Select options={[
+                    { label: <Badge status="success" text="Đang mở" />, value: 'open' },
+                    { label: <Badge status="error" text="Đã khóa" />, value: 'locked' }
+                  ]} />
+                </Form.Item>
+              </Col>
+            </Row>
 
-          <Row gutter={16}>
-            <Col span={12}><Form.Item label="Ngày trực" name="shiftDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={12}><Form.Item label="Thời gian" name="timeRange"><TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} /></Form.Item></Col>
-          </Row>
+            <Row gutter={16}>
+              <Col span={12}><Form.Item label={<Text strong>Ngày diễn ra</Text>} name="shiftDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={12}><Form.Item label={<Text strong>Khung giờ thực tế</Text>} name="timeRange"><TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} /></Form.Item></Col>
+            </Row>
 
-          <Row gutter={16}>
-            <Col span={8}><Form.Item label="Tiết bắt đầu" name="order"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={8}><Form.Item label="Tiết kết thúc" name="endPeriod"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={8}><Form.Item label="Sĩ số tối đa" name="capacity"><InputNumber min={1} placeholder="Lấy từ kíp" style={{ width: '100%' }} /></Form.Item></Col>
-          </Row>
+            <Row gutter={16}>
+              <Col span={8}><Form.Item label={<Text strong>Tiết BĐ</Text>} name="order"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={8}><Form.Item label={<Text strong>Tiết KT</Text>} name="endPeriod"><InputNumber min={1} style={{ width: '100%' }} /></Form.Item></Col>
+              <Col span={8}><Form.Item label={<Text strong>Chỉ tiêu (Max)</Text>} name="capacity"><InputNumber min={1} placeholder="Lấy từ kíp" style={{ width: '100%' }} /></Form.Item></Col>
+            </Row>
+          </div>
 
-          <Form.Item label="Nhân sự trực (Thủ công)" name="assignedUserIds">
+          <Divider orientation="left"><Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase' }}>Quản lý nhân sự</Text></Divider>
+
+          <Form.Item label={<Space><PlusOutlined /><span>Nhân sự trực (Đã đăng ký)</span></Space>} name="assignedUserIds">
             <Select
               mode="multiple"
-              placeholder="Thêm nhân sự trực tiếp"
+              placeholder="Thêm nhân sự trực tiếp..."
               style={{ width: '100%' }}
               filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
               options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
             />
           </Form.Item>
 
-          <Form.Item label="Xác nhận điểm danh (Thủ công)" name="attendedUserIds">
+          <Form.Item label={<Space><ScheduleOutlined /><span>Xác nhận điểm danh</span></Space>} name="attendedUserIds">
             <Select
               mode="multiple"
-              placeholder="Chọn thành viên đã trực"
+              placeholder="Chọn thành viên đã trực thực tế..."
               style={{ width: '100%' }}
               filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
               options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
             />
           </Form.Item>
 
-          <Form.Item label="Ghi chú / Địa điểm" name="note"><Input.TextArea rows={3} /></Form.Item>
+          <Form.Item label={<Text strong>Ghi chú / Địa điểm trực</Text>} name="note">
+            <Input.TextArea placeholder="Thông tin thêm cho kíp trực này..." rows={3} />
+          </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title="Hướng dẫn Quản lý Lịch trực"
+        title={<span><InfoCircleOutlined style={{ color: 'var(--primary-color)' }} /> Hướng dẫn Quản lý Lịch trực</span>}
         open={isGuideModalOpen}
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[<Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)}>Đã hiểu</Button>]}
@@ -955,9 +1244,9 @@ const DutyManagement: React.FC = () => {
             </li>
           </ul>
           <Alert
-            message="Lưu ý quan trọng"
-            description="Mọi thay đổi trên Bản mẫu sẽ không ảnh hưởng đến các kíp trực đã lập. Để áp dụng thay đổi mới, bạn cần lập lịch lại cho tuần đó."
-            type="warning"
+            message="Công nghệ Snapshot-Independent"
+            description="Sau khi dập khuôn, lịch trực sẽ được lưu dưới dạng các bản ghi vật lý độc lập. Việc xóa hay sửa bản mẫu sau đó sẽ không làm mất dữ liệu lịch đã tạo."
+            type="info"
             showIcon
           />
         </div>
