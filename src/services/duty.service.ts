@@ -127,6 +127,22 @@ class DutyService {
     return response;
   }
 
+  // Swap Requests
+  async requestSwap(slotId: number, targetUserId: number) {
+    const response = await apiClient.post(`/duty/swaps`, { slotId, targetUserId });
+    return response;
+  }
+
+  async getSwapRequests(params: any = {}) {
+    const response = await apiClient.get(`/duty/swaps`, { params });
+    return response;
+  }
+
+  async decideSwap(requestId: number, status: 'approved' | 'rejected') {
+    const response = await apiClient.patch(`/duty/swaps/${requestId}/decision`, { status });
+    return response;
+  }
+
   /**
    * Get all background template groups (Winter/Summer etc)
    */

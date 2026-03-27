@@ -36,7 +36,7 @@ export const adminMenu: IMenuItem[] = [
         path: '/admin/duty',
         name: 'Lịch trực',
         icon: <CalendarOutlined />,
-        children: [
+        routes: [
             {
                 key: 'duty-calendar',
                 path: '/admin/duty/calendar',
@@ -52,7 +52,13 @@ export const adminMenu: IMenuItem[] = [
                 key: 'duty-leave',
                 path: '/admin/duty/leave',
                 name: 'Duyệt đơn nghỉ',
-                accessFilter: ['admin'],
+                accessFilter: ['admin', 'staff'],
+            },
+            {
+                key: 'duty-swaps',
+                path: '/admin/duty/swaps',
+                name: 'Đổi kíp',
+                accessFilter: ['admin', 'staff'],
             },
         ]
     },

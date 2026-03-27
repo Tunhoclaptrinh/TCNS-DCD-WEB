@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Table, Space, message, Typography, Tag, Modal } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, InboxOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Space, message, Typography, Tag, Modal, Button, Tooltip } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, InboxOutlined, QuestionCircleOutlined, CalendarOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
+import DataTable from '@/components/common/DataTable';
 
 const { Title, Text } = Typography;
 
@@ -15,7 +16,8 @@ const LeaveRequestsPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await dutyService.getLeaveRequests({ status: 'pending' });
-      setRequests(res.data || res);
+      const rawData = res.data || res;
+      setRequests(Array.isArray(rawData) ? rawData : (rawData?.data || []));
     } catch (err) {
       message.error('Không thể tải danh sách đơn nghỉ');
     } finally {
@@ -48,28 +50,37 @@ const LeaveRequestsPage: React.FC = () => {
     {
       title: 'Nhân sự',
       key: 'user',
+      width: 250,
       render: (_: any, r: any) => (
-        <Space direction="vertical" size={0}>
-          <Text strong>{r.user?.name}</Text>
-          <Text type="secondary" style={{ fontSize: '12px' }}>{r.user?.studentId || r.user?.email}</Text>
+        <Space>
+          <UserOutlined style={{ color: '#8c8c8c' }} />
+          <Space direction="vertical" size={0}>
+            <Text strong>{r.user?.name}</Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>{r.user?.studentId || r.user?.email}</Text>
+          </Space>
         </Space>
       )
     },
     {
       title: 'Kíp trực',
       key: 'slot',
+      width: 250,
       render: (_: any, r: any) => (
         <Space direction="vertical" size={0}>
-          <Text>{r.slot?.shiftLabel}</Text>
-          <Tag color="blue">{dayjs(r.slot?.shiftDate).format('dddd, DD/MM/YYYY')}</Tag>
+          <Text strong color="blue">{r.slot?.shiftLabel}</Text>
+          <Space size={4}>
+            <CalendarOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
+            <Text type="secondary" style={{ fontSize: '12px' }}>{dayjs(r.slot?.shiftDate).format('dddd, DD/MM/YYYY')}</Text>
+          </Space>
         </Space>
       )
     },
     {
-      title: 'Thời gian trực',
+      title: 'Thời gian',
       key: 'time',
+      width: 150,
       render: (_: any, r: any) => (
-        <Text>{r.slot?.startTime} - {r.slot?.endTime}</Text>
+        <Tag color="cyan">{r.slot?.startTime} - {r.slot?.endTime}</Tag>
       )
     },
     {
@@ -77,64 +88,65 @@ const LeaveRequestsPage: React.FC = () => {
       dataIndex: 'reason',
       key: 'reason',
       ellipsis: true,
+      minWidth: 200,
     },
     {
       title: 'Ngày gửi',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date: string) => dayjs(date).format('HH:mm DD/MM'),
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      align: 'center' as const,
-      render: (_: any, r: any) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<CheckCircleOutlined />}
-            onClick={() => handleResolve(r.id, 'approved')}
-          >
-            Duyệt
-          </Button>
-          <Button
-            danger
-            size="small"
-            icon={<CloseCircleOutlined />}
-            onClick={() => handleResolve(r.id, 'rejected')}
-          >
-            Từ chối
-          </Button>
-        </Space>
-      )
+      width: 180,
+      render: (date: string) => dayjs(date).format('HH:mm DD/MM/YYYY'),
     }
   ];
 
   return (
     <div className="leave-requests-page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0, fontWeight: 600 }}>
-          <InboxOutlined style={{ marginRight: 8 }} />
-          Duyệt đơn xin nghỉ
-        </Title>
-        <Button
-          icon={<QuestionCircleOutlined />}
-          onClick={() => setIsGuideModalOpen(true)}
-        >
-          Hướng dẫn
-        </Button>
-      </div>
-
-      <Card className="hifi-border">
-        <Table
-          loading={loading}
-          dataSource={requests}
-          columns={columns}
-          rowKey="id"
-          locale={{ emptyText: 'Không có đơn nghỉ nào đang chờ xử lý' }}
-        />
-      </Card>
+      <DataTable
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <InboxOutlined style={{ color: 'var(--primary-color)', fontSize: 24 }} />
+            <Title level={4} style={{ margin: 0, fontWeight: 700 }}>Duyệt đơn xin nghỉ</Title>
+          </div>
+        }
+        loading={loading}
+        dataSource={requests}
+        columns={columns}
+        rowKey="id"
+        onRefresh={fetchRequests}
+        searchable={true}
+        searchPlaceholder="Tìm kiếm nhân sự hoặc lý do..."
+        extra={
+          <Button
+            icon={<QuestionCircleOutlined />}
+            onClick={() => setIsGuideModalOpen(true)}
+          >
+            Hướng dẫn
+          </Button>
+        }
+        customActions={(r) => (
+          <Space size={4}>
+            <Tooltip title="Duyệt đơn">
+              <Button
+                type="text"
+                size="small"
+                icon={<CheckCircleOutlined />}
+                style={{ color: '#52c41a' }}
+                onClick={() => handleResolve(r.id, 'approved')}
+              />
+            </Tooltip>
+            <Tooltip title="Từ chối">
+              <Button
+                danger
+                type="text"
+                size="small"
+                icon={<CloseCircleOutlined />}
+                style={{ color: '#ff4d4f' }}
+                onClick={() => handleResolve(r.id, 'rejected')}
+              />
+            </Tooltip>
+          </Space>
+        )}
+      />
 
       <Modal
         title="Hướng dẫn Duyệt đơn nghỉ"

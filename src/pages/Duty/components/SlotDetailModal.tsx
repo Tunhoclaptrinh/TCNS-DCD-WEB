@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Alert, Row, Col, message, List, Card } from 'antd';
+import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Alert, Row, Col, message, List, Card, Select } from 'antd';
 import { 
   InfoCircleOutlined, 
   DeleteOutlined, 
@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutySlot } from '@/services/duty.service';
+import apiClient from '@/config/axios.config';
 
 const { Text } = Typography;
 
@@ -35,6 +36,9 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
   const [leaveForm] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   const [isLeaveModalVisible, setIsLeaveModalVisible] = React.useState(false);
+  const [isSwapModalVisible, setIsSwapModalVisible] = React.useState(false);
+  const [allUsers, setAllUsers] = React.useState<any[]>([]);
+  const [swapTargetUserId, setSwapTargetUserId] = React.useState<number | null>(null);
   const now = dayjs();
 
   React.useEffect(() => {
@@ -46,6 +50,23 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
       });
     }
   }, [open, slot, form]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    
+    const fetchUsers = async () => {
+      try {
+        const res = await apiClient.get('/users');
+        const rawData = res.data || res;
+        const usersArray = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+        setAllUsers(usersArray.filter((u: any) => u.id !== currentUserId));
+      } catch (err) {
+        console.error('Lỗi tải danh sách người dùng:', err);
+      }
+    };
+    fetchUsers();
+  }, [open, currentUserId]);
+
 
   const handleUpdate = async (values: any) => {
     if (!slot) return;
@@ -144,6 +165,19 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
     }
   };
 
+  const handleSwapRequest = async () => {
+    if (!slot || !swapTargetUserId) return;
+    try {
+      await dutyService.requestSwap(slot.id, swapTargetUserId);
+      message.success('Đã gửi yêu cầu đổi ca');
+      setIsSwapModalVisible(false);
+      onSuccess();
+      onCancel();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Gửi yêu cầu thất bại');
+    }
+  };
+
   const renderHeader = () => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '95%' }}>
       <Space>
@@ -175,6 +209,7 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
                 })()}
                 <Button danger icon={<ClearOutlined />} onClick={handleUnregister}>Hủy đăng ký</Button>
                 <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)}>Xin nghỉ</Button>
+                <Button type="primary" ghost icon={<EditOutlined />} onClick={() => setIsSwapModalVisible(true)}>Đổi kíp</Button>
               </Space>
             ) : (
               (slot.assignedUserIds?.length || 0) < (slot.capacity || slot.kip?.capacity || 0) && (
@@ -291,6 +326,37 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
             <Input.TextArea rows={4} placeholder="Vui lòng giải thích ngắn gọn lý do bạn không thể trực kíp này..." />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Yêu cầu đổi ca (Chuyển ca)"
+        open={isSwapModalVisible}
+        onCancel={() => setIsSwapModalVisible(false)}
+        onOk={handleSwapRequest}
+        okText="Gửi yêu cầu"
+        cancelText="Hủy"
+        destroyOnClose
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Alert 
+            message="Lưu ý" 
+            description="Bạn đang yêu cầu chuyển ca này cho một thành viên khác. Sau khi họ chấp thuận (và được Admin duyệt nếu cần), bạn sẽ được gỡ khỏi ca này." 
+            type="warning" 
+            showIcon 
+          />
+        </div>
+        <Text strong>Chọn người nhận ca:</Text>
+        <Select
+          showSearch
+          style={{ width: '100%', marginTop: 8 }}
+          placeholder="Tìm kiếm thành viên..."
+          optionFilterProp="children"
+          onChange={(val: number) => setSwapTargetUserId(val)}
+          filterOption={(input: string, option: any) =>
+            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+          }
+          options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
+        />
       </Modal>
     </>
   );

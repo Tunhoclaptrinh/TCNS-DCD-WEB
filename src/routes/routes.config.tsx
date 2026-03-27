@@ -27,6 +27,7 @@ const DutyLayout = lazy(() => import("@/pages/Duty"));
 const DutyCalendar = lazy(() => import("@/pages/Duty/DutyCalendar"));
 const DutyManagement = lazy(() => import("@/pages/Duty/Management"));
 const LeaveRequests = lazy(() => import("@/pages/Duty/LeaveRequests"));
+const SwapRequests = lazy(() => import("@/pages/Duty/SwapRequests"));
 
 
 
@@ -126,7 +127,7 @@ const routes: RouteObject[] = [
   {
     path: "/admin",
     element: (
-      <AuthGuard requireAuth={true} requiredRoles={["admin"]}>
+      <AuthGuard requireAuth={true} requiredRoles={["admin", "staff"]}>
         <LazyLoadWrapper>
           <AdminLayout />
         </LazyLoadWrapper>
@@ -160,6 +161,10 @@ const routes: RouteObject[] = [
           {
             path: "leave",
             element: <LeaveRequests />,
+          },
+          {
+            path: "swaps",
+            element: <SwapRequests />,
           },
         ]
       },
