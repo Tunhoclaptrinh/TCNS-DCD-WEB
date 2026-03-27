@@ -6,10 +6,11 @@ import {
   ClockCircleOutlined, 
   EditOutlined, 
   CalendarOutlined, 
-  InfoCircleOutlined 
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutyShift } from '@/services/duty.service';
+import { Button } from 'antd';
 
 const { Text } = Typography;
 
@@ -32,6 +33,8 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
+  const [isEditShiftOpen, setIsEditShiftOpen] = React.useState(false);
+  const [localShiftData, setLocalShiftData] = React.useState<any>(null);
 
   // Initialize form when context changes
   React.useEffect(() => {
@@ -69,12 +72,25 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
     setLoading(true);
     try {
       const targetDateStr = date?.format('YYYY-MM-DD');
+      const stampMode = form.getFieldValue('stampMode');
+      const shiftId = form.getFieldValue('shiftId');
       
       if (!values.isLockedShift) {
         // Handle Stencil Stamping
         let res;
-        if (values.stampMode === 'template') {
-          res = await dutyService.addShiftToDay(targetDateStr!, values.shiftId);
+        if (stampMode === 'template') {
+          if (localShiftData) {
+            // If localShiftData exists, it means the user edited the template details
+            res = await dutyService.addShiftToDay(targetDateStr!, Number(shiftId), {
+              name: localShiftData.name,
+              startTime: localShiftData.startTime,
+              endTime: localShiftData.endTime,
+              order: localShiftData.order,
+            });
+          } else {
+            // No local edits, use original template
+            res = await dutyService.addShiftToDay(targetDateStr!, values.shiftId);
+          }
         } else {
           // Custom manual shift: 1. Create instance template, 2. Add to day
           const [start, end] = values.timeRange || [];
@@ -168,44 +184,94 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
             if (shift || context?.shift) {
               const sData = shift || context?.shift;
               return (
-                <div style={{
-                  background: isLocked ? 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)' : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                  padding: '20px',
-                  borderRadius: '16px',
-                  marginBottom: '24px',
-                  border: isLocked ? '1.5px solid #fecaca' : '1.5px solid #bae6fd',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{
-                      background: isLocked ? '#ef4444' : '#0ea5e9',
-                      color: 'white',
-                      width: 52,
-                      height: 52,
-                      borderRadius: '12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: isLocked ? '0 4px 12px rgba(239, 68, 68, 0.2)' : '0 4px 12px rgba(14, 165, 233, 0.2)'
-                    }}>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.9 }}>{date?.format('ddd')}</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 900, lineHeight: 1 }}>{date?.format('DD')}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 800, color: isLocked ? '#991b1b' : '#075985', fontSize: '1.15rem', marginBottom: 2 }}>
-                        {sData.name} {!shift && <Tag color="default" style={{ fontSize: '10px' }}>Non-Template</Tag>}
+                <>
+                  <div style={{
+                    background: isLocked ? 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)' : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                    padding: '20px',
+                    borderRadius: '16px',
+                    marginBottom: '24px',
+                    border: isLocked ? '1.5px solid #fecaca' : '1.5px solid #bae6fd',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{
+                        background: isLocked ? '#ef4444' : '#0ea5e9',
+                        color: 'white',
+                        width: 52,
+                        height: 52,
+                        borderRadius: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: isLocked ? '0 4px 12px rgba(239, 68, 68, 0.2)' : '0 4px 12px rgba(14, 165, 233, 0.2)'
+                      }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.9 }}>{date?.format('ddd')}</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 900, lineHeight: 1 }}>{date?.format('DD')}</div>
                       </div>
-                      <Space style={{ fontSize: '0.9rem', color: isLocked ? '#ef4444' : '#0ea5e9' }}>
-                        <ClockCircleOutlined />
-                        <Text strong style={{ color: 'inherit' }}>{sData.startTime} - {sData.endTime}</Text>
+                      <div>
+                        <div style={{ fontWeight: 800, color: isLocked ? '#991b1b' : '#075985', fontSize: '1.15rem', marginBottom: 2 }}>
+                          {sData.name} {!shift && <Tag color="default" style={{ fontSize: '10px' }}>Non-Template</Tag>}
+                        </div>
+                        <Space style={{ fontSize: '0.9rem', color: isLocked ? '#ef4444' : '#0ea5e9' }}>
+                          <ClockCircleOutlined />
+                          <Text strong style={{ color: 'inherit' }}>{sData.startTime} - {sData.endTime}</Text>
+                        </Space>
+                      </div>
+                    </div>
+
+                    {sData.id && shift && (
+                      <Button 
+                        icon={<EditOutlined />} 
+                        onClick={() => setIsEditShiftOpen(!isEditShiftOpen)}
+                        type={isEditShiftOpen ? 'primary' : 'default'}
+                        style={{ 
+                          borderRadius: '8px',
+                          color: isEditShiftOpen ? '#fff' : (isLocked ? '#ef4444' : '#0ea5e9'),
+                          borderColor: isLocked ? '#fecaca' : '#bae6fd'
+                        }}
+                      >
+                        {isEditShiftOpen ? "Lưu tạm" : "Chỉnh sửa"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {isEditShiftOpen && (
+                    <div style={{ marginTop: -12, marginBottom: 24, padding: 16, background: '#fff', borderRadius: '0 0 16px 16px', border: '1.5px solid #bae6fd', borderTop: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12, fontWeight: 600 }}>
+                        TÙY CHỈNH RIÊNG CHO NGÀY {date?.format('DD/MM')}:
+                      </Text>
+                      <Space direction="vertical" style={{ width: '100%' }} size={12}>
+                        <Form.Item label={<Text type="secondary" style={{ fontSize: 12 }}>Tên hiển thị</Text>} style={{ marginBottom: 0 }}>
+                          <Input 
+                            value={localShiftData?.name} 
+                            onChange={e => setLocalShiftData({ ...localShiftData, name: e.target.value })}
+                            placeholder="Tên ca..."
+                          />
+                        </Form.Item>
+                        <Form.Item label={<Text type="secondary" style={{ fontSize: 12 }}>Khung giờ</Text>} style={{ marginBottom: 0 }}>
+                          <TimePicker.RangePicker 
+                            format="HH:mm" 
+                            style={{ width: '100%' }}
+                            value={localShiftData?.startTime && localShiftData?.endTime ? [dayjs(localShiftData.startTime, 'HH:mm'), dayjs(localShiftData.endTime, 'HH:mm')] : null}
+                            onChange={(vals) => {
+                              if (vals) {
+                                setLocalShiftData({
+                                  ...localShiftData,
+                                  startTime: vals[0]!.format('HH:mm'),
+                                  endTime: vals[1]!.format('HH:mm')
+                                });
+                              }
+                            }}
+                          />
+                        </Form.Item>
                       </Space>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </>
               );
             }
             return (

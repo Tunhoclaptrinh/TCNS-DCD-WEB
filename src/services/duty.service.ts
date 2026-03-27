@@ -67,8 +67,8 @@ class DutyService {
   /**
    * Get weekly schedule
    */
-  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[] }>> {
-    const response = await apiClient.get<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[] }>>("/duty/week", {
+  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[], templates?: DutyShift[] }>> {
+    const response = await apiClient.get<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[], templates?: DutyShift[] }>>("/duty/week", {
       params: { weekStart }
     });
     return response;
@@ -262,8 +262,8 @@ class DutyService {
     return response;
   }
 
-  async addShiftToDay(date: string, shiftId: number): Promise<any> {
-    const response = await apiClient.post('/duty/template-shifts-day', { date, shiftId });
+  async addShiftToDay(date: string, shiftId: number, overrides?: any): Promise<any> {
+    const response = await apiClient.post('/duty/template-shifts-day', { date, shiftId, overrides });
     return response;
   }
 

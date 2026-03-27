@@ -279,7 +279,9 @@
     border-color: #cbd5e1;
     border-left-color: #94a3b8;
 
-    .slot-title, .slot-time, .user-avatar-mini {
+    .slot-title,
+    .slot-time,
+    .user-avatar-mini {
       color: #64748b;
       filter: grayscale(1);
     }
@@ -379,8 +381,8 @@
   left: 0;
   right: 0;
   background: rgba(239, 68, 68, 0.03);
-  border-top: 2px solid #ef4444; // Back to top border
-  border-bottom: 2px solid #ef4444; // Back to bottom border
+  border-top: 2px solid #ef4444;
+  border-bottom: 2px solid #ef4444;
   z-index: 5;
   cursor: pointer;
   display: flex;
@@ -390,7 +392,7 @@
 
   &.draft {
     background: rgba(100, 116, 139, 0.05); // Slate-500 tint
-    border-top: 2px dashed #94a3b8; // Slate-400
+    border-top: 2px dashed #94a3b8;
     border-bottom: 2px dashed #94a3b8;
     opacity: 0.6;
 
@@ -413,10 +415,12 @@
 
   .shift-tag {
     position: absolute;
-    top: -14px; // Move above the red border
+    top: -10px;
     left: 8px;
-    background: white; // Cover the grid line behind label
-    padding: 0 6px;
+    background: white;
+    padding: 0 2px;
+    line-height: 1.1; // Minimal height
+    border-radius: 2px;
     font-size: 0.65rem;
     font-weight: 800;
     color: #ef4444;
@@ -514,7 +518,8 @@
     min-width: 1000px;
     font-size: 0.85rem;
 
-    th, td {
+    th,
+    td {
       border: 1px solid #e2e8f0;
       padding: 12px 8px;
     }
@@ -530,13 +535,25 @@
         text-align: center;
         background: #f1f5f9;
 
-        .day-name { color: #64748b; font-size: 0.7rem; text-transform: uppercase; }
-        .day-date { color: #1e293b; font-size: 1rem; }
+        .day-name {
+          color: #64748b;
+          font-size: 0.7rem;
+          text-transform: uppercase;
+        }
+
+        .day-date {
+          color: #1e293b;
+          font-size: 1rem;
+        }
 
         &.is-today {
           background: #fff1f2;
           border-bottom: 2px solid #ef4444;
-          .day-name, .day-date { color: #ef4444; }
+
+          .day-name,
+          .day-date {
+            color: #ef4444;
+          }
         }
       }
     }
@@ -553,18 +570,40 @@
 
     .shift-row-header {
       background: #f1f5f9;
-      td { padding: 4px 12px; font-size: 0.75rem; color: #475569; }
+
+      td {
+        padding: 4px 12px;
+        font-size: 0.75rem;
+        color: #475569;
+      }
     }
 
     .kip-row {
-      &.row-pink { background: rgba(254, 226, 226, 0.4); } // Pink tint
-      &.row-blue { background: rgba(219, 234, 254, 0.4); } // Blue tint
+      &.row-pink {
+        background: rgba(254, 226, 226, 0.4);
+      }
 
-      &:hover { background: rgba(0, 0, 0, 0.05) !important; }
+      // Pink tint
+      &.row-blue {
+        background: rgba(219, 234, 254, 0.4);
+      }
+
+      // Blue tint
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.05) !important;
+      }
 
       .kip-label-col {
-        .kip-name { font-weight: 700; color: #1e293b; }
-        .kip-time { font-size: 0.7rem; color: #64748b; }
+        .kip-name {
+          font-weight: 700;
+          color: #1e293b;
+        }
+
+        .kip-time {
+          font-size: 0.7rem;
+          color: #64748b;
+        }
       }
 
       .matrix-cell {
@@ -572,10 +611,19 @@
         cursor: pointer;
         transition: background 0.2s;
 
-        &:hover { background: rgba(0, 0, 0, 0.02); }
+        &:hover {
+          background: rgba(0, 0, 0, 0.02);
+        }
 
-        &.has-slot { border-top: 2px solid transparent; }
-        &.is-past { opacity: 0.6; cursor: not-allowed; background: #f8fafc !important; }
+        &.has-slot {
+          border-top: 2px solid transparent;
+        }
+
+        &.is-past {
+          opacity: 0.6;
+          cursor: not-allowed;
+          background: #f8fafc !important;
+        }
 
         .cell-slot-info {
           display: flex;
@@ -600,8 +648,10 @@
             padding: 4px;
             border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
 
-            &:last-child { border-bottom: none; }
-            
+            &:last-child {
+              border-bottom: none;
+            }
+
             span {
               white-space: nowrap;
               overflow: hidden;
@@ -634,6 +684,7 @@
           border-radius: 4px;
           text-align: center;
           transition: all 0.2s;
+
           &:hover {
             border-color: #3b82f6;
             background: #eff6ff;
@@ -651,6 +702,7 @@
           text-align: center;
           opacity: 0.4;
           transition: all 0.2s;
+
           &:hover {
             opacity: 1;
             background: rgba(239, 68, 68, 0.08);

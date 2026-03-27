@@ -103,6 +103,15 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         setSlots(res.data.slots || []);
         setDutyDays(res.data.days || []);
         setAssignments(res.data.assignments || []);
+        
+        // Merge "Snapshot" templates into the local pool to ensure historical rendering
+        if (res.data?.templates) {
+          setTemplates(prev => {
+            const existingIds = new Set(prev.map(t => String(t.id)));
+            const newTemplates = (res.data?.templates || []).filter((t: any) => !existingIds.has(String(t.id)));
+            return [...prev, ...newTemplates];
+          });
+        }
       }
     } catch (err) {
       message.error('Không thể tải lịch trực');
@@ -272,7 +281,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
             {templates.map(shift => (
               <React.Fragment key={shift.id}>
                 <tr className="shift-row-header">
-                  <td colSpan={8}><strong>{shift.name}</strong> ({shift.startTime} - {shift.endTime})</td>
+                  <td colSpan={8}><strong>{shift.name}</strong></td>
                 </tr>
                 <tr className="kip-row row-shift-only">
                   <td className="kip-label-col sticky-col" style={{ background: '#fff1f2' }}>
@@ -584,8 +593,8 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                 openQuickCreate(day, getTimeTop(shift.startTime), shift);
                               }}
                             >
-                              <div className="shift-tag" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{shift.name} ({shift.startTime} - {shift.endTime})</span>
+                              <div className="shift-tag" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{shift.name}</span>
                                 {isAdmin && (
                                   <CloseOutlined
                                     className="shift-delete-icon"
@@ -721,7 +730,6 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         onCancel={() => setIsAssignModalVisible(false)}
         onSuccess={fetchSchedule}
         templateGroups={templateGroups}
-        assignments={assignments}
       />
     </div>
   );

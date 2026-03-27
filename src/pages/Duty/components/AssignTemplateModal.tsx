@@ -1,8 +1,7 @@
 import React from 'react';
-import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, List, Button, Divider, Typography, Card, Tag, message } from 'antd';
-import { CalendarOutlined, RocketOutlined, DeleteOutlined, ExclamationCircleOutlined, EditOutlined } from '@ant-design/icons';
+import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Typography } from 'antd';
+import { CalendarOutlined, RocketOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
-import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
@@ -11,7 +10,6 @@ interface AssignTemplateModalProps {
   onCancel: () => void;
   onSuccess: () => void;
   templateGroups: any[];
-  assignments: any[];
 }
 
 const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
@@ -19,7 +17,6 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
   onCancel,
   onSuccess,
   templateGroups,
-  assignments
 }) => {
   const [form] = Form.useForm();
   const [previewShifts, setPreviewShifts] = React.useState<any[]>([]);
@@ -46,26 +43,6 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDeleteAssignment = async (id: number) => {
-    Modal.confirm({
-      title: 'Xác nhận xóa thiết lập?',
-      content: 'Dữ liệu lịch đã dập khuôn sẽ KHÔNG bị mất, chỉ xóa quy tắc áp dụng này.',
-      okText: 'Xóa',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          const res = await dutyService.deleteTemplateAssignment(id);
-          if (res.success) {
-            message.success("Đã xóa gắn bản mẫu");
-            onSuccess();
-          }
-        } catch (err: any) {
-          message.error("Lỗi khi xóa: " + (err.response?.data?.message || err.message));
-        }
-      }
-    });
   };
 
   return (
@@ -141,39 +118,6 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
           </Card>
         )}
       </Form>
-
-      <Divider style={{ margin: '16px 0' }}><Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Cấu hình đã dập trước đó</Text></Divider>
-
-      <div style={{ maxHeight: 250, overflowY: 'auto', padding: '0 4px' }}>
-        <List
-          size="small"
-          dataSource={assignments}
-          renderItem={(item: any) => {
-            const group = templateGroups.find(g => g.id === item.templateId);
-            return (
-              <div style={{ 
-                background: '#f8fafc', 
-                borderRadius: 10, 
-                padding: '12px 16px', 
-                marginBottom: 8, 
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <Space direction="vertical" size={2}>
-                  <Space>
-                    <Tag color="blue" style={{ borderRadius: 4, fontWeight: 700 }}>{group?.name || 'Bản mẫu'}</Tag>
-                    <Text strong style={{ fontSize: 13 }}>{dayjs(item.startDate).format('DD/MM/YYYY')} - {dayjs(item.endDate).format('DD/MM/YYYY')}</Text>
-                  </Space>
-                  {item.note && <Text type="secondary" style={{ fontSize: 12 }}><EditOutlined /> {item.note}</Text>}
-                </Space>
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDeleteAssignment(item.id)} />
-              </div>
-            );
-          }}
-        />
-      </div>
     </Modal>
   );
 };
