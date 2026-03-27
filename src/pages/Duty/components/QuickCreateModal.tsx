@@ -79,6 +79,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
         // Handle Stencil Stamping
         let res;
         if (stampMode === 'template') {
+          const mode = values.mode || 'kips';
           if (localShiftData) {
             // If localShiftData exists, it means the user edited the template details
             res = await dutyService.addShiftToDay(targetDateStr!, Number(shiftId), {
@@ -86,10 +87,10 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
               startTime: localShiftData.startTime,
               endTime: localShiftData.endTime,
               order: localShiftData.order,
-            });
+            }, mode);
           } else {
             // No local edits, use original template
-            res = await dutyService.addShiftToDay(targetDateStr!, values.shiftId);
+            res = await dutyService.addShiftToDay(targetDateStr!, values.shiftId, null, mode);
           }
         } else {
           // Custom manual shift: 1. Create instance template, 2. Add to day
@@ -304,6 +305,18 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                       </Radio.Group>
                     </Form.Item>
                   </div>
+
+                  <Form.Item noStyle shouldUpdate={(prev, curr) => prev.stampMode !== curr.stampMode}>
+                    {({ getFieldValue }) => getFieldValue('stampMode') === 'template' ? (
+                      <Form.Item name="mode" label={<Text strong style={{ fontSize: 13 }}>Chế độ dập khuôn</Text>} initialValue="kips">
+                        <Select size="large" style={{ width: '100%' }}>
+                          <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
+                          <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
+                          <Select.Option value="all">Cả 2 (Both)</Select.Option>
+                        </Select>
+                      </Form.Item>
+                    ) : null}
+                  </Form.Item>
 
                   <Form.Item noStyle shouldUpdate={(prev, curr) => prev.stampMode !== curr.stampMode}>
                     {({ getFieldValue }) => getFieldValue('stampMode') === 'template' ? (

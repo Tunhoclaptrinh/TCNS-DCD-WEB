@@ -14,6 +14,7 @@ import {
   CloseOutlined,
   PlusSquareOutlined,
   CloudDownloadOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -233,6 +234,27 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
     setIsSlotDetailOpen(true);
   };
 
+  const handleClearWeek = async () => {
+    Modal.confirm({
+      title: 'Xác nhận xóa trắng tuần?',
+      content: 'Toàn bộ các bản ghi ca/kíp của TUẦN này sẽ bị xóa vĩnh viễn (bao gồm cả phân công người trực). Bạn có chắc chắn?',
+      okText: 'Xóa vĩnh viễn',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          const res = await dutyService.deleteWeeklySlots(currentWeek.format('YYYY-MM-DD'));
+          if (res.success) {
+            message.success('Đã xóa trắng tuần');
+            fetchSchedule();
+          }
+        } catch (err) {
+          message.error('Lỗi khi xóa trắng tuần');
+        }
+      }
+    });
+  };
+
   const START_HOUR = 5;
   const END_HOUR = 24;
   const PX_PER_HOUR = 60;
@@ -350,6 +372,8 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                         const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === dateStr);
                         const isStamped = (dayData?.shiftTemplateIds || []).map(String).includes(String(shift.id));
                         const slot = slots.find(s => s.kipId === kip.id && dayjs(s.shiftDate).format('YYYY-MM-DD') === dateStr);
+                        const shiftSlot = slots.find(s => s.kipId === null && String(s.shiftId) === String(shift.id) && dayjs(s.shiftDate).format('YYYY-MM-DD') === dateStr);
+                        const displaySlot = slot || shiftSlot;
                         const isPast = day.isBefore(dayjs().startOf('day')) || (day.isSame(dayjs(), 'day') && dayjs(`${dateStr} ${kip.startTime || shift.startTime}`).isBefore(dayjs()));
 
                         return (
@@ -368,30 +392,30 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                               }
                             }}
                           >
-                            {slot ? (
-                              <div className="cell-slot-info">
+                            {displaySlot ? (
+                              <div className={`cell-slot-info ${!slot && shiftSlot ? 'is-shift-level' : ''}`}>
                                 <div className="assigned-users-list">
-                                  {slot.assignedUsers?.map(u => (
+                                  {displaySlot.assignedUsers?.map(u => (
                                     <div key={u.id} className="user-row-mini">
                                       <Avatar size={16} src={u.avatar} />
                                       <span>{u.name}</span>
                                     </div>
                                   ))}
                                 </div>
-                                {slot.assignedUserIds.length < (slot.capacity || slot.kip?.capacity || 0) && !isPast && (
+                                {displaySlot.assignedUserIds.length < (displaySlot.capacity || displaySlot.kip?.capacity || 0) && !isPast && (
                                   <div className="slot-capacity-tag">
                                     <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 2 }}>
-                                      {slot.assignedUserIds.length}/{slot.capacity || slot.kip?.capacity || 0} người
+                                      {displaySlot.assignedUserIds.length}/{displaySlot.capacity || displaySlot.kip?.capacity || 0} người
                                     </div>
-                                    {slot.assignedUserIds.includes(currentUserId) ?
-                                      <Button size="small" type="link" danger onClick={(e) => { e.stopPropagation(); handleUnregister(slot.id); }}>Hủy đ.ký</Button> :
-                                      <Button size="small" type="link" onClick={(e) => { e.stopPropagation(); handleRegister(slot.id); }}>+ Đăng ký</Button>
+                                    {displaySlot.assignedUserIds.includes(currentUserId) ?
+                                      <Button size="small" type="link" danger onClick={(e) => { e.stopPropagation(); handleUnregister(displaySlot.id); }}>Hủy đ.ký</Button> :
+                                      <Button size="small" type="link" onClick={(e) => { e.stopPropagation(); handleRegister(displaySlot.id); }}>+ Đăng ký</Button>
                                     }
                                   </div>
-                                )}
-                                {slot.assignedUserIds.length >= (slot.capacity || slot.kip?.capacity || 0) && (
+                                )}{!slot && shiftSlot && <div className="shift-active-indicator">(Cả ca)</div>}
+                                {displaySlot.assignedUserIds.length >= (displaySlot.capacity || displaySlot.kip?.capacity || 0) && (
                                   <div className="slot-capacity-tag">
-                                    <Tag color="default">{slot.assignedUserIds.length}/{slot.capacity || slot.kip?.capacity || 0} đủ</Tag>
+                                    <Tag color="default">{displaySlot.assignedUserIds.length}/{displaySlot.capacity || displaySlot.kip?.capacity || 0} đủ</Tag>
                                   </div>
                                 )}
                               </div>
@@ -439,6 +463,14 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         }
         extra={
           <Space>
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={handleClearWeek}
+              title="Xóa trắng toàn bộ ca kíp trong tuần"
+            >
+              Xóa trắng tuần
+            </Button>
             <Button
               icon={<SyncOutlined />}
               onClick={fetchSchedule}
@@ -555,7 +587,11 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                         const shiftParent = templates.find(s => s.id === k.shiftId);
                         // 1. Must be in effectiveShiftIds (Belong to a valid boundary on this day)
                         if (!effectiveShiftIds.includes(String(k.shiftId))) return false;
-                        // 2. Must belong to the Authorized/Active Group for this day
+                        
+                        // 2. If it's a fixed instance (stamped), we show its kips regardless of group matching
+                        if (shiftParent?.description === 'INSTANCE') return true;
+
+                        // 3. Otherwise (Draft boundaries), must belong to the Authorized/Active Group for this day
                         return String(shiftParent?.templateId) === String(activeGroupId);
                       });
 
@@ -615,7 +651,16 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                         })}
 
                         <AnimatePresence>
-                          {daySlots.map(slot => {
+                          {daySlots
+                            .filter(slot => {
+                              // If it's a Shift-level slot (kipId null), check if there are any Kip-level slots for the same shift
+                              if (slot.kipId === null) {
+                                const hasKips = daySlots.some(s => s.kipId !== null && String(s.shiftId) === String(slot.shiftId));
+                                if (hasKips) return false; // Hide redundant shift container slot
+                              }
+                              return true;
+                            })
+                            .map(slot => {
                             const isPastSlot = isPastDay || (isToday && dayjs(`${dateStr} ${slot.startTime}`).isBefore(now));
                             return (
                               <motion.div
@@ -666,26 +711,26 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                           })}
                         </AnimatePresence>
 
-                        {showDefaultBoundaries && dayTemplates.map(kip => {
-                          const kStart = kip.startTime || kip.sStart;
-                          const kEnd = kip.endTime || kip.sEnd;
-                          const hasRealSlot = daySlots.some(s => {
-                            if (!s.startTime || !s.endTime || !kStart || !kEnd) return false;
-                            return (kStart < s.endTime && kEnd > s.startTime);
-                          });
-                          if (hasRealSlot) return null;
+                        {showDefaultBoundaries && dayTemplates.filter(k => {
+                          const kStart = k.startTime || k.sStart;
+                          if (!kStart) return false;
+                          
+                          const existingSlot = daySlots.find(s => String(s.shiftId) === String(k.shiftId) && String(s.kipId) === String(k.id));
+                          return !existingSlot;
+                        }).map(k => {
+                          const kStart = k.startTime || k.sStart;
+                          const kEnd = k.endTime || k.sEnd;
                           return (
                             <div
-                              key={`draft-${kip.id}`}
+                              key={`draft-${k.id}`}
                               className="calendar-slot-box draft"
                               style={{ top: `${getTimeTop(kStart)}px`, height: `${getTimeHeight(kStart, kEnd)}px` }}
                               onClick={() => {
-                                const parentShift = templates.find(s => s.id === kip.shiftId);
-                                openQuickCreate(day, getTimeTop(kStart), parentShift, kip);
+                                openQuickCreate(day, getTimeTop(kStart), templates.find(s => String(s.id) === String(k.shiftId)), k);
                               }}
                             >
-                              <div className="slot-title" style={{ fontStyle: 'italic', opacity: 0.7 }}>Bản mẫu: {kip.name}</div>
-                              <div className="slot-time">{kStart} - {kEnd}</div>
+                              <div className="slot-title">{k.name}</div>
+                              <div className="slot-time">{kStart} - {kEnd} (Mẫu)</div>
                             </div>
                           );
                         })}

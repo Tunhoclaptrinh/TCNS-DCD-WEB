@@ -262,8 +262,8 @@ class DutyService {
     return response;
   }
 
-  async addShiftToDay(date: string, shiftId: number, overrides?: any): Promise<any> {
-    const response = await apiClient.post('/duty/template-shifts-day', { date, shiftId, overrides });
+  async addShiftToDay(date: string, shiftId: number, overrides?: any, mode: string = 'kips'): Promise<any> {
+    const response = await apiClient.post('/duty/template-shifts-day', { date, shiftId, overrides, mode });
     return response;
   }
 
@@ -277,8 +277,8 @@ class DutyService {
     return response;
   }
 
-  async createTemplateAssignment(data: any): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.post<BaseApiResponse<any>>("/duty/template-assignments", data);
+  async createTemplateAssignment(data: { templateId: any, startDate: string, endDate: string, mode?: string, note?: string }): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.post<BaseApiResponse<any>>("/duty/assignment", data);
     return response;
   }
 

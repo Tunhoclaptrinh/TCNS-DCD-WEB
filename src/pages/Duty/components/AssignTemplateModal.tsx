@@ -29,6 +29,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
         templateId: values.templateId,
         startDate: values.startDate.startOf('day').toISOString(),
         endDate: values.endDate.endOf('day').toISOString(),
+        mode: values.mode,
         note: values.note
       };
 
@@ -95,9 +96,22 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
             </Form.Item>
           </Col>
         </Row>
-        <Form.Item name="note" label={<Text strong>Ghi chú cho đợt lập lịch này</Text>}>
-          <Input.TextArea placeholder="VD: Lịch trực HKII - 2024..." rows={2} />
-        </Form.Item>
+        <Row gutter={16}>
+          <Col span={10}>
+            <Form.Item name="mode" label={<Text strong>Chế độ dập khuôn</Text>} initialValue="kips">
+              <Select size="large">
+                <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
+                <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
+                <Select.Option value="all">Cả 2 (Both)</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={14}>
+            <Form.Item name="note" label={<Text strong>Ghi chú cho đợt lập lịch này</Text>}>
+              <Input placeholder="VD: Lịch trực HKII - 2024..." />
+            </Form.Item>
+          </Col>
+        </Row>
 
         {previewShifts.length > 0 && (
           <Card 

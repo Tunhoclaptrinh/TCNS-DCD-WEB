@@ -639,9 +639,9 @@ const DutyManagement: React.FC = () => {
                   <Col span={7}>
                     <Form.Item name="mode" label="Chế độ khởi tạo" initialValue="kips">
                       <Select size="large" options={[
-                        { label: 'Chi tiết Kíp (Kips)', value: 'kips' },
-                        { label: 'Chỉ Ca (Shifts)', value: 'shifts' },
-                        { label: 'Toàn bộ (Both)', value: 'all' }
+                        { label: 'Chỉ mình Ca (Shifts only)', value: 'shifts' },
+                        { label: 'Chỉ mình Kíp (Kips only)', value: 'kips' },
+                        { label: 'Cả 2 (Both)', value: 'all' }
                       ]} />
                     </Form.Item>
                   </Col>
