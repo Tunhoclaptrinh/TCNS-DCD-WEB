@@ -21,6 +21,7 @@ interface QuickCreateModalProps {
   date: dayjs.Dayjs | null;
   context: any;
   templates: DutyShift[];
+  existingSlots?: any[];
 }
 
 const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
@@ -29,20 +30,26 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
   onSuccess,
   date,
   context,
-  templates
+  templates,
+  existingSlots = []
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   const [isEditShiftOpen, setIsEditShiftOpen] = React.useState(false);
   const [localShiftData, setLocalShiftData] = React.useState<any>(null);
 
-  // Initialize form when context changes
   React.useEffect(() => {
+    if (open) {
+      // Reset internal states when opening/reopening
+      setIsEditShiftOpen(false);
+      setLocalShiftData(null);
+    }
+    
     if (open && context) {
       const { yOffset, shift, kip } = context;
       
       const getTimeFromTop = (pos: number) => {
-        const START_HOUR = 6;
+        const START_HOUR = 5; // Sync with DutyCalendar.tsx
         const PX_PER_HOUR = 60;
         const totalMinutes = Math.floor((pos / PX_PER_HOUR) * 60);
         const h = START_HOUR + Math.floor(totalMinutes / 60);
@@ -52,21 +59,54 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
       const calculatedTime = getTimeFromTop(yOffset);
       
+      // Calculate next default order if creating a new independent kip for a shift
+      let nextOrder = kip?.order || 1;
+      if (!kip && shift && existingSlots.length > 0) {
+        const daySlots = existingSlots.filter(s => 
+          dayjs(s.shiftDate).isSame(date, 'day') && 
+          String(s.shiftId) === String(shift.id)
+        );
+        if (daySlots.length > 0) {
+          const maxOrder = Math.max(...daySlots.map(s => s.order || 0));
+          nextOrder = maxOrder + 1;
+        }
+      }
+
       form.setFieldsValue({
         shiftId: kip?.shiftId || shift?.id || null,
         kipId: kip?.id || null,
-        shiftLabel: kip?.name || shift?.name || '',
+        shiftLabel: shift ? `${shift.name} - Kíp ${nextOrder}` : '',
         timeRange: [dayjs(calculatedTime, 'HH:mm'), dayjs(calculatedTime, 'HH:mm').add(2, 'hour')],
         useTemplate: true,
         isLockedShift: !!shift || !!kip,
         stampMode: 'template',
         status: 'open',
-        order: kip?.order || 1,
-        endPeriod: kip?.endPeriod || 1,
+        order: nextOrder,
+        endPeriod: kip?.endPeriod || nextOrder,
         capacity: kip?.capacity || 10
       });
     }
   }, [open, context, form]);
+
+  // Reactive label update when order changes (only if it matches the auto-pattern)
+  const order = Form.useWatch('order', form);
+  const shiftId = Form.useWatch('shiftId', form);
+  const isLockedShift = Form.useWatch('isLockedShift', form);
+  
+  React.useEffect(() => {
+    if (!open || isEditShiftOpen) return;
+    const currentLabel = form.getFieldValue('shiftLabel');
+    const shift = templates.find(s => s.id === shiftId) || context?.shift;
+    if (!shift) return;
+
+    // Pattern to check: "ShiftName - Kíp [AnyNumber]"
+    const autoPattern = new RegExp(`^${shift.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} - Kíp \\d+$`);
+    
+    // If empty OR matches the auto-pattern, update it
+    if (!currentLabel || autoPattern.test(currentLabel) || currentLabel === shift.name) {
+      form.setFieldsValue({ shiftLabel: `${shift.name} - Kíp ${order || 1}` });
+    }
+  }, [order, shiftId, open, templates, isEditShiftOpen, context]);
 
   const handleFinish = async (values: any) => {
     setLoading(true);
@@ -79,7 +119,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
         // Handle Stencil Stamping
         let res;
         if (stampMode === 'template') {
-          const mode = values.mode || 'kips';
+          const mode = localShiftData ? 'shifts' : (values.mode || 'kips');
           if (localShiftData) {
             // If localShiftData exists, it means the user edited the template details
             res = await dutyService.addShiftToDay(targetDateStr!, Number(shiftId), {
@@ -87,7 +127,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
               startTime: localShiftData.startTime,
               endTime: localShiftData.endTime,
               order: localShiftData.order,
-            }, mode);
+            }, 'shifts'); // Forced shifts only when edited
           } else {
             // No local edits, use original template
             res = await dutyService.addShiftToDay(targetDateStr!, values.shiftId, null, mode);
@@ -120,14 +160,14 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
         const [start, end] = values.timeRange || [];
         const payload = {
           shiftDate: targetDateStr!,
-          startTime: start?.format('HH:mm'),
-          endTime: end?.format('HH:mm'),
-          shiftLabel: values.shiftLabel,
+          startTime: localShiftData?.startTime || start?.format('HH:mm'),
+          endTime: localShiftData?.endTime || end?.format('HH:mm'),
+          shiftLabel: localShiftData?.name || values.shiftLabel,
           shiftId: values.shiftId,
-          kipId: values.kipId,
+          kipId: isEditShiftOpen ? null : values.kipId,
           status: values.status,
-          order: values.order,
-          endPeriod: values.endPeriod,
+          order: localShiftData?.order || values.order,
+          endPeriod: isEditShiftOpen ? null : values.endPeriod,
           capacity: values.capacity,
           note: values.note
         };
@@ -163,23 +203,19 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
   return (
     <Modal
       title={
-        <Form.Item noStyle shouldUpdate={(prev, curr) => prev.isLockedShift !== curr.isLockedShift}>
-          {({ getFieldValue }) => (
-            <Space>
-              {getFieldValue('isLockedShift') ? (
-                <PlusCircleOutlined style={{ color: 'var(--primary-color)' }} />
-              ) : (
-                <PlusSquareOutlined style={{ color: '#0ea5e9' }} />
-              )}
-              <span>
-                {getFieldValue('isLockedShift') ? 'Tạo Kíp trực MỚI (Independent)' : 'Áp dụng Ca trực (Stamp)'}
-                <Text type="secondary" style={{ fontWeight: 400, marginLeft: 8 }}>
-                  — {date?.format('DD/MM/YYYY')}
-                </Text>
-              </span>
-            </Space>
+        <Space>
+          {isLockedShift ? (
+            <PlusCircleOutlined style={{ color: 'var(--primary-color)' }} />
+          ) : (
+            <PlusSquareOutlined style={{ color: '#0ea5e9' }} />
           )}
-        </Form.Item>
+          <span>
+            {isLockedShift ? 'Tạo Kíp trực MỚI (Independent)' : 'Áp dụng Ca trực (Stamp)'}
+            <Text type="secondary" style={{ fontWeight: 400, marginLeft: 8 }}>
+              — {date?.format('DD/MM/YYYY')}
+            </Text>
+          </span>
+        </Space>
       }
       open={open}
       onCancel={onCancel}
@@ -237,10 +273,22 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                       </div>
                     </div>
 
-                    {sData.id && shift && (
                       <Button 
                         icon={<EditOutlined />} 
-                        onClick={() => setIsEditShiftOpen(!isEditShiftOpen)}
+                        onClick={() => {
+                          const nextVal = !isEditShiftOpen;
+                          setIsEditShiftOpen(nextVal);
+                          if (nextVal) {
+                            // When editing shift details, we are focusing on the full shift
+                            form.setFieldsValue({ kipId: null, shiftLabel: sData.name });
+                            setLocalShiftData({
+                              name: sData.name,
+                              startTime: sData.startTime,
+                              endTime: sData.endTime,
+                              order: sData.order
+                            });
+                          }
+                        }}
                         type={isEditShiftOpen ? 'primary' : 'default'}
                         style={{ 
                           borderRadius: '8px',
@@ -250,7 +298,6 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                       >
                         {isEditShiftOpen ? "Lưu tạm" : "Chỉnh sửa"}
                       </Button>
-                    )}
                   </div>
 
                   {isEditShiftOpen && (
@@ -305,7 +352,8 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
         <Form.Item noStyle shouldUpdate={(prev, curr) => prev.isLockedShift !== curr.isLockedShift}>
           {({ getFieldValue }) => {
-            const isLocked = getFieldValue('isLockedShift');
+            if (isEditShiftOpen) return null; // Hide everything below the header when editing shift
+            const isLocked = isLockedShift;
             
             if (!isLocked) {
               return (
@@ -321,13 +369,15 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
                   <Form.Item noStyle shouldUpdate={(prev, curr) => prev.stampMode !== curr.stampMode}>
                     {({ getFieldValue }) => getFieldValue('stampMode') === 'template' ? (
-                      <Form.Item name="mode" label="Chế độ dập khuôn" initialValue="kips">
-                        <Select style={{ width: '100%' }}>
-                          <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
-                          <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
-                          <Select.Option value="all">Cả 2 (Both)</Select.Option>
-                        </Select>
-                      </Form.Item>
+                      !isEditShiftOpen && (
+                        <Form.Item name="mode" label="Chế độ dập khuôn" initialValue="kips">
+                          <Select style={{ width: '100%' }}>
+                            <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
+                            <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
+                            <Select.Option value="all">Cả 2 (Both)</Select.Option>
+                          </Select>
+                        </Form.Item>
+                      )
                     ) : null}
                   </Form.Item>
 
@@ -368,6 +418,8 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
             return (
               <>
                 {(() => {
+                  if (isEditShiftOpen) return null; // Hide kips selection if editing shift
+
                   const sId = getFieldValue('shiftId');
                   const shift = templates.find(s => s.id === sId);
                   const kips = shift?.kips || [];
@@ -386,7 +438,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                             onChange={() => {
                               form.setFieldsValue({
                                 kipId: k.id,
-                                shiftLabel: `${shift?.name} - ${k.name}`,
+                                shiftLabel: `${shift?.name || '??'} - Kíp ${k.order}`,
                                 timeRange: [dayjs(k.startTime, 'HH:mm'), dayjs(k.endTime, 'HH:mm')],
                                 order: k.order,
                                 endPeriod: k.endPeriod,

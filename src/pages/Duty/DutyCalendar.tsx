@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Avatar, Tag, Spin, Switch, Dropdown, Menu, Divider } from 'antd';
+import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Avatar, Tag, Spin, Switch, Dropdown, Menu, Divider, Alert } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -16,6 +16,7 @@ import {
   CloudDownloadOutlined,
   DeleteOutlined,
   DownOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -37,7 +38,7 @@ import SlotDetailModal from './components/SlotDetailModal';
 import SetupWeekModal from './components/SetupWeekModal';
 import AssignTemplateModal from './components/AssignTemplateModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface DutyCalendarProps {
   isAdmin?: boolean;
@@ -70,6 +71,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
   const [quickCreateDate, setQuickCreateDate] = useState<dayjs.Dayjs | null>(null);
   const [quickCreateContext, setQuickCreateContext] = useState<any>(null);
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
@@ -458,8 +460,16 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
 
   return (
     <div className="duty-calendar-container">
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực tuần</Title>
+        <Space>
+          <Button 
+            icon={<QuestionCircleOutlined />} 
+            onClick={() => setIsGuideModalOpen(true)}
+          >
+            Hướng dẫn
+          </Button>
+        </Space>
       </div>
       <Card
         className="duty-calendar-card"
@@ -753,6 +763,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         date={quickCreateDate}
         context={quickCreateContext}
         templates={templates}
+        existingSlots={slots}
       />
 
       <SlotDetailModal
@@ -778,6 +789,64 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         onSuccess={fetchSchedule}
         templateGroups={templateGroups}
       />
+
+      <Modal
+        title={
+          <Space>
+            <div style={{ width: 4, height: 18, background: 'var(--primary-color)', borderRadius: 2 }} />
+            <span>Hướng dẫn sử dụng Lịch trực tuần</span>
+          </Space>
+        }
+        open={isGuideModalOpen}
+        onCancel={() => setIsGuideModalOpen(false)}
+        footer={[
+          <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+          </div>
+        ]}
+        width={600}
+        className="premium-modal"
+      >
+        <div style={{ padding: '8px 4px' }}>
+          <div style={{ marginBottom: 16 }}>
+            <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>Tương tác cơ bản:</Text>
+            <ul style={{ paddingLeft: 20, color: '#475569' }}>
+               <li style={{ marginBottom: 8 }}>
+                 <Text strong>Click vào vùng trống trong Ca:</Text> Khởi tạo nhanh một kíp trực mới dựa trên khung giờ của Ca mẫu đó.
+               </li>
+               <li style={{ marginBottom: 8 }}>
+                 <Text strong>Click vào Kíp trực (màu):</Text> Xem chi tiết nhân sự, Đăng ký trực hoặc Hủy đăng ký (nếu chưa bị khóa).
+               </li>
+               <li style={{ marginBottom: 8 }}>
+                 <Text strong>Nút "Hiện khung":</Text> Hiển thị các Ca và Kíp mẫu (màu xám) chưa được áp dụng vào ngày đó để bạn dễ dàng "dập khuôn".
+               </li>
+            </ul>
+          </div>
+
+          <div>
+            <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>Dành cho Quản trị viên:</Text>
+            <ul style={{ paddingLeft: 20, color: '#475569' }}>
+               <li style={{ marginBottom: 8 }}>
+                 <Text strong>Khởi tạo Tuần:</Text> Sao chép toàn bộ bản mẫu của một Nhóm sang tuần được chọn.
+               </li>
+               <li style={{ marginBottom: 8 }}>
+                 <Text strong>Gắn Bản mẫu:</Text> Gắn một Nhóm kíp trực cố định vào tuần này (Snapshot).
+               </li>
+               <li style={{ marginBottom: 8 }}>
+                 <Text strong>Xóa trắng tuần:</Text> Xóa toàn bộ dữ liệu trực của tuần hiện tại để thiết lập lại từ đầu.
+               </li>
+            </ul>
+          </div>
+
+          <Alert
+            message="Lưu ý về Dữ liệu"
+            description="Lịch trực tuần hoạt động theo cơ chế Độc lập. Mọi thay đổi trong phần 'Thiết lập' sẽ không ảnh hưởng đến các tuần đã được khởi tạo trước đó."
+            type="info"
+            showIcon
+            style={{ marginTop: 16, borderRadius: 12 }}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

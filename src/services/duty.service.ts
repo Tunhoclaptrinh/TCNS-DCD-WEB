@@ -289,7 +289,7 @@ class DutyService {
   }
 
   async getTemplateAssignments(): Promise<BaseApiResponse<any[]>> {
-    const response = await apiClient.get<BaseApiResponse<any[]>>("/duty/template-assignments");
+    const response = await apiClient.get<BaseApiResponse<any[]>>("/duty/assignment");
     return response;
   }
 
@@ -299,12 +299,12 @@ class DutyService {
   }
 
   async updateTemplateAssignment(id: number, data: any): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.put<BaseApiResponse<any>>(`/duty/template-assignments/${id}`, data);
+    const response = await apiClient.put<BaseApiResponse<any>>(`/duty/assignment/${id}`, data);
     return response;
   }
 
   async deleteTemplateAssignment(id: number): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/template-assignments/${id}`);
+    const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/assignment/${id}`);
     return response;
   }
 }
