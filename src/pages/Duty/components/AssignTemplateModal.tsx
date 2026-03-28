@@ -1,9 +1,9 @@
 import React from 'react';
-import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Typography } from 'antd';
+import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Button } from 'antd';
 import { CalendarOutlined, RocketOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
 
-const { Text } = Typography;
+// No Typography needed
 
 interface AssignTemplateModalProps {
   open: boolean;
@@ -46,28 +46,40 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
     }
   };
 
+  const renderFooter = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
+      <Button onClick={onCancel} style={{ minWidth: 100 }}>Hủy</Button>
+      <Button 
+        type="primary" 
+        loading={loading} 
+        onClick={() => form.submit()} 
+        style={{ minWidth: 100, background: '#7f1d1d', borderColor: '#7f1d1d' }}
+      >
+        Đồng ý
+      </Button>
+    </div>
+  );
+
   return (
     <Modal
       title={
         <Space>
-          <CalendarOutlined style={{ color: '#1890ff' }} />
+          <CalendarOutlined style={{ color: 'var(--primary-color)' }} />
           <span>Thiết lập lịch trình nâng cao (Stamping)</span>
         </Space>
       }
       open={open}
       onCancel={onCancel}
-      onOk={() => form.submit()}
-      confirmLoading={loading}
+      footer={renderFooter()}
       width={700}
       destroyOnClose
       className="premium-modal"
     >
       <Form form={form} layout="vertical" onFinish={handleFinish}>
-        <Row gutter={16}>
+        <Row gutter={[24, 16]}>
           <Col span={10}>
-            <Form.Item name="templateId" label={<Text strong>Chọn Nhóm Bản mẫu</Text>} rules={[{ required: true }]}>
+            <Form.Item name="templateId" label="Chọn Nhóm Bản mẫu" rules={[{ required: true }]}>
               <Select
-                size="large"
                 placeholder="Mùa Đông, Mùa Hè..."
                 onChange={async (val) => {
                   try {
@@ -83,23 +95,23 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
             </Form.Item>
           </Col>
           <Col span={14}>
-            <Form.Item label={<Text strong>Giai đoạn áp dụng</Text>} required>
+            <Form.Item label="Giai đoạn áp dụng" required>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <Form.Item name="startDate" noStyle rules={[{ required: true }]}>
-                  <DatePicker placeholder="Từ ngày" style={{ flex: 1 }} format="DD/MM/YYYY" size="large" />
+                  <DatePicker placeholder="Từ ngày" style={{ flex: 1 }} format="DD/MM/YYYY" />
                 </Form.Item>
                 <span>~</span>
                 <Form.Item name="endDate" noStyle rules={[{ required: true }]}>
-                  <DatePicker placeholder="Đến ngày" style={{ flex: 1 }} format="DD/MM/YYYY" size="large" />
+                  <DatePicker placeholder="Đến ngày" style={{ flex: 1 }} format="DD/MM/YYYY" />
                 </Form.Item>
               </div>
             </Form.Item>
           </Col>
         </Row>
-        <Row gutter={16}>
+        <Row gutter={[24, 16]}>
           <Col span={10}>
-            <Form.Item name="mode" label={<Text strong>Chế độ dập khuôn</Text>} initialValue="kips">
-              <Select size="large">
+            <Form.Item name="mode" label="Chế độ dập khuôn" initialValue="kips">
+              <Select>
                 <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
                 <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
                 <Select.Option value="all">Cả 2 (Both)</Select.Option>
@@ -107,7 +119,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
             </Form.Item>
           </Col>
           <Col span={14}>
-            <Form.Item name="note" label={<Text strong>Ghi chú cho đợt lập lịch này</Text>}>
+            <Form.Item name="note" label="Ghi chú cho đợt lập lịch này">
               <Input placeholder="VD: Lịch trực HKII - 2024..." />
             </Form.Item>
           </Col>
@@ -122,7 +134,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {previewShifts.map((s, idx) => (
                 <Tag key={idx} color="red-outline" style={{ margin: 0, borderRadius: 6, padding: '4px 10px', background: 'white', border: '1px solid #fecaca' }}>
-                  <Text strong style={{ color: '#ef4444' }}>{s.name}</Text>: <Text type="secondary" style={{ fontSize: 11 }}>{s.startTime} - {s.endTime}</Text>
+                  <span style={{ fontWeight: 600, color: '#ef4444' }}>{s.name}</span>: <span style={{ fontSize: 11, color: 'rgba(0, 0, 0, 0.45)' }}>{s.startTime} - {s.endTime}</span>
                 </Tag>
               ))}
             </div>

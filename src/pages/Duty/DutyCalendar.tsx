@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Avatar, Tag, Spin, Switch } from 'antd';
+import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Avatar, Tag, Spin, Switch, Dropdown, Menu, Divider } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -15,6 +15,7 @@ import {
   PlusSquareOutlined,
   CloudDownloadOutlined,
   DeleteOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -442,6 +443,19 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
     ? (now.hour() - START_HOUR) * PX_PER_HOUR + (now.minute() / 60) * PX_PER_HOUR
     : null;
 
+  const adminMenu = (
+    <Menu onClick={({ key }) => {
+      if (key === 'setup') setIsSetupModalVisible(true);
+      else if (key === 'assign') setIsAssignModalVisible(true);
+      else if (key === 'clear') handleClearWeek();
+    }}>
+      <Menu.Item key="setup" icon={<SettingOutlined />}>Khởi tạo Tuần</Menu.Item>
+      <Menu.Item key="assign" icon={<CalendarOutlined />}>Gắn Bản mẫu</Menu.Item>
+      <Menu.Divider />
+      <Menu.Item key="clear" icon={<DeleteOutlined />} danger>Xóa trắng tuần</Menu.Item>
+    </Menu>
+  );
+
   return (
     <div className="duty-calendar-container">
       <div style={{ marginBottom: 16 }}>
@@ -450,68 +464,56 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
       <Card
         className="duty-calendar-card"
         title={
-          <Space size="large">
-            <Space>
-              <Button icon={<LeftOutlined />} onClick={handlePrevWeek} />
-              <Button icon={<RightOutlined />} onClick={handleNextWeek} />
-              <Button onClick={handleToday}>Hiện tại</Button>
-            </Space>
-            <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a' }}>
-              Tuần {currentWeek.format('ww')} ({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM/YYYY')})
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
+              <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
+              <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600 }}>H.tại</Button>
+              <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
+            </div>
+            <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '16px' }}>
+              Tuần {currentWeek.format('ww')} <span style={{ fontWeight: 400, color: '#64748b', fontSize: '14px' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</span>
             </Title>
-          </Space>
+          </div>
         }
         extra={
-          <Space>
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={handleClearWeek}
-              title="Xóa trắng toàn bộ ca kíp trong tuần"
-            >
-              Xóa trắng tuần
-            </Button>
-            <Button
-              icon={<SyncOutlined />}
-              onClick={fetchSchedule}
-              loading={loading}
-              title="Tải lại lịch trực"
-            >
-              Tải lại
-            </Button>
-            <div className="boundary-toggle-container" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', padding: '4px 12px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Hiện khung mặc định</span>
-              <Switch size="small" checked={showDefaultBoundaries} onChange={setShowDefaultBoundaries} />
+          <Space size="middle">
+            <div className="view-controls" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '4px 12px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+              <Tooltip title="Chế độ hiển thị">
+                <Select
+                  value={viewMode}
+                  onChange={setViewMode}
+                  bordered={false}
+                  options={[
+                    { label: 'Lịch', value: 'calendar' },
+                    { label: 'Bảng', value: 'table' }
+                  ]}
+                  style={{ width: 80 }}
+                  className="view-mode-select"
+                />
+              </Tooltip>
+              <Divider type="vertical" style={{ margin: 0 }} />
+              <Space size={4}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Hiện khung</span>
+                <Switch size="small" checked={showDefaultBoundaries} onChange={setShowDefaultBoundaries} />
+              </Space>
             </div>
-            <Select
-              value={viewMode}
-              onChange={setViewMode}
-              options={[
-                { label: 'Chế độ Lịch', value: 'calendar' },
-                { label: 'Chế độ Bảng', value: 'table' }
-              ]}
-              style={{ width: 140 }}
-            />
-            {isAdmin && (
-              <>
-                <Button
-                  icon={<CalendarOutlined />}
-                  onClick={() => setIsAssignModalVisible(true)}
-                  className="hifi-button"
-                >
-                  Gắn Bản mẫu
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<SettingOutlined />}
-                  onClick={() => setIsSetupModalVisible(true)}
-                  className="hifi-button"
-                >
-                  Khởi tạo Tuần
-                </Button>
-                <Button icon={<CloudDownloadOutlined />}>Xuất Excel</Button>
-              </>
-            )}
+
+            <Space size={8}>
+              <Tooltip title="Tải lại dữ liệu">
+                <Button icon={<SyncOutlined />} onClick={fetchSchedule} loading={loading} />
+              </Tooltip>
+              <Tooltip title="Xuất dữ liệu Excel">
+                <Button icon={<CloudDownloadOutlined />} />
+              </Tooltip>
+              
+              {isAdmin && (
+                <Dropdown overlay={adminMenu} placement="bottomRight">
+                  <Button type="primary" className="hifi-button">
+                    Quản trị <DownOutlined />
+                  </Button>
+                </Dropdown>
+              )}
+            </Space>
           </Space>
         }
         bodyStyle={{ padding: 0 }}

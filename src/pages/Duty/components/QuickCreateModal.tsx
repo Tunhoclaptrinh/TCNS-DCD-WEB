@@ -146,6 +146,20 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
     }
   };
 
+  const renderFooter = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
+      <Button onClick={onCancel} style={{ minWidth: 100 }}>Hủy</Button>
+      <Button 
+        type="primary" 
+        loading={loading} 
+        onClick={() => form.submit()} 
+        style={{ minWidth: 100, background: '#7f1d1d', borderColor: '#7f1d1d' }}
+      >
+        Đồng ý
+      </Button>
+    </div>
+  );
+
   return (
     <Modal
       title={
@@ -153,11 +167,11 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
           {({ getFieldValue }) => (
             <Space>
               {getFieldValue('isLockedShift') ? (
-                <PlusCircleOutlined style={{ color: '#ef4444' }} />
+                <PlusCircleOutlined style={{ color: 'var(--primary-color)' }} />
               ) : (
                 <PlusSquareOutlined style={{ color: '#0ea5e9' }} />
               )}
-              <span style={{ fontWeight: 800 }}>
+              <span>
                 {getFieldValue('isLockedShift') ? 'Tạo Kíp trực MỚI (Independent)' : 'Áp dụng Ca trực (Stamp)'}
                 <Text type="secondary" style={{ fontWeight: 400, marginLeft: 8 }}>
                   — {date?.format('DD/MM/YYYY')}
@@ -169,8 +183,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
       }
       open={open}
       onCancel={onCancel}
-      onOk={() => form.submit()}
-      confirmLoading={loading}
+      footer={renderFooter()}
       width={550}
       destroyOnClose
       className="premium-modal"
@@ -246,14 +259,14 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                         TÙY CHỈNH RIÊNG CHO NGÀY {date?.format('DD/MM')}:
                       </Text>
                       <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                        <Form.Item label={<Text type="secondary" style={{ fontSize: 12 }}>Tên hiển thị</Text>} style={{ marginBottom: 0 }}>
+                        <Form.Item label="Tên hiển thị" style={{ marginBottom: 0 }}>
                           <Input 
                             value={localShiftData?.name} 
                             onChange={e => setLocalShiftData({ ...localShiftData, name: e.target.value })}
                             placeholder="Tên ca..."
                           />
                         </Form.Item>
-                        <Form.Item label={<Text type="secondary" style={{ fontSize: 12 }}>Khung giờ</Text>} style={{ marginBottom: 0 }}>
+                        <Form.Item label="Khung giờ" style={{ marginBottom: 0 }}>
                           <TimePicker.RangePicker 
                             format="HH:mm" 
                             style={{ width: '100%' }}
@@ -299,7 +312,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                 <div style={{ padding: '0 4px' }}>
                   <div style={{ marginBottom: 20 }}>
                     <Form.Item name="stampMode" initialValue="template" noStyle>
-                      <Radio.Group buttonStyle="solid" style={{ width: '100%' }} size="large">
+                      <Radio.Group buttonStyle="solid" style={{ width: '100%' }}>
                         <Radio.Button value="template" style={{ width: '50%', textAlign: 'center' }}><CalendarOutlined /> Dùng Bản mẫu</Radio.Button>
                         <Radio.Button value="custom" style={{ width: '50%', textAlign: 'center' }}><PlusCircleOutlined /> Tự tạo Ca mới</Radio.Button>
                       </Radio.Group>
@@ -308,8 +321,8 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
                   <Form.Item noStyle shouldUpdate={(prev, curr) => prev.stampMode !== curr.stampMode}>
                     {({ getFieldValue }) => getFieldValue('stampMode') === 'template' ? (
-                      <Form.Item name="mode" label={<Text strong style={{ fontSize: 13 }}>Chế độ dập khuôn</Text>} initialValue="kips">
-                        <Select size="large" style={{ width: '100%' }}>
+                      <Form.Item name="mode" label="Chế độ dập khuôn" initialValue="kips">
+                        <Select style={{ width: '100%' }}>
                           <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
                           <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
                           <Select.Option value="all">Cả 2 (Both)</Select.Option>
@@ -320,9 +333,8 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
                   <Form.Item noStyle shouldUpdate={(prev, curr) => prev.stampMode !== curr.stampMode}>
                     {({ getFieldValue }) => getFieldValue('stampMode') === 'template' ? (
-                      <Form.Item name="shiftId" label={<Text strong>Chọn khối thời gian (Ca mẫu)</Text>} rules={[{ required: true, message: 'Vui lòng chọn Ca' }]}>
+                      <Form.Item name="shiftId" label="Chọn khối thời gian (Ca mẫu)" rules={[{ required: true, message: 'Vui lòng chọn Ca' }]}>
                         <Select
-                          size="large"
                           placeholder="Chọn Ca từ hệ thống..."
                           options={templates
                             .filter(s => s.description !== 'INSTANCE')
@@ -331,11 +343,11 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                       </Form.Item>
                     ) : (
                       <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                        <Form.Item name="customShiftName" label={<Text strong>Tên Ca trực mới</Text>} rules={[{ required: true, message: 'Nhập tên ca' }]}>
-                          <Input placeholder="VD: Trực Lễ Hội, Trực SVTN..." prefix={<EditOutlined />} size="large" />
+                        <Form.Item name="customShiftName" label="Tên Ca trực mới" rules={[{ required: true, message: 'Nhập tên ca' }]}>
+                          <Input placeholder="VD: Trực Lễ Hội, Trực SVTN..." prefix={<EditOutlined />} />
                         </Form.Item>
-                        <Form.Item name="timeRange" label={<Text strong>Khung giờ (Start - End)</Text>} rules={[{ required: true, message: 'Chọn giờ' }]}>
-                          <TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} size="large" />
+                        <Form.Item name="timeRange" label="Khung giờ (Start - End)" rules={[{ required: true, message: 'Chọn giờ' }]}>
+                          <TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} />
                         </Form.Item>
                       </div>
                     )}
@@ -363,7 +375,9 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
                   return (
                     <div style={{ marginBottom: 24 }}>
-                      <Divider orientation="left" plain><Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>Theo thiết lập của Ca</Text></Divider>
+                      <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
+                        <ClockCircleOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Theo thiết lập của Ca trực</span>
+                      </Divider>
                       <Space wrap size={[8, 8]}>
                         {kips.map(k => (
                           <Tag.CheckableTag
@@ -392,22 +406,23 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                 <Form.Item name="kipId" noStyle><Input type="hidden" /></Form.Item>
 
                 <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <Form.Item name="shiftLabel" label={<Text strong>Tiêu đề hiển thị (Kíp lẻ trên lịch)</Text>} rules={[{ required: true }]}>
+                <div style={{ padding: '0 4px' }}>
+                  <Form.Item name="shiftLabel" label="Tiêu đề hiển thị (Kíp lẻ trên lịch)" rules={[{ required: true }]}>
                     <Input placeholder="VD: Ca Sáng - Kíp 1" prefix={<EditOutlined />} />
                   </Form.Item>
-
-                  <Row gutter={16}>
+ 
+                  <Row gutter={[24, 16]}>
                     <Col span={14}>
                       <Form.Item
                         name="timeRange"
-                        label={<Text strong>Khoảng thời gian (Thực tế)</Text>}
+                        label="Khoảng thời gian (Thực tế)"
                         rules={[{ required: true, message: 'Vui lòng chọn thời gian' }]}
                       >
                         <TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} />
                       </Form.Item>
                     </Col>
                     <Col span={10}>
-                      <Form.Item label={<Text strong>Trạng thái</Text>} name="status" initialValue="open">
+                      <Form.Item label="Trạng thái" name="status" initialValue="open">
                         <Select options={[
                           { label: '🔓 Đăng ký tự do', value: 'open' }, 
                           { label: '🔒 Khóa (Admin)', value: 'locked' }
@@ -416,26 +431,27 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                     </Col>
                   </Row>
 
-                  <Row gutter={12}>
+                  <Row gutter={[16, 16]}>
                     <Col span={8}>
-                      <Form.Item label={<Text strong>Tiết BĐ</Text>} name="order">
-                        <InputNumber min={1} style={{ width: '100% ' }} />
+                      <Form.Item label="Tiết BĐ" name="order">
+                        <InputNumber min={1} style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
                     <Col span={8}>
-                      <Form.Item label={<Text strong>Tiết KT</Text>} name="endPeriod">
-                        <InputNumber min={1} style={{ width: '100% ' }} />
+                      <Form.Item label="Tiết KT" name="endPeriod">
+                        <InputNumber min={1} style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
                     <Col span={8}>
-                      <Form.Item label={<Text strong>Chỉ tiêu</Text>} name="capacity">
-                        <InputNumber min={1} style={{ width: '100% ' }} />
+                      <Form.Item label="Chỉ tiêu" name="capacity">
+                        <InputNumber min={1} style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
                   </Row>
                 </div>
+              </div>
 
-                <Form.Item name="note" label={<Text strong>Ghi chú cho kíp trực này</Text>} style={{ marginTop: 16 }}>
+                <Form.Item name="note" label="Ghi chú cho kíp trực này" style={{ marginTop: 16 }}>
                   <Input.TextArea placeholder="Thông tin địa điểm hoặc lưu ý đặc biệt..." rows={2} />
                 </Form.Item>
               </>

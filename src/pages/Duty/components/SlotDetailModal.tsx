@@ -1,17 +1,20 @@
 import React from 'react';
-import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Alert, Row, Col, message, List, Card, Select } from 'antd';
+import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Alert, Row, Col, message, List, Divider } from 'antd';
 import { 
-  InfoCircleOutlined, 
   DeleteOutlined, 
   CheckCircleOutlined, 
   ClearOutlined, 
   StopOutlined, 
   PlusOutlined, 
-  EditOutlined 
+  EditOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutySlot } from '@/services/duty.service';
 import apiClient from '@/config/axios.config';
+
+import LeaveRequestModal from './LeaveRequestModal';
+import SwapRequestModal from './SwapRequestModal';
 
 const { Text } = Typography;
 
@@ -33,12 +36,10 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
   currentUserId
 }) => {
   const [form] = Form.useForm();
-  const [leaveForm] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
   const [isLeaveModalVisible, setIsLeaveModalVisible] = React.useState(false);
   const [isSwapModalVisible, setIsSwapModalVisible] = React.useState(false);
   const [allUsers, setAllUsers] = React.useState<any[]>([]);
-  const [swapTargetUserId, setSwapTargetUserId] = React.useState<number | null>(null);
   const now = dayjs();
 
   React.useEffect(() => {
@@ -59,14 +60,13 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
         const res = await apiClient.get('/users');
         const rawData = res.data || res;
         const usersArray = Array.isArray(rawData) ? rawData : (rawData?.data || []);
-        setAllUsers(usersArray.filter((u: any) => u.id !== currentUserId));
+        setAllUsers(usersArray);
       } catch (err) {
         console.error('Lỗi tải danh sách người dùng:', err);
       }
     };
     fetchUsers();
-  }, [open, currentUserId]);
-
+  }, [open]);
 
   const handleUpdate = async (values: any) => {
     if (!slot) return;
@@ -165,10 +165,10 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
     }
   };
 
-  const handleSwapRequest = async () => {
-    if (!slot || !swapTargetUserId) return;
+  const handleSwapRequest = async (targetUserId: number) => {
+    if (!slot || !targetUserId) return;
     try {
-      await dutyService.requestSwap(slot.id, swapTargetUserId);
+      await dutyService.requestSwap(slot.id, targetUserId);
       message.success('Đã gửi yêu cầu đổi ca');
       setIsSwapModalVisible(false);
       onSuccess();
@@ -179,47 +179,48 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
   };
 
   const renderHeader = () => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '95%' }}>
-      <Space>
-        <InfoCircleOutlined style={{ color: '#1890ff' }} />
-        <span>Chi tiết kíp trực {slot && `- ${slot.shiftLabel}`}</span>
-      </Space>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {isAdmin && slot && (
-          <>
-            {!dayjs(slot.shiftDate).isBefore(now.startOf('day')) && (
-              <Button loading={loading} onClick={() => form.submit()} type="primary">Lưu thay đổi</Button>
-            )}
-            <Button danger icon={<DeleteOutlined />} onClick={handleDelete}>Xóa kíp</Button>
-          </>
-        )}
-        {!isAdmin && slot && !dayjs(slot.shiftDate).isBefore(now.startOf('day')) && (
-          <Space>
-            {slot.assignedUserIds?.includes(currentUserId) ? (
-              <Space>
-                {(() => {
-                  const slotStart = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.startTime}`);
-                  const slotEnd = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.endTime}`);
-                  const isActive = now.isAfter(slotStart.subtract(15, 'minute')) && now.isBefore(slotEnd);
-                  const isAttended = slot.attendedUserIds?.includes(currentUserId);
+    <Space>
+      <EditOutlined style={{ color: 'var(--primary-color)' }} />
+      <span style={{ fontWeight: 600 }}>Chi tiết kíp trực {slot && `- ${slot.shiftLabel}`}</span>
+    </Space>
+  );
 
-                  if (isAttended) return <Tag color="green" icon={<CheckCircleOutlined />}>Đã điểm danh</Tag>;
-                  if (isActive) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleAttendance}>Điểm danh ngay</Button>;
-                  return null;
-                })()}
-                <Button danger icon={<ClearOutlined />} onClick={handleUnregister}>Hủy đăng ký</Button>
-                <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)}>Xin nghỉ</Button>
-                <Button type="primary" ghost icon={<EditOutlined />} onClick={() => setIsSwapModalVisible(true)}>Đổi kíp</Button>
-              </Space>
-            ) : (
-              (slot.assignedUserIds?.length || 0) < (slot.capacity || slot.kip?.capacity || 0) && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleRegister}>Đăng ký ca này</Button>
-              )
-            )}
-          </Space>
-        )}
-        <Button onClick={onCancel}>Đóng</Button>
-      </div>
+  const renderFooter = () => (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
+      {isAdmin && slot && (
+        <>
+          {!dayjs(slot.shiftDate).isBefore(now.startOf('day')) && (
+            <Button loading={loading} onClick={() => form.submit()} type="primary" size="middle" style={{ minWidth: 100 }}>Lưu lại</Button>
+          )}
+          <Button danger icon={<DeleteOutlined />} onClick={handleDelete} size="middle" style={{ minWidth: 100 }}>Xóa kíp</Button>
+        </>
+      )}
+      {!isAdmin && slot && !dayjs(slot.shiftDate).isBefore(now.startOf('day')) && (
+        <>
+          {slot.assignedUserIds?.includes(currentUserId) ? (
+            <>
+              {(() => {
+                const slotStart = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.startTime}`);
+                const slotEnd = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.endTime}`);
+                const isActive = now.isAfter(slotStart.subtract(15, 'minute')) && now.isBefore(slotEnd);
+                const isAttended = slot.attendedUserIds?.includes(currentUserId);
+
+                if (isAttended) return <Tag color="green" icon={<CheckCircleOutlined />} style={{ padding: '4px 12px', fontSize: 13, borderRadius: 6 }}>Đã điểm danh</Tag>;
+                if (isActive) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleAttendance} style={{ minWidth: 100 }}>Điểm danh</Button>;
+                return null;
+              })()}
+              <Button type="primary" ghost icon={<EditOutlined />} onClick={() => setIsSwapModalVisible(true)} style={{ minWidth: 100 }}>Đổi ca</Button>
+              <Button danger icon={<ClearOutlined />} onClick={handleUnregister} style={{ minWidth: 100 }}>Hủy kíp</Button>
+              <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)} style={{ minWidth: 100 }}>Xin nghỉ</Button>
+            </>
+          ) : (
+            (slot.assignedUserIds?.length || 0) < (slot.capacity || slot.kip?.capacity || 0) && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleRegister} style={{ minWidth: 120 }}>Đăng ký ngay</Button>
+            )
+          )}
+        </>
+      )}
+      <Button onClick={onCancel} style={{ minWidth: 100 }}>Đóng</Button>
     </div>
   );
 
@@ -229,71 +230,81 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
         title={renderHeader()}
         open={open}
         onCancel={onCancel}
-        footer={null}
-        width={700}
+        footer={renderFooter()}
+        width={750}
         destroyOnClose
         className="premium-modal"
       >
         {slot && (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 16 }}>
             <Alert
               message={
                 <span>
-                  Ca này thuộc <b>Tuần {dayjs(slot.shiftDate).format('ww')}</b> - <b>{dayjs(slot.shiftDate).format('DD/MM/YYYY')}</b>
+                  Lịch trực: <b>Thứ {(dayjs(slot.shiftDate).day() + 6) % 7 + 2 === 8 ? 'Chủ Nhật' : (dayjs(slot.shiftDate).day() + 6) % 7 + 2}</b>, <b>Ngày {dayjs(slot.shiftDate).format('DD/MM/YYYY')}</b> (Tuần {dayjs(slot.shiftDate).format('ww')})
                   {dayjs(slot.shiftDate).isBefore(dayjs().startOf('day')) && (
-                    <Tag color="default" style={{ marginLeft: 8 }}>Quá khứ</Tag>
+                    <Tag color="default" style={{ marginLeft: 12 }}>Đã kết thúc</Tag>
                   )}
                 </span>
               }
               type="info"
               showIcon
-              style={{ marginBottom: 20, borderRadius: 10 }}
+              style={{ marginBottom: 24, borderRadius: 12, padding: '12px 16px' }}
             />
 
             <Form form={form} layout="vertical" onFinish={handleUpdate} disabled={!isAdmin || dayjs(slot.shiftDate).isBefore(now.startOf('day'))}>
               <Row gutter={24}>
                 <Col span={14}>
-                  <Card size="small" title="Thông tin cơ bản" style={{ borderRadius: 12 }}>
-                    <Form.Item name="shiftLabel" label={<Text strong>Tiêu đề</Text>} rules={[{ required: true }]}>
-                      <Input prefix={<EditOutlined />} />
+                  <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', height: '100%' }}>
+                    <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
+                      <EditOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin cơ bản</span>
+                    </Divider>
+                    <Form.Item name="shiftLabel" label="Tiêu đề kíp" rules={[{ required: true }]}>
+                      <Input prefix={<EditOutlined style={{ color: 'var(--primary-color)' }} />} />
                     </Form.Item>
-                    <Row gutter={12}>
+                    <Row gutter={[16, 16]}>
                       <Col span={12}>
-                        <Form.Item name="startTime" label={<Text strong>Bắt đầu</Text>}>
+                        <Form.Item name="startTime" label="Bắt đầu (Giờ)">
                           <Input disabled />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
-                        <Form.Item name="endTime" label={<Text strong>Kết thúc</Text>}>
+                        <Form.Item name="endTime" label="Kết thúc (Giờ)">
                           <Input disabled />
                         </Form.Item>
                       </Col>
                     </Row>
-                    <Form.Item name="note" label={<Text strong>Ghi chú</Text>}>
-                      <Input.TextArea rows={3} />
+                    <Form.Item name="note" label="Ghi chú / Địa điểm">
+                      <Input.TextArea rows={3} placeholder="Thông tin bổ sung..." />
                     </Form.Item>
-                  </Card>
+                  </div>
                 </Col>
                 <Col span={10}>
-                  <Card size="small" title="Thành viên & Chỉ tiêu" style={{ borderRadius: 12, height: '100% ' }}>
-                    <Form.Item name="capacity" label={<Text strong>Chỉ tiêu (Người)</Text>}>
-                      <InputNumber min={1} style={{ width: '100% ' }} />
+                  <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', height: '100%' }}>
+                    <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
+                      <TeamOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Nhân sự & Chỉ tiêu</span>
+                    </Divider>
+                    <Form.Item name="capacity" label="Chỉ tiêu thành viên">
+                      <InputNumber min={1} style={{ width: '100%' }} />
                     </Form.Item>
-                    <Form.Item label={<Text strong>Nhân sự đã đăng ký</Text>}>
-                      <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                    <div style={{ marginTop: 12 }}>
+                      <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
+                        Danh sách đăng ký ({slot.assignedUsers?.length || 0}/{slot.capacity || slot.kip?.capacity || 0})
+                      </Text>
+                      <div style={{ maxHeight: 220, overflowY: 'auto', paddingRight: 4 }}>
                         <List
                           size="small"
                           dataSource={slot.assignedUsers || []}
+                          locale={{ emptyText: <Text type="secondary" italic>Chưa có ai đăng ký</Text> }}
                           renderItem={(u: any) => (
-                            <List.Item style={{ padding: '8px 0' }}>
+                            <List.Item style={{ padding: '10px 0', borderBottom: '1px dashed #e2e8f0' }}>
                               <Space>
-                                <Avatar src={u.avatar}>{u.name.charAt(0)}</Avatar>
+                                <Avatar size="small" src={u.avatar}>{u.name.charAt(0)}</Avatar>
                                 <div>
-                                  <div style={{ fontWeight: 600, fontSize: 13 }}>{u.name}</div>
-                                  <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                                  <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{u.name}</div>
+                                  <div style={{ fontSize: 11 }}>
                                     {slot.attendedUserIds?.includes(u.id) ? 
-                                      <Tag color="green" style={{ fontSize: 10 }}>Đã điểm danh</Tag> : 
-                                      <Tag color="default" style={{ fontSize: 10 }}>Chưa điểm danh</Tag>
+                                      <Tag color="success" style={{ fontSize: 9, borderRadius: 4, height: 16, lineHeight: '14px' }}>Đã điểm danh</Tag> : 
+                                      <Tag color="default" style={{ fontSize: 9, borderRadius: 4, height: 16, lineHeight: '14px' }}>Vắng mặt</Tag>
                                     }
                                   </div>
                                 </div>
@@ -301,10 +312,9 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
                             </List.Item>
                           )}
                         />
-                        {(slot.assignedUsers?.length || 0) === 0 && <Text type="secondary" italic>Chưa có ai đăng ký</Text>}
                       </div>
-                    </Form.Item>
-                  </Card>
+                    </div>
+                  </div>
                 </Col>
               </Row>
             </Form>
@@ -312,56 +322,21 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
         )}
       </Modal>
 
-      <Modal
-        title="Yêu cầu xin nghỉ"
+      <LeaveRequestModal
         open={isLeaveModalVisible}
         onCancel={() => setIsLeaveModalVisible(false)}
-        onOk={() => leaveForm.submit()}
-        okText="Gửi yêu cầu"
-        cancelText="Hủy"
-        destroyOnClose
-      >
-        <Form form={leaveForm} layout="vertical" onFinish={handleLeaveRequest}>
-          <Form.Item name="reason" label="Lý do xin nghỉ" rules={[{ required: true, message: 'Vui lòng nhập lý do' }]}>
-            <Input.TextArea rows={4} placeholder="Vui lòng giải thích ngắn gọn lý do bạn không thể trực kíp này..." />
-          </Form.Item>
-        </Form>
-      </Modal>
+        onSubmit={handleLeaveRequest}
+      />
 
-      <Modal
-        title="Yêu cầu đổi ca (Chuyển ca)"
+      <SwapRequestModal
         open={isSwapModalVisible}
         onCancel={() => setIsSwapModalVisible(false)}
-        onOk={handleSwapRequest}
-        okText="Gửi yêu cầu"
-        cancelText="Hủy"
-        destroyOnClose
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Alert 
-            message="Lưu ý" 
-            description="Bạn đang yêu cầu chuyển ca này cho một thành viên khác. Sau khi họ chấp thuận (và được Admin duyệt nếu cần), bạn sẽ được gỡ khỏi ca này." 
-            type="warning" 
-            showIcon 
-          />
-        </div>
-        <Text strong>Chọn người nhận ca:</Text>
-        <Select
-          showSearch
-          style={{ width: '100%', marginTop: 8 }}
-          placeholder="Tìm kiếm thành viên..."
-          optionFilterProp="children"
-          onChange={(val: number) => setSwapTargetUserId(val)}
-          filterOption={(input: string, option: any) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
-          options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
-        />
-      </Modal>
+        onSubmit={handleSwapRequest}
+        allUsers={allUsers}
+        currentUserId={currentUserId}
+      />
     </>
   );
 };
-
-// Need to import List from 'antd' and add it to the destructured components if used
 
 export default SlotDetailModal;

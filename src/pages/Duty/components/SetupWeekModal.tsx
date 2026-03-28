@@ -106,16 +106,20 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
     <Modal
       title={
         <Space>
-          <SettingOutlined />
+          <SettingOutlined style={{ color: 'var(--primary-color)' }} />
           <span>Thiết lập lịch trình nhanh (Tuần)</span>
           <Tooltip title="Các thao tác tác động lên toàn bộ dữ liệu của tuần hiện tại">
-            <QuestionCircleOutlined style={{ fontSize: 14, color: '#1890ff' }} />
+            <QuestionCircleOutlined style={{ fontSize: 14, color: 'var(--primary-color)' }} />
           </Tooltip>
         </Space>
       }
       open={open}
       onCancel={onCancel}
-      footer={null}
+      footer={[
+        <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <Button onClick={onCancel} style={{ minWidth: 120 }}>Đóng</Button>
+        </div>
+      ]}
       width={400}
       destroyOnClose
     >
@@ -135,7 +139,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           </Card>
 
           <Tooltip title="Tự động tạo các khung giờ kíp trực dựa trên cấu hình Bản mẫu đã thiết lập" placement="right">
-            <Button block type="primary" size="large" icon={<SettingOutlined />} onClick={() => {
+            <Button block type="primary" icon={<SettingOutlined />} onClick={() => {
               Modal.confirm({
                 title: 'Xác nhận khởi tạo?',
                 content: 'Hệ thống sẽ dựa vào Bản mẫu để tạo các kíp trực cho tuần này. Các kíp đã có sẽ không bị ảnh hưởng.',
@@ -143,9 +147,9 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
               });
             }}>Khởi tạo từ Bản mẫu</Button>
           </Tooltip>
-
+ 
           <Tooltip title="Lấy dữ liệu kíp trực của tuần trước đó áp dụng cho tuần này" placement="right">
-            <Button block size="large" icon={<CopyOutlined />} onClick={() => {
+            <Button block icon={<CopyOutlined />} onClick={() => {
               Modal.confirm({
                 title: 'Xác nhận sao chép?',
                 content: 'Toàn bộ kíp trực từ tuần trước sẽ được nhân bản sang tuần này.',
@@ -153,11 +157,11 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
               });
             }}>Sao chép từ tuần trước</Button>
           </Tooltip>
-
+ 
           <Divider style={{ margin: '4px 0' }} />
-
+ 
           <Tooltip title="Xóa toàn bộ các kíp trực trong tuần này để làm lại từ đầu" placement="right">
-            <Button block danger ghost size="large" icon={<ClearOutlined />} onClick={handleClearWeek}>Xóa sạch lịch tuần</Button>
+            <Button block danger ghost icon={<ClearOutlined />} onClick={handleClearWeek}>Xóa sạch lịch tuần</Button>
           </Tooltip>
         </Space>
       </Form>

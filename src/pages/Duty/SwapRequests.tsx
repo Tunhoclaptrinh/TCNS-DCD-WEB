@@ -12,6 +12,7 @@ const SwapRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('pending');
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const { user } = useAccess();
 
   const fetchRequests = async () => {
@@ -132,6 +133,12 @@ const SwapRequestsPage: React.FC = () => {
               <Button type={activeTab === 'rejected' ? 'primary' : 'default'} onClick={() => setActiveTab('rejected')}>Từ chối</Button>
               <Button type={activeTab === 'all' ? 'primary' : 'default'} onClick={() => setActiveTab('all')}>Tất cả</Button>
             </Button.Group>
+            <Button
+              icon={<QuestionCircleOutlined />}
+              onClick={() => setIsGuideModalOpen(true)}
+            >
+              Hướng dẫn
+            </Button>
           </Space>
         }
         customActions={(r) => {
@@ -166,6 +173,38 @@ const SwapRequestsPage: React.FC = () => {
           return null;
         }}
       />
+
+      <Modal
+        title={
+          <Space>
+            <QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />
+            <span>Hướng dẫn Duyệt đơn nghỉ</span>
+          </Space>
+        }
+        open={isGuideModalOpen}
+        onCancel={() => setIsGuideModalOpen(false)}
+        footer={[
+          <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+          </div>
+        ]}
+        className="premium-modal"
+      >
+        <div style={{ padding: '8px 0' }}>
+          <p>Trang này cho phép bạn theo dõi và xử lý các yêu cầu đổi ca trực:</p>
+          <ul style={{ paddingLeft: 20 }}>
+            <li style={{ marginBottom: 8 }}>
+              <b>Dành cho Thành viên:</b> Chấp nhận hoặc từ chối các yêu cầu đổi ca mà người khác gửi cho bạn.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              <b>Dành cho Admin/Staff:</b> Có quyền phê duyệt cuối cùng cho các giao dịch đổi ca để hệ thống cập nhật lịch trực.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              <b>Trạng thái:</b> Sau khi cả hai bên đồng ý, lịch trực trên trang <b>Lịch trực</b> sẽ tự động cập nhật nhân sự mới.
+            </li>
+          </ul>
+        </div>
+      </Modal>
     </div>
   );
 };

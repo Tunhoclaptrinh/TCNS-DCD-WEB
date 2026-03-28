@@ -149,10 +149,20 @@ const LeaveRequestsPage: React.FC = () => {
       />
 
       <Modal
-        title="Hướng dẫn Duyệt đơn nghỉ"
+        title={
+          <Space>
+            <QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />
+            <span>Hướng dẫn Duyệt đơn nghỉ</span>
+          </Space>
+        }
         open={isGuideModalOpen}
         onCancel={() => setIsGuideModalOpen(false)}
-        footer={[<Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)}>Đã hiểu</Button>]}
+        footer={[
+          <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+          </div>
+        ]}
+        className="premium-modal"
       >
         <div style={{ padding: '8px 0' }}>
           <p>Trang này cho phép bạn quản lý các yêu cầu xin nghỉ từ thành viên:</p>
