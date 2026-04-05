@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Form, Input, InputNumber, Space, message, Typography, TimePicker, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented } from 'antd';
+import { Card, Button, Modal, Form, Input, InputNumber, Space, message, Typography, TimePicker, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   ScheduleOutlined, SettingOutlined,
@@ -9,7 +9,8 @@ import {
   LockOutlined, UnlockOutlined,
   ExclamationCircleOutlined,
   CalendarOutlined, PlusSquareOutlined, InfoCircleOutlined,
-  DownOutlined, UnorderedListOutlined
+  DownOutlined, UnorderedListOutlined,
+  StopOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -61,6 +62,8 @@ const DutyManagement: React.FC = () => {
   const [templateViewMode, setTemplateViewMode] = useState<'list' | 'calendar'>('list');
   const [previewViewMode, setPreviewViewMode] = useState<'list' | 'week'>('week');
   const [previewWeekOffset, setPreviewWeekOffset] = useState(0);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsForm] = Form.useForm();
 
   const manualOrder = Form.useWatch('order', manualSlotForm);
   const manualShiftId = Form.useWatch('shiftId', manualSlotForm);
@@ -89,7 +92,41 @@ const DutyManagement: React.FC = () => {
     fetchGroups();
     fetchSlots();
     fetchUsers();
+    fetchDutySettings();
   }, [slotFilterWeek]);
+
+  const fetchDutySettings = async () => {
+    try {
+      const res = await dutyService.getSettings();
+      if (res.success && res.data) {
+        settingsForm.setFieldsValue({
+          ...res.data,
+          weeklyLimitEnabled: !!(res.data.weeklyKipLimit && res.data.weeklyKipLimit > 0)
+        });
+      }
+    } catch (err) {
+      console.error('Lỗi tải cấu hình');
+    }
+  };
+
+  const handleUpdateSettings = async (values: any) => {
+    setSettingsLoading(true);
+    try {
+      const { weeklyLimitEnabled, ...rest } = values;
+      const payload = {
+        ...rest,
+        weeklyKipLimit: weeklyLimitEnabled ? values.weeklyKipLimit : null
+      };
+      const res = await dutyService.updateSettings(payload);
+      if (res.success) {
+        message.success('Đã cập nhật cấu hình hệ thống');
+      }
+    } catch (err) {
+      message.error('Lỗi khi cập nhật cấu hình');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchTemplates();
@@ -596,15 +633,15 @@ const DutyManagement: React.FC = () => {
   ];
 
   const renderTabSwitcher = () => (
-    <div className="tab-switcher-container" style={{ marginBottom: 24 }}>
+    <div className="tab-switcher-container">
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
-        size="large"
+        size="small"
         className="hifi-tabs-management"
         items={tabList.map(t => ({ 
           ...t, 
-          label: <span style={{ fontSize: '15px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>{t.label}</span> 
+          label: <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{t.label}</span> 
         }))}
       />
     </div>
@@ -616,6 +653,7 @@ const DutyManagement: React.FC = () => {
       label: <span><InboxOutlined /> Quản lý ca & kíp</span>,
       children: (
         <DataTable
+          hideCard={true}
           loading={slotLoading}
           dataSource={currentDaySlots}
           rowKey="id"
@@ -624,7 +662,6 @@ const DutyManagement: React.FC = () => {
           onRefresh={fetchSlots}
           headerContent={
             <div>
-              {renderTabSwitcher()}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -696,7 +733,7 @@ const DutyManagement: React.FC = () => {
                       padding: '6px 4px',
                       textAlign: 'center',
                       cursor: 'pointer',
-                      borderRadius: 10,
+                      borderRadius: 8,
                       border: !selectedDate ? '2px solid var(--primary-color)' : '1px solid #e2e8f0',
                       backgroundColor: !selectedDate ? 'rgba(var(--primary-rgb, 201, 33, 39), 0.05)' : '#fff',
                       color: !selectedDate ? 'var(--primary-color)' : '#64748b',
@@ -729,7 +766,7 @@ const DutyManagement: React.FC = () => {
                           padding: '6px 4px',
                           textAlign: 'center',
                           cursor: 'pointer',
-                          borderRadius: 10,
+                          borderRadius: 8,
                           border: isSelected ? '2px solid var(--primary-color)' : '1px solid #e2e8f0',
                           backgroundColor: isSelected ? 'rgba(var(--primary-rgb, 201, 33, 39), 0.05)' : (isToday ? '#fff1f0' : '#fff'),
                           color: isSelected ? 'var(--primary-color)' : '#1e293b',
@@ -853,7 +890,7 @@ const DutyManagement: React.FC = () => {
               align: 'center',
               width: 140,
               render: (s) => (
-                <Tag color={s === 'locked' ? 'error' : 'success'} style={{ borderRadius: 10, padding: '0 12px' }}>
+                <Tag color={s === 'locked' ? 'error' : 'success'} style={{ borderRadius: 8, padding: '0 12px' }}>
                   {s === 'locked' ? 'Đã khóa' : 'Đang mở'}
                 </Tag>
               )
@@ -907,10 +944,9 @@ const DutyManagement: React.FC = () => {
       key: '2',
       label: <span><ScheduleOutlined /> Điều phối & Lập lịch</span>,
       children: (
-        <Card id="bulk-scheduling-section" className="coordination-tab hifi-border" bodyStyle={{ padding: '24px' }}>
-          {renderTabSwitcher()}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, alignItems: 'center' }}>
+        <div id="bulk-scheduling-section" className="coordination-tab">
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Title level={4} style={{ margin: 0 }}>Lập lịch Hàng loạt</Title>
                 <Tooltip title="Tiện ích hỗ trợ tạo tự động toàn bộ Khung trực cho một khoảng thời gian dài dựa trên Bản mẫu.">
@@ -999,7 +1035,7 @@ const DutyManagement: React.FC = () => {
                   </Space>
                 </div>
                 {previewViewMode === 'week' ? renderBulkPreviewCalendar() : (
-                  <div style={{ maxHeight: 420, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+                  <div style={{ maxHeight: 420, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
                     {previewDates.map((d: any, i: number) => (
                       <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: d.isSelected ? 'rgba(5, 150, 105, 0.03)' : undefined }}>
                         <Checkbox checked={d.isSelected} onChange={e => { const n = [...previewDates]; n[i].isSelected = e.target.checked; setPreviewDates(n); }}>
@@ -1022,7 +1058,7 @@ const DutyManagement: React.FC = () => {
           </div>
           <Divider style={{ margin: '32px 0', borderColor: '#e2e8f0', opacity: 0.6 }} />
           <div>
-             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, alignItems: 'center' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'center' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                  <Title level={4} style={{ margin: 0 }}>Thêm Khung trực Đơn lẻ</Title>
                  <Tooltip title="Tạo một Ca hoặc Kíp phát sinh tùy chỉnh độc lập mà không cần dùng Bản mẫu.">
@@ -1049,7 +1085,7 @@ const DutyManagement: React.FC = () => {
                 if (res.success) { message.success('Đã thêm kíp trực mới'); manualSlotForm.resetFields(); fetchSlots(); }
               } catch (err) { message.error('Lỗi khi thêm ca lẻ'); }
             }} initialValues={{ status: 'open' }}>
-              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
                 <Row gutter={[24, 16]}>
                   <Col span={6}><Form.Item name="date" label="Ngày trực" rules={[{ required: true }]}><DatePicker style={{ width: '100%', borderRadius: 8 }} /></Form.Item></Col>
                   <Col span={18}>
@@ -1092,15 +1128,14 @@ const DutyManagement: React.FC = () => {
               </div>
             </Form>
           </div>
-        </Card>
+        </div>
       )
     },
     {
       key: '3',
       label: <span><LayoutOutlined /> Cấu hình Bản mẫu</span>,
       children: (
-        <Card className="templates-tab hifi-border" bodyStyle={{ padding: '24px' }}>
-          {renderTabSwitcher()}
+        <div className="templates-tab">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, alignItems: 'flex-start', flexWrap: 'wrap', gap: 24 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -1169,7 +1204,7 @@ const DutyManagement: React.FC = () => {
           {templateViewMode === 'calendar' ? renderTemplateWeeklyView() : (
             <>
               {templates.length === 0 ? (
-                <Card className="hifi-border" style={{ textAlign: 'center', padding: '60px 0', borderStyle: 'dashed', borderRadius: 16 }}>
+                <Card className="hifi-border" style={{ textAlign: 'center', padding: '60px 0', borderStyle: 'dashed', borderRadius: 8 }}>
                   <InboxOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
                   <div><Text type="secondary" style={{ fontSize: 16 }}>Chưa có bản mẫu Ca trực nào trong nhóm này.</Text></div>
                   <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 24, borderRadius: 8 }} onClick={() => { setEditingShift(null); setIsShiftModalOpen(true); }}>Bắt đầu tạo Ca đầu tiên</Button>
@@ -1180,7 +1215,7 @@ const DutyManagement: React.FC = () => {
                     <Card 
                       key={s.id} 
                       className="hifi-border hifi-shift-card" 
-                      style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid #e2e8f0' }} 
+                      style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0' }} 
                       title={
                         <Space size="middle">
                           <Text strong style={{ fontSize: '18px', color: '#1e293b' }}>{s.name}</Text>
@@ -1246,15 +1281,14 @@ const DutyManagement: React.FC = () => {
               )}
             </>
           )}
-        </Card>
+        </div>
       )
     },
     {
       key: '5',
       label: <span><SettingOutlined /> Cài đặt chung</span>,
       children: (
-        <Card className="hifi-border" bodyStyle={{ padding: '24px' }}>
-          {renderTabSwitcher()}
+        <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
             <Title level={4} style={{ margin: 0 }}>Cấu hình Hệ thống</Title>
             <Tooltip title="Các thiết lập này ảnh hưởng đến toàn bộ quy trình đăng ký, mở đợt và đổi kíp trực.">
@@ -1262,28 +1296,85 @@ const DutyManagement: React.FC = () => {
             </Tooltip>
           </div>
 
-          <Form layout="vertical">
-            <Row gutter={[24, 16]}>
-              <Col xs={24} md={8}>
-                <Form.Item label="Số tiết trực tối đa trong ngày (1 thành viên)">
-                  <InputNumber defaultValue={22} style={{ width: '100%' }} />
-                </Form.Item>
+          <Form form={settingsForm} layout="vertical" onFinish={handleUpdateSettings}>
+            <Row gutter={[32, 24]}>
+              <Col xs={24} md={12}>
+                <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontWeight: 600, color: '#1e293b' }}>Giới hạn số kíp đăng ký/tuần</span>
+                    <Form.Item name="weeklyLimitEnabled" valuePropName="checked" noStyle>
+                      <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+                    </Form.Item>
+                  </div>
+                  <Form.Item 
+                    noStyle 
+                    shouldUpdate={(prev, curr) => prev.weeklyLimitEnabled !== curr.weeklyLimitEnabled}
+                  >
+                    {({ getFieldValue }) => (
+                      getFieldValue('weeklyLimitEnabled') ? (
+                        <Form.Item name="weeklyKipLimit" noStyle rules={[{ required: true, message: 'Vui lòng nhập số kíp' }]}>
+                          <InputNumber 
+                            min={1} 
+                            placeholder="Ví dụ: 2" 
+                            style={{ width: '100%', height: 40 }} 
+                            addonAfter="kíp / tuần"
+                          />
+                        </Form.Item>
+                      ) : (
+                        <div style={{ height: 40, display: 'flex', alignItems: 'center', padding: '0 12px', background: '#f1f5f9', borderRadius: 8, color: '#64748b', fontSize: 13 }}>
+                          <StopOutlined style={{ marginRight: 8, fontSize: 12 }} /> Không giới hạn (Unset)
+                        </div>
+                      )
+                    )}
+                  </Form.Item>
+                </div>
+              </Col>
+              <Col xs={24} md={12}>
+                <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <Form.Item 
+                    label={<span style={{ fontWeight: 600, color: '#1e293b' }}>Chính sách Hủy kíp</span>} 
+                    name="allowUnregisterWhenFull" 
+                    valuePropName="checked"
+                    style={{ marginBottom: 0 }}
+                  >
+                    <Checkbox>
+                      Cho phép <b>tự hủy</b> đăng ký khi kíp đã đủ người (Full slot)
+                    </Checkbox>
+                  </Form.Item>
+                </div>
               </Col>
             </Row>
 
+            <Divider style={{ margin: '32px 0' }} />
+
             <Alert
-              message="Lưu ý"
-              description="Cấu hình này sẽ được áp dụng cho toàn bộ chức năng liên quan đến đăng ký, mở đợt và đổi kíp."
+              message={<span style={{ fontWeight: 600, fontSize: 14 }}>Hướng dẫn Cấu hình</span>}
+              description={
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <Text strong style={{ color: 'var(--primary-color)' }}>1. Giới hạn tuần:</Text> 
+                    <Text type="secondary" style={{ marginLeft: 8 }}>
+                      Dùng để kiểm soát khối lượng công việc của từng thành viên. Khi đạt giới hạn, người dùng sẽ nhận được cảnh báo và không thể đăng ký thêm vào kíp trống.
+                    </Text>
+                  </div>
+                  <div>
+                    <Text strong style={{ color: 'var(--primary-color)' }}>2. Tự hủy khi đủ người:</Text>
+                    <Text type="secondary" style={{ marginLeft: 8 }}>
+                      Nên tắt cài đặt này nếu bạn muốn đảm bảo các kíp quan trọng luôn có người trực. Nếu tắt, thành viên phải liên hệ Quản trị viên để được xóa tên khỏi kíp đã full.
+                    </Text>
+                  </div>
+                </div>
+              }
               type="info"
               showIcon
-              style={{ marginBottom: 24, borderRadius: 10 }}
+              style={{ marginBottom: 32, borderRadius: 8, padding: '16px 20px', backgroundColor: '#f0f9ff', border: '1px solid #e0f2fe' }}
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button type="primary" disabled icon={<SettingOutlined />}>Lưu cài đặt</Button>
+              <Button type="primary" htmlType="submit" loading={settingsLoading} icon={<SettingOutlined />} style={{ borderRadius: 8, height: 40, padding: '0 24px' }}>Lưu cấu hình</Button>
             </div>
           </Form>
-        </Card>
+        </div>
       )
     }
   ];
@@ -1300,7 +1391,10 @@ const DutyManagement: React.FC = () => {
         </Button>
       </div>
 
-      {tabItems.find(t => t.key === activeTab)?.children}
+      <Card className="hifi-border">
+        {renderTabSwitcher()}
+        {tabItems.find(t => t.key === activeTab)?.children}
+      </Card>
 
       <GroupModal
         open={isGroupModalOpen}

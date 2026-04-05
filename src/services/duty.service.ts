@@ -307,6 +307,16 @@ class DutyService {
     const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/assignment/${id}`);
     return response;
   }
+
+  async getSettings(): Promise<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean }>> {
+    const response = await apiClient.get<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean }>>("/duty/settings");
+    return response;
+  }
+
+  async updateSettings(data: { weeklyKipLimit: number, allowUnregisterWhenFull: boolean }): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
+    return response;
+  }
 }
 
 export const dutyService = new DutyService();

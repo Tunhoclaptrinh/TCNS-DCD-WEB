@@ -87,5 +87,6 @@ export interface DataTableProps {
     saveColumnWidths?: boolean;
     columnResizeKey?: string;
     onColumnResize?: (key: string, width: number) => void;
+    hideCard?: boolean;
     [key: string]: any;
 }

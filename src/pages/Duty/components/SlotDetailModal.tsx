@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Alert, Row, Col, message, List, Divider } from 'antd';
+import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Row, Col, message, List, Divider, Select, Switch } from 'antd';
 import { 
   DeleteOutlined, 
   CheckCircleOutlined, 
@@ -7,7 +7,8 @@ import {
   StopOutlined, 
   PlusOutlined, 
   EditOutlined,
-  TeamOutlined
+  CalendarOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutySlot } from '@/services/duty.service';
@@ -47,7 +48,7 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
       form.setFieldsValue({
         ...slot,
         shiftDate: dayjs(slot.shiftDate),
-        timeRange: slot.startTime && slot.endTime ? [dayjs(slot.startTime, 'HH:mm'), dayjs(slot.endTime, 'HH:mm')] : undefined
+        status: slot.status === 'open' // Normalize status for switch
       });
     }
   }, [open, slot, form]);
@@ -72,14 +73,11 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
     if (!slot) return;
     setLoading(true);
     try {
-      const { timeRange, shiftDate, ...rest } = values;
-      const data = {
+      const { status, ...rest } = values;
+      const res = await dutyService.updateSlot(slot.id, {
         ...rest,
-        shiftDate: shiftDate.format('YYYY-MM-DD'),
-        startTime: timeRange?.[0]?.format('HH:mm'),
-        endTime: timeRange?.[1]?.format('HH:mm'),
-      };
-      const res = await dutyService.updateSlot(slot.id, data);
+        status: status ? 'open' : 'locked',
+      });
       if (res.success) {
         message.success('Đã cập nhật kíp trực');
         onSuccess();
@@ -178,21 +176,14 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
     }
   };
 
-  const renderHeader = () => (
-    <Space>
-      <EditOutlined style={{ color: 'var(--primary-color)' }} />
-      <span style={{ fontWeight: 600 }}>Chi tiết kíp trực {slot && `- ${slot.shiftLabel}`}</span>
-    </Space>
-  );
-
   const renderFooter = () => (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
       {isAdmin && slot && (
         <>
           {!dayjs(slot.shiftDate).isBefore(now.startOf('day')) && (
-            <Button loading={loading} onClick={() => form.submit()} type="primary" size="middle" style={{ minWidth: 100 }}>Lưu lại</Button>
+            <Button loading={loading} onClick={() => form.submit()} type="primary">Lưu lại</Button>
           )}
-          <Button danger icon={<DeleteOutlined />} onClick={handleDelete} size="middle" style={{ minWidth: 100 }}>Xóa kíp</Button>
+          <Button danger icon={<DeleteOutlined />} onClick={handleDelete}>Xóa kíp</Button>
         </>
       )}
       {!isAdmin && slot && !dayjs(slot.shiftDate).isBefore(now.startOf('day')) && (
@@ -205,120 +196,138 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
                 const isActive = now.isAfter(slotStart.subtract(15, 'minute')) && now.isBefore(slotEnd);
                 const isAttended = slot.attendedUserIds?.includes(currentUserId);
 
-                if (isAttended) return <Tag color="green" icon={<CheckCircleOutlined />} style={{ padding: '4px 12px', fontSize: 13, borderRadius: 6 }}>Đã điểm danh</Tag>;
-                if (isActive) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleAttendance} style={{ minWidth: 100 }}>Điểm danh</Button>;
+                if (isAttended) return <Tag color="green" icon={<CheckCircleOutlined />}>Đã điểm danh</Tag>;
+                if (isActive) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleAttendance}>Điểm danh</Button>;
                 return null;
               })()}
-              <Button type="primary" ghost icon={<EditOutlined />} onClick={() => setIsSwapModalVisible(true)} style={{ minWidth: 100 }}>Đổi ca</Button>
-              <Button danger icon={<ClearOutlined />} onClick={handleUnregister} style={{ minWidth: 100 }}>Hủy kíp</Button>
-              <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)} style={{ minWidth: 100 }}>Xin nghỉ</Button>
+              <Button type="primary" ghost icon={<EditOutlined />} onClick={() => setIsSwapModalVisible(true)}>Đổi ca</Button>
+              <Button danger icon={<ClearOutlined />} onClick={handleUnregister}>Hủy kíp</Button>
+              <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)}>Xin nghỉ</Button>
             </>
           ) : (
             (slot.assignedUserIds?.length || 0) < (slot.capacity || slot.kip?.capacity || 0) && (
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleRegister} style={{ minWidth: 120 }}>Đăng ký ngay</Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleRegister}>Đăng ký ngay</Button>
             )
           )}
         </>
       )}
-      <Button onClick={onCancel} style={{ minWidth: 100 }}>Đóng</Button>
+      <Button onClick={onCancel}>Đóng</Button>
     </div>
   );
 
   return (
     <>
       <Modal
-        title={renderHeader()}
+        title={
+          <Space>
+            <EditOutlined />
+            <span>Chi tiết kíp trực</span>
+          </Space>
+        }
         open={open}
         onCancel={onCancel}
         footer={renderFooter()}
-        width={750}
+        width={900}
         destroyOnClose
-        className="premium-modal"
       >
         {slot && (
-          <div style={{ marginTop: 16 }}>
-            <Alert
-              message={
+          <Form form={form} layout="vertical" onFinish={handleUpdate} disabled={!isAdmin || dayjs(slot.shiftDate).isBefore(now.startOf('day'))}>
+             <div style={{ marginBottom: 16 }}>
+              <Space>
+                <CalendarOutlined />
                 <span>
-                  Lịch trực: <b>Thứ {(dayjs(slot.shiftDate).day() + 6) % 7 + 2 === 8 ? 'Chủ Nhật' : (dayjs(slot.shiftDate).day() + 6) % 7 + 2}</b>, <b>Ngày {dayjs(slot.shiftDate).format('DD/MM/YYYY')}</b> (Tuần {dayjs(slot.shiftDate).format('ww')})
-                  {dayjs(slot.shiftDate).isBefore(dayjs().startOf('day')) && (
-                    <Tag color="default" style={{ marginLeft: 12 }}>Đã kết thúc</Tag>
-                  )}
+                  <b>Thứ {(dayjs(slot.shiftDate).day() + 6) % 7 + 2 === 8 ? 'Chủ Nhật' : (dayjs(slot.shiftDate).day() + 6) % 7 + 2}, Ngày {dayjs(slot.shiftDate).format('DD/MM/YYYY')}</b>
                 </span>
-              }
-              type="info"
-              showIcon
-              style={{ marginBottom: 24, borderRadius: 12, padding: '12px 16px' }}
-            />
+                <Tag color="blue">Tuần {dayjs(slot.shiftDate).format('ww')}</Tag>
+              </Space>
+             </div>
 
-            <Form form={form} layout="vertical" onFinish={handleUpdate} disabled={!isAdmin || dayjs(slot.shiftDate).isBefore(now.startOf('day'))}>
-              <Row gutter={24}>
-                <Col span={14}>
-                  <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', height: '100%' }}>
-                    <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-                      <EditOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin cơ bản</span>
-                    </Divider>
-                    <Form.Item name="shiftLabel" label="Tiêu đề kíp" rules={[{ required: true }]}>
-                      <Input prefix={<EditOutlined style={{ color: 'var(--primary-color)' }} />} />
-                    </Form.Item>
-                    <Row gutter={[16, 16]}>
-                      <Col span={12}>
-                        <Form.Item name="startTime" label="Bắt đầu (Giờ)">
-                          <Input disabled />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item name="endTime" label="Kết thúc (Giờ)">
-                          <Input disabled />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Form.Item name="note" label="Ghi chú / Địa điểm">
-                      <Input.TextArea rows={3} placeholder="Thông tin bổ sung..." />
-                    </Form.Item>
-                  </div>
-                </Col>
-                <Col span={10}>
-                  <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', height: '100%' }}>
-                    <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-                      <TeamOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Nhân sự & Chỉ tiêu</span>
-                    </Divider>
-                    <Form.Item name="capacity" label="Chỉ tiêu thành viên">
-                      <InputNumber min={1} style={{ width: '100%' }} />
-                    </Form.Item>
-                    <div style={{ marginTop: 12 }}>
-                      <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
-                        Danh sách đăng ký ({slot.assignedUsers?.length || 0}/{slot.capacity || slot.kip?.capacity || 0})
-                      </Text>
-                      <div style={{ maxHeight: 220, overflowY: 'auto', paddingRight: 4 }}>
-                        <List
-                          size="small"
-                          dataSource={slot.assignedUsers || []}
-                          locale={{ emptyText: <Text type="secondary" italic>Chưa có ai đăng ký</Text> }}
-                          renderItem={(u: any) => (
-                            <List.Item style={{ padding: '10px 0', borderBottom: '1px dashed #e2e8f0' }}>
-                              <Space>
-                                <Avatar size="small" src={u.avatar}>{u.name.charAt(0)}</Avatar>
-                                <div>
-                                  <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{u.name}</div>
-                                  <div style={{ fontSize: 11 }}>
-                                    {slot.attendedUserIds?.includes(u.id) ? 
-                                      <Tag color="success" style={{ fontSize: 9, borderRadius: 4, height: 16, lineHeight: '14px' }}>Đã điểm danh</Tag> : 
-                                      <Tag color="default" style={{ fontSize: 9, borderRadius: 4, height: 16, lineHeight: '14px' }}>Vắng mặt</Tag>
-                                    }
-                                  </div>
-                                </div>
-                              </Space>
-                            </List.Item>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-            </Form>
-          </div>
+            <Divider orientation="left">Thông tin chung</Divider>
+
+            <Row gutter={24} align="bottom">
+              <Col span={19}>
+                <Form.Item name="shiftLabel" label="Tên kíp trực" rules={[{ required: true }]}>
+                  <Input placeholder="Tiêu đề kíp..." />
+                </Form.Item>
+              </Col>
+              <Col span={5}>
+                {isAdmin && (
+                  <Form.Item name="status" label="Trạng thái kíp" valuePropName="checked">
+                    <Switch checkedChildren="Mở" unCheckedChildren="Khóa" />
+                  </Form.Item>
+                )}
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item label="Bắt đầu">
+                  <Input value={slot.startTime} prefix={<ClockCircleOutlined />} disabled />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item label="Kết thúc">
+                  <Input value={slot.endTime} prefix={<ClockCircleOutlined />} disabled />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item name="capacity" label="Chỉ tiêu" rules={[{ required: true }]}>
+                  <InputNumber min={1} style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="note" label="Ghi chú">
+                  <Input.TextArea rows={2} placeholder="Vị trí, công việc..." />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Divider orientation="left">Nhân sự kíp trực</Divider>
+
+            {isAdmin && (
+              <Form.Item name="assignedUserIds" label="Phân công thành viên">
+                <Select
+                  mode="multiple"
+                  placeholder="Chọn thành viên..."
+                  style={{ width: '100%' }}
+                  optionFilterProp="label"
+                  maxTagCount="responsive"
+                  options={allUsers.map((u: any) => ({
+                    label: u.name,
+                    value: u.id,
+                  }))}
+                />
+              </Form.Item>
+            )}
+
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <Text strong>Danh sách đăng ký ({slot.assignedUserIds?.length || 0} / {slot.capacity || slot.kip?.capacity || 0})</Text>
+              </div>
+              <List
+                size="small"
+                bordered
+                dataSource={slot.assignedUsers || []}
+                locale={{ emptyText: <Text type="secondary" italic>Chứa có ai đăng ký</Text> }}
+                renderItem={(u: any) => {
+                  const isAttended = slot.attendedUserIds?.includes(u.id);
+                  return (
+                    <List.Item>
+                      <List.Item.Meta
+                        avatar={<Avatar size="small" src={u.avatar}>{u.name.charAt(0)}</Avatar>}
+                        title={<span style={{ fontSize: 13, fontWeight: 600 }}>{u.name}</span>}
+                        description={<span style={{ fontSize: 11 }}>{u.studentId || 'Chưa cập nhật MSSV'}</span>}
+                      />
+                      {isAttended ? 
+                        <Tag color="success">ĐÃ ĐIỂM DANH</Tag> : 
+                        <Tag color="default">VẮNG MẶT</Tag>
+                      }
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+          </Form>
         )}
       </Modal>
 

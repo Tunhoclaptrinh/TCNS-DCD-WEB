@@ -103,6 +103,7 @@ const DataTable: React.FC<DataTableProps> = ({
   saveColumnWidths = false,
   columnResizeKey,
   onColumnResize,
+  hideCard = false,
   ...tableProps
 }) => {
   const [internalSearchText, setInternalSearchText] = useState(searchValue);
@@ -660,6 +661,101 @@ const DataTable: React.FC<DataTableProps> = ({
     filters.length > 0 &&
     Object.keys(filterValues).some((key) => filterValues[key]);
 
+  const renderContent = () => (
+    <>
+      {tableProps.headerContent && <div className="data-table-header-content" style={{ margin: hideCard ? 0 : undefined }} >{tableProps.headerContent}</div>}
+      <div className="data-table-toolbar" style={{ marginTop: tableProps.headerContent ? 0 : undefined }}>
+        <Space wrap>
+          {onAdd && (
+            <Button variant="primary" onClick={onAdd} buttonSize="small">
+              <PlusOutlined /> Thêm Mới
+            </Button>
+          )}
+          {importable && onImport && (
+            <Dropdown
+              trigger={["click"]}
+              disabled={tableProps.importLoading}
+              overlay={
+                <Menu>
+                  <Menu.Item key="upload" icon={<UploadOutlined />} onClick={handleImportClick}>Tải lên file dữ liệu</Menu.Item>
+                  <Menu.Item key="template" icon={<FileExcelOutlined />} onClick={tableProps.onDownloadTemplate}>Tải mẫu nhập liệu</Menu.Item>
+                </Menu>
+              }
+            >
+              <Button variant="outline" loading={tableProps.importLoading} buttonSize="small">
+                <UploadOutlined /> Import <span style={{ fontSize: 10, marginLeft: 4 }}>▼</span>
+              </Button>
+            </Dropdown>
+          )}
+          {exportable && onExport && (
+            <Tooltip title="Export dữ liệu">
+              <Button variant="outline" onClick={() => setExportModalOpen(true)} loading={tableProps.exportLoading} buttonSize="small">
+                <DownloadOutlined /> Export
+              </Button>
+            </Tooltip>
+          )}
+          {batchOperations && activeSelectedRowKeys.length > 0 && (
+            <Badge count={activeSelectedRowKeys.length} className="batch-op-badge">
+              <Dropdown overlay={batchActionsMenu} trigger={["click"]}>
+                <Button variant="outline" buttonSize="small">
+                  Thao tác hàng loạt <span style={{ fontSize: 10, marginLeft: 4 }}>▼</span>
+                </Button>
+              </Dropdown>
+            </Badge>
+          )}
+          {extra}
+        </Space>
+        <Space wrap align="center" className="right-tools">
+          {searchable && !tableProps.hideGlobalSearch && (
+            <Input
+              placeholder={searchPlaceholder}
+              value={internalSearchText}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleSearch(val);
+                if (!val && onSearch) onSearch("");
+              }}
+              style={{ width: 220, height: 32 }}
+              allowClear
+              prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+            />
+          )}
+          {filters && filters.length > 0 && (
+            <Badge dot={hasActiveFilters}>
+              <Button variant="outline" onClick={() => setFilterModalOpen(true)} icon={<FilterOutlined />} buttonSize="small">Bộ lọc</Button>
+            </Badge>
+          )}
+          {onRefresh && (
+            <Tooltip title="Làm mới">
+              <Button variant="outline" onClick={onRefresh} loading={loading} icon={<ReloadOutlined />} buttonSize="small">Làm mới</Button>
+            </Tooltip>
+          )}
+          <div className="total-count-badge">Tổng số: <span>{(pagination && typeof pagination !== 'boolean' && pagination.total) || 0}</span></div>
+        </Space>
+      </div>
+      {showAlert && alertMessage && <Alert message={alertMessage} type={alertType} showIcon closable className="data-table-alert" />}
+      <Table
+        className="main-table"
+        rowKey={rowKey}
+        columns={tableColumns}
+        components={hasResizableColumn ? { header: { cell: ResizableTitle } } : undefined}
+        dataSource={data}
+        loading={loading}
+        size={size}
+        bordered={bordered}
+        rowSelection={rowSelection}
+        pagination={pagination ? { ...pagination, showSizeChanger: true, showQuickJumper: true, showTotal: (total: number) => `Tổng ${total} mục`, pageSizeOptions: ["10", "20", "50", "100"] } as any : false}
+        onChange={handleServerTableChange}
+        scroll={scroll || { x: "max-content" }}
+        locale={{ emptyText }}
+        {...tableProps}
+      />
+      <Modal open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} title="Bộ lọc tùy chỉnh" width={700} footer={null} styles={{ body: { padding: 0 } }}>
+        <FilterBuilder filters={availableFilters} activeFilters={activeFilters} filterValues={filterValues} operators={operators} enabledFilters={enabledFilters} onAddFilter={addFilterCondition} onRemoveFilter={removeFilterCondition} onFilterChange={handleFilterValueChange} onOperatorChange={handleOperatorChange} onToggleFilter={toggleFilterEnabled} onApply={handleApplyCustomFilters} onClear={handleClearFilters} onCancel={() => setFilterModalOpen(false)} />
+      </Modal>
+    </>
+  );
+
   return (
     <div className="data-table-wrapper">
       {/* Separate Title */}
@@ -669,280 +765,13 @@ const DataTable: React.FC<DataTableProps> = ({
         </div>
       )}
 
-      <Card
-        bodyStyle={{ borderRadius: 12, padding: 0 }}
-        hoverable={false}
-      >
-        {/* Header Content inside Card for seamless look */}
-        {tableProps.headerContent && <div className="data-table-header-content">{tableProps.headerContent}</div>}
-
-        {/* ... existing toolbar ... */}
-        <div className="data-table-toolbar" style={{ marginTop: tableProps.headerContent ? 0 : undefined }}>
-          {/* Left Side: Primary Actions (Add, Import, Export, Batch) */}
-          <Space wrap>
-            {onAdd && (
-              <Button variant="primary" onClick={onAdd} buttonSize="small">
-                <PlusOutlined /> Thêm Mới
-              </Button>
-            )}
-
-            {importable && onImport && (
-              <>
-                {tableProps.onDownloadTemplate ? (
-                  <Dropdown
-                    trigger={["click"]}
-                    disabled={tableProps.importLoading}
-                    overlay={
-                      <Menu>
-                        <Menu.Item
-                          key="upload"
-                          icon={<UploadOutlined />}
-                          onClick={handleImportClick}
-                        >
-                          Tải lên file dữ liệu
-                        </Menu.Item>
-                        <Menu.Item
-                          key="template"
-                          icon={<FileExcelOutlined />}
-                          onClick={tableProps.onDownloadTemplate}
-                        >
-                          Tải mẫu nhập liệu
-                        </Menu.Item>
-                      </Menu>
-                    }
-                  >
-                    <Button
-                      variant="outline"
-                      loading={tableProps.importLoading}
-                      buttonSize="small"
-                    >
-                      <UploadOutlined /> Import{" "}
-                      <span style={{ fontSize: 10, marginLeft: 4 }}>▼</span>
-                    </Button>
-                  </Dropdown>
-                ) : (
-                  <Tooltip title="Import dữ liệu">
-                    <Button
-                      variant="outline"
-                      onClick={handleImportClick}
-                      loading={tableProps.importLoading}
-                      buttonSize="small"
-                    >
-                      <UploadOutlined /> Import
-                    </Button>
-                  </Tooltip>
-                )}
-              </>
-            )}
-
-            {exportable && onExport && (
-              <>
-                 <Tooltip title="Export dữ liệu">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                        // Open our new modal instead of calling direct
-                        // Note: We need a state for this
-                       setExportModalOpen(true);
-                    }}
-                    loading={tableProps.exportLoading}
-                    buttonSize="small"
-                  >
-                    <DownloadOutlined /> Export
-                  </Button>
-                </Tooltip>
-              </>
-            )}
-
-            {batchOperations && activeSelectedRowKeys.length > 0 && (
-              <Badge
-                count={activeSelectedRowKeys.length}
-                className="batch-op-badge"
-              >
-                {/* Logic: If only 1 action, show button directly. If > 1, show dropdown */}
-                {(onBatchDelete ? 1 : 0) + (batchActions?.length || 0) === 1 ? (
-                  /* Single Action Case - Text Only Style */
-                  onBatchDelete ? (
-                    <Button
-                      variant="ghost"
-                      danger
-                      buttonSize="small"
-                      style={{ 
-                        border: "none", 
-                        boxShadow: "none", 
-                        background: "transparent",
-                        color: "#ff4d4f",
-                        fontWeight: 500,
-                        padding: "4px 8px"
-                      }}
-                      onClick={() => {
-                        Modal.confirm({
-                          title: "Xác nhận xóa hàng loạt?",
-                          content: `Bạn có chắc chắn muốn xóa ${activeSelectedRowKeys.length} mục đã chọn?`,
-                          okText: "Xóa",
-                          cancelText: "Hủy",
-                          okButtonProps: { danger: true },
-                          onOk: () => onBatchDelete(activeSelectedRowKeys),
-                        });
-                      }}
-                    >
-                      <DeleteOutlined /> Xóa đã chọn
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      danger={batchActions![0].danger}
-                      buttonSize="small"
-                      style={{ 
-                        border: "none", 
-                        boxShadow: "none", 
-                        background: "transparent", 
-                        color: batchActions![0].danger ? "#ff4d4f" : "var(--primary-color)",
-                        fontWeight: 500,
-                        padding: "4px 8px"
-                      }}
-                      onClick={() => batchActions![0].onClick(activeSelectedRowKeys)}
-                      className="batch-action-btn"
-                    >
-                      {batchActions![0].icon} {batchActions![0].label}
-                    </Button>
-                  )
-                ) : (
-                  /* Multiple Actions Case -> Dropdown */
-                  <Dropdown overlay={batchActionsMenu} trigger={["click"]}>
-                    <Button
-                      variant="outline"
-                      buttonSize="small"
-                      className="batch-action-btn"
-                    >
-                      Thao tác hàng loạt <span style={{fontSize: 10, marginLeft: 4}}>▼</span>
-                    </Button>
-                  </Dropdown>
-                )}
-              </Badge>
-            )}
-
-            {extra}
-          </Space>
-
-          {/* Right Side: Tools (Search, Filter, Refresh, Total) */}
-          <Space wrap align="center" className="right-tools">
-            {searchable && !tableProps.hideGlobalSearch && (
-              <Input
-                placeholder={searchPlaceholder}
-                value={internalSearchText}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  handleSearch(val);
-                  // Instant clear: if empty, force immediate search (bypass debounce)
-                  if (!val && onSearch) onSearch("");
-                }}
-                style={{ width: 220, height: 32, marginBottom: 0 }}
-                allowClear
-                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-                size="middle"
-              />
-            )}
-
-            {filters && filters.length > 0 && (
-              <Badge dot={hasActiveFilters} className="filter-badge">
-                <Button
-                  variant="outline"
-                  onClick={() => setFilterModalOpen(true)}
-                  icon={<FilterOutlined />}
-                  buttonSize="small"
-                >
-                  Bộ lọc
-                </Button>
-              </Badge>
-            )}
-
-            {onRefresh && (
-              <Tooltip title="Làm mới">
-                <Button
-                  variant="outline" // Changed from ghost to outline for consistency as requested
-                  onClick={onRefresh}
-                  loading={loading}
-                  icon={<ReloadOutlined />}
-                  buttonSize="small"
-                >
-                  Làm mới
-                </Button>
-              </Tooltip>
-            )}
-
-            {/* Total Count Display */}
-            <div className="total-count-badge">
-              Tổng số: <span>{(pagination && pagination.total) || 0}</span>
-            </div>
-          </Space>
-        </div>
-        {showAlert && alertMessage && (
-          <Alert
-            message={alertMessage}
-            type={alertType}
-            showIcon
-            closable
-            className="data-table-alert"
-          />
-        )}
-
-        <Table
-          className="main-table"
-          rowKey={rowKey}
-          columns={tableColumns}
-          components={
-            hasResizableColumn ? { header: { cell: ResizableTitle } } : undefined
-          }
-          dataSource={data}
-          loading={loading}
-          size={size}
-          bordered={bordered}
-          rowSelection={rowSelection}
-          pagination={
-            {
-              ...pagination,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              showTotal: (total: number) => `Tổng ${total} mục`,
-              pageSizeOptions: ["10", "20", "50", "100"],
-            } as any
-          }
-          onChange={handleServerTableChange}
-          scroll={scroll || { x: "max-content" }}
-          locale={{
-            emptyText: emptyText,
-          }}
-          {...tableProps}
-        />
-
-        {/* Filter Modal - Custom Filter Builder */}
-        <Modal
-          open={filterModalOpen}
-          onCancel={() => setFilterModalOpen(false)}
-          title="Bộ lọc tùy chỉnh"
-          width={700}
-          footer={null}
-          styles={{ body: { padding: 0 } }}
-          className="custom-filter-modal"
-        >
-          <FilterBuilder 
-            filters={availableFilters}
-            activeFilters={activeFilters}
-            filterValues={filterValues}
-            operators={operators}
-            enabledFilters={enabledFilters}
-            onAddFilter={addFilterCondition}
-            onRemoveFilter={removeFilterCondition}
-            onFilterChange={handleFilterValueChange}
-            onOperatorChange={handleOperatorChange}
-            onToggleFilter={toggleFilterEnabled}
-            onApply={handleApplyCustomFilters}
-            onClear={handleClearFilters}
-            onCancel={() => setFilterModalOpen(false)}
-          />
-        </Modal>
-      </Card>
+      {hideCard ? (
+        <div className="data-table-no-card">{renderContent()}</div>
+      ) : (
+        <Card bodyStyle={{ borderRadius: 12, padding: 0 }} hoverable={false}>
+          {renderContent()}
+        </Card>
+      )}
 
       {/* Advanced Export Modal */}
       <ExportModal 

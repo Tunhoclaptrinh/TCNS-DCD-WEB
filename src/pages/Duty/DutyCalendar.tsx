@@ -17,6 +17,7 @@ import {
   DeleteOutlined,
   DownOutlined,
   QuestionCircleOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -76,6 +77,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
   const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(false);
+  const [dutySettings, setDutySettings] = useState<any>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(dayjs()), 60000);
@@ -94,6 +96,15 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
       }
     } catch (err) {
       console.error('Lỗi tải bản mẫu');
+    }
+  };
+
+  const fetchDutySettings = async () => {
+    try {
+      const res = await dutyService.getSettings();
+      if (res.success && res.data) setDutySettings(res.data);
+    } catch (err) {
+      console.error('Lỗi tải cấu hình');
     }
   };
 
@@ -130,6 +141,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
 
   useEffect(() => {
     fetchSchedule();
+    fetchDutySettings();
   }, [currentWeek]);
 
 
@@ -179,14 +191,28 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
   const handleToday = () => setCurrentWeek(dayjs().startOf('isoWeek' as any));
 
   const handleRegister = async (slotId: number) => {
+    // 1. Check Weekly Limit (Frontend side for better UX)
+    const weeklyLimit = Number(dutySettings?.weeklyKipLimit);
+    if (weeklyLimit > 0) {
+      const userWeekKips = slots.filter(s => 
+        s.assignedUserIds?.includes(currentUserId) && 
+        dayjs(s.shiftDate).isSame(currentWeek, 'week')
+      ).length;
+
+      if (userWeekKips >= weeklyLimit) {
+        message.warning(`Bạn đã đạt giới hạn đăng ký trong tuần (${weeklyLimit} kíp).`);
+        return;
+      }
+    }
+
     try {
       const res = await dutyService.registerToSlot(slotId);
       if (res.success) {
         message.success('Đăng ký thành công');
         fetchSchedule();
       }
-    } catch (err) {
-      message.error('Lỗi khi đăng ký');
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi đăng ký');
     }
   };
 
@@ -395,34 +421,45 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                               }
                             }}
                           >
-                            {displaySlot ? (
-                              <div className={`cell-slot-info ${!slot && shiftSlot ? 'is-shift-level' : ''}`}>
-                                <div className="assigned-users-list">
-                                  {displaySlot.assignedUsers?.map(u => (
-                                    <div key={u.id} className="user-row-mini">
-                                      <Avatar size={16} src={u.avatar} />
-                                      <span>{u.name}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                                {displaySlot.assignedUserIds.length < (displaySlot.capacity || displaySlot.kip?.capacity || 0) && !isPast && (
-                                  <div className="slot-capacity-tag">
-                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 2 }}>
-                                      {displaySlot.assignedUserIds.length}/{displaySlot.capacity || displaySlot.kip?.capacity || 0} người
-                                    </div>
-                                    {displaySlot.assignedUserIds.includes(currentUserId) ?
-                                      <Button size="small" type="link" danger onClick={(e) => { e.stopPropagation(); handleUnregister(displaySlot.id); }}>Hủy đ.ký</Button> :
-                                      <Button size="small" type="link" onClick={(e) => { e.stopPropagation(); handleRegister(displaySlot.id); }}>+ Đăng ký</Button>
-                                    }
-                                  </div>
-                                )}{!slot && shiftSlot && <div className="shift-active-indicator">(Cả ca)</div>}
-                                {displaySlot.assignedUserIds.length >= (displaySlot.capacity || displaySlot.kip?.capacity || 0) && (
-                                  <div className="slot-capacity-tag">
-                                    <Tag color="default">{displaySlot.assignedUserIds.length}/{displaySlot.capacity || displaySlot.kip?.capacity || 0} đủ</Tag>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
+                             {displaySlot ? (
+                               <div className={`cell-slot-info ${!slot && shiftSlot ? 'is-shift-level' : ''}`}>
+                                 <div className="assigned-users-list">
+                                   {displaySlot.assignedUsers?.map(u => (
+                                     <div key={u.id} className="user-row-mini">
+                                       <Avatar size={16} src={u.avatar} />
+                                       <span>{u.name}</span>
+                                     </div>
+                                   ))}
+                                 </div>
+                                 {!isPast && (
+                                   <div className="slot-capacity-tag">
+                                     <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: 2 }}>
+                                       {displaySlot.assignedUserIds.length}/{displaySlot.capacity || displaySlot.kip?.capacity || 0} người
+                                     </div>
+                                     {displaySlot.assignedUserIds.includes(currentUserId) ? (
+                                       // Only allow unregister if not full OR if policy allows it
+                                       (dutySettings?.allowUnregisterWhenFull || displaySlot.assignedUserIds.length < (displaySlot.capacity || displaySlot.kip?.capacity || 0)) ? (
+                                         <Button size="small" type="link" danger onClick={(e) => { e.stopPropagation(); handleUnregister(displaySlot.id); }}>Hủy đ.ký</Button>
+                                       ) : (
+                                         <Tooltip title="Kíp đã đủ người, không thể tự ý hủy. Hãy liên hệ Admin nếu cần.">
+                                           <Button size="small" type="link" disabled><LockOutlined style={{ fontSize: 10 }} /> Đã khóa</Button>
+                                         </Tooltip>
+                                       )
+                                     ) : (
+                                       displaySlot.assignedUserIds.length < (displaySlot.capacity || displaySlot.kip?.capacity || 0) && (
+                                         <Button size="small" type="link" onClick={(e) => { e.stopPropagation(); handleRegister(displaySlot.id); }}>+ Đăng ký</Button>
+                                       )
+                                     )}
+                                   </div>
+                                 )}
+                                 {!slot && shiftSlot && <div className="shift-active-indicator">(Cả ca)</div>}
+                                 {displaySlot.assignedUserIds.length >= (displaySlot.capacity || displaySlot.kip?.capacity || 0) && !displaySlot.assignedUserIds.includes(currentUserId) && (
+                                   <div className="slot-capacity-tag">
+                                     <Tag color="default">{displaySlot.assignedUserIds.length}/{displaySlot.capacity || displaySlot.kip?.capacity || 0} đủ</Tag>
+                                   </div>
+                                 )}
+                               </div>
+                             ) : (
                               isAdmin && !isPast && <div className="add-slot-placeholder">+ Trống</div>
                             )}
                           </td>
