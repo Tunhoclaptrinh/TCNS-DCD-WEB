@@ -35,7 +35,7 @@ import './DutyCalendar.less';
 
 // Child Components
 import QuickCreateModal from './components/QuickCreateModal';
-import SlotDetailModal from './components/SlotDetailModal';
+import DutySlotModal from './components/DutySlotModal';
 import SetupWeekModal from './components/SetupWeekModal';
 import AssignTemplateModal from './components/AssignTemplateModal';
 
@@ -803,7 +803,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         existingSlots={slots}
       />
 
-      <SlotDetailModal
+      <DutySlotModal
         open={isSlotDetailOpen}
         onCancel={() => setIsSlotDetailOpen(false)}
         onSuccess={fetchSchedule}

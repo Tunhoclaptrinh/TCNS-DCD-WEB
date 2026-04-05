@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Row, Col, message, List, Divider, Select, Switch } from 'antd';
+import { Modal, Form, Input, InputNumber, Space, Typography, Avatar, Tag, Button, Row, Col, message, List, Divider, Switch } from 'antd';
 import { 
   DeleteOutlined, 
   CheckCircleOutlined, 
@@ -9,6 +9,7 @@ import {
   EditOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutySlot } from '@/services/duty.service';
@@ -16,6 +17,7 @@ import apiClient from '@/config/axios.config';
 
 import LeaveRequestModal from './LeaveRequestModal';
 import SwapRequestModal from './SwapRequestModal';
+import DutyPersonnelPicker, { POSITION_LABELS } from './DutyPersonnelTable';
 
 const { Text } = Typography;
 
@@ -52,6 +54,13 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
       });
     }
   }, [open, slot, form]);
+
+  const watchedAssignedIds = Form.useWatch('assignedUserIds', form) || [];
+  
+  const currentAssignedUsers = React.useMemo(() => {
+    if (!watchedAssignedIds.length) return [];
+    return allUsers.filter(u => watchedAssignedIds.includes(u.id));
+  }, [watchedAssignedIds, allUsers]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -282,46 +291,82 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
               </Col>
             </Row>
 
-            <Divider orientation="left">Nhân sự kíp trực</Divider>
+            <Divider orientation="left" style={{ margin: '24px 0 16px' }}>
+              <Space>
+                <TeamOutlined style={{ color: 'var(--primary-color)' }} />
+                <span>Nhân sự kíp trực</span>
+              </Space>
+            </Divider>
 
-            {isAdmin && (
-              <Form.Item name="assignedUserIds" label="Phân công thành viên">
-                <Select
-                  mode="multiple"
-                  placeholder="Chọn thành viên..."
-                  style={{ width: '100%' }}
-                  optionFilterProp="label"
-                  maxTagCount="responsive"
-                  options={allUsers.map((u: any) => ({
-                    label: u.name,
-                    value: u.id,
-                  }))}
-                />
-              </Form.Item>
-            )}
-
-            <div>
-              <div style={{ marginBottom: 12 }}>
-                <Text strong>Danh sách đăng ký ({slot.assignedUserIds?.length || 0} / {slot.capacity || slot.kip?.capacity || 0})</Text>
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Space direction="vertical" size={0}>
+                  <Text strong style={{ fontSize: 13, color: '#475569' }}>
+                    DANH SÁCH ĐĂNG KÝ ({currentAssignedUsers.length} / {slot.capacity || slot.kip?.capacity || 0})
+                  </Text>
+                  {currentAssignedUsers.length > (slot.capacity || slot.kip?.capacity || 0) && (
+                    <Text type="danger" style={{ fontSize: 11 }}>Vượt chỉ tiêu cho phép</Text>
+                  )}
+                </Space>
+                
+                {isAdmin && (
+                  <Form.Item name="assignedUserIds" noStyle>
+                    <DutyPersonnelPicker 
+                      label="Phân công" 
+                    />
+                  </Form.Item>
+                )}
               </div>
+
               <List
                 size="small"
-                bordered
-                dataSource={slot.assignedUsers || []}
-                locale={{ emptyText: <Text type="secondary" italic>Chứa có ai đăng ký</Text> }}
+                dataSource={currentAssignedUsers}
+                locale={{ emptyText: <div style={{ padding: '20px 0', textAlign: 'center' }}><Text type="secondary" italic>Chứa có ai đăng ký</Text></div> }}
                 renderItem={(u: any) => {
                   const isAttended = slot.attendedUserIds?.includes(u.id);
                   return (
-                    <List.Item>
+                    <List.Item 
+                      style={{ 
+                        padding: '10px 12px', 
+                        background: '#ffffff', 
+                        borderRadius: '8px', 
+                        marginBottom: '8px',
+                        border: '1px solid #f1f5f9',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                      }}
+                    >
                       <List.Item.Meta
-                        avatar={<Avatar size="small" src={u.avatar}>{u.name.charAt(0)}</Avatar>}
-                        title={<span style={{ fontSize: 13, fontWeight: 600 }}>{u.name}</span>}
-                        description={<span style={{ fontSize: 11 }}>{u.studentId || 'Chưa cập nhật MSSV'}</span>}
+                        avatar={
+                          <Avatar 
+                            src={u.avatar} 
+                            style={{ border: '2px solid #f1f5f9' }}
+                          >
+                            {u.name?.charAt(0)}
+                          </Avatar>
+                        }
+                        title={
+                          <Space size={8}>
+                            <Text strong style={{ fontSize: 13 }}>{u.name}</Text>
+                            {u.position && (
+                              <Tag color="cyan" style={{ border: 'none', fontSize: 10, lineHeight: '16px', borderRadius: 4 }}>
+                                {POSITION_LABELS[u.position] || u.position}
+                              </Tag>
+                            )}
+                          </Space>
+                        }
+                        description={
+                          <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }}>
+                            <Text type="secondary">{u.studentId || 'N/A'}</Text>
+                            {u.department && <Text style={{ color: 'var(--primary-color)', fontWeight: 500 }}>{u.department}</Text>}
+                          </Space>
+                        }
                       />
-                      {isAttended ? 
-                        <Tag color="success">ĐÃ ĐIỂM DANH</Tag> : 
-                        <Tag color="default">VẮNG MẶT</Tag>
-                      }
+                      <div style={{ textAlign: 'right' }}>
+                        {isAttended ? 
+                          <Tag icon={<CheckCircleOutlined />} color="success" style={{ borderRadius: 6, margin: 0, padding: '0 8px' }}>ĐÃ ĐIỂM DANH</Tag> : 
+                          <Tag color="default" style={{ borderRadius: 6, margin: 0, padding: '0 8px', color: '#94a3b8' }}>VẮNG MẶT</Tag>
+                        }
+                      </div>
                     </List.Item>
                   );
                 }}

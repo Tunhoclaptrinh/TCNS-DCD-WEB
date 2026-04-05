@@ -4,6 +4,7 @@ import { EditOutlined, ClockCircleOutlined, TeamOutlined, ScheduleOutlined, Sett
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
 import { DutySlot } from '@/services/duty.service';
+import DutyPersonnelPicker from './DutyPersonnelTable';
 
 // const { Text } = Typography;
 
@@ -13,7 +14,6 @@ interface SlotEditModalProps {
   onSuccess: () => void;
   editingSlot: DutySlot | null;
   onSubmit: (values: any) => Promise<void>;
-  allUsers: any[];
   loading?: boolean;
 }
 
@@ -23,7 +23,6 @@ const SlotEditModal: React.FC<SlotEditModalProps> = ({
   onSuccess,
   editingSlot,
   onSubmit,
-  allUsers,
   loading = false,
 }) => {
   const [form] = Form.useForm();
@@ -128,23 +127,11 @@ const SlotEditModal: React.FC<SlotEditModalProps> = ({
         </Divider>
 
         <Form.Item label="Nhân sự trực (Đã đăng ký)" name="assignedUserIds">
-          <Select
-            mode="multiple"
-            placeholder="Thêm nhân sự trực tiếp..."
-            style={{ width: '100%' }}
-            filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
-            options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
-          />
+          <DutyPersonnelPicker />
         </Form.Item>
  
         <Form.Item label="Xác nhận điểm danh" name="attendedUserIds">
-          <Select
-            mode="multiple"
-            placeholder="Chọn thành viên đã trực thực tế..."
-            style={{ width: '100%' }}
-            filterOption={(input, option) => ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())}
-            options={allUsers.map(u => ({ label: `${u.name} (${u.studentId || u.email})`, value: u.id }))}
-          />
+          <DutyPersonnelPicker label="Xác nhận điểm danh nhân sự" />
         </Form.Item>
 
         <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>

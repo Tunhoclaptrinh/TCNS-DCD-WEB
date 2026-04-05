@@ -19,13 +19,12 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import dutyService, { DutyShift } from '@/services/duty.service';
-import userService from '@/services/user.service';
 import DataTable from '@/components/common/DataTable';
 import StatisticsCard from '@/components/common/StatisticsCard';
 import ShiftTemplateModal from './components/ShiftTemplateModal';
 import GroupModal from './components/GroupModal';
 import KipModal from './components/KipModal';
-import SlotEditModal from './components/SlotEditModal';
+import DutySlotModal from './components/DutySlotModal';
 import './DutyCalendar.less';
 
 const { Text, Title } = Typography;
@@ -81,7 +80,6 @@ const DutyManagement: React.FC = () => {
   }, [manualOrder, manualShiftId, templates, activeTab]);
 
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(dayjs().startOf('day'));
-  const [allUsers, setAllUsers] = useState<any[]>([]);
 
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }).map((_, i) => slotFilterWeek.add(i, 'day')),
@@ -91,7 +89,6 @@ const DutyManagement: React.FC = () => {
   useEffect(() => {
     fetchGroups();
     fetchSlots();
-    fetchUsers();
     fetchDutySettings();
   }, [slotFilterWeek]);
 
@@ -132,12 +129,6 @@ const DutyManagement: React.FC = () => {
     fetchTemplates();
   }, [currentTemplateId]);
 
-  const fetchUsers = async () => {
-    try {
-      const res = await userService.getAll({ _limit: 100 });
-      if (res.success && res.data) setAllUsers(res.data);
-    } catch (err) { console.error('Lỗi tải danh sách người dùng'); }
-  };
 
   const fetchGroups = async () => {
     try {
@@ -1423,19 +1414,13 @@ const DutyManagement: React.FC = () => {
         loading={loading}
       />
 
-      <SlotEditModal
+      <DutySlotModal
         open={isSlotEditModalOpen}
         onCancel={() => setIsSlotEditModalOpen(false)}
         onSuccess={fetchSlots}
-        editingSlot={editingSlot}
-        onSubmit={async (v) => {
-          const res = await dutyService.updateSlot(editingSlot?.id, v);
-          if (res.success) {
-            message.success('Cập nhật thành công');
-            setIsSlotEditModalOpen(false);
-          }
-        }}
-        allUsers={allUsers}
+        slot={editingSlot}
+        isAdmin={true}
+        currentUserId={0} // Standardizing for admin context
         loading={loading}
       />
 
