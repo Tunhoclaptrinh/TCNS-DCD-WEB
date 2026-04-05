@@ -1,24 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import { Space, message, Typography, Tag, Modal, Button, Tooltip, Avatar } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, SwapOutlined, QuestionCircleOutlined, UserOutlined, CalendarOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Space, message, Typography, Tag, Modal, Tooltip, Avatar, Tabs, Form, Input, Select, Dropdown, Menu } from 'antd';
+import { 
+  CheckCircleOutlined, 
+  CloseCircleOutlined, 
+  QuestionCircleOutlined, 
+  UserOutlined, 
+  ClockCircleOutlined,
+  HistoryOutlined,
+  ContainerOutlined,
+  ArrowRightOutlined,
+  MenuOutlined,
+  EditOutlined,
+  DeleteOutlined
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
 import DataTable from '@/components/common/DataTable';
+import { Button } from '@/components/common';
+import StatisticsCard from '@/components/common/StatisticsCard';
 import { useAccess } from '@/hooks/useAccess';
+import apiClient from "@/config/axios.config";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const SwapRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('pending');
+  const [stats, setStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('pending');
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const { user } = useAccess();
+  
+  // Advanced Filtering state
+  const [filterValues, setFilterValues] = useState<any>({});
+  const [searchValue, setSearchValue] = useState('');
+  
+  // CRUD Modal state
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form] = Form.useForm();
+  
+  // Data for selects
+  const [users, setUsers] = useState<any[]>([]);
+  const [slots, setSlots] = useState<any[]>([]);
 
-  const fetchRequests = async () => {
+  const fetchUsers = async () => {
+    try {
+      const res = await apiClient.get('/users', { params: { limit: 1000 } });
+      setUsers(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to fetch users');
+    }
+  };
+
+  const fetchAvailableSlots = async () => {
+    try {
+      const res = await dutyService.getWeeklySchedule();
+      setSlots(res.data?.slots || []);
+    } catch (err) {
+      console.error('Failed to fetch slots');
+    }
+  };
+
+  useEffect(() => {
+    if (isModalVisible) {
+      fetchUsers();
+      fetchAvailableSlots();
+    }
+  }, [isModalVisible]);
+
+  const fetchRequests = useCallback(async (status?: string, params: any = {}) => {
     setLoading(true);
     try {
-      const res = await dutyService.getSwapRequests();
+      const currentTab = status || activeTab;
+      const queryParams = {
+        ...(currentTab === 'all' ? {} : { status: currentTab }),
+        ...filterValues,
+        ...params,
+        ...(searchValue ? { _q: searchValue } : {})
+      };
+      
+      const res = await dutyService.getSwapRequests(queryParams);
       const rawData = res.data || res;
       setRequests(Array.isArray(rawData) ? rawData : (rawData?.data || []));
     } catch (err) {
@@ -26,59 +89,174 @@ const SwapRequestsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  }, [activeTab, filterValues, searchValue]);
+
+  const fetchStats = async () => {
+    setStatsLoading(true);
+    try {
+      const res = await dutyService.getStats();
+      setStats(res.data || res);
+    } catch (err) {
+      console.error('Failed to fetch stats');
+    } finally {
+      setStatsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+    fetchStats();
+  }, [fetchRequests]);
 
   const handleDecide = async (id: number, decision: 'approved' | 'rejected') => {
+    if (decision === 'approved') {
+      const req = requests.find(r => r.id === id);
+      const targetSlot = slots.find(s => s.id === req?.dutySlotId);
+      
+      if (targetSlot) {
+        const currentCount = targetSlot.assignedUserIds?.length || 0;
+        const capacity = targetSlot.capacity || 0;
+        
+        if (currentCount >= capacity && capacity > 0) {
+          Modal.confirm({
+            title: 'Kíp trực đã đủ người',
+            content: `Kíp trực này hiện đã có ${currentCount}/${capacity} người. Bạn có chắc chắn muốn điều chuyển thêm thành viên này vào không?`,
+            okText: 'Tiếp tục điều chuyển',
+            cancelText: 'Hủy bỏ',
+            onOk: async () => {
+              try {
+                const res = await dutyService.decideSwap(id, decision);
+                if (res.success || res) {
+                  message.success('Đã điều chuyển nhân sự thành công');
+                  fetchRequests();
+                  fetchStats();
+                }
+              } catch (err) {
+                message.error('Lỗi khi xử lý yêu cầu');
+              }
+            }
+          });
+          return;
+        }
+      }
+    }
+
     try {
       const res = await dutyService.decideSwap(id, decision);
-      if (res.success) {
-        message.success(decision === 'approved' ? 'Đã chấp thuận đổi ca' : 'Đã từ chối đổi ca');
+      if (res.success || res) {
+        message.success(decision === 'approved' ? 'Đã điều chuyển nhân sự thành công' : 'Đã từ chối điều chuyển');
         fetchRequests();
+        fetchStats();
       }
     } catch (err) {
       message.error('Lỗi khi xử lý yêu cầu');
     }
   };
 
+  const handleDelete = async (id: number) => {
+    try {
+      await dutyService.deleteSwapRequest(id);
+      message.success('Đã xóa yêu cầu đổi ca');
+      fetchRequests();
+      fetchStats();
+    } catch (err) {
+      message.error('Lỗi khi xóa yêu cầu');
+    }
+  };
+
+  const handleBatchDelete = async (ids: number[]) => {
+    try {
+      await Promise.all(ids.map(id => dutyService.deleteSwapRequest(id)));
+      message.success(`Đã xóa ${ids.length} yêu cầu đổi ca`);
+      fetchRequests();
+      fetchStats();
+    } catch (err) {
+      message.error('Lỗi khi xóa hàng loạt');
+    }
+  };
+
+  const openAdd = () => {
+    setEditingId(null);
+    form.resetFields();
+    setIsModalVisible(true);
+  };
+
+  const openEdit = (record: any) => {
+    setEditingId(record.id);
+    form.setFieldsValue({
+      requesterId: record.requesterId,
+      targetUserId: record.targetUserId,
+      dutySlotId: record.dutySlotId,
+      reason: record.reason,
+      status: record.status
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleModalOk = async () => {
+    try {
+      const values = await form.validateFields();
+      if (editingId) {
+        await dutyService.updateSwapRequest(editingId, values);
+        message.success('Đã cập nhật yêu cầu');
+      } else {
+        await dutyService.createSwapManual(values);
+        message.success('Đã tạo yêu cầu đổi ca (Admin)');
+      }
+      setIsModalVisible(false);
+      fetchRequests();
+      fetchStats();
+    } catch (err) {
+      message.error('Lỗi khi lưu thông tin');
+    }
+  };
+
   const columns = [
     {
-      title: 'Người yêu cầu',
-      key: 'requester',
-      width: 200,
-      render: (_: any, r: any) => (
-        <Space>
-          <Avatar size="small" icon={<UserOutlined />} />
-          <Text strong>{r.requester?.name || `User ${r.requesterId}`}</Text>
-        </Space>
-      )
+      title: 'Thông tin điều chuyển',
+      key: 'transfer',
+      width: 500,
+      render: (_: any, r: any) => {
+        const renderSlot = (slot: any, isTarget: boolean) => {
+          if (!slot) return <Text type="secondary" italic>N/A</Text>;
+          return (
+            <Space direction="vertical" size={0}>
+              <Text strong={isTarget} style={{ fontSize: 12, color: isTarget ? '#1890ff' : 'inherit' }}>
+                {slot.shiftLabel}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {dayjs(slot.shiftDate).format('DD/MM')} ({dayjs(slot.shiftDate).format('ddd')})
+              </Text>
+            </Space>
+          );
+        };
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Space direction="vertical" size={0} style={{ minWidth: 150 }}>
+              <Space>
+                <Avatar size="small" src={r.requester?.avatar} icon={<UserOutlined />} />
+                <Text strong>{r.requester?.name}</Text>
+              </Space>
+            </Space>
+            
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9f9f9', padding: '6px 16px', borderRadius: 8, border: '1px solid #f0f0f0', flex: 1, justifyContent: 'space-between' }}>
+              <div style={{ minWidth: 110 }}>{renderSlot(r.sourceSlot, false)}</div>
+              <ArrowRightOutlined style={{ color: 'var(--primary-color)', margin: '0 12px', fontSize: 14 }} />
+              <div style={{ minWidth: 110 }}>{renderSlot(r.slot, true)}</div>
+            </div>
+          </div>
+        );
+      }
     },
     {
-      title: 'Người nhận',
-      key: 'target',
-      width: 200,
+      title: 'Ngày trực',
+      key: 'date',
+      width: 150,
       render: (_: any, r: any) => (
-        <Space>
-          <Avatar size="small" icon={<UserOutlined />} />
-          <Text>{r.targetUser?.name || `User ${r.targetUserId}`}</Text>
-        </Space>
-      )
-    },
-    {
-      title: 'Kíp trực',
-      key: 'slot',
-      width: 250,
-      render: (_: any, r: any) => (
-        <Space direction="vertical" size={0}>
-          <Text strong color="blue">{r.slot?.shiftLabel}</Text>
-          <Space size={4}>
-            <CalendarOutlined style={{ fontSize: '12px', color: '#8c8c8c' }} />
-            <Text type="secondary" style={{ fontSize: '12px' }}>{dayjs(r.slot?.shiftDate).format('dddd, DD/MM/YYYY')}</Text>
-          </Space>
-        </Space>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {dayjs(r.slot?.shiftDate).format('DD/MM/YYYY')}
+        </Text>
       )
     },
     {
@@ -93,114 +271,326 @@ const SwapRequestsPage: React.FC = () => {
           rejected: { color: 'red', text: 'Từ chối' },
         };
         const s = config[status] || { color: 'default', text: status };
-        return <Tag color={s.color}>{s.text}</Tag>;
+        return <Tag color={s.color}>{s.text.toUpperCase()}</Tag>;
       }
     },
     {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 180,
-      render: (date: string) => dayjs(date).format('HH:mm DD/MM/YYYY'),
+      width: 160,
+      render: (date: string) => <Text type="secondary">{dayjs(date).format('HH:mm DD/MM/YYYY')}</Text>,
     }
   ];
 
-  const filteredData = activeTab === 'all' 
-    ? requests 
-    : requests.filter(r => r.status === activeTab);
+  const requestStats = stats?.requests || {};
 
   return (
-    <div className="swap-requests-page">
+    <div className="swap-requests-page" style={{ paddingBottom: 24 }}>
       <DataTable
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <SwapOutlined style={{ color: 'var(--primary-color)', fontSize: 24 }} />
-            <Title level={4} style={{ margin: 0, fontWeight: 700 }}>Danh sách đổi ca</Title>
+        headerContent={
+          <div style={{ marginBottom: 16 }}>
+            <StatisticsCard
+              loading={statsLoading}
+              hideCard
+              data={[
+                {
+                  title: 'Yêu cầu chờ duyệt',
+                  value: requestStats.swapPending || 0,
+                  icon: <ClockCircleOutlined />,
+                  valueColor: '#faad14',
+                  onClick: () => setActiveTab('pending'),
+                  selected: activeTab === 'pending'
+                },
+                {
+                  title: 'Đã hoàn thành',
+                  value: requestStats.swapApproved || 0,
+                  icon: <CheckCircleOutlined />,
+                  valueColor: '#52c41a',
+                  onClick: () => setActiveTab('approved'),
+                  selected: activeTab === 'approved'
+                },
+                {
+                  title: 'Tổng số đơn',
+                  value: (requestStats.swapPending || 0) + (requestStats.swapApproved || 0),
+                  icon: <ContainerOutlined />,
+                  valueColor: '#1890ff',
+                  onClick: () => setActiveTab('all'),
+                  selected: activeTab === 'all'
+                }
+              ]}
+              colSpan={{ xs: 24, sm: 12, md: 8 }}
+              rowGutter={16}
+            />
+            
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              style={{ marginTop: 16 }}
+              items={[
+                { label: 'Cần xác nhận', key: 'pending', icon: <ClockCircleOutlined /> },
+                { label: 'Đã xử lý', key: 'approved', icon: <CheckCircleOutlined /> },
+                { label: 'Tất cả', key: 'all', icon: <HistoryOutlined /> },
+              ]}
+            />
           </div>
         }
+        title="Quản lý đổi kíp trực"
         loading={loading}
-        dataSource={filteredData}
+        dataSource={requests}
         columns={columns}
         rowKey="id"
-        onRefresh={fetchRequests}
+        onRefresh={() => {
+          fetchRequests();
+          fetchStats();
+        }}
         searchable={true}
-        searchPlaceholder="Tìm kiếm..."
+        searchPlaceholder="Tìm kiếm thành viên..."
         extra={
-          <Space>
-            <Button.Group>
-              <Button type={activeTab === 'pending' ? 'primary' : 'default'} onClick={() => setActiveTab('pending')}>Chờ duyệt</Button>
-              <Button type={activeTab === 'approved' ? 'primary' : 'default'} onClick={() => setActiveTab('approved')}>Đã duyệt</Button>
-              <Button type={activeTab === 'rejected' ? 'primary' : 'default'} onClick={() => setActiveTab('rejected')}>Từ chối</Button>
-              <Button type={activeTab === 'all' ? 'primary' : 'default'} onClick={() => setActiveTab('all')}>Tất cả</Button>
-            </Button.Group>
-            <Button
-              icon={<QuestionCircleOutlined />}
-              onClick={() => setIsGuideModalOpen(true)}
-            >
-              Hướng dẫn
-            </Button>
-          </Space>
+          <Button
+            icon={<QuestionCircleOutlined />}
+            onClick={() => setIsGuideModalOpen(true)}
+            variant="ghost"
+          >
+            Hướng dẫn
+          </Button>
         }
         customActions={(r) => {
           const isTarget = Number(r.targetUserId) === Number(user?.id);
           const isAdmin = user?.role === 'admin' || user?.role === 'staff';
           
-          if (r.status === 'pending' && (isTarget || isAdmin)) {
-            return (
-              <Space size={4}>
-                <Tooltip title="Chấp nhận">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CheckCircleOutlined />}
-                    style={{ color: '#52c41a' }}
-                    onClick={() => handleDecide(r.id, 'approved')}
-                  />
-                </Tooltip>
-                <Tooltip title="Từ chối">
-                  <Button
-                    danger
-                    type="text"
-                    size="small"
-                    icon={<CloseCircleOutlined />}
-                    style={{ color: '#ff4d4f' }}
-                    onClick={() => handleDecide(r.id, 'rejected')}
-                  />
-                </Tooltip>
-              </Space>
-            );
+          return (
+            <Space size="small">
+              {(isTarget || isAdmin) && (
+                <>
+                  <Tooltip title="Chấp nhận">
+                    <Button
+                      variant="ghost"
+                      buttonSize="small"
+                      icon={<CheckCircleOutlined style={{ fontSize: 16 }} />}
+                      style={{ color: r.status === 'pending' ? '#52c41a' : '#bfbfbf', padding: '4px' }}
+                      onClick={() => handleDecide(r.id, 'approved')}
+                      disabled={r.status !== 'pending'}
+                    />
+                  </Tooltip>
+                  <Tooltip title="Từ chối">
+                    <Button
+                      variant="ghost"
+                      buttonSize="small"
+                      icon={<CloseCircleOutlined style={{ fontSize: 16 }} />}
+                      style={{ color: r.status === 'pending' ? '#ff4d4f' : '#bfbfbf', padding: '4px' }}
+                      onClick={() => handleDecide(r.id, 'rejected')}
+                      disabled={r.status !== 'pending'}
+                    />
+                  </Tooltip>
+                </>
+              )}
+              <Dropdown
+                trigger={['click']}
+                placement="bottomRight"
+                overlay={
+                  <Menu>
+                    <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(r)}>
+                      Chỉnh sửa
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item key="delete" icon={<DeleteOutlined />} danger onClick={() => handleDelete(r.id)}>
+                      Xóa vĩnh viễn
+                    </Menu.Item>
+                  </Menu>
+                }
+              >
+                <Button variant="ghost" buttonSize="small" style={{ padding: '4px' }}>
+                  <MenuOutlined style={{ fontSize: 16 }} />
+                </Button>
+              </Dropdown>
+            </Space>
+          );
+        }}
+        onAdd={openAdd}
+        batchOperations={true}
+        onBatchDelete={handleBatchDelete}
+        filters={[
+          {
+            key: "status",
+            label: "Trạng thái",
+            type: "select" as const,
+            operators: ['eq'],
+            options: [
+              { label: "Chờ duyệt", value: "pending" },
+              { label: "Đã hoàn thành", value: "approved" },
+              { label: "Đã từ chối", value: "rejected" },
+            ],
+          },
+          {
+            key: "createdAt",
+            label: "Ngày tạo yêu cầu",
+            type: "date" as const,
+            operators: ['gte', 'lte'],
+            defaultOperator: 'gte',
+          },
+          {
+            key: "reason",
+            label: "Lý do đổi",
+            type: "input" as const,
+            operators: ['like'],
           }
-          return null;
+        ]}
+        filterValues={filterValues}
+        onFilterChange={(key, val) => {
+          const newFilters = { ...filterValues, [key]: val };
+          setFilterValues(newFilters);
+          fetchRequests(activeTab, newFilters);
+        }}
+        onClearFilters={() => {
+          setFilterValues({});
+          fetchRequests(activeTab, {});
+        }}
+        onSearch={(val) => {
+          setSearchValue(val);
+          fetchRequests(activeTab, { _q: val });
         }}
       />
+
+      {/* Admin CRUD Modal */}
+      <Modal
+        title={editingId ? "Chỉnh sửa yêu cầu đổi ca" : "Tạo yêu cầu đổi ca (Admin)"}
+        open={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        width={550}
+        centered
+        destroyOnClose
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, paddingBottom: 16 }}>
+            <Button 
+              variant="ghost" 
+              onClick={() => setIsModalVisible(false)} 
+              style={{ minWidth: 120 }}
+            >
+              Hủy bỏ
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleModalOk} 
+              style={{ minWidth: 120 }}
+            >
+              {editingId ? "Cập nhật" : "Tạo yêu cầu"}
+            </Button>
+          </div>
+        }
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="requesterId"
+            label="Thành viên cần điều chuyển"
+            rules={[{ required: true, message: 'Vui lòng chọn thành viên' }]}
+          >
+            <Select
+              showSearch
+              placeholder="Tìm kiếm thành viên..."
+              optionFilterProp="children"
+              filterOption={(input, option: any) => {
+                const searchStr = (option?.label || '').toLowerCase();
+                const dataStr = (option?.['data-search'] || '').toLowerCase();
+                return searchStr.includes(input.toLowerCase()) || dataStr.includes(input.toLowerCase());
+              }}
+              options={users.map(u => ({ 
+                label: u.name, 
+                value: u.id,
+                'data-search': `${u.studentId || ''} ${u.email || ''}`,
+                render: (
+                  <Space>
+                    <Avatar size="small" src={u.avatar} icon={<UserOutlined />} />
+                    <Space direction="vertical" size={0}>
+                      <Text strong style={{ fontSize: 13 }}>{u.name}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>{u.studentId || u.email}</Text>
+                    </Space>
+                  </Space>
+                )
+              }))}
+              optionRender={(option) => option.data.render}
+            />
+          </Form.Item>
+
+          <Space style={{ width: '100%' }} direction="horizontal">
+            <Form.Item
+              name="fromSlotId"
+              label="Kíp trực nguồn (Rời đi)"
+              style={{ flex: 1, minWidth: 250 }}
+            >
+              <Select
+                showSearch
+                allowClear
+                placeholder="Chọn kíp hiện tại..."
+                optionFilterProp="label"
+                options={slots.map(s => ({ 
+                  label: `${dayjs(s.shiftDate).format('DD/MM')} - ${s.shiftLabel}`, 
+                  value: s.id 
+                }))}
+              />
+            </Form.Item>
+
+            <ArrowRightOutlined style={{ marginTop: 10, color: '#bfbfbf' }} />
+
+            <Form.Item
+              name="dutySlotId"
+              label="Kíp trực đích (Chuyển đến)"
+              rules={[{ required: true, message: 'Vui lòng chọn kíp đích' }]}
+              style={{ flex: 1, minWidth: 250 }}
+            >
+              <Select
+                showSearch
+                placeholder="Chọn kíp muốn đến..."
+                optionFilterProp="label"
+                options={slots.map(s => ({ 
+                  label: `${dayjs(s.shiftDate).format('DD/MM')} - ${s.shiftLabel}`, 
+                  value: s.id 
+                }))}
+              />
+            </Form.Item>
+          </Space>
+
+          <Form.Item
+            name="reason"
+            label="Lý do đổi"
+          >
+            <Input.TextArea placeholder="Nhập lý do (không bắt buộc)..." rows={2} />
+          </Form.Item>
+
+          <Form.Item name="status" label="Trạng thái" initialValue="pending">
+            <Select options={[
+              { label: 'Chờ duyệt', value: 'pending' },
+              { label: 'Đã duyệt (Thực hiện điều chuyển ngay)', value: 'approved' },
+              { label: 'Từ chối', value: 'rejected' },
+            ]} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title={
           <Space>
             <QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />
-            <span>Hướng dẫn Duyệt đơn nghỉ</span>
+            <span>Hướng dẫn Đổi kíp & Chuyển ca</span>
           </Space>
         }
         open={isGuideModalOpen}
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
-          <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
-          </div>
+          <Button key="close" variant="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 100 }}>Đã hiểu</Button>
         ]}
-        className="premium-modal"
       >
         <div style={{ padding: '8px 0' }}>
-          <p>Trang này cho phép bạn theo dõi và xử lý các yêu cầu đổi ca trực:</p>
+          <p>Trang này quản lý các yêu cầu điều chuyển nhân sự giữa các kíp trực:</p>
           <ul style={{ paddingLeft: 20 }}>
             <li style={{ marginBottom: 8 }}>
-              <b>Dành cho Thành viên:</b> Chấp nhận hoặc từ chối các yêu cầu đổi ca mà người khác gửi cho bạn.
+              <b>Sứ mệnh:</b> Điều chuyển linh hoạt nhân sự giữa các kíp trực để tối ưu hóa đội ngũ.
             </li>
             <li style={{ marginBottom: 8 }}>
-              <b>Dành cho Admin/Staff:</b> Có quyền phê duyệt cuối cùng cho các giao dịch đổi ca để hệ thống cập nhật lịch trực.
+              <b>Linh hoạt Sức chứa:</b> Admin có thể điều chuyển thêm người vào kíp đã đầy. Hệ thống sẽ cảnh báo nhưng không ngăn cản.
             </li>
             <li style={{ marginBottom: 8 }}>
-              <b>Trạng thái:</b> Sau khi cả hai bên đồng ý, lịch trực trên trang <b>Lịch trực</b> sẽ tự động cập nhật nhân sự mới.
+              <b>Minh bạch:</b> Mọi lộ trình di chuyển (Từ kíp nào sang kíp nào) đều được ghi log chi tiết.
             </li>
           </ul>
         </div>

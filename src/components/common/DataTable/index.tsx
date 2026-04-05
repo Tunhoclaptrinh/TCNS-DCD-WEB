@@ -410,15 +410,15 @@ const DataTable: React.FC<DataTableProps> = ({
   const activeSelectedRowKeys =
     propSelectedRowKeys || customRowSelection?.selectedRowKeys || [];
 
-  const rowSelection = batchOperations
+  const rowSelection = (batchOperations || propSelectedRowKeys || onSelectChange)
     ? customRowSelection || {
         selectedRowKeys: activeSelectedRowKeys,
         onChange: onSelectChange,
-        selections: [
+        selections: batchOperations ? [
           Table.SELECTION_ALL,
           Table.SELECTION_INVERT,
           Table.SELECTION_NONE,
-        ],
+        ] : undefined,
         getCheckboxProps: (record: any) => ({
           disabled: record.disabled,
         }),

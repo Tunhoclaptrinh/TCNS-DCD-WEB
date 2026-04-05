@@ -17,6 +17,7 @@ import {
   Tag, 
   Button as AntButton,
   message,
+  Tooltip,
 } from 'antd';
 import { 
   EditOutlined, 
@@ -214,6 +215,37 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
   const capacity = slot?.capacity || slot?.kip?.capacity || 0;
   const isFull = registeredCount >= capacity;
 
+  const watchedAttendedIds = Form.useWatch('attendedUserIds', form) || [];
+
+  const toggleAttendance = async (uId: number) => {
+    if (!isAdmin) return;
+    
+    const currentAttended = form.getFieldValue('attendedUserIds') || [];
+    let nextAttended: number[];
+    
+    if (currentAttended.includes(uId)) {
+      nextAttended = currentAttended.filter((id: number) => id !== uId);
+    } else {
+      nextAttended = [...currentAttended, uId];
+    }
+    
+    // Update local form state immediately for UI response
+    form.setFieldValue('attendedUserIds', nextAttended);
+    
+    // If slot exists, persist to backend immediately
+    if (slot?.id) {
+      try {
+        await dutyService.markAttendance(slot.id, nextAttended);
+        message.success(nextAttended.includes(uId) ? 'Đã ghi nhận điểm danh' : 'Đã hủy điểm danh');
+        // Optional: refresh parent data if needed, but local state already updated
+      } catch (err) {
+        message.error('Lỗi khi ghi nhận điểm danh');
+        // Rollback local state on error
+        form.setFieldValue('attendedUserIds', currentAttended);
+      }
+    }
+  };
+
   return (
     <FormModal
       open={open}
@@ -404,7 +436,7 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
             dataSource={currentAssignedUsers}
             locale={{ emptyText: <div style={{ padding: '20px 0', textAlign: 'center' }}><Text type="secondary" italic>Chứa có ai đăng ký</Text></div> }}
             renderItem={(u: any) => {
-              const isAttended = slot?.attendedUserIds?.includes(u.id);
+              const isAttended = watchedAttendedIds.includes(u.id);
               return (
                 <List.Item 
                   style={{ 
@@ -438,10 +470,33 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
                     }
                   />
                   <div style={{ textAlign: 'right' }}>
-                    {isAttended ? 
-                      <Tag icon={<CheckCircleOutlined />} color="success" style={{ borderRadius: 6, margin: 0 }}>ĐÃ ĐIỂM DANH</Tag> : 
-                      <Tag color="default" style={{ borderRadius: 6, margin: 0, color: '#94a3b8' }}>CHƯA ĐIỂM DANH</Tag>
-                    }
+                    <Space size={8}>
+                      {isAttended ? 
+                        <Tag icon={<CheckCircleOutlined />} color="success" style={{ borderRadius: 6, margin: 0 }}>ĐÃ ĐIỂM DANH</Tag> : 
+                        <Tag color="default" style={{ borderRadius: 6, margin: 0, color: '#94a3b8' }}>VẮNG MẶT</Tag>
+                      }
+                      
+                      {isAdmin && (
+                        <Tooltip title={isAttended ? "Hủy điểm danh" : "Xác nhận điểm danh"}>
+                          <AntButton 
+                            size="small"
+                            shape="circle"
+                            type={isAttended ? "primary" : "default"}
+                            icon={<CheckCircleOutlined />}
+                            onClick={() => toggleAttendance(u.id)}
+                            style={{ 
+                              fontSize: 12,
+                              borderColor: isAttended ? '#22c55e' : '#cbd5e1',
+                              background: isAttended ? '#22c55e' : 'transparent',
+                              color: isAttended ? '#fff' : '#64748b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Space>
                   </div>
                 </List.Item>
               );
@@ -453,7 +508,10 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
           <>
             <div style={{ marginTop: 20 }}>
               <Form.Item label="Xác nhận điểm danh" name="attendedUserIds">
-                <DutyPersonnelPicker label="Ghi nhận điểm danh thực tế" />
+                <DutyPersonnelPicker 
+                  label="Ghi nhận điểm danh thực tế" 
+                  userIds={watchedAssignedIds}
+                />
               </Form.Item>
             </div>
 

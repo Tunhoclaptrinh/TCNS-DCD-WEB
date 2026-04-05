@@ -186,14 +186,14 @@ const AuthPage = () => {
         <Card
           style={{
             width: "100%",
-            maxWidth: isLogin ? 450 : 520,
-            borderRadius: 12,
-            boxShadow: "0 10px 40px rgba(0, 0, 0, 0.47)",
-            background: "rgba(255, 255, 255, 0.05)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
-            border: "1px solid rgba(255, 255, 255, 0.07)",
-            transition: "max-width 0.3s ease",
+            maxWidth: isLogin ? 400 : 480,
+            borderRadius: 16,
+            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.35)",
+            background: "rgba(255, 255, 255, 0.08)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
           hoverable
         >
@@ -238,7 +238,7 @@ const AuthPage = () => {
                     <Input
                       prefix={<UserOutlined />}
                       placeholder="Nhập email"
-                      size="large"
+                      size="middle"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       onPressEnter={handleLogin}
@@ -268,7 +268,7 @@ const AuthPage = () => {
                     <Input.Password
                       prefix={<LockOutlined />}
                       placeholder="Nhập mật khẩu"
-                      size="large"
+                      size="middle"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       onPressEnter={handleLogin}
@@ -322,13 +322,14 @@ const AuthPage = () => {
                     onClick={handleLogin}
                     loading={loading}
                     block
-                    size="large"
+                    size="middle"
                     style={{
                       background: "linear-gradient(135deg, #d4a574, #c27d4f)",
                       border: "none",
                       fontWeight: 600,
                       borderRadius: 8,
-                      boxShadow: "0 4px 12px rgba(212, 165, 116, 0.45)",
+                      height: 40,
+                      boxShadow: "0 4px 12px rgba(212, 165, 116, 0.3)",
                       transition: "0.25s",
                       marginBottom: 20,
                     }}
@@ -360,7 +361,7 @@ const AuthPage = () => {
                     <Input
                       prefix={<UserOutlined />}
                       placeholder="Họ và tên"
-                      size="large"
+                      size="middle"
                       value={regName}
                       onChange={(e) => setRegName(e.target.value)}
                       status={errors.regName ? "error" : ""}
@@ -389,7 +390,7 @@ const AuthPage = () => {
                       <Input
                         prefix={<UserOutlined />}
                         placeholder="Nhập email"
-                        size="large"
+                        size="middle"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
                         status={errors.regEmail ? "error" : ""}
@@ -418,7 +419,7 @@ const AuthPage = () => {
                       <Input
                         prefix={<PhoneOutlined />}
                         placeholder="Số điện thoại"
-                        size="large"
+                        size="middle"
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value)}
                         status={errors.regPhone ? "error" : ""}
@@ -448,7 +449,7 @@ const AuthPage = () => {
                     <Input.Password
                       prefix={<LockOutlined />}
                       placeholder="Nhập mật khẩu"
-                      size="large"
+                      size="middle"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       status={errors.regPassword ? "error" : ""}
@@ -480,7 +481,7 @@ const AuthPage = () => {
                     <Input.Password
                       prefix={<LockOutlined />}
                       placeholder="Xác nhận mật khẩu"
-                      size="large"
+                      size="middle"
                       value={regConfirmPassword}
                       onChange={(e) => setRegConfirmPassword(e.target.value)}
                       onPressEnter={handleRegister}
@@ -530,13 +531,14 @@ const AuthPage = () => {
                     onClick={handleRegister}
                     loading={loading}
                     block
-                    size="large"
+                    size="middle"
                     style={{
                       background: "linear-gradient(135deg, #d4a574, #c27d4f)",
                       border: "none",
                       fontWeight: 600,
                       borderRadius: 8,
-                      boxShadow: "0 4px 12px rgba(212, 165, 116, 0.45)",
+                      height: 40,
+                      boxShadow: "0 4px 12px rgba(212, 165, 116, 0.3)",
                       transition: "0.25s",
                       marginBottom: 20,
                     }}

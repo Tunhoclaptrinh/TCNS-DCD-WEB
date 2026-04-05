@@ -127,6 +127,21 @@ class DutyService {
     return response;
   }
 
+  async createLeaveManual(data: any) {
+    const response = await apiClient.post(`/duty/leave-requests/manual`, data);
+    return response;
+  }
+
+  async updateLeaveRequest(id: number, data: any) {
+    const response = await apiClient.put(`/duty/leave-requests/${id}`, data);
+    return response;
+  }
+
+  async deleteLeaveRequest(id: number) {
+    const response = await apiClient.delete(`/duty/leave-requests/${id}`);
+    return response;
+  }
+
   // Swap Requests
   async requestSwap(slotId: number, targetUserId: number) {
     const response = await apiClient.post(`/duty/swaps`, { slotId, targetUserId });
@@ -140,6 +155,21 @@ class DutyService {
 
   async decideSwap(requestId: number, status: 'approved' | 'rejected') {
     const response = await apiClient.patch(`/duty/swaps/${requestId}/decision`, { status });
+    return response;
+  }
+
+  async createSwapManual(data: any) {
+    const response = await apiClient.post(`/duty/swaps/manual`, data);
+    return response;
+  }
+
+  async updateSwapRequest(id: number, data: any) {
+    const response = await apiClient.put(`/duty/swaps/${id}`, data);
+    return response;
+  }
+
+  async deleteSwapRequest(id: number) {
+    const response = await apiClient.delete(`/duty/swaps/${id}`);
     return response;
   }
 
@@ -315,6 +345,10 @@ class DutyService {
 
   async updateSettings(data: { weeklyKipLimit: number, allowUnregisterWhenFull: boolean }): Promise<BaseApiResponse<any>> {
     const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
+    return response;
+  }
+  async getStats() {
+    const response = await apiClient.get(`/duty/stats/summary`);
     return response;
   }
 }

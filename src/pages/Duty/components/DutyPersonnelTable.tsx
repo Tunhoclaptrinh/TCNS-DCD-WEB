@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image, Tag, Button, Modal, Badge, Space, Typography } from 'antd';
-import { TeamOutlined, UserOutlined } from '@ant-design/icons';
+import { TeamOutlined, UserOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import DataTable from '@/components/common/DataTable';
 import { useCRUD } from '@/hooks/useCRUD';
 import userService from '@/services/user.service';
@@ -13,6 +13,8 @@ interface DutyPersonnelTableProps {
   value?: number[];
   onChange?: (value: number[]) => void;
   hideCard?: boolean;
+  /** Only show users with these specific IDs */
+  userIds?: number[];
 }
 
 export const POSITION_LABELS: Record<string, string> = {
@@ -33,7 +35,10 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
   value = [],
   onChange,
   hideCard = true,
+  userIds,
 }) => {
+  const [showAll, setShowAll] = useState(false);
+
   const {
     data,
     loading,
@@ -49,6 +54,20 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
     autoFetch: true,
     pageSize: 5,
   });
+
+  // Apply userIds filter if provided and not showing all
+  useEffect(() => {
+    if (userIds && !showAll) {
+      if (userIds.length > 0) {
+        updateFilters({ id_in: userIds });
+      } else {
+        updateFilters({ id_in: [-1] });
+      }
+    } else {
+      // Clear filter if showing all or no userIds provided
+      updateFilters({ id_in: undefined });
+    }
+  }, [userIds, showAll]);
 
   const avatarFallback = `data:image/svg+xml;utf8,${encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#f0f0f0"/><circle cx="20" cy="15" r="6" fill="#bfbfbf"/><path d="M8 33c2.5-5 7-8 12-8s9.5 3 12 8" fill="#bfbfbf"/></svg>'
@@ -107,7 +126,16 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
     }
   ];
 
-  const filters: FilterConfig[] = [
+  const filterConfig: FilterConfig[] = [
+    ...(userIds ? [{
+      key: "scope",
+      label: "Phạm vi nhân sự",
+      type: "select" as const,
+      options: [
+        { label: "Chỉ người trong kíp", value: "shift" },
+        { label: "Toàn bộ CLB", value: "all" },
+      ],
+    }] : []),
     {
       key: "department",
       label: "Ban",
@@ -122,6 +150,15 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
     }
   ];
 
+  // Sync filterValues.scope with showAll state
+  useEffect(() => {
+    if (filterValues.scope === 'all') {
+      setShowAll(true);
+    } else if (filterValues.scope === 'shift') {
+      setShowAll(false);
+    }
+  }, [filterValues.scope]);
+
   return (
     <DataTable
       hideCard={hideCard}
@@ -133,10 +170,22 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       searchable={true}
       searchValue={searchTerm}
       onSearch={search}
-      filters={filters}
-      filterValues={filterValues}
-      onFilterChange={(key, val) => updateFilters({ [key]: val })}
-      onClearFilters={clearFilters}
+      filters={filterConfig}
+      filterValues={{
+        ...filterValues,
+        scope: showAll ? 'all' : 'shift'
+      }}
+      onFilterChange={(key, val) => {
+        if (key === 'scope') {
+          setShowAll(val === 'all');
+        } else {
+          updateFilters({ [key]: val });
+        }
+      }}
+      onClearFilters={() => {
+        clearFilters();
+        setShowAll(false);
+      }}
       onRefresh={fetchAll}
       showActions={false}
       batchOperations={false}
@@ -144,6 +193,25 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       onSelectChange={(keys) => onChange?.(keys as number[])}
       size="small"
       scroll={{ y: 300 }}
+      headerContent={userIds ? (
+        <div style={{ padding: '8px 12px', background: '#eff6ff', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Space>
+            <InfoCircleOutlined style={{ color: '#3b82f6' }} />
+            <Text style={{ fontSize: 12, color: '#1e40af' }}>
+              {showAll ? "Đang hiển thị toàn bộ thành viên" : `Chỉ hiển thị ${userIds.length} nhân sự thuộc kíp trực này`}
+            </Text>
+          </Space>
+          <Button 
+            size="small" 
+            type={showAll ? "default" : "primary"}
+            ghost={!showAll}
+            onClick={() => setShowAll(!showAll)}
+            style={{ fontSize: 11, borderRadius: 6 }}
+          >
+            {showAll ? "Lọc theo kíp trực" : "Xem tất cả thành viên"}
+          </Button>
+        </div>
+      ) : undefined}
     />
   );
 };
@@ -156,6 +224,7 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { label?: string }
   const [tempSelectedIds, setTempSelectedIds] = useState<number[]>([]);
   const count = props.value?.length || 0;
   const tempCount = tempSelectedIds.length;
+  const { userIds } = props;
 
   const handleOpen = () => {
     setTempSelectedIds(props.value || []);
@@ -218,6 +287,7 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { label?: string }
           </Text>
         </div>
         <DutyPersonnelTable 
+          userIds={userIds}
           value={tempSelectedIds} 
           onChange={setTempSelectedIds} 
           hideCard={true} 
