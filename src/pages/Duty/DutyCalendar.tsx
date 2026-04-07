@@ -810,6 +810,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         slot={selectedSlot}
         isAdmin={isAdmin}
         currentUserId={currentUserId}
+        allSlots={slots}
       />
 
       <SetupWeekModal

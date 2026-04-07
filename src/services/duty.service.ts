@@ -142,9 +142,9 @@ class DutyService {
     return response;
   }
 
-  // Swap Requests
-  async requestSwap(slotId: number, targetUserId: number) {
-    const response = await apiClient.post(`/duty/swaps`, { slotId, targetUserId });
+  // Swap/Transfer Requests
+  async requestSwap(data: { slotId?: number, toSlotId?: number, fromSlotId?: number, targetUserId?: number }) {
+    const response = await apiClient.post(`/duty/swaps`, data);
     return response;
   }
 

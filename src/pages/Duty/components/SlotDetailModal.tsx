@@ -25,9 +25,10 @@ interface SlotDetailModalProps {
   open: boolean;
   onCancel: () => void;
   onSuccess: () => void;
-  slot: DutySlot | null;
+  slot: any;
   isAdmin: boolean;
   currentUserId: number;
+  allSlots: DutySlot[];
 }
 
 const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
@@ -36,7 +37,8 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
   onSuccess,
   slot,
   isAdmin,
-  currentUserId
+  currentUserId,
+  allSlots
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
@@ -172,11 +174,14 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
     }
   };
 
-  const handleSwapRequest = async (targetUserId: number) => {
-    if (!slot || !targetUserId) return;
+  const handleSwapRequest = async (toSlotId: number) => {
+    if (!slot || !toSlotId) return;
     try {
-      await dutyService.requestSwap(slot.id, targetUserId);
-      message.success('Đã gửi yêu cầu đổi ca');
+      await dutyService.requestSwap({
+        fromSlotId: slot.id,
+        toSlotId: toSlotId
+      });
+      message.success('Đã gửi yêu cầu chuyển ca');
       setIsSwapModalVisible(false);
       onSuccess();
       onCancel();
@@ -209,7 +214,7 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
                 if (isActive) return <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleAttendance}>Điểm danh</Button>;
                 return null;
               })()}
-              <Button type="primary" ghost icon={<EditOutlined />} onClick={() => setIsSwapModalVisible(true)}>Đổi ca</Button>
+              <Button type="primary" ghost icon={<EditOutlined />} onClick={() => setIsSwapModalVisible(true)}>Chuyển kíp</Button>
               <Button danger icon={<ClearOutlined />} onClick={handleUnregister}>Hủy kíp</Button>
               <Button icon={<StopOutlined />} onClick={() => setIsLeaveModalVisible(true)}>Xin nghỉ</Button>
             </>
@@ -386,8 +391,8 @@ const SlotDetailModal: React.FC<SlotDetailModalProps> = ({
         open={isSwapModalVisible}
         onCancel={() => setIsSwapModalVisible(false)}
         onSubmit={handleSwapRequest}
-        allUsers={allUsers}
-        currentUserId={currentUserId}
+        availableSlots={allSlots}
+        currentSlotId={slot?.id}
       />
     </>
   );

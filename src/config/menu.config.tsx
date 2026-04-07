@@ -3,6 +3,7 @@ import {
     DashboardOutlined,
     UserOutlined,
     CalendarOutlined,
+    SwapOutlined,
 } from '@ant-design/icons';
 
 export interface IMenuItem {
@@ -65,7 +66,26 @@ export const adminMenu: IMenuItem[] = [
 ];
 
 // ================= CUSTOMER MENU =================
-export const customerMenu: IMenuItem[] = [];
+export const customerMenu: IMenuItem[] = [
+    {
+        key: 'duty-dashboard',
+        path: '/duty/dashboard',
+        name: 'Tổng quan',
+        icon: <DashboardOutlined />,
+    },
+    {
+        key: 'duty-calendar-member',
+        path: '/duty/calendar',
+        name: 'Lịch trực của tôi',
+        icon: <CalendarOutlined />,
+    },
+    {
+        key: 'duty-requests-member',
+        path: '/duty/requests',
+        name: 'Đơn của tôi',
+        icon: <SwapOutlined />,
+    },
+];
 
 // ================= RESEARCHER MENU =================
 export const researcherMenu: IMenuItem[] = [];

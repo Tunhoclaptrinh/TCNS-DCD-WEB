@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Button, Avatar, Dropdown, Space, theme } from "antd";
-import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
+import { UserOutlined, LogoutOutlined, CalendarOutlined, DashboardOutlined } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/store/slices/authSlice";
@@ -30,6 +30,12 @@ const Header: React.FC = () => {
     },
     {
       type: "divider",
+    },
+    {
+      key: "duty",
+      icon: <CalendarOutlined />,
+      label: user?.role === 'admin' || user?.role === 'staff' ? "Quản lý lịch trực" : "Lịch trực của tôi",
+      onClick: () => navigate(user?.role === 'admin' || user?.role === 'staff' ? "/admin/duty" : "/duty"),
     },
     {
       key: "logout",
@@ -62,7 +68,15 @@ const Header: React.FC = () => {
 
       <div className="right-section">
         {user ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <Button 
+              type="text" 
+              icon={user.role === 'admin' || user.role === 'staff' ? <DashboardOutlined /> : <CalendarOutlined />}
+              onClick={() => navigate(user.role === 'admin' || user.role === 'staff' ? "/admin/dashboard" : "/duty")}
+              style={{ fontWeight: 500 }}
+            >
+              {user.role === 'admin' || user.role === 'staff' ? "Quản trị" : "Lịch trực"}
+            </Button>
             <NotificationPopover />
             <Dropdown menu={{ items: menuItems as any }} placement="bottomRight">
               <Space style={{ cursor: "pointer" }}>

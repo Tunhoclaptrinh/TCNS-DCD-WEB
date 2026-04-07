@@ -7,6 +7,7 @@ import AdminLayout from "@/layouts/AdminLayout";
 import AuthLayout from "@/layouts/AuthLayout";
 import Loading from "@/components/common/Loading";
 import AuthGuard from "@/components/common/guards/AuthGuard";
+const CustomerLayout = lazy(() => import("@/layouts/CustomerLayout"));
 
 // Lazy load pages
 const Home = lazy(() => import("@/pages/Home"));
@@ -28,6 +29,11 @@ const DutyCalendar = lazy(() => import("@/pages/Duty/DutyCalendar"));
 const DutyManagement = lazy(() => import("@/pages/Duty/Management"));
 const LeaveRequests = lazy(() => import("@/pages/Duty/LeaveRequests"));
 const SwapRequests = lazy(() => import("@/pages/Duty/SwapRequests"));
+
+// Member Duty Pages
+const MemberDashboard = lazy(() => import("@/pages/Duty/Member/PersonalDashboard"));
+const MemberCalendar = lazy(() => import("@/pages/Duty/Member/MemberCalendar"));
+const MemberRequests = lazy(() => import("@/pages/Duty/Member/MyRequests"));
 
 
 
@@ -119,6 +125,36 @@ const routes: RouteObject[] = [
       {
         index: true,
         element: <NotificationsPage />,
+      },
+    ],
+  },
+
+  // ============ MEMBER DUTY ROUTES ============
+  {
+    path: "/duty",
+    element: (
+      <AuthGuard requireAuth={true}>
+        <LazyLoadWrapper>
+          <CustomerLayout />
+        </LazyLoadWrapper>
+      </AuthGuard>
+    ),
+    children: [
+      {
+        index: true,
+        element: <MemberDashboard />,
+      },
+      {
+        path: "dashboard",
+        element: <MemberDashboard />,
+      },
+      {
+        path: "calendar",
+        element: <MemberCalendar />,
+      },
+      {
+        path: "requests",
+        element: <MemberRequests />,
       },
     ],
   },

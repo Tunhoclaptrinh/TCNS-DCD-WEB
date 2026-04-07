@@ -1421,6 +1421,7 @@ const DutyManagement: React.FC = () => {
         slot={editingSlot}
         isAdmin={true}
         currentUserId={0} // Standardizing for admin context
+        allSlots={slots}
         loading={loading}
       />
 

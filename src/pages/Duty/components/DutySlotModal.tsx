@@ -48,6 +48,7 @@ interface DutySlotModalProps {
   slot: DutySlot | null;
   isAdmin: boolean;
   currentUserId: number;
+  allSlots: DutySlot[];
   loading?: boolean;
 }
 
@@ -61,6 +62,7 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
   slot,
   isAdmin,
   currentUserId,
+  allSlots,
   loading: externalLoading = false,
 }) => {
   const [form] = Form.useForm();
@@ -86,6 +88,7 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
   // Fetch all users for Swap Flow
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!isAdmin) return;
       try {
         const res = await apiClient.get('/users');
         const rawData = res.data || res;
@@ -96,20 +99,21 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
       }
     };
     if (open) fetchUsers();
-  }, [open]);
+  }, [open, isAdmin]);
 
   const watchedAssignedIds = Form.useWatch('assignedUserIds', form) || [];
   
   const currentAssignedUsers = React.useMemo(() => {
-    if (!watchedAssignedIds.length) return [];
-    if (allUsers.length > 0) {
-      return watchedAssignedIds.map((id: any) => {
-        const user = allUsers.find(u => u.id === id);
-        if (user) return user;
-        return slot?.assignedUsers?.find((u: any) => u.id === id) || { id, name: `User ${id}` };
-      });
-    }
-    return slot?.assignedUsers || [];
+    const rawIds = watchedAssignedIds.length > 0 ? watchedAssignedIds : (slot?.assignedUserIds || []);
+    if (!rawIds.length) return [];
+    
+    return rawIds.map((id: any) => {
+      // Try to find in allUsers (if admin) or existing slot data
+      const user = allUsers.find(u => String(u.id) === String(id)) || 
+                   slot?.assignedUsers?.find((u: any) => String(u.id) === String(id));
+      if (user) return user;
+      return { id, name: `User ${id}` };
+    });
   }, [watchedAssignedIds, allUsers, slot]);
 
   const handleOk = async (values: any) => {
@@ -174,11 +178,14 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
     }
   };
 
-  const handleSwapRequest = async (targetUserId: number) => {
+  const handleSwapRequest = async (toSlotId: number) => {
     if (!slot) return;
     setLoading(true);
     try {
-      const res = await dutyService.requestSwap(slot.id, targetUserId);
+      const res = await dutyService.requestSwap({
+        fromSlotId: slot.id,
+        toSlotId: toSlotId
+      });
       if (res.success) {
         message.success('Gửi yêu cầu đổi ca thành công');
         setIsSwapModalVisible(false);
@@ -210,7 +217,7 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
     }
   };
 
-  const isUserRegistered = slot?.assignedUserIds?.includes(currentUserId);
+  const isUserRegistered = slot?.assignedUserIds?.some(id => String(id) === String(currentUserId));
   const registeredCount = slot?.assignedUserIds?.length || 0;
   const capacity = slot?.capacity || slot?.kip?.capacity || 0;
   const isFull = registeredCount >= capacity;
@@ -223,8 +230,8 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
     const currentAttended = form.getFieldValue('attendedUserIds') || [];
     let nextAttended: number[];
     
-    if (currentAttended.includes(uId)) {
-      nextAttended = currentAttended.filter((id: number) => id !== uId);
+    if (currentAttended.some((id: any) => String(id) === String(uId))) {
+      nextAttended = currentAttended.filter((id: any) => String(id) !== String(uId));
     } else {
       nextAttended = [...currentAttended, uId];
     }
@@ -538,8 +545,8 @@ const DutySlotModal: React.FC<DutySlotModalProps> = ({
         open={isSwapModalVisible}
         onCancel={() => setIsSwapModalVisible(false)}
         onSubmit={handleSwapRequest}
-        allUsers={allUsers}
-        currentUserId={currentUserId}
+        availableSlots={allSlots}
+        currentSlotId={slot?.id}
       />
     </FormModal>
   );
