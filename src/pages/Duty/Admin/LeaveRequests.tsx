@@ -86,7 +86,7 @@ const LeaveRequestsPage: React.FC = () => {
       
       const res = await dutyService.getLeaveRequests(queryParams);
       const rawData = res.data || res;
-      setRequests(Array.isArray(rawData) ? rawData : (rawData?.data || []));
+      setRequests(Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.data) ? rawData.data : []));
     } catch (err) {
       message.error('Không thể tải danh sách đơn nghỉ');
     } finally {

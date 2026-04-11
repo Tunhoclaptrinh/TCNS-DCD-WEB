@@ -25,10 +25,10 @@ const Support = lazy(() => import("@/pages/Support"));
 const Dashboard = lazy(() => import("@/pages/Dashboard/DashboardMain"));
 const UserManagement = lazy(() => import("@/pages/Users"));
 const DutyLayout = lazy(() => import("@/pages/Duty"));
-const DutyCalendar = lazy(() => import("@/pages/Duty/DutyCalendar"));
-const DutyManagement = lazy(() => import("@/pages/Duty/Management"));
-const LeaveRequests = lazy(() => import("@/pages/Duty/LeaveRequests"));
-const SwapRequests = lazy(() => import("@/pages/Duty/SwapRequests"));
+const DutyCalendar = lazy(() => import("@/pages/Duty/Admin/AdminDutyCalendar"));
+const DutyManagement = lazy(() => import("@/pages/Duty/Admin/Management"));
+const LeaveRequests = lazy(() => import("@/pages/Duty/Admin/LeaveRequests"));
+const SwapRequests = lazy(() => import("@/pages/Duty/Admin/SwapRequests"));
 
 // Member Duty Pages
 const MemberDashboard = lazy(() => import("@/pages/Duty/Member/PersonalDashboard"));

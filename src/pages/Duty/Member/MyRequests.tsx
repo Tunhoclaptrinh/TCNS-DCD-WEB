@@ -7,13 +7,19 @@ import {
   CalendarOutlined, 
   ClockCircleOutlined,
   DeleteOutlined,
-  SwapOutlined
+  SwapOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek';
+dayjs.extend(isoWeek);
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import dutyService from '@/services/duty.service';
 import DataTable from '@/components/common/DataTable';
+import { Button } from '@/components/common';
+import LeaveRequestModal from './components/LeaveRequestModal';
+import SwapRequestModal from './components/SwapRequestModal';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -29,12 +35,18 @@ const MyRequests: React.FC = () => {
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [swapRequests, setSwapRequests] = useState<any[]>([]);
 
+  // Modal State
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+
   const fetchLeaveRequests = useCallback(async () => {
     if (!currentUserId) return;
     setLoading(true);
     try {
       const res = await dutyService.getLeaveRequests({ userId: currentUserId });
-      setLeaveRequests(res.data || res || []);
+      // Standardize extraction from BaseApiResponse { success: true, data: [...] } or direct array
+      const rawData = res.data || res;
+      setLeaveRequests(Array.isArray(rawData) ? rawData : (rawData?.data || []));
     } catch (err) {
       message.error('Không thể tải đơn nghỉ');
     } finally {
@@ -48,7 +60,9 @@ const MyRequests: React.FC = () => {
     try {
       // Fetching all and filtering or using specialized query if available
       const res = await dutyService.getSwapRequests();
-      const all = res.data || res || [];
+      const rawData = res.data || res;
+      const all = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+      
       const filtered = all.filter((r: any) => 
         String(r.requesterId) === String(currentUserId) || 
         String(r.targetUserId) === String(currentUserId)
@@ -73,6 +87,45 @@ const MyRequests: React.FC = () => {
       fetchLeaveRequests();
     } catch (err) {
       message.error('Lỗi khi hủy đơn');
+    }
+  };
+
+  const handleOpenLeaveModal = () => {
+    setIsLeaveModalOpen(true);
+  };
+
+  const handleOpenSwapModal = () => {
+    setIsSwapModalOpen(true);
+  };
+
+  const handleSubmitLeave = async (values: { reason: string, slotId?: number }) => {
+    if (!values.slotId) return;
+    try {
+      const res = await dutyService.requestLeave(values.slotId, values.reason);
+      if (res.success) {
+        message.success('Tạo đơn xin nghỉ thành công');
+        setIsLeaveModalOpen(false);
+        fetchLeaveRequests();
+      }
+    } catch (err) {
+      message.error('Lỗi khi gửi đơn xin nghỉ');
+    }
+  };
+
+  const handleSubmitSwap = async (values: { toSlotId: number, fromSlotId?: number }) => {
+    if (!values.fromSlotId || !values.toSlotId) return;
+    try {
+      const res = await dutyService.requestSwap({
+        fromSlotId: values.fromSlotId,
+        toSlotId: values.toSlotId
+      });
+      if (res.success) {
+        message.success('Gửi yêu cầu đổi ca thành công');
+        setIsSwapModalOpen(false);
+        fetchSwapRequests();
+      }
+    } catch (err) {
+      message.error('Lỗi khi gửi yêu cầu đổi ca');
     }
   };
 
@@ -192,10 +245,9 @@ const MyRequests: React.FC = () => {
   ];
 
   return (
-    <div className="my-requests-container" style={{ padding: '24px' }}>
-      <div style={{ marginBottom: 24 }}>
+    <div>
+      <div>
         <Title level={4}>Quản lý yêu cầu của tôi</Title>
-        <Text type="secondary">Theo dõi các đơn xin nghỉ và yêu cầu đổi ca bạn đã tạo hoặc nhận được.</Text>
       </div>
 
       <Card>
@@ -211,6 +263,7 @@ const MyRequests: React.FC = () => {
               rowKey="id"
               pagination={{ pageSize: 10 }}
               hideCard
+              extra={<Button icon={<PlusOutlined />} variant="primary" buttonSize="small" onClick={handleOpenLeaveModal}>Thêm đơn xin nghỉ</Button>}
             />
           </TabPane>
           <TabPane 
@@ -224,10 +277,25 @@ const MyRequests: React.FC = () => {
               rowKey="id"
               pagination={{ pageSize: 10 }}
               hideCard
+              extra={<Button icon={<PlusOutlined />} variant="primary" buttonSize="small" onClick={handleOpenSwapModal}>Thêm đơn đổi ca</Button>}
             />
           </TabPane>
         </Tabs>
       </Card>
+
+      <LeaveRequestModal 
+        open={isLeaveModalOpen}
+        onCancel={() => setIsLeaveModalOpen(false)}
+        onSubmit={handleSubmitLeave}
+        globalMode={true}
+      />
+
+      <SwapRequestModal
+        open={isSwapModalOpen}
+        onCancel={() => setIsSwapModalOpen(false)}
+        onSubmit={handleSubmitSwap}
+        globalMode={true}
+      />
     </div>
   );
 };

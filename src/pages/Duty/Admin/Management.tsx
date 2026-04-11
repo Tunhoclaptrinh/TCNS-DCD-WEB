@@ -24,8 +24,8 @@ import StatisticsCard from '@/components/common/StatisticsCard';
 import ShiftTemplateModal from './components/ShiftTemplateModal';
 import GroupModal from './components/GroupModal';
 import KipModal from './components/KipModal';
-import DutySlotModal from './components/DutySlotModal';
-import './DutyCalendar.less';
+import AdminDutySlotModal from './components/AdminDutySlotModal';
+import '../DutyCalendar.less';
 
 const { Text, Title } = Typography;
 
@@ -1414,13 +1414,11 @@ const DutyManagement: React.FC = () => {
         loading={loading}
       />
 
-      <DutySlotModal
+      <AdminDutySlotModal
         open={isSlotEditModalOpen}
         onCancel={() => setIsSlotEditModalOpen(false)}
         onSuccess={fetchSlots}
         slot={editingSlot}
-        isAdmin={true}
-        currentUserId={0} // Standardizing for admin context
         allSlots={slots}
         loading={loading}
       />

@@ -25,7 +25,7 @@ import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import '../DutyCalendar.less';
 
 // Child Components
-import DutySlotModal from '../components/DutySlotModal';
+import MemberDutySlotModal from './components/MemberDutySlotModal';
 
 const { Title } = Typography;
 
@@ -73,12 +73,17 @@ const MemberCalendar: React.FC = () => {
       const start = currentWeek.format('YYYY-MM-DD');
       const res = await dutyService.getWeeklySchedule(start);
       if (res.success && res.data) {
-        setSlots(res.data.slots || []);
-        setDays(res.data.days || []);
-        setAssignments(res.data.assignments || []);
+        const rawSlots = res.data.slots || [];
+        setSlots(Array.isArray(rawSlots) ? rawSlots : []);
+        
+        const rawDays = res.data.days || [];
+        setDays(Array.isArray(rawDays) ? rawDays : []);
+        
+        const rawAssignments = res.data.assignments || [];
+        setAssignments(Array.isArray(rawAssignments) ? rawAssignments : []);
         
         // Merge "Snapshot" templates into the local pool to ensure historical rendering
-        if (res.data?.templates) {
+        if (res.data?.templates && Array.isArray(res.data.templates)) {
           setTemplates(res.data.templates);
         }
 
@@ -98,7 +103,6 @@ const MemberCalendar: React.FC = () => {
     fetchSchedule();
     fetchDutySettings();
   }, [currentWeek]);
-
   const handlePrevWeek = () => setCurrentWeek(prev => prev.subtract(1, 'week'));
   const handleNextWeek = () => setCurrentWeek(next => next.add(1, 'week'));
   const handleToday = () => setCurrentWeek(dayjs().startOf('isoWeek' as any));
@@ -533,12 +537,11 @@ const MemberCalendar: React.FC = () => {
         </Spin>
       </Card>
 
-      <DutySlotModal
+      <MemberDutySlotModal
         open={isSlotDetailOpen}
         onCancel={() => setIsSlotDetailOpen(false)}
         slot={selectedSlot}
         onSuccess={fetchSchedule}
-        isAdmin={false}
         currentUserId={currentUserId ?? 0}
         allSlots={slots}
       />

@@ -31,25 +31,19 @@ dayjs.extend(isSameOrBefore);
 
 import { motion, AnimatePresence } from 'framer-motion';
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
-import './DutyCalendar.less';
+import '../DutyCalendar.less';
 
 // Child Components
 import QuickCreateModal from './components/QuickCreateModal';
-import DutySlotModal from './components/DutySlotModal';
+import AdminDutySlotModal from './components/AdminDutySlotModal';
 import SetupWeekModal from './components/SetupWeekModal';
 import AssignTemplateModal from './components/AssignTemplateModal';
 
 const { Title, Text } = Typography;
 
-interface DutyCalendarProps {
-  isAdmin?: boolean;
-  user?: any;
-}
-
-const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user: propsUser }) => {
-  const { user: storeUser } = useSelector((state: RootState) => state.auth);
-  const user = propsUser || storeUser;
-  const isAdmin = propsIsAdmin ?? (user?.role === 'admin');
+const AdminDutyCalendar: React.FC = () => {
+  const { user } = useSelector((state: RootState) => state.auth);
+  const isAdmin = true;
   const currentUserId = user?.id;
 
   const [loading, setLoading] = useState(false);
@@ -137,7 +131,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
 
   useEffect(() => {
     fetchTemplates();
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
     fetchSchedule();
@@ -553,13 +547,11 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                 <Button icon={<CloudDownloadOutlined />} />
               </Tooltip>
               
-              {isAdmin && (
-                <Dropdown overlay={adminMenu} placement="bottomRight">
-                  <Button type="primary" className="hifi-button">
-                    Quản trị <DownOutlined />
-                  </Button>
-                </Dropdown>
-              )}
+              <Dropdown overlay={adminMenu} placement="bottomRight">
+                <Button type="primary" className="hifi-button">
+                  Quản trị <DownOutlined />
+                </Button>
+              </Dropdown>
             </Space>
           </Space>
         }
@@ -680,20 +672,18 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                             >
                               <div className="shift-tag" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{shift.name}</span>
-                                {isAdmin && (
-                                  <CloseOutlined
-                                    className="shift-delete-icon"
-                                    style={{ fontSize: 10, cursor: 'pointer', padding: '2px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px' }}
-                                    onClick={(e: React.MouseEvent) => {
-                                      e.stopPropagation();
-                                      Modal.confirm({
-                                        title: 'Xác nhận xóa lẻ',
-                                        content: `Bạn có chắc muốn xóa khung ca "${shift.name}" chỉ riêng cho ngày ${day.format('DD/MM')} này không?`,
-                                        onOk: () => handleRemoveShiftFromDay(day.format('YYYY-MM-DD'), shift.id)
-                                      });
-                                    }}
-                                  />
-                                )}
+                              <CloseOutlined
+                                className="shift-delete-icon"
+                                style={{ fontSize: 10, cursor: 'pointer', padding: '2px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px' }}
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  Modal.confirm({
+                                    title: 'Xác nhận xóa lẻ',
+                                    content: `Bạn có chắc muốn xóa khung ca "${shift.name}" chỉ riêng cho ngày ${day.format('DD/MM')} này không?`,
+                                    onOk: () => handleRemoveShiftFromDay(day.format('YYYY-MM-DD'), shift.id)
+                                  });
+                                }}
+                              />
                               </div>
                             </div>
                           );
@@ -745,16 +735,7 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
                                     <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{slot.capacity || slot.kip?.capacity || 0} người</span>
                                   )}
                                 </div>
-                                {(!isAdmin && !isPastSlot && slot.assignedUserIds?.includes(currentUserId)) && (
-                                  <div className="quick-join-overlay danger" onClick={(e) => { e.stopPropagation(); handleUnregister(slot.id); }}>
-                                    <ClearOutlined /> Hủy đ.ký
-                                  </div>
-                                )}
-                                {(!isAdmin && !isPastSlot && !slot.assignedUserIds?.includes(currentUserId) && (slot.assignedUserIds?.length || 0) < (slot.kip?.capacity || 0)) && (
-                                  <div className="quick-join-overlay" onClick={(e) => { e.stopPropagation(); handleRegister(slot.id); }}>
-                                    <PlusOutlined /> Đăng ký
-                                  </div>
-                                )}
+
                               </motion.div>
                             );
                           })}
@@ -803,13 +784,11 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
         existingSlots={slots}
       />
 
-      <DutySlotModal
+      <AdminDutySlotModal
         open={isSlotDetailOpen}
         onCancel={() => setIsSlotDetailOpen(false)}
         onSuccess={fetchSchedule}
         slot={selectedSlot}
-        isAdmin={isAdmin}
-        currentUserId={currentUserId}
         allSlots={slots}
       />
 
@@ -889,4 +868,4 @@ const DutyCalendar: React.FC<DutyCalendarProps> = ({ isAdmin: propsIsAdmin, user
   );
 };
 
-export default DutyCalendar;
+export default AdminDutyCalendar;
