@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Divider, Alert } from 'antd';
+import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Divider, Alert, Segmented } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -66,6 +66,8 @@ const AdminDutyCalendar: React.FC = () => {
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
   const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(false);
+  const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]); // For table view co-axial
 
   useEffect(() => {
     const timer = setInterval(() => setNow(dayjs()), 60000);
@@ -149,20 +151,45 @@ const AdminDutyCalendar: React.FC = () => {
         const t = templates.find(temp => String(temp.id) === String(id));
         return t ? { ...t, isStamped: true } : null;
       }).filter(Boolean);
-    } else if (showDefaultBoundaries) {
-      // 2. Fallback to range-based assignment or default (Only if toggle is ON)
-      if (assignment) {
-        // Option A: Assigned group for this range (Exclude ad-hoc instances)
-        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(assignment.templateId)).map(t => ({ ...t, isStamped: false }));
-      } else if (defaultGroup) {
-        // Option B: Global default group (Exclude ad-hoc instances)
-        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(defaultGroup.id)).map(t => ({ ...t, isStamped: false }));
+    }
+    
+    // 3. Include Special Events ONLY IF Focus Mode is ON
+    if (eventFocusMode !== 'off') {
+      const specialEventShifts = templates.filter(t => 
+        t.description !== 'INSTANCE' && 
+        t.name?.toLowerCase().includes('sự kiện') &&
+        !candidates.find(c => String(c.id) === String(t.id))
+      ).map(t => ({ ...t, isSpecial: true, isStamped: false }));
+      candidates = [...candidates, ...specialEventShifts];
+    }
+
+    // Filter candidates by their specific daysOfWeek setting (Robust check)
+    let filtered = candidates.filter(shift => (shift.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).map(String).includes(String(dIdx)));
+    
+    // --- SPECIAL EVENT FOCUS LOGIC ---
+    if (eventFocusMode === 'all') {
+      // Mode: Absolute Focus - ONLY show special events, period.
+      filtered = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+    } else if (eventFocusMode === 'overlap') {
+      // Mode: Overlap Focus - Only show events + non-conflicting regular shifts
+      const specialEvents = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+      if (specialEvents.length > 0) {
+        filtered = filtered.filter(s => {
+          const isSpecial = s.name?.toLowerCase().includes('sự kiện');
+          if (isSpecial) return true;
+          
+          return !specialEvents.some(event => {
+            const sStart = s.startTime;
+            const sEnd = s.endTime;
+            const eStart = event.startTime;
+            const eEnd = event.endTime;
+            if (!sStart || !sEnd || !eStart || !eEnd) return false;
+            return (sStart < eEnd && sEnd > eStart);
+          });
+        });
       }
     }
 
-    // Filter candidates by their specific daysOfWeek setting
-    const filtered = candidates.filter(shift => (shift.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dIdx));
-    
     return { shifts: filtered, activeGroupId };
   };
 
@@ -328,6 +355,20 @@ const AdminDutyCalendar: React.FC = () => {
                     <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Hiện khung</span>
                     <Switch size="small" checked={showDefaultBoundaries} onChange={setShowDefaultBoundaries} />
                   </Space>
+                  <Divider type="vertical" style={{ margin: 0 }} />
+                  <Space size={4}>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Chế độ xem</span>
+                    <Segmented 
+                      size="small"
+                      options={[
+                        { label: 'Bình thường', value: 'off' },
+                        { label: 'Sự kiện + Ca', value: 'overlap' },
+                        { label: 'Chỉ Sự kiện', value: 'all' }
+                      ]}
+                      value={eventFocusMode}
+                      onChange={(v: any) => setEventFocusMode(v)}
+                    />
+                  </Space>
                 </>
               )}
             </div>
@@ -362,6 +403,9 @@ const AdminDutyCalendar: React.FC = () => {
               openSlotDetail={openSlotDetail}
               handleStampShift={handleStampShift}
               openQuickCreate={openQuickCreate}
+              collapsedGroups={collapsedGroups}
+              setCollapsedGroups={setCollapsedGroups}
+              eventFocusMode={eventFocusMode}
             />
           ) : (
             <AdminDutyTimelineView 
@@ -373,6 +417,7 @@ const AdminDutyCalendar: React.FC = () => {
               templates={relevantTemplates}
               getEffectiveTemplatesForDay={getEffectiveTemplatesForDay}
               showDefaultBoundaries={showDefaultBoundaries}
+              eventFocusMode={eventFocusMode}
               isAdmin={isAdmin}
               currentUserId={currentUserId}
               openSlotDetail={openSlotDetail}

@@ -15,6 +15,7 @@ interface MemberDutyTimelineViewProps {
   showDefaultBoundaries: boolean;
   currentUserId: number | undefined;
   openSlotDetail: (slot: DutySlot) => void;
+  eventFocusMode: 'off' | 'overlap' | 'all';
 }
 
 const START_HOUR = 5;
@@ -45,7 +46,8 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
   getEffectiveTemplatesForDay,
   showDefaultBoundaries,
   currentUserId,
-  openSlotDetail
+  openSlotDetail,
+  eventFocusMode
 }) => {
 
   const isSelectedWeekCurrent = now.startOf('isoWeek' as any).isSame(currentWeek.startOf('isoWeek' as any), 'day');
@@ -108,7 +110,40 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
             const { shifts: effectiveShifts, activeGroupId } = getEffectiveTemplatesForDay(day);
             const effectiveShiftIds = effectiveShifts.map(s => String(s.id));
 
-            const dayTemplates = templates.flatMap(s => (s.kips || []).map(k => ({ ...k, shiftId: s.id, sStart: s.startTime, sEnd: s.endTime })))
+            // Filter Actual Slots based on Focus Mode
+            let filteredDaySlots = daySlots;
+            if (eventFocusMode === 'all') {
+              filteredDaySlots = daySlots.filter(s => {
+                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
+                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                return isSpecial;
+              });
+            } else if (eventFocusMode === 'off') {
+              filteredDaySlots = daySlots.filter(s => {
+                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
+                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                return !isSpecial;
+              });
+            } else {
+              // Mode: Overlap
+              const specialEvents = effectiveShifts.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+              if (specialEvents.length > 0) {
+                filteredDaySlots = daySlots.filter(s => {
+                  const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
+                                    (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                  if (isSpecial) return true;
+                  return !specialEvents.some(event => {
+                    const sStart = s.startTime || s.kip?.startTime || (templates.find(t => String(t.id) === String(s.shiftId))?.startTime);
+                    const sEnd = s.endTime || s.kip?.endTime || (templates.find(t => String(t.id) === String(s.shiftId))?.endTime);
+                    const eStart = event.startTime; const eEnd = event.endTime;
+                    if (!sStart || !sEnd || !eStart || !eEnd) return false;
+                    return (sStart < eEnd && sEnd > eStart);
+                  });
+                });
+              }
+            }
+
+            const dayTemplates = templates.flatMap(s => (s.kips || []).map(k => ({ ...k, shiftId: s.id, sStart: s.startTime, sEnd: s.endTime, shiftName: s.name })))
               .filter(k => {
                 const shiftParent = templates.find(s => s.id === k.shiftId);
                 if (!effectiveShiftIds.includes(String(k.shiftId))) return false;
@@ -125,26 +160,34 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                 )}
 
                 {/* Shift (Ca) Backgrounds */}
-                {effectiveShifts.map((shift: any, sIdx: number) => (
-                   <div
+                {effectiveShifts.map((shift: any, sIdx: number) => {
+                  const isSpecialEvent = shift.name?.toLowerCase().includes('sự kiện');
+                  return (
+                    <div
                       key={`shift-${shift.id}-${dIdx}-${sIdx}`}
-                      className="calendar-shift-box"
+                      className={`calendar-shift-box ${isSpecialEvent ? 'special-event' : ''}`}
                       style={{
                         top: `${getTimeTop(shift.startTime)}px`,
                         height: `${getTimeHeight(shift.startTime, shift.endTime)}px`,
                         position: 'absolute',
                         width: '100%',
-                        zIndex: 1
+                        zIndex: 1,
+                        background: isSpecialEvent ? 'rgba(139, 92, 246, 0.05)' : undefined,
+                        borderLeft: isSpecialEvent ? '4px solid #8b5cf6' : undefined
                       }}
                     >
-                       <div className="shift-tag">
-                         <span>{shift.name}</span>
-                       </div>
+                        <div className="shift-tag" style={{ color: isSpecialEvent ? '#7c3aed' : undefined }}>
+                          <Space>
+                            {isSpecialEvent && <SyncOutlined spin style={{ fontSize: 10 }} />}
+                            <span>{shift.name}</span>
+                          </Space>
+                        </div>
                     </div>
-                ))}
+                  );
+                })}
                 
                 <AnimatePresence>
-                  {daySlots
+                  {filteredDaySlots
                     .filter(slot => {
                       // If it's a Shift-level slot (kipId null), check if there are any Kip-level slots for the same shift
                       if (slot.kipId === null || slot.kipId === undefined) {
@@ -156,6 +199,8 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                     .map(slot => {
                     const isPastSlot = isPastDay || (isToday && dayjs(`${dateStr} ${slot.startTime}`).isBefore(now));
                     const isMySlot = currentUserId && slot.assignedUserIds?.includes(currentUserId);
+                    const parentShift = templates.find(t => String(t.id) === String(slot.shiftId));
+                    const isSpecialEvent = (slot.shiftLabel || slot.shift?.name || parentShift?.name || '').toLowerCase().includes('sự kiện');
                     
                     return (
                       <motion.div
@@ -163,18 +208,21 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                         layoutId={String(slot.id)}
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className={`calendar-slot-box ${isPastSlot ? 'locked' : ''} ${isMySlot ? 'my-slot' : ''} ${slot.status === 'locked' ? 'admin-locked' : ''}`}
+                        className={`calendar-slot-box ${isPastSlot ? 'locked' : ''} ${isMySlot ? 'my-slot' : ''} ${slot.status === 'locked' ? 'admin-locked' : ''} ${isSpecialEvent ? 'special-event' : ''}`}
                         style={{
                           top: `${getTimeTop(slot.startTime)}px`,
                           height: `${getTimeHeight(slot.startTime, slot.endTime)}px`,
-                          borderLeft: isMySlot ? '4px solid #d4a574' : (slot.status === 'locked' ? '4px solid #94a3b8' : undefined),
-                          background: isMySlot ? 'rgba(212, 165, 116, 0.1)' : (slot.status === 'locked' ? 'rgba(148, 163, 184, 0.05)' : undefined)
+                          borderLeft: isMySlot ? '4px solid #d4a574' : (slot.status === 'locked' ? '4px solid #94a3b8' : (isSpecialEvent ? '4px solid #8b5cf6' : undefined)),
+                          background: isMySlot ? 'rgba(212, 165, 116, 0.1)' : (slot.status === 'locked' ? 'rgba(148, 163, 184, 0.05)' : (isSpecialEvent ? 'rgba(139, 92, 246, 0.05)' : undefined))
                         }}
                         onClick={() => openSlotDetail(slot)}
                       >
                         <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div className="title-area">
-                            <span className="slot-title" style={{ fontWeight: 600 }}>{slot.shiftLabel || 'Kíp trực'}</span>
+                            <span className="slot-title" style={{ fontWeight: 600, color: isSpecialEvent ? '#7c3aed' : undefined }}>
+                              {isSpecialEvent && <Tag color="purple" style={{ fontSize: 9, padding: '0 4px', marginRight: 4 }}>EVENT</Tag>}
+                              {slot.shiftLabel || 'Kíp trực'}
+                            </span>
                             {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 4, color: '#64748b' }} />}
                             {slot.note && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#64748b' }} /></Tooltip>}
                           </div>
@@ -218,14 +266,24 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                 }).map((k: any) => {
                   const kStart = k.startTime || k.sStart;
                   const kEnd = k.endTime || k.sEnd;
+                  const isSpecialEvent = (k.name || k.shiftName || '').toLowerCase().includes('sự kiện');
+                  
                   return (
                     <div
                       key={`draft-${k.id}`}
-                      className="calendar-slot-box draft"
-                      style={{ top: `${getTimeTop(kStart)}px`, height: `${getTimeHeight(kStart, kEnd)}px` }}
+                      className={`calendar-slot-box draft ${isSpecialEvent ? 'special-event' : ''}`}
+                      style={{ 
+                        top: `${getTimeTop(kStart)}px`, 
+                        height: `${getTimeHeight(kStart, kEnd)}px`,
+                        borderLeft: isSpecialEvent ? '4px dashed #a78bfa' : undefined,
+                        background: isSpecialEvent ? 'rgba(139, 92, 246, 0.03)' : undefined
+                      }}
                     >
-                      <div className="slot-title">{k.name}</div>
-                      <div className="slot-time">{kStart} - {kEnd} (Mẫu)</div>
+                      <div className="slot-title" style={{ color: isSpecialEvent ? '#7c3aed' : undefined }}>
+                        {isSpecialEvent && <Tag color="purple" style={{ fontSize: 8, padding: '0 4px', marginRight: 4 }}>EVENT</Tag>}
+                        {k.name}
+                      </div>
+                      <div className="slot-time">{kStart} - {kEnd} {isSpecialEvent ? '(Sự kiện)' : '(Mẫu)'}</div>
                     </div>
                   );
                 })}

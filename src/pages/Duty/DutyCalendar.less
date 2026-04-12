@@ -431,6 +431,28 @@
     letter-spacing: 0.05em;
     z-index: 6;
   }
+
+  &.special-event {
+    background: rgba(139, 92, 246, 0.05); // Violet-500 tint
+    border-color: #8b5cf6;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+
+    .shift-tag {
+      color: #8b5cf6;
+    }
+
+    &.draft {
+      background: rgba(139, 92, 246, 0.03); // Slightly more opaque
+      border: 1.5px dashed #a78bfa; // Violet-400 dashed
+      opacity: 0.8; 
+      
+      .slot-title, .slot-time {
+        color: #7c3aed; // Violet-600
+        font-weight: 600;
+      }
+    }
+  }
 }
 
 /* Current Time Indicator */

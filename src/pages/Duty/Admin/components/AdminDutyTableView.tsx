@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Modal } from 'antd';
+import { Modal, Space, Tag, Button } from 'antd';
+import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DutySlot, DutyShift } from '@/services/duty.service';
 
@@ -13,6 +14,9 @@ interface AdminDutyTableViewProps {
   openSlotDetail: (slot: DutySlot) => void;
   handleStampShift: (day: dayjs.Dayjs, shiftId: number) => void;
   openQuickCreate: (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any) => void;
+  collapsedGroups: string[];
+  setCollapsedGroups: (groups: string[]) => void;
+  eventFocusMode: 'off' | 'overlap' | 'all';
 }
 
 const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
@@ -24,6 +28,9 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
   openSlotDetail,
   handleStampShift,
   openQuickCreate,
+  collapsedGroups,
+  setCollapsedGroups,
+  eventFocusMode
 }) => {
 
   const groupedShifts = useMemo(() => {
@@ -79,6 +86,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
 
     return Array.from(shiftMap.values()).map(g => ({
       ...g,
+      id: g.originalShift.id,
       kips: Array.from(g.kips.values())
     }));
   }, [templates]);
@@ -101,16 +109,69 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
           </tr>
         </thead>
         <tbody>
-          {groupedShifts.map((group, sIdx) => (
+          {groupedShifts
+            .filter(group => {
+              const isSpecial = group.name && group.name.toLowerCase().includes('sự kiện');
+              
+              if (eventFocusMode === 'off') {
+                return !isSpecial; // Normal: Hide special events
+              }
+              
+              if (isSpecial) return true; // Focus modes: ALWAYS show special events
+              
+              if (eventFocusMode === 'all') return false; // Absolute focus: Hide ALL regular shifts
+              
+              // Overlap focus: Hide regular shifts that conflict with the special event
+              const specialEvents = groupedShifts.filter(g => g.name && g.name.toLowerCase().includes('sự kiện'));
+              const hasOverlap = specialEvents.some(event => {
+                const sStart = group.originalShift.startTime;
+                const sEnd = group.originalShift.endTime;
+                const eStart = event.originalShift.startTime;
+                const eEnd = event.originalShift.endTime;
+                if (!sStart || !sEnd || !eStart || !eEnd) return false;
+                return (sStart < eEnd && sEnd > eStart);
+              });
+              return !hasOverlap;
+            })
+            .map((group, sIdx) => (
             <React.Fragment key={sIdx}>
               {/* Shift Header Row */}
-              <tr className="shift-group-header" style={{ background: '#f1f5f9' }}>
-                <td colSpan={weekDays.length + 1} style={{ border: '1px solid #000', padding: '8px 12px', textAlign: 'left', fontWeight: 'bold', color: '#334155' }}>
-                   {group.name} <span style={{ fontWeight: 'normal', color: '#64748b', fontSize: '13px', marginLeft: 8 }}>({group.time})</span>
-                </td>
-              </tr>
+               {(() => {
+                const isSpecialEvent = group.name && group.name.toLowerCase().includes('sự kiện');
+                const gid = String(group.id);
+                const isCollapsed = collapsedGroups.includes(gid);
+                
+                const toggleCollapse = () => {
+                  if (isCollapsed) {
+                    setCollapsedGroups(collapsedGroups.filter(id => id !== gid));
+                  } else {
+                    setCollapsedGroups([...collapsedGroups, gid]);
+                  }
+                };
+
+                return (
+                  <tr className={`shift-group-header ${isSpecialEvent ? 'special-event-row' : ''}`} style={{ background: isSpecialEvent ? 'rgba(139, 92, 246, 0.1)' : '#f1f5f9' }}>
+                    <td colSpan={weekDays.length + 1} style={{ border: '1px solid #000', borderLeft: isSpecialEvent ? '6px solid #8b5cf6' : '1px solid #000', padding: '10px 12px', textAlign: 'left', fontWeight: 'bold', color: isSpecialEvent ? '#7c3aed' : '#334155' }}>
+                       <Space size={12}>
+                         <Button 
+                           type="text" 
+                           size="small" 
+                           onClick={toggleCollapse}
+                           icon={isCollapsed ? <PlusSquareOutlined /> : <MinusSquareOutlined />}
+                           style={{ color: isSpecialEvent ? '#8b5cf6' : '#64748b' }}
+                         />
+                         <Space>
+                           {isSpecialEvent && <Tag color="purple" style={{ borderRadius: 4, fontWeight: 'bold' }}>SỰ KIỆN</Tag>}
+                           {group.name} 
+                           <span style={{ fontWeight: 'normal', color: isSpecialEvent ? '#7c3aed' : '#64748b', opacity: 0.7, fontSize: '13px', marginLeft: 8 }}>({group.time})</span>
+                         </Space>
+                       </Space>
+                    </td>
+                  </tr>
+                );
+              })()}
               {/* Kip Rows */}
-              {group.kips.map((row: any, rIdx: number) => {
+              {!collapsedGroups.includes(String(group.id)) && group.kips.map((row: any, rIdx: number) => {
                 return (
                   <tr key={row.key} style={{ background: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                     <td className="sticky-col row-header" style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'middle', fontWeight: 600, textAlign: 'left' }}>

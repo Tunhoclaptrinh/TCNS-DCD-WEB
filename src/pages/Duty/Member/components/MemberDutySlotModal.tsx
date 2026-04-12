@@ -158,14 +158,20 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const capacity = slot?.capacity || slot?.kip?.capacity || 0;
   const isFull = registeredCount >= capacity;
 
+  const isSpecialEvent = (slot?.shiftLabel || slot?.kip?.name || '').toLowerCase().includes('sự kiện');
+  const themeColor = isSpecialEvent ? '#8b5cf6' : '#ec4899'; // Violet vs Pink
+  const themeBg = isSpecialEvent ? '#f5f3ff' : '#fff5f7';
+  const themeBorder = isSpecialEvent ? '#ddd6fe' : '#fce7f3';
+  const themeText = isSpecialEvent ? '#6d28d9' : '#9d174d';
+
   return (
     <FormModal
       open={open}
       form={form}
       title={
         <Space>
-          <ScheduleOutlined style={{ color: '#ec4899' }} />
-          <span>Chi tiết ca trực</span>
+          <ScheduleOutlined style={{ color: themeColor }} />
+          <span>Chi tiết {isSpecialEvent ? 'Sự kiện' : 'ca trực'}</span>
         </Space>
       }
       onCancel={onCancel}
@@ -177,27 +183,27 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
           {/* Left Column: Info */}
           <Col span={14}>
             <Divider orientation="left" style={{ marginTop: 0 }}>
-              <InfoCircleOutlined style={{ color: '#ec4899' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin ca trực</span>
+              <InfoCircleOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin {isSpecialEvent ? 'Sự kiện' : 'ca trực'}</span>
             </Divider>
             
             <div style={{ paddingLeft: 8 }}>
               <div style={{ marginBottom: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>TÊN CA TRỰC</Text>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>{slot?.shiftLabel}</div>
+                <Text type="secondary" style={{ fontSize: 12 }}>{isSpecialEvent ? 'TÊN SỰ KIỆN' : 'TÊN CA TRỰC'}</Text>
+                <div style={{ fontSize: 16, fontWeight: 600, color: isSpecialEvent ? themeColor : undefined }}>{slot?.shiftLabel}</div>
               </div>
 
               <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col span={12}>
                   <Text type="secondary" style={{ fontSize: 12 }}>NGÀY TRỰC</Text>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <CalendarOutlined style={{ color: '#ec4899' }} />
+                    <CalendarOutlined style={{ color: themeColor }} />
                     <span style={{ fontWeight: 500 }}>{slot?.shiftDate ? dayjs(slot.shiftDate).format('dddd, DD/MM/YYYY') : '-'}</span>
                   </div>
                 </Col>
                 <Col span={12}>
                   <Text type="secondary" style={{ fontSize: 12 }}>THỜI GIAN</Text>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <ClockCircleOutlined style={{ color: '#ec4899' }} />
+                    <ClockCircleOutlined style={{ color: themeColor }} />
                     <span style={{ fontWeight: 500 }}>{slot?.startTime} - {slot?.endTime}</span>
                   </div>
                 </Col>
@@ -227,7 +233,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
             </div>
 
             <Divider orientation="left" style={{ marginTop: 24 }}>
-              <TeamOutlined style={{ color: '#ec4899' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách trực ({registeredCount})</span>
+              <TeamOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách đăng ký ({registeredCount})</span>
             </Divider>
             
             <div style={{ paddingLeft: 8, maxHeight: 180, overflowY: 'auto' }}>
@@ -238,7 +244,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                 renderItem={(u: any) => (
                   <List.Item style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
                     <List.Item.Meta
-                      avatar={<Avatar src={u.avatar} icon={<UserOutlined />} style={{ backgroundColor: '#fdf2f8', color: '#ec4899' }} />}
+                      avatar={<Avatar src={u.avatar} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
                       title={<span style={{ fontWeight: 500 }}>{u.username || u.fullName || u.email}</span>}
                       description={u.email}
                     />
@@ -252,15 +258,15 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
           {/* Right Column: Actions */}
           <Col span={10}>
             <div style={{ 
-              background: '#fff5f7', 
+              background: themeBg, 
               borderRadius: 16, 
               padding: 20, 
               height: '100%', 
-              border: '1px solid #fce7f3',
+              border: `1px solid ${themeBorder}`,
               display: 'flex',
               flexDirection: 'column'
             }}>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 20, color: '#9d174d' }}>Thao tác</Title>
+              <Title level={5} style={{ marginTop: 0, marginBottom: 20, color: themeText }}>Thao tác</Title>
               
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 {!isUserRegistered ? (
@@ -281,10 +287,10 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         padding: '12px', 
                         background: '#fff', 
                         borderRadius: 12, 
-                        border: '1px solid #fce7f3',
+                        border: `1px solid ${themeBorder}`,
                         marginBottom: 8
                     }}>
-                        <Text strong style={{ color: '#ec4899', display: 'block' }}>Bạn đã đăng ký ca này</Text>
+                        <Text strong style={{ color: themeColor, display: 'block' }}>Bạn đã đăng ký {isSpecialEvent ? 'sự kiện' : 'ca'} này</Text>
                         
                         <div style={{ marginTop: 8 }}>
                           {/* Check attendance status */}

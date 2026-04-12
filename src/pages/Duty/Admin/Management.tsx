@@ -10,7 +10,7 @@ import {
   ExclamationCircleOutlined,
   CalendarOutlined, PlusSquareOutlined, InfoCircleOutlined,
   DownOutlined, UnorderedListOutlined,
-  StopOutlined
+  StopOutlined, SyncOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -418,7 +418,7 @@ const DutyManagement: React.FC = () => {
                 // Always show shift backgrounds from templates for visual context
                 const dayShiftTemplates = templates.filter(sh => {
                   const shDays = sh.daysOfWeek && sh.daysOfWeek.length > 0 ? sh.daysOfWeek : [0,1,2,3,4,5,6];
-                  return shDays.includes(dayOfWeek);
+                  return shDays.map(String).includes(String(dayOfWeek));
                 });
 
                 // Get kip slots from the preview data (filtering out isShift entries)
@@ -436,20 +436,31 @@ const DutyManagement: React.FC = () => {
                     {dayShiftTemplates.reduce((acc: any[], curr: any) => {
                       if (!acc.find(x => x.id === curr.id || (x.name === curr.name && x.startTime === curr.startTime))) acc.push(curr);
                       return acc;
-                    }, []).map((shift: any, sIdx: number) => (
-                      <div
-                        key={`shift-bg-${shift.id}-${sIdx}`}
-                        className="calendar-shift-box"
-                        style={{
-                          top: `${getTimeTop(shift.startTime)}px`,
-                          height: `${getTimeHeight(shift.startTime, shift.endTime)}px`,
-                          opacity: previewDay ? (isSelected ? 1 : 0.3) : 0.15,
-                          cursor: 'default'
-                        }}
-                      >
-                        <div className="shift-tag">{shift.name}</div>
-                      </div>
-                    ))}
+                    }, []).map((shift: any, sIdx: number) => {
+                      const isSpecialEvent = shift.name && shift.name.toLowerCase().includes('sự kiện');
+                      return (
+                        <div
+                          key={`shift-bg-${shift.id}-${sIdx}`}
+                          className={`calendar-shift-box ${isSpecialEvent ? 'special-event' : ''}`}
+                          style={{
+                            top: `${getTimeTop(shift.startTime)}px`,
+                            height: `${getTimeHeight(shift.startTime, shift.endTime)}px`,
+                            opacity: previewDay ? (isSelected ? 1 : 0.3) : 0.15,
+                            cursor: 'default',
+                            position: 'absolute',
+                            width: '100%',
+                            zIndex: 1
+                          }}
+                        >
+                          <div className="shift-tag" style={{ fontWeight: 800 }}>{shift.name}</div>
+                          {isSpecialEvent && (
+                            <div style={{ position: 'absolute', top: 4, right: 8, opacity: 0.1, fontSize: '24px', pointerEvents: 'none' }}>
+                              <SyncOutlined spin={false} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {/* Kip Slots from preview data */}
                     {calculateEventLayout(dayKipSlots).map((layout: any, i: number) => {
@@ -567,23 +578,31 @@ const DutyManagement: React.FC = () => {
                   {dayShifts.reduce((acc: any[], curr: any) => {
                     if (!acc.find(x => x.id === curr.id)) acc.push(curr);
                     return acc;
-                  }, []).map((shift: any, sIdx: number) => (
-                    <div
-                      key={`shift-${shift.id}-${dIdx}-${sIdx}`}
-                      className="calendar-shift-box"
-                      style={{
-                        top: `${getTimeTop(shift.startTime)}px`,
-                        height: `${getTimeHeight(shift.startTime, shift.endTime)}px`,
-                        position: 'absolute',
-                        width: '100%',
-                        zIndex: 1
-                      }}
-                    >
-                      <div className="shift-tag" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{shift.name}</span>
+                  }, []).map((shift: any, sIdx: number) => {
+                    const isSpecialEvent = shift.name && shift.name.toLowerCase().includes('sự kiện');
+                    return (
+                      <div
+                        key={`shift-${shift.id}-${dIdx}-${sIdx}`}
+                        className={`calendar-shift-box ${isSpecialEvent ? 'special-event' : ''}`}
+                        style={{
+                          top: `${getTimeTop(shift.startTime)}px`,
+                          height: `${getTimeHeight(shift.startTime, shift.endTime)}px`,
+                          position: 'absolute',
+                          width: '100%',
+                          zIndex: 1
+                        }}
+                      >
+                        <div className="shift-tag" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{shift.name}</span>
+                        </div>
+                        {isSpecialEvent && (
+                          <div style={{ position: 'absolute', top: 4, right: 8, opacity: 0.1, fontSize: '24px', pointerEvents: 'none' }}>
+                            <SyncOutlined spin={false} />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Kips */}
                   {calculateEventLayout(dayKips).map((layout, i) => {
@@ -803,19 +822,6 @@ const DutyManagement: React.FC = () => {
                               }}
                             />
                           </div>
-                        )}
-
-                        {isToday && (
-                          <div style={{
-                            position: 'absolute',
-                            bottom: -4,
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            width: 12,
-                            height: 4,
-                            borderRadius: 2,
-                            backgroundColor: isSelected ? 'var(--primary-color)' : '#ef4444',
-                          }} />
                         )}
                       </div>
                     );

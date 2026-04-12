@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Space, message, Typography, Select, Spin, Alert } from 'antd';
+import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -42,6 +42,8 @@ const MemberCalendar: React.FC = () => {
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
   const [dutySettings, setDutySettings] = useState<any>(null);
   const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(false);
+  const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
 
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }).map((_, i) => currentWeek.add(i, 'day')),
@@ -118,6 +120,7 @@ const MemberCalendar: React.FC = () => {
     const dIdx = (day.day() + 6) % 7; // 0=Mon, ..., 6=Sun
     const dayData = days.find(d => dayjs(d.date).format('YYYY-MM-DD') === targetStr);
     
+    // Determine the "Authorized" template group for this day (Assigned or Global Default)
     const assignment = assignments.find(a => {
       const startStr = dayjs(a.startDate).format('YYYY-MM-DD');
       const endStr = dayjs(a.endDate).format('YYYY-MM-DD');
@@ -127,6 +130,8 @@ const MemberCalendar: React.FC = () => {
     const activeGroupId = assignment?.templateId || defaultGroup?.id;
 
     let candidates: any[] = [];
+
+    // 1. Check for manual/stamped day record
     if (dayData) {
       const templateIds = (dayData.shiftTemplateIds || []);
       candidates = templateIds.map((id: number) => {
@@ -134,6 +139,7 @@ const MemberCalendar: React.FC = () => {
         return t ? { ...t, isStamped: true } : null;
       }).filter(Boolean);
     } else if (showDefaultBoundaries) {
+      // 2. Fallback to range-based assignment
       if (assignment) {
         candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(assignment.templateId)).map(t => ({ ...t, isStamped: false }));
       } else if (defaultGroup) {
@@ -141,7 +147,43 @@ const MemberCalendar: React.FC = () => {
       }
     }
 
-    const filtered = candidates.filter(shift => (shift.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dIdx));
+    // 3. Include Special Events ONLY IF Focus Mode is ON
+    if (eventFocusMode !== 'off') {
+       const specialEventShifts = templates.filter(t => 
+         t.description !== 'INSTANCE' && 
+         t.name?.toLowerCase().includes('sự kiện') &&
+         !candidates.find(c => String(c.id) === String(t.id))
+       ).map(t => ({ ...t, isSpecial: true, isStamped: false }));
+       candidates = [...candidates, ...specialEventShifts];
+    }
+
+    // Filter candidates by their specific daysOfWeek setting
+    let filtered = candidates.filter(shift => (shift.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).map(String).includes(String(dIdx)));
+    
+    // --- SPECIAL EVENT FOCUS LOGIC ---
+    if (eventFocusMode === 'all') {
+      // Mode: Absolute Focus - ONLY show special events
+      filtered = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+    } else if (eventFocusMode === 'overlap') {
+      // Mode: Overlap Focus - Only show events + non-conflicting regular shifts
+      const specialEvents = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+      if (specialEvents.length > 0) {
+        filtered = filtered.filter(s => {
+          const isSpecial = s.name?.toLowerCase().includes('sự kiện');
+          if (isSpecial) return true;
+          
+          return !specialEvents.some(event => {
+            const sStart = s.startTime;
+            const sEnd = s.endTime;
+            const eStart = event.startTime;
+            const eEnd = event.endTime;
+            if (!sStart || !sEnd || !eStart || !eEnd) return false;
+            return (sStart < eEnd && sEnd > eStart);
+          });
+        });
+      }
+    }
+
     return { shifts: filtered, activeGroupId };
   };
 
@@ -197,6 +239,19 @@ const MemberCalendar: React.FC = () => {
           <Space size="middle">
             <div className="view-controls" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '4px 12px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
               <Space size={4}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Chế độ xem</span>
+                <Segmented 
+                  size="small"
+                  options={[
+                    { label: 'Bình thường', value: 'off' },
+                    { label: 'Sự kiện + Ca', value: 'overlap' },
+                    { label: 'Chỉ Sự kiện', value: 'all' }
+                  ]}
+                  value={eventFocusMode}
+                  onChange={(v: any) => setEventFocusMode(v)}
+                />
+              </Space>
+              <Space size={4}>
                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Hiện mẫu</span>
                 <Select
                   value={showDefaultBoundaries}
@@ -233,6 +288,9 @@ const MemberCalendar: React.FC = () => {
               slots={slots}
               currentUserId={currentUserId}
               openSlotDetail={openSlotDetail}
+              collapsedGroups={collapsedGroups}
+              setCollapsedGroups={setCollapsedGroups}
+              eventFocusMode={eventFocusMode}
             />
           ) : (
             <MemberDutyTimelineView
@@ -245,6 +303,7 @@ const MemberCalendar: React.FC = () => {
               showDefaultBoundaries={showDefaultBoundaries}
               currentUserId={currentUserId}
               openSlotDetail={openSlotDetail}
+              eventFocusMode={eventFocusMode}
             />
           )}
         </Spin>

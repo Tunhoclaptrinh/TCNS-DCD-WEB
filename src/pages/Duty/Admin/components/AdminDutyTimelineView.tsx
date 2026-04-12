@@ -1,6 +1,6 @@
 import React from 'react';
 import { Space, Tooltip, Avatar, Modal } from 'antd';
-import { InfoCircleOutlined, CloseOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, CloseOutlined, SyncOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DutySlot, DutyShift } from '@/services/duty.service';
@@ -19,6 +19,7 @@ interface AdminDutyTimelineViewProps {
   openSlotDetail: (slot: DutySlot) => void;
   openQuickCreate: (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any) => void;
   handleRemoveShiftFromDay: (date: string, shiftId: number) => void;
+  eventFocusMode: 'off' | 'overlap' | 'all';
 }
 
 const START_HOUR = 5;
@@ -53,7 +54,8 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
   currentUserId,
   openSlotDetail,
   openQuickCreate,
-  handleRemoveShiftFromDay
+  handleRemoveShiftFromDay,
+  eventFocusMode
 }) => {
 
   const isSelectedWeekCurrent = now.startOf('isoWeek' as any).isSame(currentWeek.startOf('isoWeek' as any), 'day');
@@ -124,6 +126,43 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
             const { shifts: effectiveShifts, activeGroupId } = getEffectiveTemplatesForDay(day);
             const effectiveShiftIds = effectiveShifts.map(s => String(s.id));
 
+            // Filter Actual Slots based on Focus Mode
+            let filteredDaySlots = daySlots;
+            if (eventFocusMode === 'all') {
+              // Mode: Absolute Focus - ONLY show special events
+              filteredDaySlots = daySlots.filter(s => {
+                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
+                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                return isSpecial;
+              });
+            } else if (eventFocusMode === 'off') {
+              // Mode: Normal - Hide ALL special events
+              filteredDaySlots = daySlots.filter(s => {
+                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
+                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                return !isSpecial;
+              });
+            } else {
+              // Mode: Overlap
+              const specialEvents = effectiveShifts.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+              if (specialEvents.length > 0) {
+                filteredDaySlots = daySlots.filter(s => {
+                  const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
+                                    (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                  if (isSpecial) return true;
+                  
+                  return !specialEvents.some(event => {
+                    const sStart = s.startTime || s.kip?.startTime || (templates.find(t => String(t.id) === String(s.shiftId))?.startTime);
+                    const sEnd = s.endTime || s.kip?.endTime || (templates.find(t => String(t.id) === String(s.shiftId))?.endTime);
+                    const eStart = event.startTime;
+                    const eEnd = event.endTime;
+                    if (!sStart || !sEnd || !eStart || !eEnd) return false;
+                    return (sStart < eEnd && sEnd > eStart);
+                  });
+                });
+              }
+            }
+
             // Only show ghost kips if they belong to the ACTIVE group (Default or Assigned)
             const dayTemplates = templates.flatMap(s => (s.kips || []).map(k => ({ ...k, shiftId: s.id, shiftName: s.name, sStart: s.startTime, sEnd: s.endTime })))
               .filter(k => {
@@ -156,10 +195,11 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                 {/* Shift (Ca) Backgrounds */}
                 {effectiveShifts.map((shift, sIdx) => {
                   const isDraftShift = !shift.isStamped;
+                  const isSpecialEvent = shift.name.toLowerCase().includes('sự kiện');
                   return (
                     <div
                       key={`shift-${shift.id}-${dIdx}-${sIdx}`}
-                      className={`calendar-shift-box ${isDraftShift ? 'draft' : ''}`}
+                      className={`calendar-shift-box ${isDraftShift ? 'draft' : ''} ${isSpecialEvent ? 'special-event' : ''}`}
                       style={{
                         top: `${getTimeTop(shift.startTime)}px`,
                         height: `${getTimeHeight(shift.startTime, shift.endTime)}px`,
@@ -173,7 +213,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                       }}
                     >
                       <div className="shift-tag" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{shift.name}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{shift.name}</span>
                       <CloseOutlined
                         className="shift-delete-icon"
                         style={{ fontSize: 10, cursor: 'pointer', padding: '2px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px' }}
@@ -187,12 +227,17 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                         }}
                       />
                       </div>
+                      {isSpecialEvent && (
+                        <div style={{ position: 'absolute', top: 4, right: 8, opacity: 0.1, fontSize: '24px', pointerEvents: 'none' }}>
+                          <SyncOutlined spin={false} />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
 
                 <AnimatePresence>
-                  {daySlots
+                  {filteredDaySlots
                     .filter(slot => {
                       // If it's a Shift-level slot (kipId null), check if there are any Kip-level slots for the same shift
                       if (slot.kipId === null) {
@@ -243,28 +288,35 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                   })}
                 </AnimatePresence>
 
-                {showDefaultBoundaries && dayTemplates.filter(k => {
+                {dayTemplates.filter(k => {
                   const kStart = k.startTime || k.sStart;
                   if (!kStart) return false;
+
+                  // Logic: Show if boundaries are ON OR if it's a Special Event
+                  const shift = templates.find(s => String(s.id) === String(k.shiftId));
+                  const isSpecialEvent = (k.shiftName || shift?.name || '').toLowerCase().includes('sự kiện');
+                  if (!showDefaultBoundaries && !isSpecialEvent) return false;
                   
                   const existingSlot = daySlots.find(s => String(s.shiftId) === String(k.shiftId) && String(s.kipId) === String(k.id));
                   return !existingSlot;
                 }).map(k => {
                   const kStart = k.startTime || k.sStart;
                   const kEnd = k.endTime || k.sEnd;
-                  return (
-                    <div
-                      key={`draft-${k.id}`}
-                      className="calendar-slot-box draft"
-                      style={{ top: `${getTimeTop(kStart)}px`, height: `${getTimeHeight(kStart, kEnd)}px` }}
-                      onClick={() => {
-                        openQuickCreate(day, getTimeTop(kStart), templates.find(s => String(s.id) === String(k.shiftId)), k);
-                      }}
-                    >
-                      <div className="slot-title">{k.name}</div>
-                      <div className="slot-time">{kStart} - {kEnd} (Mẫu)</div>
-                    </div>
-                  );
+                    const shift = templates.find(s => String(s.id) === String(k.shiftId));
+                    const isSpecialEvent = (k.shiftName || shift?.name || '').toLowerCase().includes('sự kiện');
+                    return (
+                      <div
+                        key={`draft-${k.id}`}
+                        className={`calendar-slot-box draft ${isSpecialEvent ? 'special-event' : ''}`}
+                        style={{ top: `${getTimeTop(kStart)}px`, height: `${getTimeHeight(kStart, kEnd)}px` }}
+                        onClick={() => {
+                          openQuickCreate(day, getTimeTop(kStart), shift, k);
+                        }}
+                      >
+                        <div className="slot-title">{k.name}</div>
+                        <div className="slot-time">{kStart} - {kEnd} (Mẫu)</div>
+                      </div>
+                    );
                 })}
               </div>
             );
