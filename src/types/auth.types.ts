@@ -18,7 +18,6 @@ export enum UserRole {
   ADMIN = "admin",
   STAFF = "staff",
   CUSTOMER = "customer",
-  RESEARCHER = "researcher",
   CURATOR = "curator",
 }
 

@@ -29,6 +29,8 @@ const DutyCalendar = lazy(() => import("@/pages/Duty/Admin/AdminDutyCalendar"));
 const DutyManagement = lazy(() => import("@/pages/Duty/Admin/Management"));
 const LeaveRequests = lazy(() => import("@/pages/Duty/Admin/LeaveRequests"));
 const SwapRequests = lazy(() => import("@/pages/Duty/Admin/SwapRequests"));
+const SystemConfig = lazy(() => import("@/pages/SystemConfig"));
+const Permissions = lazy(() => import("@/pages/Permissions"));
 
 // Member Duty Pages
 const MemberDashboard = lazy(() => import("@/pages/Duty/Member/PersonalDashboard"));
@@ -201,6 +203,23 @@ const routes: RouteObject[] = [
           {
             path: "swaps",
             element: <SwapRequests />,
+          },
+        ]
+      },
+      {
+        path: "system-config",
+        children: [
+          {
+            index: true,
+            element: <SystemConfig />,
+          },
+          {
+            path: "generations",
+            element: <SystemConfig />,
+          },
+          {
+            path: "permissions",
+            element: <Permissions />,
           },
         ]
       },

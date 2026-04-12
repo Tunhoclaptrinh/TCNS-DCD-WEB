@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, AutoComplete, Input } from 'antd';
 import { 
     CheckCircleOutlined, 
@@ -23,6 +23,7 @@ import UsersForm from './components/Form';
 import UsersDetailModal from './components/Detail';
 
 import { Button } from '@/components/common';
+import generationService, { Generation } from '../../services/generation.service';
 
 const POSITION_LEVELS = ['ctc', 'tv', 'tvb', 'pb', 'tb', 'dt'];
 const POSITION_LABELS: Record<string, string> = {
@@ -70,6 +71,7 @@ const UserPage = () => {
         downloadTemplate,
     } = useCRUD(userService, {
         autoFetch: true,
+        expand: 'generation',
     });
 
     const { hasPermission } = useAccess();
@@ -80,11 +82,11 @@ const UserPage = () => {
     const [isPromoteModalVisible, setIsPromoteModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [viewingUser, setViewingUser] = useState<User | null>(null);
+    const [fetchingStats, setFetchingStats] = useState(false);
     const [promotingUser, setPromotingUser] = useState<User | null>(null);
     const [targetPosition, setTargetPosition] = useState<string>('');
     const [targetDepartment, setTargetDepartment] = useState<string>('');
     const [activeTab, setActiveTab] = useState<string>('all');
-    const [statsLoading, setStatsLoading] = useState(false);
     
     const initialStatObject = {
         total: 0,
@@ -99,17 +101,54 @@ const UserPage = () => {
         byPosition: {},
     };
 
+    const ACTIVE_ONLY = 'active_only';
     const [stats, setStats] = useState<UserStats>({
         global: initialStatObject,
         byDepartment: {},
     });
+    const [generationList, setGenerationList] = useState<Generation[]>([]);
+    const [selectedGenerationId, setSelectedGenerationId] = useState<number | typeof ACTIVE_ONLY | undefined>(ACTIVE_ONLY);
 
-    const fetchUserStats = async () => {
+    // Optimized: Memoized active generation IDs
+    const activeGenerationIds = useMemo(() => 
+        generationList.filter(g => g.isActive).map(g => g.id),
+    [generationList]);
+
+    // Optimized: Centralized filter object
+    const currentGenFilter = useMemo(() => {
+        if (selectedGenerationId === ACTIVE_ONLY) {
+            return { 
+                generationId: undefined, 
+                generationId_in: activeGenerationIds.length > 0 ? activeGenerationIds : undefined 
+            };
+        }
+        return { 
+            generationId: selectedGenerationId, 
+            generationId_in: undefined 
+        };
+    }, [selectedGenerationId, activeGenerationIds]);
+
+    const fetchGenerations = async () => {
+        try {
+            const res = await generationService.getAll();
+            if (res.success && res.data) {
+                setGenerationList(res.data);
+                
+                setGenerationList(res.data);
+                
+                // On first load, initial filter is handled by the reactive effect and memo
+            }
+        } catch (error) {
+            console.error('Failed to fetch generations:', error);
+        }
+    };
+
+    const fetchUserStats = async (filters: any = {}) => {
         if (!hasPermission('users:view_stats')) return;
 
+        setFetchingStats(true);
         try {
-            setStatsLoading(true);
-            const response = await userService.getStats();
+            const response = await userService.getStats(filters);
             const statsData = response.data || (response as any);
 
             if (statsData) {
@@ -118,20 +157,34 @@ const UserPage = () => {
         } catch (error) {
             console.error('Failed to fetch user stats:', error);
         } finally {
-            setStatsLoading(false);
+            setFetchingStats(false);
         }
     };
 
+    // Fetch initial data
     useEffect(() => {
-        fetchUserStats();
+        fetchGenerations();
     }, []);
+
+    // Reactive stats update when filter changes
+    useEffect(() => {
+        fetchUserStats(currentGenFilter);
+        // Also ensure useCRUD filters are synced on value change
+        updateFilters(currentGenFilter);
+    }, [selectedGenerationId, activeGenerationIds]);
+    
+    // Synced refresh helper
+    const refreshData = async () => {
+        await fetchAll();
+        await fetchUserStats(currentGenFilter);
+    };
 
     const handleToggleStatus = async (record: User) => {
         try {
             setEditingId(record.id);
             await userService.toggleStatus(record.id);
             await fetchAll();
-            await fetchUserStats();
+            await fetchUserStats({ generationId: selectedGenerationId });
         } finally {
             setEditingId(null);
         }
@@ -216,7 +269,7 @@ const UserPage = () => {
                 
                 message.warning('Đã khai trừ thành viên');
                 await fetchAll();
-                await fetchUserStats();
+                await fetchUserStats({ generationId: selectedGenerationId });
                 if (viewingUser?.id === record.id) {
                     setViewingUser({ ...record, status: 'dismissed', isActive: false, bio: updatedBio } as User);
                 }
@@ -284,6 +337,17 @@ const UserPage = () => {
             searchable: true,
         },
         {
+            title: "Khóa/Thế hệ",
+            key: "generation",
+            width: 300,
+            resizable: true,
+            filters: generationList.map(g => ({ text: g.name, value: g.id })),
+            render: (_: any, record: any) => {
+                const gen = record.generation?.name;
+                return gen ? <Tag color="geekblue">{gen}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>
+            }
+        },
+        {
             title: "Email",
             dataIndex: "email",
             key: "email",
@@ -305,7 +369,7 @@ const UserPage = () => {
             title: "Hạng/Chức vụ",
             key: "position",
             dataIndex: "position",
-            width: 140,
+            width: 180,
             resizable: true,
             filters: Object.entries(POSITION_LABELS).map(([value, label]) => ({ text: label, value })),
             render: (value: string) => {
@@ -556,19 +620,30 @@ const UserPage = () => {
             operators: ['gte', 'lte'],
             defaultOperator: 'gte',
         },
+        {
+            key: "generationId",
+            label: "Khóa/Thế hệ",
+            type: "select" as const,
+            operators: ['eq', 'in'],
+            options: generationList.map(g => ({ label: g.name, value: g.id })),
+        },
     ];
 
     const handleDelete = async (id: number) => {
         const success = await remove(id);
         if (success) {
-            await fetchUserStats();
+            await fetchUserStats({ generationId: selectedGenerationId });
         }
     };
 
     const openCreate = () => {
         setEditingId(null);
         form.resetFields();
-        form.setFieldsValue({ isActive: true, role: 'customer' });
+        form.setFieldsValue({ 
+            isActive: true, 
+            role: 'customer',
+            generationId: selectedGenerationId // Default to the currently filtered generation ID
+        });
         setIsModalVisible(true);
     };
 
@@ -596,7 +671,7 @@ const UserPage = () => {
             if (success) {
                 setIsModalVisible(false);
                 form.resetFields();
-                await fetchUserStats();
+                await fetchUserStats({ generationId: selectedGenerationId });
             }
         } catch (error) {
             console.error("Validate Failed:", error);
@@ -642,7 +717,8 @@ const UserPage = () => {
                 {hasPermission('users:view_stats') && (
                 <div>
                     <StatisticsCard
-                        loading={statsLoading}
+                        title={selectedGenerationId ? "Thống kê theo Khóa" : "Thống kê Đội Cờ Đỏ"}
+                        loading={fetchingStats}
                         hideCard
                         data={[
                             {
@@ -703,7 +779,7 @@ const UserPage = () => {
                         activeKey={activeTab} 
                         onChange={onTabChange}
                         items={[
-                            { label: 'Tất cả thành viên', key: 'all' },
+                            { label: 'Toàn bộ Đội', key: 'all' },
                             ...DEPARTMENT_OPTIONS.map(dept => ({ 
                                 label: `Ban ${dept}`, 
                                 key: dept 
@@ -715,7 +791,25 @@ const UserPage = () => {
                 )}
                 </>
             }
-            title="Quản lý người dùng"
+            title={
+                <Space size={16} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <h2 style={{ margin: 0 }}>Quản lý thành viên</h2>
+                    <Select
+                        placeholder="Lọc theo Khóa"
+                        style={{ width: 190 }}
+                        value={selectedGenerationId}
+                        allowClear
+                        onChange={(val) => {
+                            setSelectedGenerationId(val);
+                            // The actual filter update is handled by the reactive useEffect
+                        }}
+                        options={[
+                            { label: '🔥 Các khóa đang hoạt động', value: ACTIVE_ONLY },
+                            ...generationList.map(g => ({ label: g.name, value: g.id }))
+                        ]}
+                    />
+                </Space>
+            }
                 loading={loading}
                 columns={columns}
                 dataSource={data}
@@ -723,12 +817,9 @@ const UserPage = () => {
                 onPaginationChange={handleTableChange}
                 tableLayout="fixed"
                 saveColumnWidths
-                columnResizeKey="users-table"
+                columnResizeKey="users-table-v2"
                 onAdd={hasPermission('users:create') ? openCreate : undefined}
-                onRefresh={async () => {
-                    await fetchAll();
-                    await fetchUserStats();
-                }}
+                onRefresh={refreshData}
                 onEdit={hasPermission('users:update') ? openEdit : undefined}
                 onView={hasPermission('users:list') ? openView : undefined}
                 onDelete={hasPermission('users:delete') ? handleDelete : undefined}
@@ -769,6 +860,7 @@ const UserPage = () => {
                 form={form}
                 onOk={onOk}
                 onCancel={() => setIsModalVisible(false)}
+                generations={generationList}
             />
 
             <UsersDetailModal

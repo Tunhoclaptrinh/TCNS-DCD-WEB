@@ -338,12 +338,12 @@ class DutyService {
     return response;
   }
 
-  async getSettings(): Promise<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean }>> {
-    const response = await apiClient.get<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean }>>("/duty/settings");
+  async getSettings(): Promise<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean, currentGeneration: string, generations: string[] }>> {
+    const response = await apiClient.get<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean, currentGeneration: string, generations: string[] }>>("/duty/settings");
     return response;
   }
 
-  async updateSettings(data: { weeklyKipLimit: number, allowUnregisterWhenFull: boolean }): Promise<BaseApiResponse<any>> {
+  async updateSettings(data: { weeklyKipLimit: number, allowUnregisterWhenFull: boolean, currentGeneration?: string, generations?: string[] }): Promise<BaseApiResponse<any>> {
     const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
     return response;
   }

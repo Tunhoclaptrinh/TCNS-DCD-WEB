@@ -81,12 +81,13 @@ const DutyManagement: React.FC = () => {
 
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(dayjs().startOf('day'));
 
-  const weekDays = useMemo(() =>
-    Array.from({ length: 7 }).map((_, i) => slotFilterWeek.add(i, 'day')),
-    [slotFilterWeek]
-  );
+  const weekDays = useMemo(() => {
+    if (!slotFilterWeek || !slotFilterWeek.isValid()) return [];
+    return Array.from({ length: 7 }).map((_, i) => slotFilterWeek.add(i, 'day'));
+  }, [slotFilterWeek]);
 
   useEffect(() => {
+    if (!slotFilterWeek) return;
     fetchGroups();
     fetchSlots();
     fetchDutySettings();
@@ -152,6 +153,7 @@ const DutyManagement: React.FC = () => {
   };
 
   const fetchSlots = async () => {
+    if (!slotFilterWeek) return;
     setSlotLoading(true);
     try {
       const res = await dutyService.getWeeklySchedule(slotFilterWeek.format('YYYY-MM-DD'));
@@ -161,16 +163,21 @@ const DutyManagement: React.FC = () => {
   };
 
   const currentDaySlots = useMemo(() => {
-    if (!selectedDate) return slots;
+    if (!selectedDate || !Array.isArray(slots)) return slots || [];
     return slots.filter(s => dayjs(s.shiftDate).isSame(selectedDate, 'day'));
   }, [slots, selectedDate]);
 
-  const dailyStats = useMemo(() => ({
-    total: currentDaySlots.length,
-    locked: currentDaySlots.filter(s => s.status === 'locked').length,
-    open: currentDaySlots.filter(s => s.status === 'open').length,
-    personnel: currentDaySlots.reduce((acc, s) => acc + (s.capacity || s.kip?.capacity || 0), 0)
-  }), [currentDaySlots]);
+  const dailyStats = useMemo(() => {
+    const defaultStats = { total: 0, locked: 0, open: 0, personnel: 0 };
+    if (!Array.isArray(currentDaySlots)) return defaultStats;
+    
+    return {
+      total: currentDaySlots.length,
+      locked: currentDaySlots.filter(s => s.status === 'locked').length,
+      open: currentDaySlots.filter(s => s.status === 'open').length,
+      personnel: currentDaySlots.reduce((acc, s) => acc + (s.capacity || s.kip?.capacity || 0), 0)
+    };
+  }, [currentDaySlots]);
 
   const handleSubmitGroup = async (values: any) => {
     try {
@@ -1419,7 +1426,6 @@ const DutyManagement: React.FC = () => {
         onCancel={() => setIsSlotEditModalOpen(false)}
         onSuccess={fetchSlots}
         slot={editingSlot}
-        allSlots={slots}
         loading={loading}
       />
 

@@ -4,6 +4,8 @@ import {
     UserOutlined,
     CalendarOutlined,
     SwapOutlined,
+    SafetyOutlined,
+    SettingOutlined,
 } from '@ant-design/icons';
 
 export interface IMenuItem {
@@ -29,7 +31,7 @@ export const adminMenu: IMenuItem[] = [
     {
         key: 'users',
         path: '/admin/users',
-        name: 'Người dùng',
+        name: 'Thành viên',
         icon: <UserOutlined />,
     },
     {
@@ -63,6 +65,25 @@ export const adminMenu: IMenuItem[] = [
             },
         ]
     },
+    {
+        key: 'system-config',
+        path: '/admin/system-config',
+        name: 'Cấu hình hệ thống',
+        icon: <SettingOutlined />,
+        routes: [
+            {
+                key: 'system-settings',
+                path: '/admin/system-config/generations',
+                name: 'Quản lý thế hệ/khóa',
+            },
+            {
+                key: 'permissions',
+                path: '/admin/system-config/permissions',
+                name: 'Phân quyền',
+                icon: <SafetyOutlined />,
+            },
+        ]
+    },
 ];
 
 // ================= CUSTOMER MENU =================
@@ -86,6 +107,3 @@ export const customerMenu: IMenuItem[] = [
         icon: <SwapOutlined />,
     },
 ];
-
-// ================= RESEARCHER MENU =================
-export const researcherMenu: IMenuItem[] = [];

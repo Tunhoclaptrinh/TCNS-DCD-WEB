@@ -457,7 +457,7 @@ const SwapRequestsPage: React.FC = () => {
         title={editingId ? "Chỉnh sửa yêu cầu đổi ca" : "Tạo yêu cầu đổi ca (Admin)"}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
-        width={550}
+        width={700}
         centered
         destroyOnClose
         footer={

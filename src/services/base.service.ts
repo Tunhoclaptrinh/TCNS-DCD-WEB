@@ -408,9 +408,14 @@ class BaseService<T = any, CreateDTO = Partial<T>, UpdateDTO = Partial<T>> {
   /**
    * GET statistics summary
    */
-  async getStats(): Promise<BaseApiResponse<any>> {
+  async getStats(params: QueryParams = {}): Promise<BaseApiResponse<any>> {
     try {
-      const response = await apiClient.get<BaseApiResponse<any>>(`${this.endpoint}/stats/summary`);
+      const queryString = this.buildQueryString(params);
+      const url = queryString 
+        ? `${this.endpoint}/stats/summary?${queryString}`
+        : `${this.endpoint}/stats/summary`;
+      
+      const response = await apiClient.get<BaseApiResponse<any>>(url);
       
       // Normalization logic for Base compatibility
       let statsData = response.data || (response as any);

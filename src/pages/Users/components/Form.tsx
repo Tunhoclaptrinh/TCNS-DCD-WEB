@@ -1,3 +1,4 @@
+import React from 'react';
 import { Col, Form, Input, Row, Select, Switch, Divider, DatePicker, AutoComplete, Tooltip, Image } from 'antd';
 import type { FormInstance } from 'antd';
 import { UserOutlined, TeamOutlined, SettingOutlined, InfoCircleOutlined } from '@ant-design/icons';
@@ -12,6 +13,7 @@ interface UsersFormProps {
   form: FormInstance;
   onOk: () => void;
   onCancel: () => void;
+  generations: { id: number; name: string }[];
 }
 
 const DEPARTMENT_OPTIONS = ['Tài chính', 'Truyền thông', 'Nhân sự'];
@@ -22,7 +24,10 @@ const UsersForm: React.FC<UsersFormProps> = ({
   form,
   onOk,
   onCancel,
+  generations,
 }) => {
+
+  // No manual fetch needed anymore as it comes via props
 
   return (
     <FormModal
@@ -188,6 +193,18 @@ const UsersForm: React.FC<UsersFormProps> = ({
           <Col xs={24} md={8}>
             <Form.Item name="classId" label="Lớp">
               <Input placeholder="Nhập mã lớp" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="generationId" label="Khóa/Thế hệ">
+              <Select
+                placeholder="Chọn Khóa/Thế hệ"
+                options={generations.map(g => ({ label: g.name, value: g.id }))}
+                showSearch
+                filterOption={(inputValue, option) =>
+                  String(option?.label || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+                }
+              />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>

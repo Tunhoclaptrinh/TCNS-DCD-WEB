@@ -115,6 +115,14 @@ export const useCRUD = (service: any, options: any = {}) => {
             params.q = searchTerm;
         }
 
+        // Add expand/embed from options if present
+        if (options.expand) {
+            params._expand = options.expand;
+        }
+        if (options.embed) {
+            params._embed = options.embed;
+        }
+
         return params;
     }, [pagination.current, pagination.pageSize, filters, sorter, searchTerm]);
 

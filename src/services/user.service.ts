@@ -102,8 +102,8 @@ class UserService extends BaseService<User, UserCreateDTO, UserUpdateDTO> {
     }
   }
 
-  async getStats(): Promise<BaseApiResponse<UserStats>> {
-    return super.getStats();
+  async getStats(params: QueryParams = {}): Promise<BaseApiResponse<UserStats>> {
+    return super.getStats(params);
   }
 
   /**

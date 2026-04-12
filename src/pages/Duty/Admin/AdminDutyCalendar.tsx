@@ -38,7 +38,7 @@ const { Title, Text } = Typography;
 
 const AdminDutyCalendar: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
-  const isAdmin = true;
+  const isAdmin = user?.role === 'admin' || user?.department === 'Ban Nhân sự';
   const currentUserId = user?.id;
 
   const [loading, setLoading] = useState(false);

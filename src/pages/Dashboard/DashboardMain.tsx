@@ -258,7 +258,7 @@ const DashboardPage: React.FC = () => {
               </Col>
               <Col xs={24} md={12}>
                 <div style={{ marginBottom: 16 }}>
-                  <Title level={5}><UserOutlined /> Trải Nghiệm Người Dùng</Title>
+                  <Title level={5}><UserOutlined /> Trải Nghiệm Thành Viên</Title>
                   <Paragraph>
                     Tận dụng Ant Design mang lại giao diện nhất quán, tinh tế và hỗ trợ Responsive hoàn hảo.
                   </Paragraph>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Space, message, Typography, Select, Spin } from 'antd';
+import { Card, Button, Space, message, Typography, Select, Spin, Alert } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -53,6 +53,10 @@ const MemberCalendar: React.FC = () => {
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
 
+  const currentGeneration = dutySettings?.currentGeneration;
+  const userGeneration = (user as any)?.generation;
+  const isOldGeneration = currentGeneration && userGeneration && userGeneration !== currentGeneration;
+
   useEffect(() => {
     const timer = setInterval(() => setNow(dayjs()), 60000);
     return () => clearInterval(timer);
@@ -103,6 +107,8 @@ const MemberCalendar: React.FC = () => {
     fetchSchedule();
     fetchDutySettings();
   }, [currentWeek]);
+
+
   const handlePrevWeek = () => setCurrentWeek(prev => prev.subtract(1, 'week'));
   const handleNextWeek = () => setCurrentWeek(next => next.add(1, 'week'));
   const handleToday = () => setCurrentWeek(dayjs().startOf('isoWeek' as any));
@@ -161,6 +167,14 @@ const MemberCalendar: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực của tôi</Title>
         <Space>
+          {isOldGeneration && (
+            <Alert 
+              message={`Chế độ lưu trữ: Thế hệ ${userGeneration}`} 
+              type="warning" 
+              showIcon 
+              style={{ padding: '4px 12px', borderRadius: 8 }}
+            />
+          )}
           <Button icon={<QuestionCircleOutlined />}>Hướng dẫn</Button>
         </Space>
       </div>
@@ -243,6 +257,7 @@ const MemberCalendar: React.FC = () => {
         onSuccess={fetchSchedule}
         currentUserId={currentUserId ?? 0}
         allSlots={slots}
+        isOldGeneration={isOldGeneration}
       />
     </div>
   );

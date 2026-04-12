@@ -133,7 +133,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       type: "select" as const,
       options: [
         { label: "Chỉ người trong kíp", value: "shift" },
-        { label: "Toàn bộ CLB", value: "all" },
+        { label: "Toàn bộ Đội Cờ Đỏ", value: "all" },
       ],
     }] : []),
     {
@@ -186,7 +186,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
         clearFilters();
         setShowAll(false);
       }}
-      onRefresh={fetchAll}
+      onRefresh={() => fetchAll()}
       showActions={false}
       batchOperations={false}
       selectedRowKeys={value}

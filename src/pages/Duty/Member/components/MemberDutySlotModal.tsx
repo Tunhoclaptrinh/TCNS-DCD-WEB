@@ -42,6 +42,7 @@ interface MemberDutySlotModalProps {
   currentUserId: number;
   allSlots: DutySlot[];
   loading?: boolean;
+  isOldGeneration?: boolean;
 }
 
 /**
@@ -55,6 +56,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   currentUserId,
   allSlots,
   loading: externalLoading = false,
+  isOldGeneration = false,
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -267,10 +269,10 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                     fullWidth 
                     onClick={handleRegister} 
                     loading={loading || externalLoading}
-                    disabled={isFull || slot?.status === 'locked'}
+                    disabled={isFull || slot?.status === 'locked' || isOldGeneration}
                     icon={<CheckCircleOutlined />}
                   >
-                    {isFull ? 'Ca đã đầy' : 'Đăng ký trực ca này'}
+                    {isOldGeneration ? 'Chỉ xem' : (isFull ? 'Ca đã đầy' : 'Đăng ký trực ca này')}
                   </Button>
                 ) : (
                   <>
@@ -303,35 +305,39 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         </div>
                     </div>
 
-                    <Button 
-                      variant="outline" 
-                      fullWidth 
-                      danger 
-                      onClick={handleUnregister} 
-                      loading={loading || externalLoading}
-                      icon={<CloseCircleOutlined />}
-                    >
-                      Hủy đăng ký
-                    </Button>
+                    {!isOldGeneration && (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          fullWidth 
+                          danger 
+                          onClick={handleUnregister} 
+                          loading={loading || externalLoading}
+                          icon={<CloseCircleOutlined />}
+                        >
+                          Hủy đăng ký
+                        </Button>
 
-                    <Button 
-                      variant="outline" 
-                      fullWidth 
-                      onClick={() => setIsSwapModalVisible(true)}
-                      icon={<SwapOutlined />}
-                    >
-                      Đổi ca / Chuyển ca
-                    </Button>
+                        <Button 
+                          variant="outline" 
+                          fullWidth 
+                          onClick={() => setIsSwapModalVisible(true)}
+                          icon={<SwapOutlined />}
+                        >
+                          Đổi ca / Chuyển ca
+                        </Button>
 
-                    <Button 
-                      variant="ghost" 
-                      fullWidth 
-                      danger
-                      onClick={() => setIsLeaveModalVisible(true)}
-                      icon={<LogoutOutlined />}
-                    >
-                      Gửi đơn xin nghỉ
-                    </Button>
+                        <Button 
+                          variant="ghost" 
+                          fullWidth 
+                          danger
+                          onClick={() => setIsLeaveModalVisible(true)}
+                          icon={<LogoutOutlined />}
+                        >
+                          Gửi đơn xin nghỉ
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
 

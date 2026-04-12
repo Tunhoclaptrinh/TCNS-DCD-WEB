@@ -4,7 +4,6 @@ export enum UserRole {
   ADMIN = "admin",
   STAFF = "staff",
   CUSTOMER = "customer",
-  RESEARCHER = "researcher",
   CURATOR = "curator",
 }
 
@@ -43,6 +42,13 @@ export interface User extends BaseEntity, TimestampEntity {
   lastLogin?: string;
   role: UserRole;
   isActive: boolean;
+  generationId?: number;
+  generation?: {
+    id: number;
+    name: string;
+    description?: string;
+    status?: string;
+  };
   permissions?: string[];
 }
 
@@ -77,6 +83,7 @@ export interface UserUpdateDTO {
   isActive?: boolean;
   password?: string;
   newPassword?: string;
+  generationId?: number;
 }
 
 export interface UserCreateDTO {
@@ -98,6 +105,7 @@ export interface UserCreateDTO {
   bio?: string;
   avatar?: string;
   isActive?: boolean;
+  generationId?: number;
 }
 
 export interface UserActivity {
