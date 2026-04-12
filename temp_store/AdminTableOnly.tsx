@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Divider, Alert } from 'antd';
+import { Card, Button, Modal, Space, message, Typography, Tooltip, Avatar, Spin, Dropdown, Menu, Alert } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -26,13 +26,10 @@ dayjs.extend(isSameOrBefore);
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import '../DutyCalendar.less';
 
-// Child Components
 import QuickCreateModal from './components/QuickCreateModal';
 import AdminDutySlotModal from './components/AdminDutySlotModal';
 import SetupWeekModal from './components/SetupWeekModal';
 import AssignTemplateModal from './components/AssignTemplateModal';
-import AdminDutyTableView from './components/AdminDutyTableView';
-import AdminDutyTimelineView from './components/AdminDutyTimelineView';
 
 const { Title, Text } = Typography;
 
@@ -63,9 +60,8 @@ const AdminDutyCalendar: React.FC = () => {
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
-  const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
-  const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(false);
+  const [dutySettings, setDutySettings] = useState<any>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(dayjs()), 60000);
@@ -74,7 +70,6 @@ const AdminDutyCalendar: React.FC = () => {
 
   const fetchTemplates = async () => {
     try {
-      // Fetch ALL shifts across ALL groups for background boundaries
       const res = await dutyService.getShiftTemplates(null);
       if (res.success) setTemplates(res.data || []);
 
@@ -87,8 +82,14 @@ const AdminDutyCalendar: React.FC = () => {
     }
   };
 
-
-
+  const fetchDutySettings = async () => {
+    try {
+      const res = await dutyService.getSettings();
+      if (res.success && res.data) setDutySettings(res.data);
+    } catch (err) {
+      console.error('Lỗi tải cấu hình');
+    }
+  };
 
   const fetchSchedule = async () => {
     setLoading(true);
@@ -100,7 +101,6 @@ const AdminDutyCalendar: React.FC = () => {
         setDutyDays(res.data.days || []);
         setAssignments(res.data.assignments || []);
         
-        // Merge "Snapshot" templates into the local pool to ensure historical rendering
         if (res.data?.templates) {
           setTemplates(prev => {
             const existingIds = new Set(prev.map(t => String(t.id)));
@@ -122,55 +122,12 @@ const AdminDutyCalendar: React.FC = () => {
 
   useEffect(() => {
     fetchSchedule();
+    fetchDutySettings();
   }, [currentWeek]);
-
-
-  const getEffectiveTemplatesForDay = (day: dayjs.Dayjs) => {
-    const targetStr = day.format('YYYY-MM-DD');
-    const dIdx = (day.day() + 6) % 7; // 0=Mon, ..., 6=Sun
-    const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === targetStr);
-    
-    // Determine the "Authorized" template group for this day (Assigned or Global Default)
-    const assignment = assignments.find(a => {
-      const startStr = dayjs(a.startDate).format('YYYY-MM-DD');
-      const endStr = dayjs(a.endDate).format('YYYY-MM-DD');
-      return targetStr >= startStr && targetStr <= endStr;
-    });
-    const defaultGroup = templateGroups.find(g => g.isDefault);
-    const activeGroupId = assignment?.templateId || defaultGroup?.id;
-
-    let candidates: any[] = [];
-
-    // 1. Check for manual/stamped day record (The "Stencil" source of truth)
-    if (dayData) {
-      // Map IDs back to objects (IDs now point to persistent clones or originals)
-      const templateIds = (dayData.shiftTemplateIds || []);
-      candidates = templateIds.map((id: number) => {
-        const t = templates.find(temp => String(temp.id) === String(id));
-        return t ? { ...t, isStamped: true } : null;
-      }).filter(Boolean);
-    } else if (showDefaultBoundaries) {
-      // 2. Fallback to range-based assignment or default (Only if toggle is ON)
-      if (assignment) {
-        // Option A: Assigned group for this range (Exclude ad-hoc instances)
-        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(assignment.templateId)).map(t => ({ ...t, isStamped: false }));
-      } else if (defaultGroup) {
-        // Option B: Global default group (Exclude ad-hoc instances)
-        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(defaultGroup.id)).map(t => ({ ...t, isStamped: false }));
-      }
-    }
-
-    // Filter candidates by their specific daysOfWeek setting
-    const filtered = candidates.filter(shift => (shift.daysOfWeek || [0, 1, 2, 3, 4, 5, 6]).includes(dIdx));
-    
-    return { shifts: filtered, activeGroupId };
-  };
 
   const handlePrevWeek = () => setCurrentWeek(prev => prev.subtract(1, 'week'));
   const handleNextWeek = () => setCurrentWeek(next => next.add(1, 'week'));
   const handleToday = () => setCurrentWeek(dayjs().startOf('isoWeek' as any));
-
-
 
   const handleStampShift = async (day: dayjs.Dayjs, shiftId: number) => {
     try {
@@ -181,18 +138,6 @@ const AdminDutyCalendar: React.FC = () => {
       }
     } catch (err) {
       message.error('Lỗi khi áp dụng ca');
-    }
-  };
-
-  const handleRemoveShiftFromDay = async (date: string, shiftId: number) => {
-    try {
-      const res = await dutyService.removeShiftFromDay(date, shiftId);
-      if (res.success) {
-        message.success('Đã xóa khung ca');
-        fetchSchedule();
-      }
-    } catch (err) {
-      message.error('Lỗi khi xóa khung ca');
     }
   };
 
@@ -218,6 +163,7 @@ const AdminDutyCalendar: React.FC = () => {
         try {
           const res = await dutyService.deleteWeeklySlots(currentWeek.format('YYYY-MM-DD'));
           if (res.success) {
+            message.success('Đã xóa trắng tuần');
             fetchSchedule();
           }
         } catch (err) {
@@ -227,43 +173,51 @@ const AdminDutyCalendar: React.FC = () => {
     });
   };
 
-  const slotsByDay = useMemo(() =>
-    slots.reduce((acc: Record<string, DutySlot[]>, slot) => {
-      const date = dayjs(slot.shiftDate).format('YYYY-MM-DD');
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(slot);
-      return acc;
-    }, {}),
-    [slots]
-  );
+  const flatRows = useMemo(() => {
+    const signatureMap = new Map();
 
-  const relevantTemplates = useMemo(() => {
-    const activeGroupIds = new Set();
-    const defaultGroup = templateGroups.find(g => g.isDefault);
-    if (defaultGroup) activeGroupIds.add(String(defaultGroup.id));
-
-    // Get group IDs from assignments that overlap with the current week
-    const weekStart = currentWeek.startOf('isoWeek' as any);
-    const weekEnd = currentWeek.endOf('isoWeek' as any);
-    
-    assignments.forEach(a => {
-      const start = dayjs(a.startDate);
-      const end = dayjs(a.endDate);
-      if (start.isSameOrBefore(weekEnd) && end.isSameOrAfter(weekStart)) {
-        activeGroupIds.add(String(a.templateId));
+    templates.forEach(shift => {
+      if (shift.kips && shift.kips.length > 0) {
+        shift.kips.forEach((kip: any) => {
+          const timeSig = `${kip.startTime || shift.startTime}-${kip.endTime || shift.endTime}`;
+          const sig = `${shift.name}|${kip.name}|${timeSig}`;
+          
+          if (!signatureMap.has(sig)) {
+            signatureMap.set(sig, {
+              key: sig,
+              shiftId: shift.templateId || shift.id,
+              kipId: kip.id,
+              shift: shift,
+              kip: kip,
+              name: shift.name,
+              shortName: kip.name,
+              time: `${kip.startTime || shift.startTime} - ${kip.endTime || shift.endTime}`,
+              note: kip.description === 'INSTANCE' || shift.description === 'INSTANCE' ? '' : (kip.description || '')
+            });
+          }
+        });
+      } else {
+        const timeSig = `${shift.startTime}-${shift.endTime}`;
+        const sig = `${shift.name}|Toàn ca|${timeSig}`;
+        
+        if (!signatureMap.has(sig)) {
+          signatureMap.set(sig, {
+            key: sig,
+            shiftId: shift.templateId || shift.id,
+            kipId: null,
+            shift: shift,
+            kip: null,
+            name: shift.name,
+            shortName: 'Toàn ca',
+            time: `${shift.startTime} - ${shift.endTime}`,
+            note: shift.description === 'INSTANCE' ? '' : (shift.description || '')
+          });
+        }
       }
     });
 
-    // Get shift IDs from existing slots and manual stamps in the current week
-    const inUseShiftIds = new Set(slots.map(s => String(s.shiftId)));
-    const stampedShiftIds = new Set(dutyDays.flatMap(d => (d.shiftTemplateIds || []).map(String)));
-
-    return templates.filter(t => 
-      activeGroupIds.has(String(t.templateId)) || 
-      inUseShiftIds.has(String(t.id)) ||
-      stampedShiftIds.has(String(t.id))
-    );
-  }, [templates, assignments, templateGroups, slots, dutyDays, currentWeek]);
+    return Array.from(signatureMap.values());
+  }, [templates]);
 
   const adminMenu = (
     <Menu onClick={({ key }) => {
@@ -307,31 +261,6 @@ const AdminDutyCalendar: React.FC = () => {
         }
         extra={
           <Space size="middle">
-            <div className="view-controls" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '4px 12px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
-              <Tooltip title="Chế độ hiển thị">
-                <Select
-                  value={viewMode}
-                  onChange={setViewMode}
-                  bordered={false}
-                  options={[
-                    { label: 'Lịch', value: 'calendar' },
-                    { label: 'Bảng', value: 'table' }
-                  ]}
-                  style={{ width: 80 }}
-                  className="view-mode-select"
-                />
-              </Tooltip>
-              {viewMode === 'calendar' && (
-                <>
-                  <Divider type="vertical" style={{ margin: 0 }} />
-                  <Space size={4}>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Hiện khung</span>
-                    <Switch size="small" checked={showDefaultBoundaries} onChange={setShowDefaultBoundaries} />
-                  </Space>
-                </>
-              )}
-            </div>
-
             <Space size={8}>
               <Tooltip title="Tải lại dữ liệu">
                 <Button icon={<SyncOutlined />} onClick={fetchSchedule} loading={loading} />
@@ -351,35 +280,114 @@ const AdminDutyCalendar: React.FC = () => {
         bodyStyle={{ padding: 0 }}
       >
         <Spin spinning={loading}>
-          {viewMode === 'table' ? (
-            <AdminDutyTableView
-              loading={loading}
-              templates={relevantTemplates}
-              weekDays={weekDays}
-              dutyDays={dutyDays}
-              slots={slots}
-              isAdmin={isAdmin}
-              openSlotDetail={openSlotDetail}
-              handleStampShift={handleStampShift}
-              openQuickCreate={openQuickCreate}
-            />
-          ) : (
-            <AdminDutyTimelineView 
-              now={now}
-              currentWeek={currentWeek}
-              weekDays={weekDays}
-              dutyDays={dutyDays}
-              slotsByDay={slotsByDay}
-              templates={relevantTemplates}
-              getEffectiveTemplatesForDay={getEffectiveTemplatesForDay}
-              showDefaultBoundaries={showDefaultBoundaries}
-              isAdmin={isAdmin}
-              currentUserId={currentUserId}
-              openSlotDetail={openSlotDetail}
-              openQuickCreate={openQuickCreate}
-              handleRemoveShiftFromDay={handleRemoveShiftFromDay}
-            />
-          )}
+          <div className="matrix-view-container" style={{ overflowX: 'auto' }}>
+            <table className="matrix-table excel-style" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+              <thead>
+                <tr>
+                  <th className="sticky-col header-cell" style={{ minWidth: 160, background: '#f8d7da', border: '1px solid #000', padding: 8 }}>Ca / Kíp trực</th>
+                  {weekDays.map((d, idx) => {
+                    const isToday = dayjs().startOf('day').isSame(d.startOf('day'));
+                    return (
+                      <th key={idx} className={`header-cell ${isToday ? 'is-today' : ''}`} style={{ minWidth: 120, background: '#f8d7da', border: '1px solid #000', padding: 8 }}>
+                        <div style={{ fontWeight: isToday ? 'bold' : 'normal', color: isToday ? '#e02424' : '#000' }}>{d.format('dddd')}</div>
+                        <div style={{ fontSize: '12px', fontWeight: 'normal' }}>{d.format('DD/MM')}</div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {flatRows.map((row, rIdx) => {
+                  return (
+                    <tr key={row.key} style={{ background: rIdx % 2 === 0 ? '#fdf2f8' : '#e0f2fe' }}>
+                      <td className="sticky-col row-header" style={{ border: '1px solid #000', padding: '12px 8px', verticalAlign: 'middle', fontWeight: 600 }}>
+                        <div style={{ fontSize: '14px' }}>{row.name}</div>
+                        <div style={{ fontSize: '12px', color: '#1f2937' }}>{row.shortName} ({row.time})</div>
+                        {row.note && <div style={{ fontSize: '11px', color: '#4b5563', fontStyle: 'italic', marginTop: 4 }}>{row.note}</div>}
+                      </td>
+                      {weekDays.map((day, dIdx) => {
+                        const dateStr = day.format('YYYY-MM-DD');
+                        const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === dateStr);
+                        const isStamped = (dayData?.shiftTemplateIds || []).map(String).includes(String(row.shiftId));
+                        
+                        const slot = slots.find(s => {
+                           if (dayjs(s.shiftDate).format('YYYY-MM-DD') !== dateStr) return false;
+                           const targetShift = templates.find(t => String(t.id) === String(s.shiftId));
+                           const targetKip = targetShift?.kips?.find((k: any) => String(k.id) === String(s.kipId));
+                           
+                           const sName = targetShift?.name || s.shift?.name || '';
+                           const kName = targetKip?.name || s.kip?.name || 'Toàn ca';
+                           const kStart = targetKip?.startTime || targetShift?.startTime || s.kip?.startTime || s.shift?.startTime || '';
+                           const kEnd = targetKip?.endTime || targetShift?.endTime || s.kip?.endTime || s.shift?.endTime || '';
+                           
+                           const sig = `${sName}|${kName}|${kStart}-${kEnd}`;
+                           return sig === row.key;
+                        });
+                        
+                        const isPast = day.isBefore(dayjs().startOf('day')) || (day.isSame(dayjs(), 'day') && dayjs(`${dateStr} ${row.time.split(' - ')[0]}`).isBefore(dayjs()));
+
+                        return (
+                          <td
+                            key={dIdx}
+                            className={`matrix-cell excel-cell ${isPast ? 'is-past' : ''} ${isStamped ? 'shift-stamped' : ''}`}
+                            style={{ 
+                              border: '1px solid #000', 
+                              padding: '2px',
+                              verticalAlign: 'top',
+                              cursor: 'pointer',
+                              background: isPast ? 'rgba(0,0,0,0.02)' : (isStamped ? 'transparent' : 'rgba(0,0,0,0.05)'),
+                              opacity: isPast ? 0.8 : 1
+                            }}
+                            onClick={() => {
+                              if (slot) openSlotDetail(slot);
+                              else if (!isPast) {
+                                if (!isStamped) {
+                                  Modal.confirm({
+                                    title: 'Áp dụng Ca trực?',
+                                    content: `Chưa có phiên bản Ca "${row.name}" cho ngày ${day.format('DD/MM')}. Bạn có muốn áp dụng Ca này xuống ngày trước khi khởi tạo Kíp không?`,
+                                    onOk: () => handleStampShift(day, row.shiftId)
+                                  });
+                                } else {
+                                  openQuickCreate(day, 0, row.shift, row.kip);
+                                }
+                              }
+                            }}
+                          >
+                             {slot ? (
+                               <div className="members-stack" style={{ display: 'flex', flexDirection: 'column' }}>
+                                 {slot.assignedUsers && slot.assignedUsers.length > 0 ? (
+                                   slot.assignedUsers.map((u: any, uIdx: number) => (
+                                     <div 
+                                      key={u.id} 
+                                      className="stacked-user"
+                                      style={{ 
+                                        padding: '4px', 
+                                        borderBottom: uIdx < slot.assignedUsers.length - 1 ? '1px dashed #cbd5e1' : 'none',
+                                        fontSize: '13px',
+                                        color: '#1e293b'
+                                      }}
+                                     >
+                                        {u.name}
+                                     </div>
+                                   ))
+                                 ) : (
+                                   <div style={{ padding: '8px', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>[Kíp rỗng]</div>
+                                 )}
+                               </div>
+                             ) : (
+                               !isPast && isAdmin && (
+                                 <div className="add-kip-hint" style={{ padding: '8px', fontSize: '12px', color: '#cbd5e1', textAlign: 'center' }}>+ Tạo mới</div>
+                               )
+                             )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </Spin>
       </Card>
 
@@ -398,6 +406,7 @@ const AdminDutyCalendar: React.FC = () => {
         onCancel={() => setIsSlotDetailOpen(false)}
         onSuccess={fetchSchedule}
         slot={selectedSlot}
+        allSlots={slots}
       />
 
       <SetupWeekModal
@@ -437,13 +446,10 @@ const AdminDutyCalendar: React.FC = () => {
             <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>Tương tác cơ bản:</Text>
             <ul style={{ paddingLeft: 20, color: '#475569' }}>
                <li style={{ marginBottom: 8 }}>
-                 <Text strong>Click vào vùng trống trong Ca:</Text> Khởi tạo nhanh một kíp trực mới dựa trên khung giờ của Ca mẫu đó.
+                 <Text strong>Click vào ô lưới trống:</Text> Tự động tạo Kíp nhanh dựa trên dòng đó.
                </li>
                <li style={{ marginBottom: 8 }}>
-                 <Text strong>Click vào Kíp trực (màu):</Text> Xem chi tiết nhân sự, Đăng ký trực hoặc Hủy đăng ký (nếu chưa bị khóa).
-               </li>
-               <li style={{ marginBottom: 8 }}>
-                 <Text strong>Nút "Hiện khung":</Text> Hiển thị các Ca và Kíp mẫu (màu xám) chưa được áp dụng vào ngày đó để bạn dễ dàng "dập khuôn".
+                 <Text strong>Click vào ô đã có người:</Text> Mở bảng xem và tùy chỉnh thông tin nhân sự.
                </li>
             </ul>
           </div>
@@ -452,24 +458,13 @@ const AdminDutyCalendar: React.FC = () => {
             <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 8 }}>Dành cho Quản trị viên:</Text>
             <ul style={{ paddingLeft: 20, color: '#475569' }}>
                <li style={{ marginBottom: 8 }}>
-                 <Text strong>Khởi tạo Tuần:</Text> Sao chép toàn bộ bản mẫu của một Nhóm sang tuần được chọn.
+                 <Text strong>Khởi tạo Tuần:</Text> Sao chép toàn bộ bản mẫu của một Nhóm sang tuần khởi động hiện tại.
                </li>
                <li style={{ marginBottom: 8 }}>
-                 <Text strong>Gắn Bản mẫu:</Text> Gắn một Nhóm kíp trực cố định vào tuần này (Snapshot).
-               </li>
-               <li style={{ marginBottom: 8 }}>
-                 <Text strong>Xóa trắng tuần:</Text> Xóa toàn bộ dữ liệu trực của tuần hiện tại để thiết lập lại từ đầu.
+                 <Text strong>Xóa trắng tuần:</Text> Dọn sạch toàn bộ ca để khôi phục lại từ con số không.
                </li>
             </ul>
           </div>
-
-          <Alert
-            message="Lưu ý về Dữ liệu"
-            description="Lịch trực tuần hoạt động theo cơ chế Độc lập. Mọi thay đổi trong phần 'Thiết lập' sẽ không ảnh hưởng đến các tuần đã được khởi tạo trước đó."
-            type="info"
-            showIcon
-            style={{ marginTop: 16, borderRadius: 12 }}
-          />
         </div>
       </Modal>
     </div>
