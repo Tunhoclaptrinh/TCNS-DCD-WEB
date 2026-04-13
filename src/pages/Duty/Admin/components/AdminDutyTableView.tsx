@@ -17,6 +17,7 @@ interface AdminDutyTableViewProps {
   collapsedGroups: string[];
   setCollapsedGroups: (groups: string[]) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
+  showDefaultBoundaries: boolean;
 }
 
 const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
@@ -30,7 +31,8 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
   openQuickCreate,
   collapsedGroups,
   setCollapsedGroups,
-  eventFocusMode
+  eventFocusMode,
+  showDefaultBoundaries
 }) => {
 
   const groupedShifts = useMemo(() => {
@@ -111,42 +113,22 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
         <tbody>
           {groupedShifts
             .filter(group => {
-              const isSpecial = group.name && group.name.toLowerCase().includes('sự kiện');
-              
-              if (eventFocusMode === 'off') {
-                return !isSpecial; // Normal: Hide special events
-              }
-              
-              if (isSpecial) return true; // Focus modes: ALWAYS show special events
-              
-              if (eventFocusMode === 'all') return false; // Absolute focus: Hide ALL regular shifts
-              
-              // Overlap focus: Hide regular shifts that conflict with the special event
-              const specialEvents = groupedShifts.filter(g => g.name && g.name.toLowerCase().includes('sự kiện'));
-              const hasOverlap = specialEvents.some(event => {
-                const sStart = group.originalShift.startTime;
-                const sEnd = group.originalShift.endTime;
-                const eStart = event.originalShift.startTime;
-                const eEnd = event.originalShift.endTime;
-                if (!sStart || !sEnd || !eStart || !eEnd) return false;
-                return (sStart < eEnd && sEnd > eStart);
-              });
-              return !hasOverlap;
+              const isSpecial = group.originalShift.isSpecialEvent;
+              if (eventFocusMode === 'off') return !isSpecial;
+              if (isSpecial) return true;
+              if (eventFocusMode === 'all') return false;
+              return true;
             })
-            .map((group, sIdx) => (
-            <React.Fragment key={sIdx}>
-              {/* Shift Header Row */}
-               {(() => {
-                const isSpecialEvent = group.name && group.name.toLowerCase().includes('sự kiện');
-                const gid = String(group.id);
-                const isCollapsed = collapsedGroups.includes(gid);
-                
+            .map((group: any) => (
+            <React.Fragment key={group.id}>
+              {/* Shift Group Header */}
+              {(() => {
+                const isSpecialEvent = group.originalShift.isSpecialEvent;
+                const isCollapsed = collapsedGroups.includes(String(group.id));
                 const toggleCollapse = () => {
-                  if (isCollapsed) {
-                    setCollapsedGroups(collapsedGroups.filter(id => id !== gid));
-                  } else {
-                    setCollapsedGroups([...collapsedGroups, gid]);
-                  }
+                  const gid = String(group.id);
+                  if (isCollapsed) setCollapsedGroups(collapsedGroups.filter(g => g !== gid));
+                  else setCollapsedGroups([...collapsedGroups, gid]);
                 };
 
                 return (
@@ -170,8 +152,10 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                   </tr>
                 );
               })()}
+              
               {/* Kip Rows */}
               {!collapsedGroups.includes(String(group.id)) && group.kips.map((row: any, rIdx: number) => {
+                const isSpecialRow = group.originalShift.isSpecialEvent;
                 return (
                   <tr key={row.key} style={{ background: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                     <td className="sticky-col row-header" style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'middle', fontWeight: 600, textAlign: 'left' }}>
@@ -188,12 +172,10 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                           if (dayjs(s.shiftDate).format('YYYY-MM-DD') !== dateStr) return false;
                           const targetShift = templates.find(t => String(t.id) === String(s.shiftId));
                           const targetKip = targetShift?.kips?.find((k: any) => String(k.id) === String(s.kipId));
-                          
                           const sName = targetShift?.name || s.shiftLabel || '';
                           const kName = targetKip?.name || s.kip?.name || 'Toàn ca';
                           const kStart = targetKip?.startTime || targetShift?.startTime || s.kip?.startTime || s.startTime || '';
                           const kEnd = targetKip?.endTime || targetShift?.endTime || s.kip?.endTime || s.endTime || '';
-                          
                           const sig = `${sName}|${kName}|${kStart}-${kEnd}`;
                           const rowShiftSig = `${group.name}|${row.shortName}|${row.time.replace(' - ', '-')}`;
                           return sig === rowShiftSig;
@@ -207,11 +189,12 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                           className={`matrix-cell excel-cell ${isPast ? 'is-past' : ''} ${isStamped ? 'shift-stamped' : ''}`}
                           style={{ 
                             border: '1px solid #000', 
-                            padding: '2px',
+                            padding: '0px',
                             verticalAlign: 'top',
                             cursor: 'pointer',
                             background: isPast ? 'rgba(0,0,0,0.02)' : (isStamped ? 'transparent' : 'rgba(0,0,0,0.05)'),
-                            opacity: isPast ? 0.8 : 1
+                            opacity: isPast ? 0.8 : 1,
+                            height: '1px' // Hack for child 100% height
                           }}
                           onClick={() => {
                             if (slot) openSlotDetail(slot);
@@ -229,29 +212,102 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                           }}
                         >
                             {slot ? (
-                              <div className="members-stack" style={{ display: 'flex', flexDirection: 'column' }}>
-                                {slot.assignedUsers && slot.assignedUsers.length > 0 ? (
-                                  slot.assignedUsers.map((u: any, uIdx: number) => (
-                                    <div 
-                                    key={u.id} 
-                                    className="stacked-user"
-                                    style={{ 
-                                      padding: '4px', 
-                                      borderBottom: slot.assignedUsers && uIdx < slot.assignedUsers.length - 1 ? '1px dashed #cbd5e1' : 'none',
-                                      fontSize: '13px',
-                                      color: '#1e293b'
-                                    }}
-                                    >
-                                      {u.name}
+                              <div className={`slot-container ${isSpecialRow ? 'special-slot' : 'normal-slot'}`} style={{ 
+                                padding: '0px',
+                                minHeight: '60px',
+                                background: isPast ? '#e2e8f0' : (isSpecialRow ? 'rgba(124, 58, 237, 0.15)' : 'rgba(14, 165, 233, 0.15)'),
+                                borderRadius: 0,
+                                border: 'none',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                height: '100%',
+                                boxSizing: 'border-box'
+                              }}>
+                                {(() => {
+                                  const currentUsers = slot.assignedUsers || [];
+                                  const max = slot.capacity || row.kip?.capacity || 1;
+                                  
+                                  return (
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                      {Array.from({ length: max }).map((_, idx) => {
+                                        const user = currentUsers[idx];
+                                        const isFirst = idx === 0;
+                                        return (
+                                          <div 
+                                            key={idx} 
+                                            className="stacked-user"
+                                            style={{ 
+                                              padding: '4px 8px', 
+                                              borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
+                                              fontSize: '13px',
+                                              color: user ? (isFirst ? '#dc2626' : '#1e293b') : 'rgba(0,0,0,0.25)',
+                                              textAlign: 'center',
+                                              fontWeight: isFirst ? 700 : 500
+                                            }}
+                                          >
+                                            {user ? user.name : '---'}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
-                                  ))
-                                ) : (
-                                  <div style={{ padding: '8px', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>[Trống]</div>
-                                )}
+                                  );
+                                })()}
+                                
+                                {/* Slot Capacity Indicator */}
+                                {(() => {
+                                  const current = slot.assignedUsers?.length || 0;
+                                  const max = slot.capacity || row.kip?.capacity || 1;
+                                  const isFull = current >= max;
+                                  return (
+                                    <div style={{ 
+                                      position: 'absolute', 
+                                      bottom: 2, 
+                                      right: 2, 
+                                      padding: '1px 4px',
+                                      background: isFull ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)',
+                                      borderRadius: 4,
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      color: isFull ? '#059669' : '#64748b',
+                                      border: isFull ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(0,0,0,0.05)',
+                                      pointerEvents: 'none'
+                                    }}>
+                                      {isFull ? 'FULL' : `${current}/${max}`}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             ) : (
-                              !isPast && isAdmin && (
-                                <div className="add-kip-hint" style={{ padding: '12px 8px', fontSize: '11px', color: '#cbd5e1', textAlign: 'center' }}>+</div>
+                              showDefaultBoundaries && !isPast && isAdmin && (
+                                <div className="phantom-slot" style={{ 
+                                  height: '100%', 
+                                  minHeight: '48px', 
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  justifyContent: 'center',
+                                  background: 'rgba(0,0,0,0.02)',
+                                  border: '1px dashed rgba(0,0,0,0.1)'
+                                }}>
+                                  {(() => {
+                                    const max = row.kip?.capacity || row.shift?.capacity || 1;
+                                    return Array.from({ length: max }).map((_, idx) => (
+                                      <div 
+                                        key={idx} 
+                                        style={{ 
+                                          padding: '4px 8px', 
+                                          borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.05)' : 'none',
+                                          fontSize: '13px',
+                                          color: 'rgba(0,0,0,0.15)',
+                                          textAlign: 'center',
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        ---
+                                      </div>
+                                    ));
+                                  })()}
+                                </div>
                               )
                             )}
                         </td>

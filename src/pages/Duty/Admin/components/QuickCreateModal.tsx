@@ -141,6 +141,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
             endTime: end?.format('HH:mm'),
             order: 0,
             description: 'INSTANCE',
+            isSpecialEvent: values.isSpecialEvent,
             daysOfWeek: [((date?.day() || 0) + 6) % 7]
           });
           if (sRes.success && sRes.data) {
@@ -169,7 +170,8 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
           order: localShiftData?.order || values.order,
           endPeriod: isEditShiftOpen ? null : values.endPeriod,
           capacity: values.capacity,
-          note: values.note
+          note: values.note,
+          isSpecialEvent: values.isSpecialEvent
         };
 
         const res = await dutyService.createSlot(payload);
@@ -399,6 +401,11 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                         <Form.Item name="timeRange" label="Khung giờ (Start - End)" rules={[{ required: true, message: 'Chọn giờ' }]}>
                           <TimePicker.RangePicker format="HH:mm" style={{ width: '100% ' }} />
                         </Form.Item>
+                        <Form.Item name="isSpecialEvent" valuePropName="checked" noStyle>
+                          <Checkbox style={{ color: '#b91c1c', fontWeight: 600 }}>
+                            Đánh dấu là Sự kiện lễ hội
+                          </Checkbox>
+                        </Form.Item>
                       </div>
                     )}
                   </Form.Item>
@@ -461,6 +468,12 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                 <div style={{ padding: '0 4px' }}>
                   <Form.Item name="shiftLabel" label="Tiêu đề hiển thị (Kíp lẻ trên lịch)" rules={[{ required: true }]}>
                     <Input placeholder="VD: Ca Sáng - Kíp 1" prefix={<EditOutlined />} />
+                  </Form.Item>
+
+                  <Form.Item name="isSpecialEvent" valuePropName="checked" noStyle>
+                    <Checkbox style={{ marginBottom: 16, color: '#b91c1c', fontWeight: 600 }}>
+                      Đây là Sự kiện lễ hội
+                    </Checkbox>
                   </Form.Item>
  
                   <Row gutter={[24, 16]}>

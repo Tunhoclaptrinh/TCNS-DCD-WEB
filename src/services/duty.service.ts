@@ -31,6 +31,7 @@ export interface DutyShift {
   order: number;
   description?: string;
   daysOfWeek?: number[];
+  isSpecialEvent: boolean;
   kips: DutyKip[];
 }
 
@@ -52,6 +53,7 @@ export interface DutySlot {
   endPeriod?: number;
   capacity?: number;
   attendedUserIds?: number[];
+  isSpecialEvent?: boolean;
   dayId?: number;
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented } from 'antd';
+import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider, Switch } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -151,7 +151,7 @@ const MemberCalendar: React.FC = () => {
     if (eventFocusMode !== 'off') {
        const specialEventShifts = templates.filter(t => 
          t.description !== 'INSTANCE' && 
-         t.name?.toLowerCase().includes('sự kiện') &&
+         t.isSpecialEvent &&
          !candidates.find(c => String(c.id) === String(t.id))
        ).map(t => ({ ...t, isSpecial: true, isStamped: false }));
        candidates = [...candidates, ...specialEventShifts];
@@ -163,13 +163,13 @@ const MemberCalendar: React.FC = () => {
     // --- SPECIAL EVENT FOCUS LOGIC ---
     if (eventFocusMode === 'all') {
       // Mode: Absolute Focus - ONLY show special events
-      filtered = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+      filtered = filtered.filter(s => s.isSpecialEvent);
     } else if (eventFocusMode === 'overlap') {
       // Mode: Overlap Focus - Only show events + non-conflicting regular shifts
-      const specialEvents = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+      const specialEvents = filtered.filter(s => s.isSpecialEvent);
       if (specialEvents.length > 0) {
         filtered = filtered.filter(s => {
-          const isSpecial = s.name?.toLowerCase().includes('sự kiện');
+          const isSpecial = s.isSpecialEvent;
           if (isSpecial) return true;
           
           return !specialEvents.some(event => {
@@ -237,45 +237,44 @@ const MemberCalendar: React.FC = () => {
         }
         extra={
           <Space size="middle">
-            <div className="view-controls" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '4px 12px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
-              <Space size={4}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Chế độ xem</span>
-                <Segmented 
-                  size="small"
-                  options={[
-                    { label: 'Bình thường', value: 'off' },
-                    { label: 'Sự kiện + Ca', value: 'overlap' },
-                    { label: 'Chỉ Sự kiện', value: 'all' }
-                  ]}
-                  value={eventFocusMode}
-                  onChange={(v: any) => setEventFocusMode(v)}
-                />
-              </Space>
-              <Space size={4}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Hiện mẫu</span>
-                <Select
-                  value={showDefaultBoundaries}
-                  onChange={setShowDefaultBoundaries}
-                  bordered={false}
-                  options={[
-                    { label: 'Bật', value: true },
-                    { label: 'Tắt', value: false }
-                  ]}
-                  style={{ width: 60 }}
-                />
-              </Space>
+          <Space size="middle" align="center">
+            <Tooltip title="Chế độ hiển thị">
               <Select
                 value={viewMode}
                 onChange={setViewMode}
                 bordered={false}
+                size="small"
                 options={[
                   { label: 'Lịch', value: 'calendar' },
                   { label: 'Bảng', value: 'table' }
                 ]}
-                style={{ width: 80 }}
+                style={{ width: 80, fontWeight: 600 }}
               />
-            </div>
-            <Button icon={<SyncOutlined />} onClick={fetchSchedule} loading={loading} />
+            </Tooltip>
+
+            <Divider type="vertical" style={{ height: 16, borderColor: '#e2e8f0' }} />
+
+            <Space size={4}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Chế độ xem</span>
+              <Segmented 
+                size="small"
+                options={[
+                  { label: 'Bình thường', value: 'off' },
+                  { label: viewMode === 'table' ? 'Tất cả' : 'Sự kiện + Ca', value: 'overlap' },
+                  { label: 'Chỉ Sự kiện', value: 'all' }
+                ]}
+                value={eventFocusMode}
+                onChange={(v: any) => setEventFocusMode(v)}
+              />
+            </Space>
+            
+            </Space>
+            <Button 
+              icon={<SyncOutlined spin={loading} />} 
+              onClick={fetchSchedule} 
+              loading={loading} 
+              disabled={loading}
+            />
           </Space>
         }
         bodyStyle={{ padding: 0 }}
@@ -291,6 +290,7 @@ const MemberCalendar: React.FC = () => {
               collapsedGroups={collapsedGroups}
               setCollapsedGroups={setCollapsedGroups}
               eventFocusMode={eventFocusMode}
+              showDefaultBoundaries={showDefaultBoundaries}
             />
           ) : (
             <MemberDutyTimelineView

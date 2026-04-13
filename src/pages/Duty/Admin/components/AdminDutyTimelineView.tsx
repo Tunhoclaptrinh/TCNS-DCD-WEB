@@ -81,7 +81,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                   <Space size={4}>
                     <span className="day-name">{d.locale('vi').format('ddd')},</span>
                     <span className="day-date">{d.format('DD')}</span>
-                    {dayData?.note && (
+                    {dayData?.note && dayData.note !== 'INSTANCE' && (
                       <Tooltip title={dayData.note}>
                         <InfoCircleOutlined style={{ marginLeft: 4, color: '#3b82f6', fontSize: 12 }} />
                       </Tooltip>
@@ -130,25 +130,16 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
             let filteredDaySlots = daySlots;
             if (eventFocusMode === 'all') {
               // Mode: Absolute Focus - ONLY show special events
-              filteredDaySlots = daySlots.filter(s => {
-                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
-                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
-                return isSpecial;
-              });
+              filteredDaySlots = daySlots.filter(s => !!s.isSpecialEvent);
             } else if (eventFocusMode === 'off') {
               // Mode: Normal - Hide ALL special events
-              filteredDaySlots = daySlots.filter(s => {
-                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
-                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
-                return !isSpecial;
-              });
+              filteredDaySlots = daySlots.filter(s => !s.isSpecialEvent);
             } else {
               // Mode: Overlap
-              const specialEvents = effectiveShifts.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+              const specialEvents = effectiveShifts.filter(s => !!s.isSpecialEvent);
               if (specialEvents.length > 0) {
                 filteredDaySlots = daySlots.filter(s => {
-                  const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
-                                    (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                  const isSpecial = !!s.isSpecialEvent;
                   if (isSpecial) return true;
                   
                   return !specialEvents.some(event => {
@@ -195,7 +186,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                 {/* Shift (Ca) Backgrounds */}
                 {effectiveShifts.map((shift, sIdx) => {
                   const isDraftShift = !shift.isStamped;
-                  const isSpecialEvent = shift.name.toLowerCase().includes('sự kiện');
+                  const isSpecialEvent = !!shift.isSpecialEvent;
                   return (
                     <div
                       key={`shift-${shift.id}-${dIdx}-${sIdx}`}
@@ -213,7 +204,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                       }}
                     >
                       <div className="shift-tag" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>{shift.name}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'none' }}>{shift.name}</span>
                       <CloseOutlined
                         className="shift-delete-icon"
                         style={{ fontSize: 10, cursor: 'pointer', padding: '2px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px' }}
@@ -262,12 +253,14 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                         }}
                         onClick={() => openSlotDetail(slot)}
                       >
-                        <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span className="slot-title" style={{ fontWeight: 600 }}>
-                            {slot.shiftLabel}
-                            {slot.note && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#fff' }} /></Tooltip>}
-                          </span>
-                          <span className="slot-count" style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 10 }}>
+                        <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <div className="title-area" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                            <span className="slot-title" style={{ fontWeight: 600 }}>
+                              <span style={{ verticalAlign: 'middle' }}>{slot.shiftLabel}</span>
+                              {slot.note && slot.note !== 'INSTANCE' && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#fff' }} /></Tooltip>}
+                            </span>
+                          </div>
+                          <span className="slot-count" style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 10, flexShrink: 0 }}>
                             {slot.assignedUserIds?.length || 0}/{slot.capacity || slot.kip?.capacity || 0}
                           </span>
                         </div>
@@ -294,7 +287,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
 
                   // Logic: Show if boundaries are ON OR if it's a Special Event
                   const shift = templates.find(s => String(s.id) === String(k.shiftId));
-                  const isSpecialEvent = (k.shiftName || shift?.name || '').toLowerCase().includes('sự kiện');
+                  const isSpecialEvent = !!shift?.isSpecialEvent;
                   if (!showDefaultBoundaries && !isSpecialEvent) return false;
                   
                   const existingSlot = daySlots.find(s => String(s.shiftId) === String(k.shiftId) && String(s.kipId) === String(k.id));
@@ -303,7 +296,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                   const kStart = k.startTime || k.sStart;
                   const kEnd = k.endTime || k.sEnd;
                     const shift = templates.find(s => String(s.id) === String(k.shiftId));
-                    const isSpecialEvent = (k.shiftName || shift?.name || '').toLowerCase().includes('sự kiện');
+                    const isSpecialEvent = !!shift?.isSpecialEvent;
                     return (
                       <div
                         key={`draft-${k.id}`}

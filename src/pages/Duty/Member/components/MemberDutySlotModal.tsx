@@ -222,7 +222,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                 </div>
               </div>
 
-              {slot?.note && (
+              {slot?.note && slot.note !== 'INSTANCE' && (
                 <div style={{ marginBottom: 16 }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>GHI CHÚ</Text>
                   <div style={{ marginTop: 4, padding: '8px 12px', background: '#f9fafb', borderRadius: 8, border: '1px solid #f3f4f6' }}>

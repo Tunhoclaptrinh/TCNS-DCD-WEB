@@ -1,6 +1,6 @@
 import React from 'react';
 import { Space, Tooltip, Avatar, Tag } from 'antd';
-import { InfoCircleOutlined, LockOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, LockOutlined, SyncOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DutySlot, DutyShift } from '@/services/duty.service';
@@ -113,24 +113,15 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
             // Filter Actual Slots based on Focus Mode
             let filteredDaySlots = daySlots;
             if (eventFocusMode === 'all') {
-              filteredDaySlots = daySlots.filter(s => {
-                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
-                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
-                return isSpecial;
-              });
+              filteredDaySlots = daySlots.filter(s => !!s.isSpecialEvent);
             } else if (eventFocusMode === 'off') {
-              filteredDaySlots = daySlots.filter(s => {
-                const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
-                                  (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
-                return !isSpecial;
-              });
+              filteredDaySlots = daySlots.filter(s => !s.isSpecialEvent);
             } else {
               // Mode: Overlap
-              const specialEvents = effectiveShifts.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+              const specialEvents = effectiveShifts.filter(s => !!s.isSpecialEvent);
               if (specialEvents.length > 0) {
                 filteredDaySlots = daySlots.filter(s => {
-                  const isSpecial = s.shiftLabel?.toLowerCase().includes('sự kiện') || 
-                                    (templates.find(t => String(t.id) === String(s.shiftId))?.name.toLowerCase().includes('sự kiện'));
+                  const isSpecial = !!s.isSpecialEvent;
                   if (isSpecial) return true;
                   return !specialEvents.some(event => {
                     const sStart = s.startTime || s.kip?.startTime || (templates.find(t => String(t.id) === String(s.shiftId))?.startTime);
@@ -161,7 +152,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
 
                 {/* Shift (Ca) Backgrounds */}
                 {effectiveShifts.map((shift: any, sIdx: number) => {
-                  const isSpecialEvent = shift.name?.toLowerCase().includes('sự kiện');
+                  const isSpecialEvent = !!shift.isSpecialEvent;
                   return (
                     <div
                       key={`shift-${shift.id}-${dIdx}-${sIdx}`}
@@ -199,8 +190,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                     .map(slot => {
                     const isPastSlot = isPastDay || (isToday && dayjs(`${dateStr} ${slot.startTime}`).isBefore(now));
                     const isMySlot = currentUserId && slot.assignedUserIds?.includes(currentUserId);
-                    const parentShift = templates.find(t => String(t.id) === String(slot.shiftId));
-                    const isSpecialEvent = (slot.shiftLabel || slot.shift?.name || parentShift?.name || '').toLowerCase().includes('sự kiện');
+                    const isSpecialEvent = !!slot.isSpecialEvent;
                     
                     return (
                       <motion.div
@@ -217,14 +207,14 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                         }}
                         onClick={() => openSlotDetail(slot)}
                       >
-                        <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div className="title-area">
+                        <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <div className="title-area" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                             <span className="slot-title" style={{ fontWeight: 600, color: isSpecialEvent ? '#7c3aed' : undefined }}>
-                              {isSpecialEvent && <Tag color="purple" style={{ fontSize: 9, padding: '0 4px', marginRight: 4 }}>EVENT</Tag>}
-                              {slot.shiftLabel || 'Kíp trực'}
+                              {isSpecialEvent && <Tag color="purple" style={{ fontSize: 9, padding: '0 4px', marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }}>EVENT</Tag>}
+                              <span style={{ verticalAlign: 'middle' }}>{slot.shiftLabel || 'Kíp trực'}</span>
                             </span>
                             {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 4, color: '#64748b' }} />}
-                            {slot.note && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#64748b' }} /></Tooltip>}
+                            {slot.note && slot.note !== 'INSTANCE' && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#64748b' }} /></Tooltip>}
                           </div>
                           <span className="slot-count" style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 10 }}>
                             {slot.assignedUserIds?.length || 0}/{slot.capacity || 0}
@@ -242,11 +232,6 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                           )}
                         </div>
                         {/* In Calendar View, we prioritize the Modal for registration and details as per user request */}
-                        {isMySlot && (
-                          <div style={{ position: 'absolute', top: 4, right: 4, fontSize: 10 }}>
-                            <Tag color="gold" style={{ border: 'none', margin: 0, padding: '0 4px', fontSize: 9 }}>CỦA TÔI</Tag>
-                          </div>
-                        )}
                       </motion.div>
                     );
                   })}
@@ -266,7 +251,8 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                 }).map((k: any) => {
                   const kStart = k.startTime || k.sStart;
                   const kEnd = k.endTime || k.sEnd;
-                  const isSpecialEvent = (k.name || k.shiftName || '').toLowerCase().includes('sự kiện');
+                  const shift = templates.find(s => String(s.id) === String(k.shiftId));
+                  const isSpecialEvent = !!shift?.isSpecialEvent;
                   
                   return (
                     <div

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Space, Tag, Button } from 'antd';
-import { MinusSquareOutlined, PlusSquareOutlined, SyncOutlined } from '@ant-design/icons';
+import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DutySlot, DutyShift } from '@/services/duty.service';
 
@@ -13,6 +13,7 @@ interface MemberDutyTableViewProps {
   collapsedGroups: string[];
   setCollapsedGroups: (groups: string[]) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
+  showDefaultBoundaries: boolean;
 }
 
 const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
@@ -24,6 +25,7 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
   collapsedGroups,
   setCollapsedGroups,
   eventFocusMode,
+  showDefaultBoundaries,
 }) => {
 
   const groupedShifts = useMemo(() => {
@@ -103,37 +105,27 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
         </thead>
         <tbody>
           {groupedShifts
-            .filter(group => {
-              const isSpecial = group.name && group.name.toLowerCase().includes('sự kiện');
-              if (eventFocusMode === 'off') return !isSpecial;
-              if (isSpecial) return true;
+            .filter(() => {
               if (eventFocusMode === 'all') return false;
-              
-              const specialEvents = groupedShifts.filter(g => g.name && g.name.toLowerCase().includes('sự kiện'));
-              const hasOverlap = specialEvents.some(event => {
-                const sStart = group.originalShift.startTime;
-                const sEnd = group.originalShift.endTime;
-                const eStart = event.originalShift.startTime;
-                const eEnd = event.originalShift.endTime;
-                if (!sStart || !sEnd || !eStart || !eEnd) return false;
-                return (sStart < eEnd && sEnd > eStart);
-              });
-              return !hasOverlap;
+              return true;
             })
-            .map((group, sIdx) => (
-            <React.Fragment key={sIdx}>
-              {/* Shift Header Row */}
-               {(() => {
-                const isSpecialEvent = group.name && group.name.toLowerCase().includes('sự kiện');
-                const gid = String(group.id);
-                const isCollapsed = collapsedGroups.includes(gid);
+            .map((group: any) => (
+            <React.Fragment key={group.id}>
+              {/* Shift Group Header */}
+              {(() => {
+                const isSpecialEvent = group.originalShift.isSpecialEvent;
+                const isCollapsed = collapsedGroups.includes(String(group.id));
                 const toggleCollapse = () => {
-                   if (isCollapsed) setCollapsedGroups(collapsedGroups.filter(id => id !== gid));
-                   else setCollapsedGroups([...collapsedGroups, gid]);
+                  const gid = String(group.id);
+                  if (isCollapsed) {
+                    setCollapsedGroups(collapsedGroups.filter(g => g !== gid));
+                  } else {
+                    setCollapsedGroups([...collapsedGroups, gid]);
+                  }
                 };
 
                 return (
-                  <tr className={`shift-group-header ${isSpecialEvent ? 'special-event-row' : ''}`} style={{ background: isSpecialEvent ? 'rgba(139, 92, 246, 0.05)' : '#f1f5f9' }}>
+                  <tr className={`shift-group-header ${isSpecialEvent ? 'special-event-row' : ''}`} style={{ background: isSpecialEvent ? 'rgba(139, 92, 246, 0.1)' : '#f1f5f9' }}>
                     <td colSpan={weekDays.length + 1} style={{ border: '1px solid #000', borderLeft: isSpecialEvent ? '6px solid #8b5cf6' : '1px solid #000', padding: '10px 12px', textAlign: 'left', fontWeight: 'bold', color: isSpecialEvent ? '#7c3aed' : '#334155' }}>
                        <Space size={12}>
                          <Button 
@@ -144,7 +136,7 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                            style={{ color: isSpecialEvent ? '#8b5cf6' : '#64748b' }}
                          />
                          <Space>
-                           {isSpecialEvent && <Tag color="purple" icon={<SyncOutlined spin />} style={{ borderRadius: 4, fontWeight: 'bold' }}>SỰ KIỆN</Tag>}
+                           {isSpecialEvent && <Tag color="purple" style={{ borderRadius: 4, fontWeight: 'bold' }}>SỰ KIỆN</Tag>}
                            {group.name} 
                            <span style={{ fontWeight: 'normal', color: isSpecialEvent ? '#7c3aed' : '#64748b', opacity: 0.7, fontSize: '13px', marginLeft: 8 }}>({group.time})</span>
                          </Space>
@@ -153,9 +145,10 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                   </tr>
                 );
               })()}
+              
               {/* Kip Rows */}
               {!collapsedGroups.includes(String(group.id)) && group.kips.map((row: any, rIdx: number) => {
-                const isSpecialRow = group.name && group.name.toLowerCase().includes('sự kiện');
+                const isSpecialRow = group.originalShift.isSpecialEvent;
                 return (
                   <tr key={row.key} style={{ background: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                     <td className="sticky-col row-header" style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'middle', fontWeight: 600, textAlign: 'left' }}>
@@ -174,8 +167,8 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                           const kStart = targetKip?.startTime || targetShift?.startTime || s.kip?.startTime || s.startTime || '';
                           const kEnd = targetKip?.endTime || targetShift?.endTime || s.kip?.endTime || s.endTime || '';
                           const sig = `${sName}|${kName}|${kStart}-${kEnd}`;
-                          const rowTargetSig = `${row.shift.name}|${row.shortName}|${row.time.replace(' - ', '-')}`;
-                          return sig === rowTargetSig;
+                          const rowShiftSig = `${group.name}|${row.shortName}|${row.time.replace(' - ', '-')}`;
+                          return sig === rowShiftSig;
                       });
                       
                       const isPast = day.isBefore(dayjs().startOf('day')) || (day.isSame(dayjs(), 'day') && dayjs(`${dateStr} ${row.time.split(' - ')[0]}`).isBefore(dayjs()));
@@ -183,41 +176,94 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                       return (
                         <td
                           key={dIdx}
-                          className={`matrix-cell excel-cell ${isPast ? 'is-past' : ''}`}
+                          className={`matrix-cell excel-cell ${isPast ? 'is-past' : ''} ${slot ? 'has-active-slot' : ''}`}
                           style={{ 
                             border: '1px solid #000', 
-                            padding: '2px',
+                            padding: '0px',
                             verticalAlign: 'top',
                             cursor: slot ? 'pointer' : 'default',
-                            background: isPast ? 'rgba(0,0,0,0.02)' : 'transparent'
+                            background: isPast ? 'rgba(0,0,0,0.02)' : 'transparent',
+                            position: 'relative',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            height: '1px' // Hack for child 100% height
                           }}
                           onClick={() => { if (slot) openSlotDetail(slot); }}
                         >
                             {slot ? (
-                              <div className="members-stack" style={{ display: 'flex', flexDirection: 'column' }}>
-                                {slot.assignedUsers && slot.assignedUsers.length > 0 ? (
-                                  slot.assignedUsers.map((u: any, uIdx: number) => (
-                                    <div 
-                                      key={u.id} 
-                                      className="stacked-user"
-                                      style={{ 
-                                        padding: '4px', 
-                                        borderBottom: uIdx < slot.assignedUsers!.length - 1 ? '1px dashed #cbd5e1' : 'none',
-                                        fontSize: '13px',
-                                        color: u.id === currentUserId ? '#b91c1c' : '#1e293b',
-                                        fontWeight: u.id === currentUserId ? 600 : 400
-                                      }}
-                                    >
-                                      {u.name}
+                              <div className={`slot-container ${isSpecialRow ? 'special-slot' : 'normal-slot'}`} style={{ 
+                                padding: '0px',
+                                minHeight: '60px',
+                                background: isPast ? '#e2e8f0' : (isSpecialRow ? 'rgba(124, 58, 237, 0.15)' : 'rgba(14, 165, 233, 0.15)'),
+                                borderRadius: 0,
+                                border: 'none',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                height: '100%',
+                                boxSizing: 'border-box'
+                              }}>
+                                {(() => {
+                                  const currentUsers = slot.assignedUsers || [];
+                                  const max = slot.capacity || row.kip?.capacity || 1;
+                                  
+                                  return (
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                      {Array.from({ length: max }).map((_, idx) => {
+                                        const user = currentUsers[idx];
+                                        const isFirst = idx === 0;
+                                        return (
+                                          <div 
+                                            key={idx} 
+                                            className="stacked-user"
+                                            style={{ 
+                                              padding: '4px 8px', 
+                                              borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
+                                              fontSize: '13px',
+                                              color: user ? (isFirst ? '#dc2626' : (user.id === currentUserId ? '#b91c1c' : '#1e293b')) : 'rgba(0,0,0,0.25)',
+                                              textAlign: 'center',
+                                              fontWeight: isFirst || (user && user.id === currentUserId) ? 700 : 500
+                                            }}
+                                          >
+                                            {user ? user.name : '---'}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
-                                  ))
-                                ) : (
-                                  <div style={{ padding: '8px', fontSize: '12px', color: isSpecialRow ? '#a78bfa' : '#94a3b8', fontStyle: 'italic' }}>
-                                    {isSpecialRow ? 'Nhận nhiệm vụ' : 'Trống'}
-                                  </div>
-                                )}
+                                  );
+                                })() }
+                                
+                                {/* Slot Capacity Indicator */}
+                                {(() => {
+                                  const current = slot.assignedUsers?.length || 0;
+                                  const max = slot.capacity || row.kip?.capacity || 1;
+                                  const isFull = current >= max;
+                                  return (
+                                    <div style={{ 
+                                      position: 'absolute', 
+                                      bottom: 2, 
+                                      right: 2, 
+                                      padding: '1px 4px',
+                                      background: isFull ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)',
+                                      borderRadius: 4,
+                                      fontSize: '9px',
+                                      fontWeight: 700,
+                                      color: isFull ? '#059669' : '#64748b',
+                                      border: isFull ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(0,0,0,0.05)',
+                                      pointerEvents: 'none'
+                                    }}>
+                                      {isFull ? 'FULL' : `${current}/${max}`}
+                                    </div>
+                                  );
+                                })()}
                               </div>
-                            ) : null}
+                            ) : (showDefaultBoundaries && (
+                                <div style={{ 
+                                  height: '100%', 
+                                  minHeight: '48px', 
+                                  border: '1px dashed rgba(0,0,0,0.05)',
+                                  borderRadius: 0,
+                                }} />
+                            ))}
                         </td>
                       );
                     })}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, InputNumber, Row, Col, Space, Divider, Select, TimePicker, message } from 'antd';
+import { Form, Input, InputNumber, Row, Col, Space, Divider, Select, TimePicker, Checkbox, message } from 'antd';
 import { ScheduleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutyShift } from '@/services/duty.service';
@@ -88,6 +88,12 @@ const ShiftTemplateModal: React.FC<ShiftTemplateModalProps> = ({
 
         <Form.Item name="name" label="Tên Ca trực" rules={[{ required: true, message: 'Vui lòng nhập tên ca' }]}>
           <Input placeholder="VD: Ca Sáng, Ca Chiều..." prefix={<ScheduleOutlined style={{ color: '#ef4444' }} />} />
+        </Form.Item>
+
+        <Form.Item name="isSpecialEvent" valuePropName="checked" noStyle>
+          <Checkbox style={{ marginBottom: 16, color: '#b91c1c', fontWeight: 600 }}>
+            Đây là Sự kiện lễ hội (Sẽ luôn hiển thị khi bật Chế độ Sự kiện)
+          </Checkbox>
         </Form.Item>
         
         <Form.Item 

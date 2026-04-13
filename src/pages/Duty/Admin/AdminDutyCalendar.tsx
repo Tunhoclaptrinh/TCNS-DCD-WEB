@@ -66,6 +66,7 @@ const AdminDutyCalendar: React.FC = () => {
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
   const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(false);
+  const [manualTemplateGroupId, setManualTemplateGroupId] = useState<string | null>(null);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]); // For table view co-axial
 
@@ -139,25 +140,36 @@ const AdminDutyCalendar: React.FC = () => {
       return targetStr >= startStr && targetStr <= endStr;
     });
     const defaultGroup = templateGroups.find(g => g.isDefault);
-    const activeGroupId = assignment?.templateId || defaultGroup?.id;
+    const activeGroupId = manualTemplateGroupId || assignment?.templateId || defaultGroup?.id;
 
     let candidates: any[] = [];
 
-    // 1. Check for manual/stamped day record (The "Stencil" source of truth)
+    // 1. Add templates from the active group IF showDefaultBoundaries is ON
+    if (showDefaultBoundaries && activeGroupId) {
+      candidates = templates.filter(t => String(t.templateId) === String(activeGroupId));
+    }
+
+    // 2. Overwrite with or Merge manual/stamped day record (The "Stencil" source of truth)
     if (dayData) {
-      // Map IDs back to objects (IDs now point to persistent clones or originals)
       const templateIds = (dayData.shiftTemplateIds || []);
-      candidates = templateIds.map((id: number) => {
+      const stampedTemplates = templateIds.map((id: number) => {
         const t = templates.find(temp => String(temp.id) === String(id));
         return t ? { ...t, isStamped: true } : null;
       }).filter(Boolean);
+
+      // Union: Start with stamped, then add boundaries that aren't already there
+      const stampedIds = new Set(stampedTemplates.map((t: any) => String(t.id)));
+      candidates = [
+        ...stampedTemplates,
+        ...candidates.filter(c => !stampedIds.has(String(c.id)))
+      ];
     }
     
     // 3. Include Special Events ONLY IF Focus Mode is ON
     if (eventFocusMode !== 'off') {
       const specialEventShifts = templates.filter(t => 
         t.description !== 'INSTANCE' && 
-        t.name?.toLowerCase().includes('sự kiện') &&
+        t.isSpecialEvent &&
         !candidates.find(c => String(c.id) === String(t.id))
       ).map(t => ({ ...t, isSpecial: true, isStamped: false }));
       candidates = [...candidates, ...specialEventShifts];
@@ -169,13 +181,13 @@ const AdminDutyCalendar: React.FC = () => {
     // --- SPECIAL EVENT FOCUS LOGIC ---
     if (eventFocusMode === 'all') {
       // Mode: Absolute Focus - ONLY show special events, period.
-      filtered = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+      filtered = filtered.filter(s => s.isSpecialEvent);
     } else if (eventFocusMode === 'overlap') {
       // Mode: Overlap Focus - Only show events + non-conflicting regular shifts
-      const specialEvents = filtered.filter(s => s.name?.toLowerCase().includes('sự kiện'));
+      const specialEvents = filtered.filter(s => s.isSpecialEvent);
       if (specialEvents.length > 0) {
         filtered = filtered.filter(s => {
-          const isSpecial = s.name?.toLowerCase().includes('sự kiện');
+          const isSpecial = s.isSpecialEvent;
           if (isSpecial) return true;
           
           return !specialEvents.some(event => {
@@ -281,16 +293,31 @@ const AdminDutyCalendar: React.FC = () => {
       }
     });
 
+    // OVERRIDE: If manual selection is active, use ONLY that group for boundaries
+    if (manualTemplateGroupId) {
+      activeGroupIds.clear();
+      activeGroupIds.add(String(manualTemplateGroupId));
+    }
+
     // Get shift IDs from existing slots and manual stamps in the current week
     const inUseShiftIds = new Set(slots.map(s => String(s.shiftId)));
     const stampedShiftIds = new Set(dutyDays.flatMap(d => (d.shiftTemplateIds || []).map(String)));
 
-    return templates.filter(t => 
-      activeGroupIds.has(String(t.templateId)) || 
-      inUseShiftIds.has(String(t.id)) ||
-      stampedShiftIds.has(String(t.id))
-    );
-  }, [templates, assignments, templateGroups, slots, dutyDays, currentWeek]);
+    return templates.filter(t => {
+      const isAutoActive = activeGroupIds.has(String(t.templateId));
+      const isInUse = inUseShiftIds.has(String(t.id)) || stampedShiftIds.has(String(t.id));
+      const isSpecial = t.isSpecialEvent;
+      
+      // Special Events always show up if Focus Mode is NOT off
+      if (eventFocusMode !== 'off' && isSpecial) return true;
+
+      // If we are showing boundaries, show all auto-active / manually selected ones
+      if (showDefaultBoundaries) return isAutoActive || isInUse;
+      
+      // Otherwise, ONLY show kips that are actually being used
+      return isInUse;
+    });
+  }, [templates, assignments, templateGroups, slots, dutyDays, currentWeek, showDefaultBoundaries, manualTemplateGroupId, eventFocusMode]);
 
   const adminMenu = (
     <Menu onClick={({ key }) => {
@@ -334,48 +361,84 @@ const AdminDutyCalendar: React.FC = () => {
         }
         extra={
           <Space size="middle">
-            <div className="view-controls" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '4px 12px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+            <Space size="middle" align="center">
               <Tooltip title="Chế độ hiển thị">
                 <Select
                   value={viewMode}
                   onChange={setViewMode}
                   bordered={false}
+                  size="small"
                   options={[
                     { label: 'Lịch', value: 'calendar' },
                     { label: 'Bảng', value: 'table' }
                   ]}
-                  style={{ width: 80 }}
+                  style={{ width: 80, fontWeight: 600 }}
                   className="view-mode-select"
                 />
               </Tooltip>
-              {viewMode === 'calendar' && (
-                <>
-                  <Divider type="vertical" style={{ margin: 0 }} />
-                  <Space size={4}>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Hiện khung</span>
-                    <Switch size="small" checked={showDefaultBoundaries} onChange={setShowDefaultBoundaries} />
-                  </Space>
-                  <Divider type="vertical" style={{ margin: 0 }} />
-                  <Space size={4}>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Chế độ xem</span>
-                    <Segmented 
-                      size="small"
-                      options={[
-                        { label: 'Bình thường', value: 'off' },
-                        { label: 'Sự kiện + Ca', value: 'overlap' },
-                        { label: 'Chỉ Sự kiện', value: 'all' }
-                      ]}
-                      value={eventFocusMode}
-                      onChange={(v: any) => setEventFocusMode(v)}
-                    />
-                  </Space>
-                </>
-              )}
-            </div>
+
+              <Divider type="vertical" style={{ height: 16, borderColor: '#e2e8f0' }} />
+              
+              <Space size={4}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Chế độ xem</span>
+                <Segmented 
+                  size="small"
+                  options={[
+                    { label: 'Bình thường', value: 'off' },
+                    { label: viewMode === 'table' ? 'Tất cả' : 'Sự kiện + Ca', value: 'overlap' },
+                    { label: 'Chỉ Sự kiện', value: 'all' }
+                  ]}
+                  value={eventFocusMode}
+                  onChange={(v: any) => setEventFocusMode(v)}
+                />
+              </Space>
+              
+              <Divider type="vertical" style={{ height: 16, borderColor: '#e2e8f0' }} />
+
+              <Space size={4}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Hiện mẫu</span>
+                <Switch 
+                  size="small" 
+                  checked={showDefaultBoundaries} 
+                  onChange={(checked) => {
+                    setShowDefaultBoundaries(checked);
+                    if (!checked) setManualTemplateGroupId(null);
+                  }}
+                />
+                
+                <Select
+                  size="small"
+                  placeholder="🤖 Tự động lọc"
+                  value={manualTemplateGroupId}
+                  onChange={setManualTemplateGroupId}
+                  style={{ 
+                    width: 140, 
+                    marginLeft: 8,
+                    opacity: showDefaultBoundaries ? 1 : 0.5,
+                    pointerEvents: showDefaultBoundaries ? 'auto' : 'none',
+                    transition: 'all 0.3s'
+                  }}
+                  disabled={!showDefaultBoundaries}
+                  allowClear
+                  options={[
+                    { label: '🤖 Tự động lọc', value: null },
+                    ...templateGroups.map(g => ({
+                      label: g.name,
+                      value: String(g.id)
+                    }))
+                  ]}
+                />
+              </Space>
+            </Space>
 
             <Space size={8}>
               <Tooltip title="Tải lại dữ liệu">
-                <Button icon={<SyncOutlined />} onClick={fetchSchedule} loading={loading} />
+                <Button 
+                  icon={<SyncOutlined spin={loading} />} 
+                  onClick={fetchSchedule} 
+                  loading={loading}
+                  disabled={loading}
+                />
               </Tooltip>
               <Tooltip title="Xuất dữ liệu Excel">
                 <Button icon={<CloudDownloadOutlined />} />
@@ -392,6 +455,16 @@ const AdminDutyCalendar: React.FC = () => {
         bodyStyle={{ padding: 0 }}
       >
         <Spin spinning={loading}>
+          {showDefaultBoundaries && relevantTemplates.length === 0 && (
+            <Alert
+              message="Chưa cấu hình kíp mẫu cho tuần này"
+              description="Bạn chưa thiết lập bản mẫu mặc định hoặc chưa gắn bản mẫu cho tuần này. Vui lòng chọn bản mẫu thủ công hoặc thiết lập trong phần Quản trị."
+              type="info"
+              showIcon
+              style={{ margin: '12px' }}
+            />
+          )}
+
           {viewMode === 'table' ? (
             <AdminDutyTableView
               loading={loading}
@@ -406,6 +479,7 @@ const AdminDutyCalendar: React.FC = () => {
               collapsedGroups={collapsedGroups}
               setCollapsedGroups={setCollapsedGroups}
               eventFocusMode={eventFocusMode}
+              showDefaultBoundaries={showDefaultBoundaries}
             />
           ) : (
             <AdminDutyTimelineView 

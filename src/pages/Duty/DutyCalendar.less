@@ -53,7 +53,6 @@
         font-size: 0.8rem;
         font-weight: 600;
         color: #64748b;
-        text-transform: uppercase;
         letter-spacing: 0.05em;
       }
 
@@ -245,13 +244,15 @@
   }
 
   .slot-title {
+    display: block; // Ensure ellipsis works
     font-size: 0.8rem;
-    font-weight: 800;
+    font-weight: 600;
     color: #854d0e; // Yellow-900
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    width: 100%;
   }
 
   .slot-time {
@@ -329,8 +330,12 @@
     z-index: 10;
 
     .slot-title {
+      display: block;
       color: #ef4444;
-      font-weight: 800;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .slot-time {
@@ -425,10 +430,9 @@
     line-height: 1.1; // Minimal height
     border-radius: 2px;
     font-size: 0.65rem;
-    font-weight: 800;
+    font-weight: 500;
     color: #ef4444;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.02em;
     z-index: 6;
   }
 
@@ -563,7 +567,6 @@
         .day-name {
           color: #64748b;
           font-size: 0.7rem;
-          text-transform: uppercase;
         }
 
         .day-date {
