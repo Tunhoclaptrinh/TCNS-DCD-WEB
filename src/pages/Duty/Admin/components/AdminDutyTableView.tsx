@@ -132,20 +132,20 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                 };
 
                 return (
-                  <tr className={`shift-group-header ${isSpecialEvent ? 'special-event-row' : ''}`} style={{ background: isSpecialEvent ? 'rgba(139, 92, 246, 0.1)' : '#f1f5f9' }}>
-                    <td colSpan={weekDays.length + 1} style={{ border: '1px solid #000', borderLeft: isSpecialEvent ? '6px solid #8b5cf6' : '1px solid #000', padding: '10px 12px', textAlign: 'left', fontWeight: 'bold', color: isSpecialEvent ? '#7c3aed' : '#334155' }}>
+                  <tr className={`shift-group-header ${isSpecialEvent ? 'special-event-row' : ''}`} style={{ background: isSpecialEvent ? 'rgba(59, 130, 246, 0.08)' : '#f1f5f9' }}>
+                    <td colSpan={weekDays.length + 1} style={{ border: '1px solid #000', borderLeft: isSpecialEvent ? '6px solid #3b82f6' : '1px solid #000', padding: '10px 12px', textAlign: 'left', fontWeight: 'bold', color: isSpecialEvent ? '#1e40af' : '#334155' }}>
                        <Space size={12}>
                          <Button 
                            type="text" 
                            size="small" 
                            onClick={toggleCollapse}
                            icon={isCollapsed ? <PlusSquareOutlined /> : <MinusSquareOutlined />}
-                           style={{ color: isSpecialEvent ? '#8b5cf6' : '#64748b' }}
+                           style={{ color: isSpecialEvent ? '#3b82f6' : '#64748b' }}
                          />
                          <Space>
-                           {isSpecialEvent && <Tag color="purple" style={{ borderRadius: 4, fontWeight: 'bold' }}>SỰ KIỆN</Tag>}
+                           {isSpecialEvent && <Tag color="blue" style={{ borderRadius: 4, fontWeight: 'bold' }}>SỰ KIỆN</Tag>}
                            {group.name} 
-                           <span style={{ fontWeight: 'normal', color: isSpecialEvent ? '#7c3aed' : '#64748b', opacity: 0.7, fontSize: '13px', marginLeft: 8 }}>({group.time})</span>
+                           <span style={{ fontWeight: 'normal', color: isSpecialEvent ? '#1e40af' : '#64748b', opacity: 0.7, fontSize: '13px', marginLeft: 8 }}>({group.time})</span>
                          </Space>
                        </Space>
                     </td>
@@ -215,7 +215,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                               <div className={`slot-container ${isSpecialRow ? 'special-slot' : 'normal-slot'}`} style={{ 
                                 padding: '0px',
                                 minHeight: '60px',
-                                background: isPast ? '#e2e8f0' : (isSpecialRow ? 'rgba(124, 58, 237, 0.15)' : 'rgba(14, 165, 233, 0.15)'),
+                                background: isPast ? '#e2e8f0' : (isSpecialRow ? 'rgba(59, 130, 246, 0.12)' : 'rgba(14, 165, 233, 0.15)'),
                                 borderRadius: 0,
                                 border: 'none',
                                 position: 'relative',

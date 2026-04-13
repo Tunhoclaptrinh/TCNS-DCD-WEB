@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider, Switch } from 'antd';
+import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -41,7 +41,7 @@ const MemberCalendar: React.FC = () => {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
   const [dutySettings, setDutySettings] = useState<any>(null);
-  const [showDefaultBoundaries, setShowDefaultBoundaries] = useState(false);
+  const [showDefaultBoundaries] = useState(false);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
 

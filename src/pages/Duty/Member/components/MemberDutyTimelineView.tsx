@@ -167,7 +167,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                         borderLeft: isSpecialEvent ? '4px solid #8b5cf6' : undefined
                       }}
                     >
-                        <div className="shift-tag" style={{ color: isSpecialEvent ? '#7c3aed' : undefined }}>
+                        <div className="shift-tag">
                           <Space>
                             {isSpecialEvent && <SyncOutlined spin style={{ fontSize: 10 }} />}
                             <span>{shift.name}</span>
@@ -202,15 +202,15 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                         style={{
                           top: `${getTimeTop(slot.startTime)}px`,
                           height: `${getTimeHeight(slot.startTime, slot.endTime)}px`,
-                          borderLeft: isMySlot ? '4px solid #d4a574' : (slot.status === 'locked' ? '4px solid #94a3b8' : (isSpecialEvent ? '4px solid #8b5cf6' : undefined)),
-                          background: isMySlot ? 'rgba(212, 165, 116, 0.1)' : (slot.status === 'locked' ? 'rgba(148, 163, 184, 0.05)' : (isSpecialEvent ? 'rgba(139, 92, 246, 0.05)' : undefined))
+                          borderLeft: isMySlot ? '4px solid #d4a574' : (slot.status === 'locked' ? '4px solid #94a3b8' : undefined),
+                          background: isMySlot ? 'rgba(212, 165, 116, 0.1)' : (slot.status === 'locked' ? 'rgba(148, 163, 184, 0.05)' : undefined)
                         }}
                         onClick={() => openSlotDetail(slot)}
                       >
                         <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                           <div className="title-area" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                            <span className="slot-title" style={{ fontWeight: 600, color: isSpecialEvent ? '#7c3aed' : undefined }}>
-                              {isSpecialEvent && <Tag color="purple" style={{ fontSize: 9, padding: '0 4px', marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }}>EVENT</Tag>}
+                            <span className="slot-title" style={{ fontWeight: 600 }}>
+                              {isSpecialEvent && <Tag color="blue" style={{ fontSize: 9, padding: '0 4px', marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }}>EVENT</Tag>}
                               <span style={{ verticalAlign: 'middle' }}>{slot.shiftLabel || 'Kíp trực'}</span>
                             </span>
                             {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 4, color: '#64748b' }} />}
@@ -261,12 +261,10 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                       style={{ 
                         top: `${getTimeTop(kStart)}px`, 
                         height: `${getTimeHeight(kStart, kEnd)}px`,
-                        borderLeft: isSpecialEvent ? '4px dashed #a78bfa' : undefined,
-                        background: isSpecialEvent ? 'rgba(139, 92, 246, 0.03)' : undefined
                       }}
                     >
-                      <div className="slot-title" style={{ color: isSpecialEvent ? '#7c3aed' : undefined }}>
-                        {isSpecialEvent && <Tag color="purple" style={{ fontSize: 8, padding: '0 4px', marginRight: 4 }}>EVENT</Tag>}
+                      <div className="slot-title">
+                        {isSpecialEvent && <Tag color="blue" style={{ fontSize: 8, padding: '0 4px', marginRight: 4 }}>EVENT</Tag>}
                         {k.name}
                       </div>
                       <div className="slot-time">{kStart} - {kEnd} {isSpecialEvent ? '(Sự kiện)' : '(Mẫu)'}</div>

@@ -74,7 +74,7 @@ export const adminMenu: IMenuItem[] = [
             {
                 key: 'system-settings',
                 path: '/admin/system-config/generations',
-                name: 'Quản lý thế hệ/khóa',
+                name: 'Khóa/Thế hệ',
             },
             {
                 key: 'permissions',

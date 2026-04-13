@@ -158,11 +158,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const capacity = slot?.capacity || slot?.kip?.capacity || 0;
   const isFull = registeredCount >= capacity;
 
-  const isSpecialEvent = (slot?.shiftLabel || slot?.kip?.name || '').toLowerCase().includes('sự kiện');
-  const themeColor = isSpecialEvent ? '#8b5cf6' : '#ec4899'; // Violet vs Pink
-  const themeBg = isSpecialEvent ? '#f5f3ff' : '#fff5f7';
-  const themeBorder = isSpecialEvent ? '#ddd6fe' : '#fce7f3';
-  const themeText = isSpecialEvent ? '#6d28d9' : '#9d174d';
+  const isSpecialEvent = !!slot?.isSpecialEvent;
+  const themeColor = isSpecialEvent ? '#3b82f6' : '#ec4899'; // Blue vs Pink
+  const themeBg = isSpecialEvent ? '#eff6ff' : '#fff5f7';
+  const themeBorder = isSpecialEvent ? '#dbeafe' : '#fce7f3';
+  const themeText = isSpecialEvent ? '#1e40af' : '#9d174d';
 
   return (
     <FormModal

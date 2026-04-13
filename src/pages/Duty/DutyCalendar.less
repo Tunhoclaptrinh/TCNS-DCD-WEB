@@ -291,6 +291,25 @@
     }
   }
 
+  &.special-event {
+    background: rgba(59, 130, 246, 0.05) !important; // Blue-500 tint
+    border: 2px dashed #3b82f6 !important;
+    border-left: 5px dashed #2563eb !important;
+
+    .slot-title {
+      color: #1e40af !important;
+    }
+
+    .slot-time {
+      color: #3b82f6 !important;
+    }
+
+    .user-avatar-mini {
+      border-color: #93c5fd;
+      color: #3b82f6;
+    }
+  }
+
   /* Quick Join Overlay */
   .quick-join-overlay {
     position: absolute;
@@ -437,22 +456,23 @@
   }
 
   &.special-event {
-    background: rgba(139, 92, 246, 0.05); // Violet-500 tint
-    border-color: #8b5cf6;
-    border-top-width: 3px;
-    border-bottom-width: 3px;
+    background: rgba(59, 130, 246, 0.03); // Blue-500 tint
+    border: 2px dashed #3b82f6;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
 
     .shift-tag {
-      color: #8b5cf6;
+      color: #2563eb;
+      border: 1px dashed #3b82f6;
     }
 
     &.draft {
-      background: rgba(139, 92, 246, 0.03); // Slightly more opaque
-      border: 1.5px dashed #a78bfa; // Violet-400 dashed
+      background: rgba(59, 130, 246, 0.02);
+      border: 1.5px dashed #93c5fd;
       opacity: 0.8; 
       
       .slot-title, .slot-time {
-        color: #7c3aed; // Violet-600
+        color: #3b82f6;
         font-weight: 600;
       }
     }

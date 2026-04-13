@@ -102,6 +102,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     });
   }, [watchedAssignedIds, allUsers, slot]);
 
+  const isSpecialEvent = !!slot?.isSpecialEvent;
+  const themeColor = isSpecialEvent ? '#3b82f6' : '#6366f1';
+
   const handleOk = async (values: any) => {
     setLoading(true);
     try {
@@ -181,13 +184,14 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
       open={open}
       title={
         <Space>
-          <div style={{ width: 4, height: 18, background: '#6366f1', borderRadius: 2 }} />
-          <span>{slot?.id ? "Hiệu chỉnh Kíp trực" : "Thêm mới Kíp trực"}</span>
+          <div style={{ width: 4, height: 18, background: themeColor, borderRadius: 2 }} />
+          <span>{slot?.id ? (isSpecialEvent ? "Hiệu chỉnh Sự kiện" : "Hiệu chỉnh Kíp trực") : "Thêm mới Kíp trực"}</span>
           {slot?.status && (
             <Tag color={slot.status === 'open' ? 'success' : 'error'} style={{ marginLeft: 8, borderRadius: 12 }}>
               {slot.status === 'open' ? 'ĐANG MỞ' : 'ĐÃ KHÓA'}
             </Tag>
           )}
+          {isSpecialEvent && <Tag color="blue" bordered={false} style={{ fontWeight: 800 }}>FESTIVAL</Tag>}
           {slot?.id && (
             <AntButton 
               danger 
@@ -197,7 +201,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               onClick={(e) => { e.stopPropagation(); handleDelete(); }}
               style={{ marginLeft: 16 }}
             >
-              Xóa kíp
+              Xóa
             </AntButton>
           )}
         </Space>
@@ -213,7 +217,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     >
       <div style={{ padding: '0 4px' }}>
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-          <EditOutlined style={{ color: '#6366f1' }} /> 
+          <EditOutlined style={{ color: themeColor }} /> 
           <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin hiển thị & Trạng thái</span>
         </Divider>
 
@@ -225,7 +229,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               rules={[{ required: true }]}
             >
               <Input 
-                prefix={<EditOutlined style={{ color: '#6366f1' }} />} 
+                prefix={<EditOutlined style={{ color: themeColor }} />} 
                 placeholder="VD: Kíp 1 - Tòa A" 
               />
             </Form.Item>
@@ -241,7 +245,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         </Row>
 
         <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <ClockCircleOutlined style={{ color: '#6366f1' }} /> 
+          <ClockCircleOutlined style={{ color: themeColor }} /> 
           <span style={{ fontSize: 13, marginLeft: 8 }}>Thời gian & Chỉ tiêu</span>
         </Divider>
 
@@ -269,14 +273,14 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               <InputNumber 
                 min={1} 
                 style={{ width: '100%' }} 
-                prefix={<TeamOutlined style={{ color: '#6366f1' }} />} 
+                prefix={<TeamOutlined style={{ color: themeColor }} />} 
               />
             </Form.Item>
           </Col>
         </Row>
 
         <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <ScheduleOutlined style={{ color: '#6366f1' }} /> 
+          <ScheduleOutlined style={{ color: themeColor }} /> 
           <span style={{ fontSize: 13, marginLeft: 8 }}>Quản lý nhân sự</span>
         </Divider>
 
@@ -327,7 +331,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     description={
                       <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }}>
                         <Text type="secondary">{u.studentId || u.email || 'N/A'}</Text>
-                        {u.department && <Text style={{ color: '#6366f1', fontWeight: 500 }}>{u.department}</Text>}
+                        {u.department && <Text style={{ color: themeColor, fontWeight: 500 }}>{u.department}</Text>}
                       </Space>
                     }
                   />
@@ -374,7 +378,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         </div>
 
         <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <SettingOutlined style={{ color: '#6366f1' }} /> 
+          <SettingOutlined style={{ color: themeColor }} /> 
           <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin bổ sung</span>
         </Divider>
 
