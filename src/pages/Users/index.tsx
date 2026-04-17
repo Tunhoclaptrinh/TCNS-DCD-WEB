@@ -67,6 +67,7 @@ const UserPage = () => {
         setSelectedIds,
         batchDelete,
         importData,
+        validateImport,
         exportData,
         downloadTemplate,
     } = useCRUD(userService, {
@@ -355,7 +356,8 @@ const UserPage = () => {
             resizable: true,
             searchable: true,
             ellipsis: true,
-            align: 'left'
+            align: 'left',
+            required: true,
         },
         {
             title: "Số điện thoại",
@@ -440,6 +442,13 @@ const UserPage = () => {
             width: 180,
             resizable: true,
             render: (value?: string) => formatDateTime(value),
+        },
+        {
+            title: "Mật khẩu",
+            key: "password",
+            dataIndex: "password",
+            required: true,
+            hidden: true, // Only for import/export
         },
         {
             title: "Thao tác",
@@ -796,7 +805,7 @@ const UserPage = () => {
                     <h2 style={{ margin: 0 }}>Quản lý thành viên</h2>
                     <Select
                         placeholder="Lọc theo Khóa"
-                        style={{ width: 190 }}
+                        style={{ width: 240, textAlign: 'right' }}
                         value={selectedGenerationId}
                         allowClear
                         onChange={(val) => {
@@ -804,7 +813,7 @@ const UserPage = () => {
                             // The actual filter update is handled by the reactive useEffect
                         }}
                         options={[
-                            { label: '🔥 Các khóa đang hoạt động', value: ACTIVE_ONLY },
+                            { label: 'Các khóa đang hoạt động', value: ACTIVE_ONLY },
                             ...generationList.map(g => ({ label: g.name, value: g.id }))
                         ]}
                     />
@@ -851,6 +860,7 @@ const UserPage = () => {
                     }
                 }}
                 onExport={exportData}
+                onValidateImport={validateImport}
                 onDownloadTemplate={downloadTemplate}
             />
 

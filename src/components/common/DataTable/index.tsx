@@ -23,13 +23,13 @@ import {
   FilterOutlined,
   ExclamationCircleOutlined,
   SearchOutlined,
-  FileExcelOutlined,
 } from "@ant-design/icons";
 import { Button, toast } from "@/components/common";
 import { DataTableProps, FilterConfig } from "./types";
 import { useDebounce } from "@/hooks";
 import "./styles.less";
-import ExportModal from "./ExportModal"; // Import the modal
+import ExportModal from "./ExportModal";
+import ImportModal from "./ImportModal"; // New Import
 import FilterBuilder from "./FilterBuilder";
 import ResizableTitle from "./ResizableTitle";
 
@@ -87,6 +87,7 @@ const DataTable: React.FC<DataTableProps> = ({
   importable = false,
   exportable = false,
   onImport,
+  onValidateImport,
   onExport,
   title,
   extra,
@@ -110,6 +111,7 @@ const DataTable: React.FC<DataTableProps> = ({
   const debouncedSearchTerm = useDebounce(internalSearchText, 500);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false); // New State
   const [operators, setOperators] = useState<Record<string, string>>({});
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const storageKey = columnResizeKey
@@ -641,20 +643,6 @@ const DataTable: React.FC<DataTableProps> = ({
     </Menu>
   );
 
-  const handleImportClick = () => {
-    if (!onImport) return;
-
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".xlsx,.xls,.csv";
-    input.onchange = (e: any) => {
-      const file = e.target.files[0];
-      if (file) {
-        onImport(file);
-      }
-    };
-    input.click();
-  };
 
   const hasActiveFilters =
     filters &&
@@ -672,25 +660,28 @@ const DataTable: React.FC<DataTableProps> = ({
             </Button>
           )}
           {importable && onImport && (
-            <Dropdown
-              trigger={["click"]}
-              disabled={tableProps.importLoading}
-              overlay={
-                <Menu>
-                  <Menu.Item key="upload" icon={<UploadOutlined />} onClick={handleImportClick}>Tải lên file dữ liệu</Menu.Item>
-                  <Menu.Item key="template" icon={<FileExcelOutlined />} onClick={tableProps.onDownloadTemplate}>Tải mẫu nhập liệu</Menu.Item>
-                </Menu>
-              }
-            >
-              <Button variant="outline" loading={tableProps.importLoading} buttonSize="small">
-                <UploadOutlined /> Import <span style={{ fontSize: 10, marginLeft: 4 }}>▼</span>
+            <Tooltip title="Nhập dữ liệu từ Excel">
+              <Button 
+                variant="outline" 
+                onClick={() => setImportModalOpen(true)} 
+                loading={tableProps.importLoading} 
+                buttonSize="small"
+                icon={<UploadOutlined />}
+              >
+                Import
               </Button>
-            </Dropdown>
+            </Tooltip>
           )}
           {exportable && onExport && (
             <Tooltip title="Export dữ liệu">
-              <Button variant="outline" onClick={() => setExportModalOpen(true)} loading={tableProps.exportLoading} buttonSize="small">
-                <DownloadOutlined /> Export
+              <Button 
+                variant="outline" 
+                onClick={() => setExportModalOpen(true)} 
+                loading={tableProps.exportLoading} 
+                buttonSize="small"
+                icon={<DownloadOutlined />}
+              >
+                Export
               </Button>
             </Tooltip>
           )}
@@ -788,6 +779,29 @@ const DataTable: React.FC<DataTableProps> = ({
           currentPageSize={pagination && typeof pagination !== 'boolean' ? pagination.pageSize : 10}
           filters={filters}
           currentFilters={filterValues}
+          columns={columns as any}
+      />
+
+      {/* Advanced Import Modal */}
+      <ImportModal
+          visible={importModalOpen}
+          onCancel={() => setImportModalOpen(false)}
+          onImport={(file) => {
+              if (onImport) {
+                  onImport(file);
+                  setImportModalOpen(false);
+              }
+          }}
+          onDownloadTemplate={(selectedCols) => {
+              if (tableProps.onDownloadTemplate) {
+                  // Explicitly cast or handle columns if needed
+                  (tableProps as any).onDownloadTemplate({ columns: selectedCols?.join(',') });
+              }
+          }}
+          onValidate={onValidateImport as any}
+          loading={tableProps.importLoading}
+          columns={columns as any}
+          entityName={typeof title === 'string' ? title : "dữ liệu"}
       />
     </div>
   );

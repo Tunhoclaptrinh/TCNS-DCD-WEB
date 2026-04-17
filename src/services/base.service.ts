@@ -358,6 +358,31 @@ class BaseService<T = any, CreateDTO = Partial<T>, UpdateDTO = Partial<T>> {
   }
 
   /**
+   * VALIDATE import data from file
+   */
+  async validateImport(file: File): Promise<BaseApiResponse<any>> {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await apiClient.post<BaseApiResponse<any>>(
+        `${this.endpoint}/validate-import`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      return response;
+    } catch (error) {
+      console.error(`[${this.endpoint}] validateImport error:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * IMPORT data from file
    */
   async import(file: File): Promise<BaseApiResponse<ImportResult>> {
@@ -445,9 +470,14 @@ class BaseService<T = any, CreateDTO = Partial<T>, UpdateDTO = Partial<T>> {
   /**
    * DOWNLOAD import template
    */
-  async downloadTemplate(): Promise<Blob> {
+  async downloadTemplate(params: QueryParams = {}): Promise<Blob> {
     try {
-      const response = await apiClient.get(`${this.endpoint}/template`, {
+      const queryString = this.buildQueryString(params);
+      const url = queryString
+        ? `${this.endpoint}/template?${queryString}`
+        : `${this.endpoint}/template`;
+
+      const response = await apiClient.get(url, {
         responseType: "blob",
       });
       return response as unknown as Blob;

@@ -26,6 +26,8 @@ export interface DataTableColumn<T = any> extends ColumnType<T> {
     searchable?: boolean; // Enable search filter (default: false)
     minWidth?: number; // Min width for resizable column
     maxWidth?: number; // Max width for resizable column
+    required?: boolean; // Mark as required for import/export
+    hidden?: boolean; // Hide from the main table but available for other uses
 }
 
 export interface DataTableProps {
@@ -71,7 +73,8 @@ export interface DataTableProps {
     exportable?: boolean;
     exportLoading?: boolean;
     onImport?: (file: File) => void;
-    onDownloadTemplate?: () => void;
+    onValidateImport?: (file: File) => Promise<any>;
+    onDownloadTemplate?: (options?: any) => void;
     onExport?: (options?: any) => void;
     title?: React.ReactNode;
     extra?: React.ReactNode;

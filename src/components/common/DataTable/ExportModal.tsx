@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Radio, InputNumber, Space, Typography, Divider } from "antd";
-import { DownloadOutlined, FilterOutlined } from "@ant-design/icons";
+import { Modal, Radio, InputNumber, Space, Typography, Divider, Checkbox, Tooltip } from "antd";
+import { DownloadOutlined, FilterOutlined, OrderedListOutlined } from "@ant-design/icons";
 import { Button } from "@/components/common";
 import { FilterConfig } from "./types";
 import FilterBuilder from "./FilterBuilder";
@@ -14,6 +14,7 @@ interface ExportModalProps {
   currentPageSize?: number;
   filters?: FilterConfig[];
   currentFilters?: Record<string, any>; // Initial filter values from table
+  columns?: Array<{ title: any; key: string; hidden?: boolean }>;
 }
 
 export interface ExportOptions {
@@ -21,6 +22,7 @@ export interface ExportOptions {
   limit?: number;
   format: "xlsx" | "csv";
   filters?: Record<string, any>; // Ad-hoc filters
+  columns?: string[];
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({
@@ -31,12 +33,14 @@ const ExportModal: React.FC<ExportModalProps> = ({
   totalRecords = 0,
   currentPageSize = 10,
   filters = [],
-  currentFilters = {}
+  currentFilters = {},
+  columns = []
 }) => {
   const [scope, setScope] = useState<"page" | "all" | "custom">("page");
   const [limit, setLimit] = useState<number>(100);
   const [format, setFormat] = useState<"xlsx" | "csv">("xlsx");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 
   // Local Filter State
   const [localFilterValues, setLocalFilterValues] = useState<Record<string, any>>({});
@@ -51,15 +55,20 @@ const ExportModal: React.FC<ExportModalProps> = ({
         // Infer active filters from values
         const active: FilterConfig[] = [];
         filters.forEach(f => {
-            // Check if any key starting with f.key exists in values
              if (Object.keys(currentFilters).some(k => k.startsWith(f.key))) {
                 active.push(f);
                 setEnabledFilters(prev => ({ ...prev, [f.key]: true }));
              }
         });
         setActiveFilters(active);
+
+        // Initialize columns (filter out internal columns like 'actions')
+        const initialCols = columns
+          .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection')
+          .map(c => c.key);
+        setSelectedColumns(initialCols);
     }
-  }, [visible, currentFilters, filters]);
+  }, [visible, currentFilters, filters, columns]);
 
 
   const handleOk = () => {
@@ -67,13 +76,12 @@ const ExportModal: React.FC<ExportModalProps> = ({
       scope,
       limit: scope === "custom" ? limit : undefined,
       format,
-      filters: localFilterValues
+      filters: localFilterValues,
+      columns: selectedColumns
     });
   };
 
-  /* Helper to get the correct filter key based on operator */
   const getActiveFilterKey = (filterKey: string, op?: string) => {
-    // Find filter config to get default operator
     const filterConfig = filters.find(f => f.key === filterKey);
     const defaultOp = filterConfig?.defaultOperator || 'eq';
     const currentOp = op || operators[filterKey] || defaultOp;
@@ -132,98 +140,136 @@ const ExportModal: React.FC<ExportModalProps> = ({
         return newEnabled;
       });
     };
-     const toggleFilterEnabled = (key: string) => {
-          setEnabledFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+
+    const toggleFilterEnabled = (key: string) => {
+        setEnabledFilters((prev) => ({ ...prev, [key]: !prev[key] }));
     };
 
   return (
     <Modal
-      title='Tùy chọn xuất dữ liệu'
+      title={
+        <Space>
+          <DownloadOutlined style={{ color: 'var(--primary-color)' }} />
+          <span>Tùy chọn xuất dữ liệu</span>
+        </Space>
+      }
       open={visible}
       onCancel={onCancel}
-      footer={null} // Custom footer
-      width={800}
+      footer={null}
+      width={720}
       className="export-modal"
+      centered
     >
-      <div style={{ padding: '20px 0' }}>
+      <div style={{ padding: '8px 0' }}>
         <Space direction="vertical" style={{ width: "100%" }} size="large">
           
-          {/* Main Options Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-              {/* Scope Section */}
-              <div>
-                 <Divider><Typography.Text strong style={{ display: 'block', marginBottom: 12, fontSize: 14 }}>
-                      Phạm vi dữ liệu:
-                  </Typography.Text></Divider>
-                  <div style={{ 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 12,
-                  }}>
-                      <Radio.Group
-                        value={scope}
-                        onChange={(e) => setScope(e.target.value)}
-                        style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-                      >
-                          <Radio value="page">Trang hiện tại <span style={{ color: '#8c8c8c' }}>({currentPageSize} dòng)</span></Radio>
-                          <Radio value="all">Tất cả kết quả <span style={{ color: '#8c8c8c' }}>({totalRecords} dòng)</span></Radio>
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <Radio value="custom">Tùy chỉnh:</Radio>
-                            {scope === "custom" && (
-                                <InputNumber
-                                  min={1}
-                                  max={10000}
-                                  value={limit}
-                                  onChange={(val) => setLimit(val || 100)}
-                                  addonAfter="dòng"
-                                  size="small"
-                                  style={{ width: 120, marginLeft: 8 }}
-                                />
-                            )}
-                          </div>
-                      </Radio.Group>
-                  </div>
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 32 }}>
+              {/* Left Column: Scope & Format */}
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  <section>
+                    <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
+                        1. Phạm vi dữ liệu
+                    </Typography.Text>
+                    <Radio.Group
+                      value={scope}
+                      onChange={(e) => setScope(e.target.value)}
+                      style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+                    >
+                        <Radio value="page">Trang hiện tại <span style={{ color: '#8c8c8c', fontSize: 12 }}>({currentPageSize} dòng)</span></Radio>
+                        <Radio value="all">Tất cả kết quả <span style={{ color: '#8c8c8c', fontSize: 12 }}>({totalRecords} dòng)</span></Radio>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <Radio value="custom">Tùy chỉnh số dòng:</Radio>
+                          {scope === "custom" && (
+                              <InputNumber
+                                min={1}
+                                max={10000}
+                                value={limit}
+                                onChange={(val) => setLimit(val || 100)}
+                                size="small"
+                                style={{ width: 80, marginLeft: 4 }}
+                              />
+                          )}
+                        </div>
+                    </Radio.Group>
+                  </section>
 
-              {/* Format Section */}
-              <div>
-                   <Divider><Typography.Text strong style={{ display: 'block', marginBottom: 12, fontSize: 14 }}>
-                       Định dạng tập tin:
-                   </Typography.Text></Divider>
-                   <div style={{ 
-                       display: 'flex',
-                       flexDirection: 'column',
-                       gap: 12
-                   }}>
-                       <Radio.Group 
-                            value={format} 
-                            onChange={(e) => setFormat(e.target.value)}
-                            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-                       >
-                           <Radio value="xlsx">Microsoft Excel (.xlsx)</Radio>
-                           <Radio value="csv">Comma Separated (.csv)</Radio>
-                       </Radio.Group>
-                   </div>
-              </div>
+                  <Divider style={{ margin: '12px 0' }} />
+
+                  <section>
+                    <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
+                        2. Định dạng tập tin
+                    </Typography.Text>
+                    <Radio.Group 
+                          value={format} 
+                          onChange={(e) => setFormat(e.target.value)}
+                          style={{ display: 'flex', flexDirection: 'row', gap: 24 }}
+                    >
+                         <Radio value="xlsx">Excel (.xlsx)</Radio>
+                         <Radio value="csv">CSV (.csv)</Radio>
+                    </Radio.Group>
+                  </section>
+              </Space>
+
+              {/* Right Column: Column Selection */}
+              <section style={{ borderLeft: '1px solid #f0f0f0', paddingLeft: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Typography.Text strong>3. Chọn cột hiển thị</Typography.Text>
+                    <OrderedListOutlined style={{ color: '#bfbfbf' }} />
+                  </div>
+                  <div style={{ 
+                      maxHeight: 220, 
+                      overflowY: 'auto', 
+                      background: '#fafafa', 
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      border: '1px solid #f0f0f0'
+                  }}>
+                    <Checkbox.Group 
+                      style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}
+                      value={selectedColumns}
+                      onChange={(vals) => setSelectedColumns(vals as string[])}
+                    >
+                      {columns
+                        .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection')
+                        .map(col => (
+                          <Checkbox key={col.key} value={col.key}>
+                            {typeof col.title === 'string' ? col.title : col.key}
+                          </Checkbox>
+                        ))
+                      }
+                    </Checkbox.Group>
+                  </div>
+                  <div style={{ marginTop: 8, textAlign: 'right' }}>
+                    <Typography.Link size="small" onClick={() => setSelectedColumns(columns.map(c => c.key))}>Chọn tất cả</Typography.Link>
+                  </div>
+              </section>
           </div>
 
           {/* Advanced Filter Section */}
           {filters.length > 0 && (
-            <div style={{paddingTop: 20 }}>
+            <div style={{ marginTop: 8 }}>
                 <div 
                     style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
                         cursor: 'pointer', 
                         marginBottom: showFilters ? 16 : 0,
-                        userSelect: 'none'
+                        padding: '8px 12px',
+                        background: '#f5f5f5',
+                        borderRadius: 6,
+                        transition: 'all 0.3s'
                     }}
                     onClick={() => setShowFilters(!showFilters)}
                 >
                     <FilterOutlined style={{ marginRight: 8, color: showFilters ? 'var(--primary-color)' : 'inherit' }} />
                     <span style={{ fontWeight: 500, color: showFilters ? 'var(--primary-color)' : 'inherit' }}>
-                        Bộ lọc nâng cao
+                        Lọc dữ liệu xuất (Tự chọn)
                     </span>
+                    <Tooltip title="Cho phép lọc dữ liệu độc lập với bảng hiện tại">
+                        <Typography.Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                            [Advanced]
+                        </Typography.Text>
+                    </Tooltip>
                     <span style={{ marginLeft: 'auto', fontSize: 12, color: '#8c8c8c' }}>
                         {showFilters ? 'Ẩn bộ lọc' : 'Mở rộng'}
                     </span>
@@ -233,6 +279,9 @@ const ExportModal: React.FC<ExportModalProps> = ({
                      <div style={{ 
                          background: '#fafafa', 
                          borderRadius: 8, 
+                         border: '1px solid #f0f0f0',
+                         marginTop: 12,
+                         padding: 8
                      }}>
                         <FilterBuilder 
                             filters={filters}
@@ -255,9 +304,11 @@ const ExportModal: React.FC<ExportModalProps> = ({
         </Space>
       </div>
 
-      {/* Custom Centered Footer */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 10 }}>
-          <Button variant="outline" onClick={onCancel} style={{ minWidth: 100 }}>
+      <Divider style={{ margin: '16px 0' }} />
+
+      {/* Footer */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <Button variant="outline" onClick={onCancel}>
               Hủy bỏ
           </Button>
           <Button 
@@ -265,9 +316,9 @@ const ExportModal: React.FC<ExportModalProps> = ({
             onClick={handleOk} 
             loading={loading}
             icon={<DownloadOutlined />}
-            style={{ minWidth: 140 }}
+            disabled={selectedColumns.length === 0}
           >
-            Xuất dữ liệu
+            Bắt đầu xuất file
           </Button>
       </div>
     </Modal>

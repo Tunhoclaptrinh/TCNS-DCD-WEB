@@ -189,6 +189,22 @@ export const useCRUD = (service: any, options: any = {}) => {
     );
 
     /**
+     * Validate import file
+     */
+    const validateImport = useCallback(async (file: File) => {
+        try {
+            setLoading(true);
+            const response = await service.validateImport(file);
+            return response.data || response;
+        } catch (error) {
+            console.error('useCRUD validateImport error:', error);
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }, [service]);
+
+    /**
      * Create new item
      */
     const create = useCallback(
@@ -483,11 +499,11 @@ export const useCRUD = (service: any, options: any = {}) => {
     /**
      * Download template
      */
-    const downloadTemplate = useCallback(async () => {
+    const downloadTemplate = useCallback(async (params: any = {}) => {
         try {
             setLoading(true);
             if (service.downloadTemplate) {
-                 const blob = await service.downloadTemplate();
+                 const blob = await service.downloadTemplate(params);
                  const url = window.URL.createObjectURL(blob);
                  const link = document.createElement('a');
                  link.href = url;
@@ -553,6 +569,7 @@ export const useCRUD = (service: any, options: any = {}) => {
         // Import/Export
         exportData,
         importData,
+        validateImport,
         downloadTemplate,
 
         // Table helpers
