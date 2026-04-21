@@ -121,7 +121,7 @@ apiClient.interceptors.response.use(
         // Dùng axios thuần để tránh interceptor loop
         const refreshResponse = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
-          {},
+          { refreshToken: currentToken },
           { headers: { Authorization: `Bearer ${currentToken}` } },
         );
 

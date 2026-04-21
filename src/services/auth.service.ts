@@ -7,6 +7,7 @@ import type {
   User,
   BaseApiResponse,
 } from "@/types";
+import { STORAGE_KEYS } from "@/config/constants";
 import { logger } from "@/utils/logger.utils";
 
 /**
@@ -225,7 +226,8 @@ class AuthService {
    */
   async refreshToken(): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post<AuthResponse>("/auth/refresh");
+      const currentToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
+      const response = await apiClient.post<AuthResponse>("/auth/refresh", { refreshToken: currentToken });
 
       if (!response.success) {
         throw new Error(response.message || "Làm mới token thất bại");

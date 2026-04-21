@@ -350,9 +350,10 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               <Title level={5} style={{ margin: 0 }}>Danh sách trực thực tế</Title>
               <Text type="secondary" style={{ fontSize: 12 }}>Tích chọn để xác nhận nhân sự thực hiện trực</Text>
             </div>
-            <Space>
-              <Form.Item name="assignedUserIds" noStyle>
+            <Space size={12} align="center">
+              <Form.Item name="assignedUserIds" noStyle style={{ marginBottom: 0 }}>
                 <DutyPersonnelPicker 
+                  type="primary"
                   label="Phân công kíp" 
                   onChange={(ids) => {
                     form.setFieldsValue({ assignedUserIds: ids });
@@ -360,22 +361,23 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 />
               </Form.Item>
               
-              <Form.Item name="attendedUserIds" noStyle>
+              <Form.Item name="attendedUserIds" noStyle style={{ marginBottom: 0 }}>
                 <DutyPersonnelPicker 
-                  label="Thêm phụ tá / Bổ sung" 
-                  icon={<UsergroupAddOutlined />}
+                  label="Thêm ĐD bổ sung" 
+                  icon={<UsergroupAddOutlined style={{ color: '#16a34a' }} />}
+                  style={{ border: '1px solid #dcfce7', background: '#f0fdf4' }}
                 />
               </Form.Item>
 
               <Button 
                 type="primary" 
                 ghost 
-                size="small" 
                 onClick={() => {
                   const assigned = form.getFieldValue('assignedUserIds') || [];
                   form.setFieldsValue({ attendedUserIds: assigned });
                 }}
                 icon={<CheckCircleOutlined />}
+                style={{ borderRadius: 8, minWidth: 120, height: 36 }}
               >
                 Tất cả có mặt
               </Button>

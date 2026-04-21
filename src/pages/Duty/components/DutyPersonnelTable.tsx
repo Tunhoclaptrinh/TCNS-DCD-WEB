@@ -219,12 +219,19 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
 /**
  * Picker component with a Button that opens the Table in a Modal
  */
-const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { label?: string; icon?: React.ReactNode }> = (props) => {
+const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { 
+  label?: string; 
+  icon?: React.ReactNode;
+  type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
+  ghost?: boolean;
+  size?: 'small' | 'middle' | 'large';
+  style?: React.CSSProperties;
+}> = (props) => {
   const [open, setOpen] = useState(false);
   const [tempSelectedIds, setTempSelectedIds] = useState<number[]>([]);
   const count = props.value?.length || 0;
   const tempCount = tempSelectedIds.length;
-  const { userIds, icon } = props;
+  const { userIds, icon, type = 'default', ghost = false, size = 'middle', style } = props;
 
   const handleOpen = () => {
     setTempSelectedIds(props.value || []);
@@ -237,28 +244,36 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { label?: string; 
   };
 
   return (
-    <div className="duty-personnel-picker">
-      <Space direction="horizontal" wrap>
-        <Button 
-          icon={icon || <TeamOutlined />} 
-          onClick={handleOpen}
-          style={{ width: '100%', minWidth: 160, textAlign: 'left', display: 'flex', alignItems: 'center' }}
-          className="duty-picker-trigger"
-        >
-          {props.label || "Quản lý nhân sự kíp trực"}
-          <Badge 
-            count={count} 
-            showZero={false} 
-            offset={[10, 0]} 
-            style={{ backgroundColor: 'var(--primary-color)' }} 
-          />
-        </Button>
-        {count > 0 && (
-          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
-            (Đã chọn {count})
-          </Text>
-        )}
-      </Space>
+    <div className="duty-personnel-picker" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+      <Button 
+        type={type}
+        ghost={ghost}
+        size={size}
+        icon={icon || <TeamOutlined />} 
+        onClick={handleOpen}
+        style={{ 
+          minWidth: 150, 
+          height: 36,
+          textAlign: 'left', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 8,
+          borderRadius: 8,
+          ...style 
+        }}
+        className="duty-picker-trigger"
+      >
+        <span style={{ flex: 1, fontWeight: type === 'primary' ? 600 : 400 }}>{props.label || "Quản lý nhân sự kíp trực"}</span>
+        <Badge 
+          count={count} 
+          showZero={false} 
+          style={{ 
+            backgroundColor: type === 'primary' && !ghost ? '#fff' : '#ff4d4f',
+            color: type === 'primary' && !ghost ? 'var(--primary-color)' : '#fff',
+            boxShadow: 'none'
+          }} 
+        />
+      </Button>
 
       <Modal
         title={
