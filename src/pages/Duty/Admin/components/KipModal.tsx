@@ -1,9 +1,30 @@
 import React from 'react';
-import { Form, Input, InputNumber, Row, Col, Space, Typography, Divider, Select, TimePicker } from 'antd';
-import { PlusSquareOutlined, ClockCircleOutlined, TeamOutlined, CalendarOutlined } from '@ant-design/icons';
+import { 
+  Form, 
+  Input, 
+  InputNumber, 
+  Row, 
+  Col, 
+  Space, 
+  Divider, 
+  Select, 
+  TimePicker
+} from 'antd';
+import { 
+  ScheduleOutlined, 
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  UnlockOutlined,
+  GlobalOutlined
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
-import { DutyKip, DutyShift } from '@/services/duty.service';
+import { DutyKip } from '@/services/duty.service';
+import SlotStructureEditor from './SlotStructureEditor';
+
+
+
+
 
 interface KipModalProps {
   open: boolean;
@@ -11,7 +32,6 @@ interface KipModalProps {
   onSuccess: () => void;
   editingKip: Partial<DutyKip> | null;
   onSubmit: (values: any) => Promise<void>;
-  templates: DutyShift[];
   loading?: boolean;
 }
 
@@ -21,7 +41,6 @@ const KipModal: React.FC<KipModalProps> = ({
   onSuccess,
   editingKip,
   onSubmit,
-  templates,
   loading = false,
 }) => {
   const [form] = Form.useForm();
@@ -46,111 +65,126 @@ const KipModal: React.FC<KipModalProps> = ({
     onSuccess();
   };
 
-  const currentShiftId = Form.useWatch('shiftId', form);
-  const currentShift = templates.find(t => t.id === currentShiftId);
-
   return (
     <FormModal
       open={open}
-      title={
-        <Space>
-          <PlusSquareOutlined style={{ color: '#0ea5e9' }} />
-          <span>{editingKip?.id ? "Cấu hình Kíp trực" : "Thêm Kíp trực mới"}</span>
-        </Space>
-      }
+      title={editingKip?.id ? "Cập nhật Kíp trực" : "Thêm mới Kíp trực"}
       onCancel={onCancel}
       onOk={handleOk}
       form={form}
       loading={loading}
-      width={550}
+      width={900}
       destroyOnClose
     >
       <div style={{ padding: '0 4px' }}>
         <Form.Item name="shiftId" hidden><Input /></Form.Item>
 
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-          <PlusSquareOutlined style={{ color: '#0ea5e9' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin định danh</span>
+          <ScheduleOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin chi tiết Kíp</span>
         </Divider>
 
-        <Form.Item 
-          name="name" 
-          label="Tên Kíp (Chi tiết)" 
-          rules={[{ required: true, message: 'VD: Kíp 1, Kíp 2...' }]}
-        >
-          <Input placeholder="VD: Kíp 1, Trực sảnh, Trực kho..." prefix={<PlusSquareOutlined style={{ color: '#0ea5e9' }} />} />
-        </Form.Item>
-
-        <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <ClockCircleOutlined style={{ color: '#0ea5e9' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thời gian & Chỉ tiêu</span>
-        </Divider>
-
-        <Row gutter={[16, 16]}>
+        <Row gutter={[24, 0]}>
           <Col span={12}>
-            <Form.Item name="capacity" label="Chỉ tiêu (Người)" initialValue={1}>
-              <InputNumber min={1} style={{ width: '100%' }} prefix={<TeamOutlined />} />
+            <Form.Item 
+              name="name" 
+              label="Tên Kíp trực" 
+              rules={[{ required: true, message: 'Vui lòng nhập tên kíp' }]}
+            >
+              <Input placeholder="VD: Kíp 1, Trực sảnh..." />
             </Form.Item>
           </Col>
-          <Col span={6}>
-            <Form.Item name="order" label="Tiết BĐ" rules={[{ required: true }]}>
-              <InputNumber min={1} style={{ width: '100%' }} placeholder="Bắt đầu" />
+          <Col span={12}>
+            <Form.Item name="description" label="Địa điểm / Ghi chú">
+              <Input placeholder="Ghi chú vị trí trực..." />
             </Form.Item>
           </Col>
-          <Col span={6}>
-            <Form.Item name="endPeriod" label="Tiết KT">
-              <InputNumber min={1} style={{ width: '100%' }} placeholder="Kết thúc" />
+          
+          <Col span={8}>
+            <Form.Item name="capacity" label="Tổng chỉ tiêu (Người)" initialValue={1}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col span={16}>
+            <Form.Item
+              name="timeRange"
+              label="Khung giờ đặc thù (Tùy chọn)"
+              extra="Bỏ trống để sử dụng giờ mặc định của Ca"
+            >
+              <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} />
             </Form.Item>
           </Col>
         </Row>
 
-        <Form.Item
-          name="timeRange"
-          label={
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <span>Giờ trực riêng của kíp</span>
-              {currentShift && (
-                <Typography.Link
-                  style={{ fontSize: 12 }}
-                  onClick={() => {
-                    form.setFieldsValue({
-                      timeRange: [dayjs(currentShift.startTime, 'HH:mm'), dayjs(currentShift.endTime, 'HH:mm')]
-                    });
-                  }}
-                >
-                  Dùng giờ của Ca ({currentShift.startTime} - {currentShift.endTime})
-                </Typography.Link>
-              )}
-            </Space>
-          }
-          extra="Để trống sẽ tự tính theo giờ của Ca"
-        >
-          <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} />
-        </Form.Item>
+        <SlotStructureEditor 
+          form={form} 
+          onTotalChange={(total) => {
+            if (total > 0) {
+              const currentCapacity = form.getFieldValue('capacity');
+              if (total > (currentCapacity || 0)) {
+                form.setFieldValue('capacity', total);
+              }
+            }
+          }}
+        />
 
-        <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <CalendarOutlined style={{ color: '#0ea5e9' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Ngày áp dụng riêng</span>
+        <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16 }}>
+          <GlobalOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Cấu hình Hiển thị & Lịch</span>
         </Divider>
 
-        <Form.Item 
-          name="daysOfWeek" 
-          label="Thứ trong tuần" 
-          extra="Để trống nếu áp dụng cho TẤT CẢ các ngày của Ca"
-        >
-          <Select
-            mode="multiple"
-            placeholder="Sử dụng cấu hình của Ca"
-            style={{ width: '100%' }}
-            maxTagCount="responsive"
-            options={[
-              { label: 'Thứ 2', value: 0 },
-              { label: 'Thứ 3', value: 1 },
-              { label: 'Thứ 4', value: 2 },
-              { label: 'Thứ 5', value: 3 },
-              { label: 'Thứ 6', value: 4 },
-              { label: 'Thứ 7', value: 5 },
-              { label: 'Chủ nhật', value: 6 }
-            ]}
-          />
-        </Form.Item>
+        <Row gutter={[24, 0]}>
+          <Col span={8}>
+            <Form.Item name="coefficient" label="Hệ số công việc" initialValue={1}>
+              <InputNumber min={0.1} step={0.1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col span={16}>
+             <Form.Item 
+              name={['config', 'visibilityMode']} 
+              label="Chế độ bảo mật / Tách lịch"
+              initialValue="public"
+            >
+              <Select
+                options={[
+                  { 
+                    label: <Space><UnlockOutlined /><span>Công khai (Tất cả thấy nhau)</span></Space>, 
+                    value: 'public' 
+                  },
+                  { 
+                    label: <Space><EyeInvisibleOutlined /><span>Bảo mật song phương (TV & CTV ẩn nhau)</span></Space>, 
+                    value: 'private_mutual' 
+                  },
+                  { 
+                    label: <Space><EyeOutlined /><span>Bảo vệ TV (TV thấy CTV, CTV ẩn TV)</span></Space>, 
+                    value: 'protect_members' 
+                  },
+                ]}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item 
+              name="daysOfWeek" 
+              label="Lịch áp dụng riêng" 
+              extra="Mặc định áp dụng cho tất cả ngày của Ca"
+            >
+              <Select
+                mode="multiple"
+                placeholder="Theo lịch chung của Ca"
+                style={{ width: '100%' }}
+                maxTagCount="responsive"
+                options={[
+                  { label: 'Thứ 2', value: 0 },
+                  { label: 'Thứ 3', value: 1 },
+                  { label: 'Thứ 4', value: 2 },
+                  { label: 'Thứ 5', value: 3 },
+                  { label: 'Thứ 6', value: 4 },
+                  { label: 'Thứ 7', value: 5 },
+                  { label: 'Chủ nhật', value: 6 }
+                ]}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
       </div>
     </FormModal>
   );

@@ -1,389 +1,458 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Form, 
-  Input, 
-  InputNumber, 
   Row, 
   Col, 
   Space, 
   Divider, 
-  Select, 
+  Typography, 
+  Input, 
+  InputNumber, 
   DatePicker, 
   TimePicker, 
-  Badge, 
-  Typography, 
-  Avatar, 
-  List, 
-  Tag, 
-  Button as AntButton,
+  Form,
   message,
-  Tooltip,
-  Modal,
+  Select,
+  Button,
+  Tag,
+  Avatar,
+  List,
+  Switch,
 } from 'antd';
 import { 
-  EditOutlined, 
-  ClockCircleOutlined, 
-  TeamOutlined, 
   ScheduleOutlined, 
-  SettingOutlined, 
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  UnlockOutlined,
+  TeamOutlined,
+  InfoCircleOutlined,
+  ClockCircleOutlined,
+  SettingOutlined,
+  EditOutlined,
+  ThunderboltOutlined,
   CheckCircleOutlined,
-  DeleteOutlined,
+  UsergroupAddOutlined,
+  UserOutlined,
+  CheckOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
+import { motion } from 'framer-motion';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
-import dutyService, { DutySlot } from '@/services/duty.service';
-import apiClient from '@/config/axios.config';
-import DutyPersonnelPicker, { POSITION_LABELS } from '../../components/DutyPersonnelTable';
+import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
+import DutyPersonnelPicker from '../../components/DutyPersonnelTable';
+import SlotStructureEditor from './SlotStructureEditor';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 interface AdminDutySlotModalProps {
   open: boolean;
   onCancel: () => void;
   onSuccess: () => void;
   slot: DutySlot | null;
+  templates: DutyShift[];
   loading?: boolean;
 }
 
-/**
- * Management Modal for Duty Slot - Admin Version
- */
 const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   open,
   onCancel,
   onSuccess,
   slot,
+  templates,
   loading: externalLoading = false,
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [isEditShiftOpen, setIsEditShiftOpen] = useState(false);
+  const [localShiftData, setLocalShiftData] = useState<any>(null);
+  
 
-  // Sync slot data to form
+
   useEffect(() => {
     if (open && slot) {
+      setLocalShiftData(null);
+      
       form.setFieldsValue({
         ...slot,
         shiftDate: dayjs(slot.shiftDate),
         timeRange: slot.startTime && slot.endTime 
           ? [dayjs(slot.startTime, 'HH:mm'), dayjs(slot.endTime, 'HH:mm')] 
           : undefined,
-        status: slot.status || 'open'
+        status: slot.status || 'open',
+        visibilityMode: slot.config?.visibilityMode || 'public',
+        assignedUserIds: slot.assignedUserIds || [],
+        attendedUserIds: slot.attendedUserIds || []
       });
     }
   }, [open, slot, form]);
 
-  // Fetch all users for picking
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await apiClient.get('/users');
-        const rawData = res.data || res;
-        const usersArray = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.data) ? rawData.data : []);
-        setAllUsers(usersArray);
-      } catch (err) {
-        console.error('Lỗi khi tải danh sách người dùng:', err);
-      }
-    };
-    if (open) fetchUsers();
-  }, [open]);
-
-  const watchedAssignedIds = Form.useWatch('assignedUserIds', form) || [];
-  
-  const currentAssignedUsers = React.useMemo(() => {
-    const rawIds = watchedAssignedIds.length > 0 ? watchedAssignedIds : (slot?.assignedUserIds || []);
-    if (!rawIds.length) return [];
-    
-    return rawIds.map((id: any) => {
-      const user = allUsers.find(u => String(u.id) === String(id)) || 
-                   slot?.assignedUsers?.find((u: any) => String(u.id) === String(id));
-      if (user) return user;
-      return { id, name: `User ${id}` };
-    });
-  }, [watchedAssignedIds, allUsers, slot]);
-
-  const isSpecialEvent = !!slot?.isSpecialEvent;
-  const themeColor = isSpecialEvent ? '#3b82f6' : '#6366f1';
-
-  const handleOk = async (values: any) => {
+  const handleSubmit = async (values: any) => {
+    if (!slot) return;
     setLoading(true);
     try {
-      const data = {
+      const targetDateStr = values.shiftDate.format('YYYY-MM-DD');
+      
+      if (localShiftData && slot.shiftId) {
+        await dutyService.addShiftToDay(targetDateStr, slot.shiftId, {
+          name: localShiftData.name,
+          startTime: localShiftData.startTime,
+          endTime: localShiftData.endTime,
+        }, 'shifts');
+      }
+
+      const payload = {
         ...values,
-        shiftDate: values.shiftDate?.format('YYYY-MM-DD'),
+        shiftDate: targetDateStr,
         startTime: values.timeRange?.[0]?.format('HH:mm'),
-        endTime: values.timeRange?.[1]?.format('HH:mm')
+        endTime: values.timeRange?.[1]?.format('HH:mm'),
+        config: {
+          ...slot.config,
+          visibilityMode: values.visibilityMode
+        }
       };
       
-      const res = await dutyService.updateSlot(slot?.id!, data);
+      const res = await dutyService.updateSlot(slot.id, payload);
+      
       if (res.success) {
-        message.success('Cập nhật kíp trực thành công');
+        await dutyService.markAttendance(slot.id, values.attendedUserIds || []);
+        message.success('Cập nhật kíp trực và điểm danh thành công');
         onSuccess();
         onCancel();
       }
-    } catch (err) {
-      message.error('Lỗi khi cập nhật kíp trực');
+    } catch (err: any) {
+      message.error('Lỗi khi cập nhật: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!slot) return;
-    Modal.confirm({
-      title: 'Xác nhận xóa kíp trực?',
-      content: 'Thao tác này sẽ xóa kíp trực vĩnh viễn khỏi lịch. Bạn có chắc chắn muốn tiếp tục?',
-      okText: 'Xóa kíp',
-      okType: 'danger',
-      cancelText: 'Hủy bỏ',
-      onOk: async () => {
-        setLoading(true);
-        try {
-          const res = await dutyService.deleteSlot(slot.id);
-          if (res.success) {
-            message.success('Đã xóa kíp trực');
-            onSuccess();
-            onCancel();
-          }
-        } catch (err) {
-          message.error('Lỗi khi xóa kíp trực');
-        } finally {
-          setLoading(false);
-        }
-      }
-    });
-  };
-
-  const watchedAttendedIds = Form.useWatch('attendedUserIds', form) || [];
-
-  const toggleAttendance = async (uId: number) => {
+  const handleToggleAttendance = (userId: number, checked: boolean) => {
     const currentAttended = form.getFieldValue('attendedUserIds') || [];
-    let nextAttended: number[];
-    
-    if (currentAttended.some((id: any) => String(id) === String(uId))) {
-      nextAttended = currentAttended.filter((id: any) => String(id) !== String(uId));
+    let nextAttended = [];
+    if (checked) {
+      nextAttended = [...new Set([...currentAttended, userId])];
     } else {
-      nextAttended = [...currentAttended, uId];
+      nextAttended = currentAttended.filter((id: number) => id !== userId);
     }
-    
-    form.setFieldValue('attendedUserIds', nextAttended);
-    
-    if (slot?.id) {
-      try {
-        await dutyService.markAttendance(slot.id, nextAttended);
-        message.success(nextAttended.includes(uId) ? 'Đã ghi nhận điểm danh' : 'Đã hủy điểm danh');
-      } catch (err) {
-        message.error('Lỗi khi ghi nhận điểm danh');
-        form.setFieldValue('attendedUserIds', currentAttended);
-      }
-    }
+    form.setFieldsValue({ attendedUserIds: nextAttended });
   };
 
   return (
     <FormModal
       open={open}
+      form={form}
       title={
         <Space>
-          <div style={{ width: 4, height: 18, background: themeColor, borderRadius: 2 }} />
-          <span>{slot?.id ? (isSpecialEvent ? "Hiệu chỉnh Sự kiện" : "Hiệu chỉnh Kíp trực") : "Thêm mới Kíp trực"}</span>
-          {slot?.status && (
-            <Tag color={slot.status === 'open' ? 'success' : 'error'} style={{ marginLeft: 8, borderRadius: 12 }}>
-              {slot.status === 'open' ? 'ĐANG MỞ' : 'ĐÃ KHÓA'}
-            </Tag>
-          )}
-          {isSpecialEvent && <Tag color="blue" bordered={false} style={{ fontWeight: 800 }}>FESTIVAL</Tag>}
-          {slot?.id && (
-            <AntButton 
-              danger 
-              type="text" 
-              icon={<DeleteOutlined />} 
-              size="small"
-              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-              style={{ marginLeft: 16 }}
-            >
-              Xóa
-            </AntButton>
-          )}
+          <ScheduleOutlined />
+          <span>Cập nhật Kíp trực</span>
         </Space>
       }
       onCancel={onCancel}
-      onOk={handleOk}
-      form={form}
+      onOk={handleSubmit}
       loading={loading || externalLoading}
-      width={780}
-      destroyOnClose
+      width={900}
       okText="Lưu thay đổi"
-      cancelText="Hủy bỏ"
     >
       <div style={{ padding: '0 4px' }}>
+        <Form.Item noStyle shouldUpdate>
+          {() => {
+            const shiftId = slot?.shiftId;
+            const shift = templates.find(s => s.id === shiftId);
+
+            if (shift) {
+              const isSpecial = !!shift.isSpecialEvent;
+              return (
+                <div style={{ 
+                  background: isSpecial ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                  padding: '20px',
+                  borderRadius: '16px',
+                  marginBottom: '24px',
+                  border: `1px solid ${isSpecial ? '#bfdbfe' : '#e2e8f0'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{
+                      background: isSpecial ? '#3b82f6' : '#64748b',
+                      color: 'white',
+                      width: 50,
+                      height: 50,
+                      borderRadius: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                    }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 800 }}>{dayjs(slot?.shiftDate).format('ddd')}</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 900, lineHeight: 1 }}>{dayjs(slot?.shiftDate).format('DD')}</div>
+                    </div>
+                    <div>
+                      <Space align="center" size={8}>
+                        <Title level={5} style={{ margin: 0, color: isSpecial ? '#1e40af' : '#1e293b' }}>{shift.name}</Title>
+                        {isSpecial && <Tag color="blue">SỰ KIỆN</Tag>}
+                      </Space>
+                      <div style={{ marginTop: 2 }}>
+                        <Space style={{ color: isSpecial ? '#3b82f6' : '#64748b', fontSize: 13 }}>
+                          <ClockCircleOutlined />
+                          <Text strong style={{ color: 'inherit' }}>{shift.startTime} - {shift.endTime}</Text>
+                        </Space>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    icon={<SettingOutlined />} 
+                    size="small"
+                    onClick={() => {
+                      const nextVal = !isEditShiftOpen;
+                      setIsEditShiftOpen(nextVal);
+                      if (nextVal) {
+                        setLocalShiftData({
+                          name: shift.name,
+                          startTime: shift.startTime,
+                          endTime: shift.endTime,
+                        });
+                      }
+                    }}
+                    type={isEditShiftOpen ? 'primary' : 'default'}
+                  >
+                    {isEditShiftOpen ? "Lưu tạm thông số" : "Sửa thông số Ca"}
+                  </Button>
+                </div>
+              );
+            }
+            return null;
+          }}
+        </Form.Item>
+
+        {isEditShiftOpen && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }} 
+            animate={{ opacity: 1, scale: 1 }}
+            style={{ marginBottom: 24, padding: '20px', background: '#fff', borderRadius: '12px', border: '1.5px dashed #bfdbfe' }}
+          >
+            <Divider orientation="left" style={{ marginTop: 0 }}>
+              <EditOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Chỉnh sửa thông số Ca riêng cho ngày này</span>
+            </Divider>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Tên Ca hiển thị">
+                  <Input 
+                    value={localShiftData?.name} 
+                    onChange={e => setLocalShiftData({ ...localShiftData, name: e.target.value })}
+                    placeholder="Tên ca..."
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Thời gian hoạt động">
+                  <TimePicker.RangePicker 
+                    format="HH:mm" 
+                    style={{ width: '100%' }}
+                    value={localShiftData?.startTime && localShiftData?.endTime ? [dayjs(localShiftData.startTime, 'HH:mm'), dayjs(localShiftData.endTime, 'HH:mm')] : null}
+                    onChange={(vals) => {
+                      if (vals) {
+                        setLocalShiftData({
+                          ...localShiftData,
+                          startTime: vals[0]!.format('HH:mm'),
+                          endTime: vals[1]!.format('HH:mm')
+                        });
+                      }
+                    }}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </motion.div>
+        )}
+
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-          <EditOutlined style={{ color: themeColor }} /> 
-          <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin hiển thị & Trạng thái</span>
+          <ThunderboltOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông số kíp trực</span>
         </Divider>
 
-        <Row gutter={[24, 16]}>
-          <Col span={16}>
-            <Form.Item 
-              label="Tiêu đề hiển thị (Trên lịch)" 
-              name="shiftLabel" 
-              rules={[{ required: true }]}
-            >
-              <Input 
-                prefix={<EditOutlined style={{ color: themeColor }} />} 
-                placeholder="VD: Kíp 1 - Tòa A" 
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="Trạng thái" name="status">
-              <Select options={[
-                { label: <Badge status="success" text="Đang mở (Cho phép ĐK)" />, value: 'open' },
-                { label: <Badge status="error" text="Đã khóa (Chỉ xem)" />, value: 'locked' }
-              ]} />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <ClockCircleOutlined style={{ color: themeColor }} /> 
-          <span style={{ fontSize: 13, marginLeft: 8 }}>Thời gian & Chỉ tiêu</span>
-        </Divider>
-
-        <Row gutter={[24, 16]}>
-          <Col span={8}>
-            <Form.Item label="Ngày diễn ra" name="shiftDate" rules={[{ required: true }]}>
-              <DatePicker 
-                style={{ width: '100%' }} 
-                format="DD/MM/YYYY" 
-                inputReadOnly
-              />
-            </Form.Item>
-          </Col>
+        <Row gutter={[24, 0]}>
           <Col span={10}>
-            <Form.Item label="Khung giờ thực tế" name="timeRange" rules={[{ required: true }]}>
-              <TimePicker.RangePicker 
-                format="HH:mm" 
-                style={{ width: '100%' }} 
-                inputReadOnly
-              />
+            <Form.Item label="Tên Kíp / Nhãn" name="shiftLabel" rules={[{ required: true }]}>
+              <Input placeholder="Tên hiển thị..." />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Ngày trực" name="shiftDate" rules={[{ required: true }]}>
+              <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col span={6}>
-            <Form.Item label="Chỉ tiêu" name="capacity" rules={[{ required: true }]}>
-              <InputNumber 
-                min={1} 
-                style={{ width: '100%' }} 
-                prefix={<TeamOutlined style={{ color: themeColor }} />} 
+            <Form.Item label="Trạng thái" name="status">
+              <Select>
+                <Select.Option value="open">Đang mở (Open)</Select.Option>
+                <Select.Option value="locked">Khóa (Locked)</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={[24, 0]}>
+          <Col span={10}>
+            <Form.Item label="Khung giờ trực" name="timeRange" rules={[{ required: true }]}>
+              <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col span={6}>
+            <Form.Item label="Tổng chỉ tiêu" name="capacity" rules={[{ required: true }]}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item 
+              name="visibilityMode" 
+              label="Bảo mật nhân sự"
+              initialValue="public"
+            >
+              <Select
+                options={[
+                  { 
+                    label: <Space><UnlockOutlined /><span>Công khai</span></Space>, 
+                    value: 'public' 
+                  },
+                  { 
+                    label: <Space><EyeInvisibleOutlined /><span>Bảo mật song phương</span></Space>, 
+                    value: 'private_mutual' 
+                  },
+                  { 
+                    label: <Space><EyeOutlined /><span>Bảo vệ Thành viên</span></Space>, 
+                    value: 'protect_members' 
+                  },
+                ]}
               />
             </Form.Item>
           </Col>
         </Row>
 
+        <SlotStructureEditor form={form} />
+
         <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <ScheduleOutlined style={{ color: themeColor }} /> 
-          <span style={{ fontSize: 13, marginLeft: 8 }}>Quản lý nhân sự</span>
+          <Space>
+            <TeamOutlined /> <span style={{ fontSize: 13, fontWeight: 600 }}>Quản lý nhân sự & Điểm danh</span>
+          </Space>
         </Divider>
 
-        <div style={{ marginBottom: 20 }}>
-          <Form.Item label="Phân công trực (ID)" name="assignedUserIds" noStyle>
-            <DutyPersonnelPicker label="Thực hiện phân công nhân sự" />
-          </Form.Item>
-        </div>
+        <div style={{ 
+          background: '#f8fafc', 
+          padding: '20px', 
+          borderRadius: '16px', 
+          border: '1px solid #e2e8f0',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <Title level={5} style={{ margin: 0 }}>Danh sách trực thực tế</Title>
+              <Text type="secondary" style={{ fontSize: 12 }}>Tích chọn để xác nhận nhân sự thực hiện trực</Text>
+            </div>
+            <Space>
+              <Form.Item name="assignedUserIds" noStyle>
+                <DutyPersonnelPicker 
+                  label="Phân công kíp" 
+                  onChange={(ids) => {
+                    form.setFieldsValue({ assignedUserIds: ids });
+                  }}
+                />
+              </Form.Item>
+              
+              <Form.Item name="attendedUserIds" noStyle>
+                <DutyPersonnelPicker 
+                  label="Thêm phụ tá / Bổ sung" 
+                  icon={<UsergroupAddOutlined />}
+                />
+              </Form.Item>
 
-        <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text strong style={{ fontSize: 13, color: '#475569' }}>
-              DANH SÁCH NHÂN SỰ ĐÃ ĐĂNG KÝ ({currentAssignedUsers.length} / {form.getFieldValue('capacity') || slot?.capacity || 0})
-            </Text>
+              <Button 
+                type="primary" 
+                ghost 
+                size="small" 
+                onClick={() => {
+                  const assigned = form.getFieldValue('assignedUserIds') || [];
+                  form.setFieldsValue({ attendedUserIds: assigned });
+                }}
+                icon={<CheckCircleOutlined />}
+              >
+                Tất cả có mặt
+              </Button>
+            </Space>
           </div>
 
-          <List
-            size="small"
-            dataSource={currentAssignedUsers}
-            locale={{ emptyText: <div style={{ padding: '20px 0', textAlign: 'center' }}><Text type="secondary" italic>Chứa có ai đăng ký</Text></div> }}
-            renderItem={(u: any) => {
-              const isAttended = watchedAttendedIds.includes(u.id);
+          <Form.Item noStyle shouldUpdate={(prev, curr) => (
+            prev.assignedUserIds !== curr.assignedUserIds || 
+            prev.attendedUserIds !== curr.attendedUserIds
+          )}>
+            {({ getFieldValue }) => {
+              const assignedIds = getFieldValue('assignedUserIds') || [];
+              const attendedIds = getFieldValue('attendedUserIds') || [];
+              const allPossibleIds = [...new Set([...assignedIds, ...attendedIds])];
+              
               return (
-                <List.Item 
-                  style={{ 
-                    padding: '10px 12px', 
-                    background: '#ffffff', 
-                    borderRadius: '8px', 
-                    marginBottom: '8px',
-                    border: '1px solid #f1f5f9',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                  }}
-                >
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar src={u.avatar} style={{ border: '2px solid #f1f5f9' }}>{u.name?.charAt(0)}</Avatar>
-                    }
-                    title={
-                      <Space size={8}>
-                        <Text strong style={{ fontSize: 13 }}>{u.name}</Text>
-                        {u.position && (
-                          <Tag color="cyan" style={{ border: 'none', fontSize: 10, lineHeight: '16px', borderRadius: 4 }}>
-                            {POSITION_LABELS[u.position] || u.position}
-                          </Tag>
-                        )}
-                      </Space>
-                    }
-                    description={
-                      <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }}>
-                        <Text type="secondary">{u.studentId || u.email || 'N/A'}</Text>
-                        {u.department && <Text style={{ color: themeColor, fontWeight: 500 }}>{u.department}</Text>}
-                      </Space>
-                    }
-                  />
-                  <div style={{ textAlign: 'right' }}>
-                    <Space size={8}>
-                      {isAttended ? 
-                        <Tag icon={<CheckCircleOutlined />} color="success" style={{ borderRadius: 6, margin: 0 }}>ĐÃ ĐIỂM DANH</Tag> : 
-                        <Tag color="default" style={{ borderRadius: 6, margin: 0, color: '#94a3b8' }}>VẮNG MẶT</Tag>
-                      }
-                      
-                      <Tooltip title={isAttended ? "Hủy điểm danh" : "Xác nhận điểm danh"}>
-                        <AntButton 
-                          size="small"
-                          shape="circle"
-                          type={isAttended ? "primary" : "default"}
-                          icon={<CheckCircleOutlined />}
-                          onClick={() => toggleAttendance(u.id)}
-                          style={{ 
-                            fontSize: 12,
-                            borderColor: isAttended ? '#22c55e' : '#cbd5e1',
-                            background: isAttended ? '#22c55e' : 'transparent',
-                            color: isAttended ? '#fff' : '#64748b',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
+                <List
+                  dataSource={allPossibleIds}
+                  renderItem={(id: number) => {
+                    const isAssigned = assignedIds.includes(id);
+                    const isAttended = attendedIds.includes(id);
+                    const userDetail = (slot?.assignedUsers || []).find(u => u.id === id);
+
+                    return (
+                      <List.Item 
+                        style={{ 
+                          padding: '12px 16px', 
+                          background: '#fff', 
+                          borderRadius: '12px', 
+                          marginBottom: '8px',
+                          border: `1px solid ${isAttended ? '#dcfce7' : '#f1f5f9'}`,
+                          transition: 'all 0.2s'
+                        }}
+                        actions={[
+                          <Space size={12}>
+                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
+                              <Text strong style={{ fontSize: 12, color: isAttended ? '#16a34a' : '#64748b' }}>
+                                {isAttended ? 'CÓ MẶT' : 'CHƯA ĐIỂM DANH'}
+                              </Text>
+                              {!isAssigned && <Tag color="orange" style={{ fontSize: '0.6rem', border: 'none', margin: 0 }}>BỐ SUNG</Tag>}
+                            </div>
+                            <Switch 
+                              size="small"
+                              checked={isAttended}
+                              checkedChildren={<CheckOutlined />}
+                              unCheckedChildren={<CloseOutlined />}
+                              onChange={(checked) => handleToggleAttendance(id, checked)}
+                            />
+                          </Space>
+                        ]}
+                      >
+                        <List.Item.Meta
+                          avatar={<Avatar icon={<UserOutlined />} src={userDetail?.avatar} />}
+                          title={<Text strong={isAttended}>{userDetail?.name || userDetail?.username || `#${id}`}</Text>}
+                          description={
+                            <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }}>
+                              <Text type="secondary">{userDetail?.studentId || 'Chưa rõ MSV'}</Text>
+                              {isAssigned ? <Tag color="blue" style={{ fontSize: '0.6rem' }}>Theo lịch</Tag> : <Text type="warning">Nhân sự ngoài kíp</Text>}
+                            </Space>
+                          }
                         />
-                      </Tooltip>
-                    </Space>
-                  </div>
-                </List.Item>
+                      </List.Item>
+                    );
+                  }}
+                  locale={{ emptyText: <div style={{ padding: '20px 0', textAlign: 'center' }}>Chưa có nhân sự nào được chọn</div> }}
+                />
               );
             }}
-          />
-        </div>
-
-        <div style={{ marginTop: 20 }}>
-          <Form.Item label="Xác nhận điểm danh" name="attendedUserIds">
-            <DutyPersonnelPicker 
-              label="Ghi nhận điểm danh thực tế" 
-              userIds={watchedAssignedIds}
-            />
           </Form.Item>
         </div>
 
-        <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <SettingOutlined style={{ color: themeColor }} /> 
-          <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin bổ sung</span>
+        <Divider orientation="left" style={{ marginTop: 24 }}>
+          <InfoCircleOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Ghi chú quản trị</span>
         </Divider>
 
-        <Form.Item label="Ghi chú / Địa điểm trực" name="note">
-          <Input.TextArea placeholder="Thông tin thêm cho kíp trực này..." rows={3} />
+        <Form.Item name="note" noStyle>
+          <Input.TextArea placeholder="Thông tin thêm..." rows={2} style={{ borderRadius: 8 }} />
         </Form.Item>
       </div>
     </FormModal>

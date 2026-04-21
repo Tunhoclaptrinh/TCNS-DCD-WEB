@@ -509,7 +509,6 @@ const AdminDutyCalendar: React.FC = () => {
         date={quickCreateDate}
         context={quickCreateContext}
         templates={templates}
-        existingSlots={slots}
       />
 
       <AdminDutySlotModal
@@ -517,6 +516,7 @@ const AdminDutyCalendar: React.FC = () => {
         onCancel={() => setIsSlotDetailOpen(false)}
         onSuccess={fetchSchedule}
         slot={selectedSlot}
+        templates={templates}
       />
 
       <SetupWeekModal

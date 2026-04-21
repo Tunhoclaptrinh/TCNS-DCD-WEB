@@ -17,9 +17,9 @@ export interface DutyKip {
   startTime?: string;
   endTime?: string;
   duration?: string;
-  order: number;
-  endPeriod?: number;
   daysOfWeek?: number[];
+  slotStructure?: any[];
+  config?: any;
 }
 
 export interface DutyShift {
@@ -28,7 +28,6 @@ export interface DutyShift {
   name: string;
   startTime: string;
   endTime: string;
-  order: number;
   description?: string;
   daysOfWeek?: number[];
   isSpecialEvent: boolean;
@@ -49,12 +48,12 @@ export interface DutySlot {
   kip?: DutyKip;
   note?: string;
   status: 'open' | 'locked';
-  order?: number;
-  endPeriod?: number;
   capacity?: number;
   attendedUserIds?: number[];
   isSpecialEvent?: boolean;
   dayId?: number;
+  slotStructure?: any[];
+  config?: any;
 }
 
 export interface DutyDay {

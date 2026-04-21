@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { 
   Row, 
   Col, 
@@ -59,6 +61,38 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   isOldGeneration = false,
 }) => {
   const [form] = Form.useForm();
+  const { user: currentUserData } = useSelector((state: RootState) => state.auth);
+  
+  const visibilityMode = slot?.config?.visibilityMode || 'public';
+  const OFFICIAL_POSITIONS = ['tv', 'tvb', 'pb', 'tb', 'dt'];
+  const CTV_POSITION = 'ctc';
+  
+  const currentUserPos = (currentUserData as any)?.position;
+  const isCurrentUserOfficial = OFFICIAL_POSITIONS.includes(currentUserPos);
+  const isCurrentUserCTV = currentUserPos === CTV_POSITION;
+
+  const checkVisibility = (targetUser: any) => {
+    // Always see yourself
+    if (String(targetUser.id) === String(currentUserId)) return true;
+    
+    const targetPos = targetUser?.position;
+    const isTargetOfficial = OFFICIAL_POSITIONS.includes(targetPos);
+    const isTargetCTV = targetPos === CTV_POSITION;
+
+    if (visibilityMode === 'private_mutual') {
+      // Hide if crossing boundaries (TV <-> CTV)
+      if (isCurrentUserOfficial && isTargetCTV) return false;
+      if (isCurrentUserCTV && isTargetOfficial) return false;
+    }
+    
+    if (visibilityMode === 'protect_members') {
+      // Hide TV from CTV
+      if (isCurrentUserCTV && isTargetOfficial) return false;
+    }
+    
+    return true;
+  };
+
   const [loading, setLoading] = useState(false);
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
   const [isSwapModalVisible, setIsSwapModalVisible] = useState(false);
@@ -225,7 +259,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
               {slot?.note && slot.note !== 'INSTANCE' && (
                 <div style={{ marginBottom: 16 }}>
                   <Text type="secondary" style={{ fontSize: 12 }}>GHI CHÚ</Text>
-                  <div style={{ marginTop: 4, padding: '8px 12px', background: '#f9fafb', borderRadius: 8, border: '1px solid #f3f4f6' }}>
+                  <div style={{ marginTop: 4, padding: '10px 14px', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                     {slot.note}
                   </div>
                 </div>
@@ -241,16 +275,24 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                 size="small"
                 dataSource={slot?.assignedUsers || []}
                 locale={{ emptyText: 'Chưa có người đăng ký' }}
-                renderItem={(u: any) => (
-                  <List.Item style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-                    <List.Item.Meta
-                      avatar={<Avatar src={u.avatar} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
-                      title={<span style={{ fontWeight: 500 }}>{u.username || u.fullName || u.email}</span>}
-                      description={u.email}
-                    />
-                    {String(u.id) === String(currentUserId) && <Tag color="magenta">Bạn</Tag>}
-                  </List.Item>
-                )}
+                renderItem={(u: any) => {
+                  const isVisible = checkVisibility(u);
+                  const isMe = String(u.id) === String(currentUserId);
+                  
+                  const displayName = isVisible ? (u.name || u.fullName || u.username || u.email) : "Nhân sự trực (Bảo mật)";
+                  const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
+                  
+                  return (
+                    <List.Item style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
+                      <List.Item.Meta
+                        avatar={<Avatar src={isVisible ? u.avatar : undefined} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
+                        title={<span style={{ fontWeight: 500 }}>{displayName}</span>}
+                        description={displaySub}
+                      />
+                      {isMe && <Tag color="magenta">Bạn</Tag>}
+                    </List.Item>
+                  );
+                }}
               />
             </div>
           </Col>

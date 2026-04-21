@@ -78,7 +78,7 @@ const ShiftTemplateModal: React.FC<ShiftTemplateModalProps> = ({
       onOk={onFinish}
       form={form}
       loading={loading}
-      width={500}
+      width={900}
       destroyOnClose
     >
       <div style={{ padding: '0 4px' }}>
@@ -106,16 +106,11 @@ const ShiftTemplateModal: React.FC<ShiftTemplateModalProps> = ({
         </Form.Item>
 
         <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <ScheduleOutlined style={{ color: '#ef4444' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Lập Raw & Phân bổ</span>
+          <ScheduleOutlined style={{ color: '#ef4444' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Cấu hình Hiển thị & Lịch áp dụng</span>
         </Divider>
 
-        <Row gutter={[24, 16]}>
-          <Col span={10}>
-            <Form.Item name="order" label="Thứ tự hiển thị" initialValue={1}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col span={14}>
+        <Row gutter={24}>
+          <Col span={24}>
             <Form.Item name="daysOfWeek" label="Ngày áp dụng" initialValue={[0, 1, 2, 3, 4, 5, 6]}>
               <Select
                 mode="multiple"

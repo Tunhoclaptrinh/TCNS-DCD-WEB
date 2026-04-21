@@ -219,12 +219,12 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
 /**
  * Picker component with a Button that opens the Table in a Modal
  */
-const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { label?: string }> = (props) => {
+const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { label?: string; icon?: React.ReactNode }> = (props) => {
   const [open, setOpen] = useState(false);
   const [tempSelectedIds, setTempSelectedIds] = useState<number[]>([]);
   const count = props.value?.length || 0;
   const tempCount = tempSelectedIds.length;
-  const { userIds } = props;
+  const { userIds, icon } = props;
 
   const handleOpen = () => {
     setTempSelectedIds(props.value || []);
@@ -240,7 +240,7 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { label?: string }
     <div className="duty-personnel-picker">
       <Space direction="horizontal" wrap>
         <Button 
-          icon={<TeamOutlined />} 
+          icon={icon || <TeamOutlined />} 
           onClick={handleOpen}
           style={{ width: '100%', minWidth: 160, textAlign: 'left', display: 'flex', alignItems: 'center' }}
           className="duty-picker-trigger"
