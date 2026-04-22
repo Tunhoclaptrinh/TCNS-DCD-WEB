@@ -1,9 +1,8 @@
 import React from 'react';
-import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Button } from 'antd';
-import { CalendarOutlined, RocketOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Button, Alert, Progress } from 'antd';
+import { CalendarOutlined, RocketOutlined, InteractionOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
-
-// No Typography needed
+import { useSocket } from '@/contexts/SocketContext';
 
 interface AssignTemplateModalProps {
   open: boolean;
@@ -21,41 +20,80 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
   const [form] = Form.useForm();
   const [previewShifts, setPreviewShifts] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [percent, setPercent] = React.useState(0);
+  const [statusText, setStatusText] = React.useState('');
+  const { socket } = useSocket();
 
   const handleFinish = async (values: any) => {
     setLoading(true);
+    setPercent(0);
+    setStatusText('Đang khởi tạo kết nối Tiến trình thực (Real-time Socket)...');
+    
+    // Generate unique jobId for this task
+    const jobId = Math.random().toString(36).substring(2, 15);
+    
+    // Listen to real-time events from Backend
+    if (socket) {
+      socket.emit('joinRoom', jobId);
+      socket.on('job_progress', (data: { percent: number, text: string }) => {
+        setPercent(data.percent);
+        setStatusText(data.text);
+      });
+    }
+
     try {
       const payload = {
         templateId: values.templateId,
         startDate: values.startDate.startOf('day').toISOString(),
         endDate: values.endDate.endOf('day').toISOString(),
         mode: values.mode,
-        note: values.note
+        note: values.note,
+        jobId, // send to backend
       };
 
       const res = await dutyService.createTemplateAssignment(payload);
+      
+      // Delay explicitly slightly after total finish to let user see 100%
+      await new Promise(r => setTimeout(r, 600));
+
       if (res.success) {
-        message.success("Đã gắn bản mẫu cho giai đoạn");
+        setPercent(100);
+        setStatusText('Hoàn tất toàn bộ chiến dịch lập lịch!');
+        message.success("Đã hoàn tất dập khuôn cấu trúc lịch tuần!");
         onSuccess();
         onCancel();
       }
     } catch (err: any) {
+      setStatusText('Có lỗi hệ thống trong quá trình thao tác.');
       message.error("Lỗi khi gắn bản mẫu: " + (err.response?.data?.message || err.message));
     } finally {
+      if (socket) {
+        socket.off('job_progress');
+        socket.emit('leaveRoom', jobId);
+      }
       setLoading(false);
     }
   };
 
+
   const renderFooter = () => (
     <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
-      <Button onClick={onCancel} style={{ minWidth: 100 }}>Hủy</Button>
+      <Button disabled={loading} onClick={onCancel} style={{ minWidth: 100, borderRadius: 8 }}>Hủy</Button>
       <Button 
         type="primary" 
         loading={loading} 
+        size="large"
+        icon={loading ? <InteractionOutlined spin /> : <RocketOutlined />}
         onClick={() => form.submit()} 
-        style={{ minWidth: 100, background: '#7f1d1d', borderColor: '#7f1d1d' }}
+        style={{ 
+          minWidth: 140, 
+          background: 'linear-gradient(to right, #991b1b, #7f1d1d)', 
+          border: 'none',
+          boxShadow: '0 4px 12px rgba(153, 27, 27, 0.3)',
+          borderRadius: 8
+        }}
       >
-        Đồng ý
+        {loading ? 'Đang chạy tiến trình...' : 'Bắt đầu Dập khuôn'}
       </Button>
     </div>
   );
@@ -63,87 +101,123 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
   return (
     <Modal
       title={
-        <Space>
-          <CalendarOutlined style={{ color: 'var(--primary-color)' }} />
-          <span>Thiết lập lịch trình nâng cao (Stamping)</span>
+        <Space size="middle" align="center">
+          <div style={{ 
+            width: 32, height: 32, borderRadius: 8, 
+            background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center' 
+          }}>
+            <CalendarOutlined style={{ color: '#b91c1c', fontSize: 16 }} />
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#1f2937' }}>Thiết lập lịch trình hệ thống</span>
         </Space>
       }
       open={open}
-      onCancel={onCancel}
+      onCancel={!loading ? onCancel : undefined}
       footer={renderFooter()}
-      width={700}
+      width={720}
       destroyOnClose
+      maskClosable={!loading}
+      closable={!loading}
       className="premium-modal"
     >
-      <Form form={form} layout="vertical" onFinish={handleFinish}>
-        <Row gutter={[24, 16]}>
-          <Col span={10}>
-            <Form.Item name="templateId" label="Chọn Nhóm Bản mẫu" rules={[{ required: true }]}>
-              <Select
-                placeholder="Mùa Đông, Mùa Hè..."
-                onChange={async (val) => {
-                  try {
-                    const res = await dutyService.getShiftTemplates(val);
-                    if (res.success && res.data) setPreviewShifts(res.data);
-                  } catch (e) { console.error(e); }
-                }}
-              >
-                {templateGroups.map(g => (
-                  <Select.Option key={g.id} value={g.id}>{g.name}</Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col span={14}>
-            <Form.Item label="Giai đoạn áp dụng" required>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Form.Item name="startDate" noStyle rules={[{ required: true }]}>
-                  <DatePicker placeholder="Từ ngày" style={{ flex: 1 }} format="DD/MM/YYYY" />
-                </Form.Item>
-                <span>~</span>
-                <Form.Item name="endDate" noStyle rules={[{ required: true }]}>
-                  <DatePicker placeholder="Đến ngày" style={{ flex: 1 }} format="DD/MM/YYYY" />
-                </Form.Item>
-              </div>
-            </Form.Item>
-          </Col>
-        </Row>
-        <Row gutter={[24, 16]}>
-          <Col span={10}>
-            <Form.Item name="mode" label="Chế độ dập khuôn" initialValue="kips">
-              <Select>
-                <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
-                <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
-                <Select.Option value="all">Cả 2 (Both)</Select.Option>
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col span={14}>
-            <Form.Item name="note" label="Ghi chú cho đợt lập lịch này">
-              <Input placeholder="VD: Lịch trực HKII - 2024..." />
-            </Form.Item>
-          </Col>
-        </Row>
+      <div style={{ paddingTop: 12 }}>
+        <Form form={form} layout="vertical" onFinish={handleFinish}>
+          <Row gutter={[24, 16]}>
+            <Col span={11}>
+              <Form.Item name="templateId" label={<span style={{ fontWeight: 500 }}>Chọn Nhóm Bản mẫu</span>} rules={[{ required: true, message: 'Vui lòng chọn bản mẫu' }]}>
+                <Select
+                  size="large"
+                  placeholder="Mùa Đông, Mùa Hè..."
+                  onChange={async (val) => {
+                    form.setFieldsValue({ templateId: val });
+                    try {
+                      const res = await dutyService.getShiftTemplates(val);
+                      if (res.success && res.data) setPreviewShifts(res.data);
+                    } catch (e) { console.error(e); }
+                  }}
+                  getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body}
+                >
+                  {templateGroups.map(g => (
+                    <Select.Option key={g.id} value={g.id}>{g.name}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={13}>
+              <Form.Item label={<span style={{ fontWeight: 500 }}>Giai đoạn áp dụng</span>} required>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <Form.Item name="startDate" noStyle rules={[{ required: true, message: 'Thiếu' }]}>
+                    <DatePicker size="large" placeholder="Từ ngày" style={{ flex: 1 }} format="DD/MM/YYYY" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body} />
+                  </Form.Item>
+                  <span style={{ color: '#9ca3af' }}>~</span>
+                  <Form.Item name="endDate" noStyle rules={[{ required: true, message: 'Thiếu' }]}>
+                    <DatePicker size="large" placeholder="Đến ngày" style={{ flex: 1 }} format="DD/MM/YYYY" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body} />
+                  </Form.Item>
+                </div>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[24, 16]}>
+            <Col span={11}>
+              <Form.Item name="mode" label={<span style={{ fontWeight: 500 }}>Chế độ dập khuôn</span>} initialValue="kips">
+                <Select size="large" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body}>
+                  <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
+                  <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
+                  <Select.Option value="all">Cả 2 cấp độ (Khuyên dùng)</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={13}>
+              <Form.Item name="note" label={<span style={{ fontWeight: 500 }}>Ghi chú cho đợt lập lịch này</span>}>
+                <Input size="large" placeholder="VD: Áp dụng Lịch trực HKII - 2024..." />
+              </Form.Item>
+            </Col>
+          </Row>
 
-        {previewShifts.length > 0 && (
-          <Card 
-            size="small" 
-            title={<Space><RocketOutlined /> <span style={{ fontSize: 13, fontWeight: 700 }}>Xem trước các Ca sẽ được dập khuôn:</span></Space>} 
-            style={{ backgroundColor: 'rgba(239, 68, 68, 0.02)', borderColor: 'rgba(239, 68, 68, 0.1)', marginBottom: 20, borderRadius: 12 }}
-          >
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {previewShifts.map((s, idx) => (
-                <Tag key={idx} color="red-outline" style={{ margin: 0, borderRadius: 6, padding: '4px 10px', background: 'white', border: '1px solid #fecaca' }}>
-                  <span style={{ fontWeight: 600, color: '#ef4444' }}>{s.name}</span>: <span style={{ fontSize: 11, color: 'rgba(0, 0, 0, 0.45)' }}>{s.startTime} - {s.endTime}</span>
-                </Tag>
-              ))}
+          {previewShifts.length > 0 && (
+            <Card 
+              size="small" 
+              title={<Space><RocketOutlined style={{ color: '#dc2626' }} /> <span style={{ fontSize: 14, fontWeight: 600 }}>Cơ cấu tham chiếu</span></Space>} 
+              style={{ 
+                backgroundColor: '#fef2f2', 
+                borderColor: '#fecaca', 
+                marginTop: 8, 
+                borderRadius: 12,
+                boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.02)'
+              }}
+              styles={{ header: { borderBottom: '1px solid #fecaca', background: 'transparent' } }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                {previewShifts.map((s, idx) => (
+                  <Tag key={idx} style={{ 
+                    margin: 0, borderRadius: 8, padding: '6px 12px', 
+                    background: '#ffffff', border: '1px solid #fca5a5',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  }}>
+                    <span style={{ fontWeight: 600, color: '#dc2626', marginRight: 6 }}>{s.name}</span>
+                    <span style={{ fontSize: 12, color: '#6b7280' }}>({s.startTime} - {s.endTime})</span>
+                  </Tag>
+                ))}
+              </div>
+              
+              <Alert 
+                type="warning" 
+                showIcon 
+                message="Toàn bộ khung giờ trên sẽ được nhân bản thành các bản ghi vật lý độc lập (Deep Copy) xuyên suốt Giai đoạn áp dụng. Việc này có thể mất thao tác vài giây trên máy chủ."
+                style={{ borderRadius: 8, backgroundColor: '#fff7ed', borderColor: '#fed7aa' }}
+              />
+            </Card>
+          )}
+          
+          {loading && (
+            <div style={{ marginTop: 20, textAlign: 'center', background: '#fef2f2', padding: 16, borderRadius: 12, border: '1px dashed #fca5a5' }}>
+              <div style={{ marginBottom: 8, fontWeight: 500, color: '#b91c1c' }}>{statusText}</div>
+              <Progress percent={percent} strokeColor={{ '0%': '#fca5a5', '100%': '#991b1b' }} status="active" />
             </div>
-            <div style={{ marginTop: 12, fontSize: 12, color: '#991b1b', background: '#fef2f2', padding: '8px 12px', borderRadius: 8 }}>
-              <ExclamationCircleOutlined /> Toàn bộ khung giờ trên sẽ được nhân bản thành các bản ghi vật lý độc lập (Deep Copy).
-            </div>
-          </Card>
-        )}
-      </Form>
+          )}
+        </Form>
+      </div>
     </Modal>
   );
 };

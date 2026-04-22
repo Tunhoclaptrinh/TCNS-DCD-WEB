@@ -1,6 +1,8 @@
 import React from 'react';
-import { Form, Input, InputNumber, Button, Space, Select, Typography, Row, Col } from 'antd';
+import { Form, Input, InputNumber, Space, Select, Typography, Row, Col } from 'antd';
 import { PlusOutlined, DeleteOutlined, ClusterOutlined } from '@ant-design/icons';
+
+import Button from '@/components/common/Button';
 
 const { Text } = Typography;
 
@@ -63,7 +65,7 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({ form, name = 
                       rules={[{ required: true, message: 'VD: Thành viên, CTV...' }]}
                       style={{ marginBottom: 0 }}
                     >
-                      <Input placeholder="Tên nhóm (VD: CTV, TV...)" style={{ borderRadius: 6 }} />
+                      <Input placeholder="Tên nhóm (VD: CTV, TV...)" />
                     </Form.Item>
                   </Col>
                   <Col span={4}>
@@ -75,7 +77,7 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({ form, name = 
                     >
                       <InputNumber 
                         min={1} 
-                        style={{ width: '100%', borderRadius: 6 }} 
+                        style={{ width: '100%' }} 
                         placeholder="Số slot"
                       />
                     </Form.Item>
@@ -92,15 +94,13 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({ form, name = 
                         placeholder="Chức vụ áp dụng..."
                         options={POSITION_OPTIONS}
                         maxTagCount="responsive"
-                        style={{ borderRadius: 6 }}
                       />
                     </Form.Item>
                   </Col>
                   <Col span={2}>
                     <Button 
-                      type="text" 
-                      danger 
-                      icon={<DeleteOutlined />} 
+                      variant="ghost" 
+                      icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />} 
                       onClick={() => remove(name)}
                       style={{ marginTop: 4 }}
                     />
@@ -111,10 +111,10 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({ form, name = 
             
             <div style={{ marginTop: 16 }}>
               <Button 
-                type="dashed" 
+                variant="outline" 
                 onClick={() => add({ label: '', slots: 1, positions: [] })} 
                 icon={<PlusOutlined />}
-                style={{ borderRadius: 8, height: 40, borderStyle: 'dashed', color: '#64748b' }}
+                style={{ borderStyle: 'dashed', color: '#64748b', borderColor: '#cbd5e1' }}
               >
                 Thêm nhóm phân bổ nhân sự
               </Button>

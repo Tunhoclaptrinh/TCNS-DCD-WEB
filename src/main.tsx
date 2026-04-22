@@ -2,6 +2,7 @@ import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { SocketProvider } from "./contexts/SocketContext";
 import App from "./App";
 import store from "./store";
 import { injectStore } from "./config/axios.config";
@@ -25,9 +26,11 @@ if (rootElement) {
     root.render(
       <Provider store={store}>
         <HelmetProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <SocketProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </SocketProvider>
         </HelmetProvider>
       </Provider>
     );

@@ -8,16 +8,16 @@ import {
   Input, 
   InputNumber, 
   DatePicker, 
-  TimePicker, 
+  TimePicker,
   Form,
   message,
   Select,
-  Button,
   Tag,
   Avatar,
   List,
   Switch,
 } from 'antd';
+import Button from '@/components/common/Button';
 import { 
   ScheduleOutlined, 
   EyeOutlined,
@@ -65,6 +65,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [isEditShiftOpen, setIsEditShiftOpen] = useState(false);
   const [localShiftData, setLocalShiftData] = useState<any>(null);
+  const [selectedUsersCache, setSelectedUsersCache] = useState<any[]>([]);
   
 
 
@@ -204,7 +205,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
                   <Button 
                     icon={<SettingOutlined />} 
-                    size="small"
+                    buttonSize="small"
                     onClick={() => {
                       const nextVal = !isEditShiftOpen;
                       setIsEditShiftOpen(nextVal);
@@ -216,7 +217,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                         });
                       }
                     }}
-                    type={isEditShiftOpen ? 'primary' : 'default'}
+                    variant={isEditShiftOpen ? 'primary' : 'outline'}
                   >
                     {isEditShiftOpen ? "Lưu tạm thông số" : "Sửa thông số Ca"}
                   </Button>
@@ -280,12 +281,12 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           </Col>
           <Col span={8}>
             <Form.Item label="Ngày trực" name="shiftDate" rules={[{ required: true }]}>
-              <DatePicker style={{ width: '100%' }} />
+              <DatePicker style={{ width: '100%' }} placeholder="Chọn ngày" format="DD/MM/YYYY" />
             </Form.Item>
           </Col>
           <Col span={6}>
             <Form.Item label="Trạng thái" name="status">
-              <Select>
+              <Select placeholder="Chọn trạng thái">
                 <Select.Option value="open">Đang mở (Open)</Select.Option>
                 <Select.Option value="locked">Khóa (Locked)</Select.Option>
               </Select>
@@ -301,7 +302,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           </Col>
           <Col span={6}>
             <Form.Item label="Tổng chỉ tiêu" name="capacity" rules={[{ required: true }]}>
-              <InputNumber min={1} style={{ width: '100%' }} />
+              <InputNumber min={1} style={{ width: '100%' }} placeholder="Nhập chỉ tiêu" />
             </Form.Item>
           </Col>
           <Col span={8}>
@@ -311,6 +312,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               initialValue="public"
             >
               <Select
+                placeholder="Chọn bảo mật"
                 options={[
                   { 
                     label: <Space><UnlockOutlined /><span>Công khai</span></Space>, 
@@ -353,10 +355,17 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             <Space size={12} align="center">
               <Form.Item name="assignedUserIds" noStyle style={{ marginBottom: 0 }}>
                 <DutyPersonnelPicker 
-                  type="primary"
-                  label="Phân công kíp" 
-                  onChange={(ids) => {
+                  variant="primary"
+                  label="Phân công" 
+                  onChange={(ids, rows) => {
                     form.setFieldsValue({ assignedUserIds: ids });
+                    if (rows) {
+                      setSelectedUsersCache(prev => {
+                        const map = new Map(prev.map(r => [r.id, r]));
+                        rows.forEach(r => map.set(r.id, r));
+                        return Array.from(map.values());
+                      });
+                    }
                   }}
                 />
               </Form.Item>
@@ -366,18 +375,27 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   label="Thêm ĐD bổ sung" 
                   icon={<UsergroupAddOutlined style={{ color: '#16a34a' }} />}
                   style={{ border: '1px solid #dcfce7', background: '#f0fdf4' }}
+                  onChange={(ids, rows) => {
+                    form.setFieldsValue({ attendedUserIds: ids });
+                    if (rows) {
+                      setSelectedUsersCache(prev => {
+                        const map = new Map(prev.map(r => [r.id, r]));
+                        rows.forEach(r => map.set(r.id, r));
+                        return Array.from(map.values());
+                      });
+                    }
+                  }}
                 />
               </Form.Item>
 
               <Button 
-                type="primary" 
-                ghost 
+                variant="outline" 
                 onClick={() => {
                   const assigned = form.getFieldValue('assignedUserIds') || [];
                   form.setFieldsValue({ attendedUserIds: assigned });
                 }}
                 icon={<CheckCircleOutlined />}
-                style={{ borderRadius: 8, minWidth: 120, height: 36 }}
+                style={{ minWidth: 120 }}
               >
                 Tất cả có mặt
               </Button>
@@ -399,7 +417,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   renderItem={(id: number) => {
                     const isAssigned = assignedIds.includes(id);
                     const isAttended = attendedIds.includes(id);
-                    const userDetail = (slot?.assignedUsers || []).find(u => u.id === id);
+                    const userDetail = (slot?.assignedUsers || []).find(u => u.id === id) || selectedUsersCache.find(u => u.id === id);
 
                     return (
                       <List.Item 
@@ -431,7 +449,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                       >
                         <List.Item.Meta
                           avatar={<Avatar icon={<UserOutlined />} src={userDetail?.avatar} />}
-                          title={<Text strong={isAttended}>{userDetail?.name || userDetail?.username || `#${id}`}</Text>}
+                          title={<Text strong={isAttended}>{userDetail?.lastName || userDetail?.firstName ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim() : userDetail?.name || userDetail?.username || `#${id}`}</Text>}
                           description={
                             <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }}>
                               <Text type="secondary">{userDetail?.studentId || 'Chưa rõ MSV'}</Text>
@@ -454,7 +472,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         </Divider>
 
         <Form.Item name="note" noStyle>
-          <Input.TextArea placeholder="Thông tin thêm..." rows={2} style={{ borderRadius: 8 }} />
+          <Input.TextArea placeholder="Thông tin thêm..." rows={2} />
         </Form.Item>
       </div>
     </FormModal>

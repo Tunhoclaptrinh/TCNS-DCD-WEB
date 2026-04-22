@@ -13,8 +13,8 @@ import {
   Row, 
   Col, 
   message, 
-  Button,
 } from 'antd';
+import Button from '@/components/common/Button';
 import { 
   PlusSquareOutlined, 
   ClockCircleOutlined, 
@@ -238,8 +238,8 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                         });
                       }
                     }}
-                    type={isEditShiftOpen ? 'primary' : 'default'}
-                    className={isEditShiftOpen ? 'hifi-button' : ''}
+                    variant={isEditShiftOpen ? 'primary' : 'outline'}
+                    buttonSize="small"
                   >
                     {isEditShiftOpen ? "Lưu tạm thông số" : "Sửa thông số Ca"}
                   </Button>
@@ -395,12 +395,12 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item name="timeRange" label="Giờ làm việc" rules={[{ required: true }]}>
-                            <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} />
+                            <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} placeholder={['Bắt đầu', 'Kết thúc']} />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
                           <Form.Item name="capacity" label="Chỉ tiêu (Người)" initialValue={10}>
-                            <InputNumber min={1} style={{ width: '100%' }} />
+                            <InputNumber min={1} style={{ width: '100%' }} placeholder="Nhập chỉ tiêu" />
                           </Form.Item>
                         </Col>
                       </Row>

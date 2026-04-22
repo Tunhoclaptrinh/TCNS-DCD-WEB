@@ -101,7 +101,7 @@ const KipModal: React.FC<KipModalProps> = ({
           
           <Col span={8}>
             <Form.Item name="capacity" label="Tổng chỉ tiêu (Người)" initialValue={1}>
-              <InputNumber min={1} style={{ width: '100%' }} />
+              <InputNumber min={1} style={{ width: '100%' }} placeholder="Nhập chỉ tiêu" />
             </Form.Item>
           </Col>
           <Col span={16}>
@@ -110,7 +110,7 @@ const KipModal: React.FC<KipModalProps> = ({
               label="Khung giờ đặc thù (Tùy chọn)"
               extra="Bỏ trống để sử dụng giờ mặc định của Ca"
             >
-              <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} />
+              <TimePicker.RangePicker format="HH:mm" style={{ width: '100%' }} placeholder={['Bắt đầu', 'Kết thúc']} />
             </Form.Item>
           </Col>
         </Row>
@@ -134,7 +134,7 @@ const KipModal: React.FC<KipModalProps> = ({
         <Row gutter={[24, 0]}>
           <Col span={8}>
             <Form.Item name="coefficient" label="Hệ số công việc" initialValue={1}>
-              <InputNumber min={0.1} step={0.1} style={{ width: '100%' }} />
+              <InputNumber min={0.1} step={0.1} style={{ width: '100%' }} placeholder="VD: 1.0" />
             </Form.Item>
           </Col>
           <Col span={16}>
@@ -144,6 +144,7 @@ const KipModal: React.FC<KipModalProps> = ({
               initialValue="public"
             >
               <Select
+                placeholder="Chọn chế độ bảo mật"
                 options={[
                   { 
                     label: <Space><UnlockOutlined /><span>Công khai (Tất cả thấy nhau)</span></Space>, 

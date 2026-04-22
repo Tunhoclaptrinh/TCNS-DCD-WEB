@@ -66,7 +66,7 @@ export interface DataTableProps {
     batchOperations?: boolean;
     onBatchDelete?: (keys: any[]) => void;
     selectedRowKeys?: any[];
-    onSelectChange?: (keys: any[]) => void;
+    onSelectChange?: (keys: any[], rows?: any[]) => void;
     batchActions?: any[];
     importable?: boolean;
     importLoading?: boolean;

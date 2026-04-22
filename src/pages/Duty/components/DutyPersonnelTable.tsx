@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Tag, Button, Modal, Badge, Space, Typography } from 'antd';
+import { Image, Tag, Modal, Badge, Space, Typography } from 'antd';
+import Button from '@/components/common/Button';
 import { TeamOutlined, UserOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import DataTable from '@/components/common/DataTable';
 import { useCRUD } from '@/hooks/useCRUD';
@@ -11,7 +12,7 @@ const { Text } = Typography;
 
 interface DutyPersonnelTableProps {
   value?: number[];
-  onChange?: (value: number[]) => void;
+  onChange?: (value: number[], rows?: User[]) => void;
   hideCard?: boolean;
   /** Only show users with these specific IDs */
   userIds?: number[];
@@ -190,7 +191,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       showActions={false}
       batchOperations={false}
       selectedRowKeys={value}
-      onSelectChange={(keys) => onChange?.(keys as number[])}
+      onSelectChange={(keys, rows) => onChange?.(keys as number[], rows as User[])}
       size="small"
       scroll={{ y: 300 }}
       headerContent={userIds ? (
@@ -202,9 +203,8 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
             </Text>
           </Space>
           <Button 
-            size="small" 
-            type={showAll ? "default" : "primary"}
-            ghost={!showAll}
+            buttonSize="small" 
+            variant={showAll ? "outline" : "primary"}
             onClick={() => setShowAll(!showAll)}
             style={{ fontSize: 11, borderRadius: 6 }}
           >
@@ -222,33 +222,33 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
 const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & { 
   label?: string; 
   icon?: React.ReactNode;
-  type?: 'primary' | 'default' | 'dashed' | 'link' | 'text';
-  ghost?: boolean;
-  size?: 'small' | 'middle' | 'large';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
+  buttonSize?: 'small' | 'medium' | 'large';
   style?: React.CSSProperties;
 }> = (props) => {
   const [open, setOpen] = useState(false);
   const [tempSelectedIds, setTempSelectedIds] = useState<number[]>([]);
+  const [tempSelectedRows, setTempSelectedRows] = useState<User[]>([]);
   const count = props.value?.length || 0;
   const tempCount = tempSelectedIds.length;
-  const { userIds, icon, type = 'default', ghost = false, size = 'middle', style } = props;
+  const { userIds, icon, variant = 'outline', buttonSize = 'medium', style } = props;
 
   const handleOpen = () => {
     setTempSelectedIds(props.value || []);
+    setTempSelectedRows([]);
     setOpen(true);
   };
 
   const handleOk = () => {
-    props.onChange?.(tempSelectedIds);
+    props.onChange?.(tempSelectedIds, tempSelectedRows);
     setOpen(false);
   };
 
   return (
     <div className="duty-personnel-picker" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
       <Button 
-        type={type}
-        ghost={ghost}
-        size={size}
+        variant={variant}
+        buttonSize={buttonSize}
         icon={icon || <TeamOutlined />} 
         onClick={handleOpen}
         style={{ 
@@ -263,13 +263,13 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & {
         }}
         className="duty-picker-trigger"
       >
-        <span style={{ flex: 1, fontWeight: type === 'primary' ? 600 : 400 }}>{props.label || "Quản lý nhân sự kíp trực"}</span>
+        <span style={{ flex: 1, fontWeight: variant === 'primary' ? 600 : 400 }}>{props.label || "Quản lý nhân sự kíp trực"}</span>
         <Badge 
           count={count} 
           showZero={false} 
           style={{ 
-            backgroundColor: type === 'primary' && !ghost ? '#fff' : '#ff4d4f',
-            color: type === 'primary' && !ghost ? 'var(--primary-color)' : '#fff',
+            backgroundColor: variant === 'primary' ? '#fff' : '#ff4d4f',
+            color: variant === 'primary' ? 'var(--primary-color)' : '#fff',
             boxShadow: 'none'
           }} 
         />
@@ -304,7 +304,16 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & {
         <DutyPersonnelTable 
           userIds={userIds}
           value={tempSelectedIds} 
-          onChange={setTempSelectedIds} 
+          onChange={(keys, rows) => {
+            setTempSelectedIds(keys);
+            if (rows) {
+              setTempSelectedRows(prev => {
+                const map = new Map(prev.map(r => [r.id, r]));
+                rows.forEach(r => map.set(r.id, r));
+                return Array.from(map.values()).filter(r => keys.includes(r.id));
+              });
+            }
+          }} 
           hideCard={true} 
         />
       </Modal>
