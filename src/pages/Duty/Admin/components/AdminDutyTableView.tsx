@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Modal, Space, Tag, Button } from 'antd';
+import { Modal, Space, Tag, Button, Typography, Tooltip } from 'antd';
 import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DutySlot, DutyShift } from '@/services/duty.service';
@@ -179,21 +179,24 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
 
                       const isStamped = !!actualShiftForDay;
                       
-                      const slot = slots.find(s => {
-                          if (s.shiftDate && dayjs(s.shiftDate).format('YYYY-MM-DD') !== dateStr) return false;
-
+                      const daySlots = slots.filter(s => {
+                          if (dayjs(s.shiftDate).format('YYYY-MM-DD') !== dateStr) return false;
                           
-                          // Match by kipId if available
-                          if (row.kipId && s.kipId) {
-                            const targetKip = actualShiftForDay?.kips?.find((k: any) => String(k.id) === String(s.kipId) || String(k.fromTemplateKipId) === String(row.kipId));
-                            if (targetKip) return true;
-                          }
+                          const formatTime = (t: string) => t?.split(':').slice(0, 2).join(':');
+                          const sTime = `${formatTime(s.startTime)}-${formatTime(s.endTime)}`;
+                          const rowTime = row.time.replace(/\s+/g, '');
+                          if (sTime !== rowTime) return false;
 
-                          // Fallback to signature matching
-                          const sig = `${s.shiftLabel || ''}|${s.startTime}-${s.endTime}`;
-                          const rowSig = `${group.name} - ${row.shortName}|${row.time.replace(' - ', '-')}`;
-                          return sig === rowSig;
+                          const sLabel = (s.shiftLabel || '').toLowerCase();
+                          const rowShortName = row.shortName.toLowerCase();
+                          const rowFullName = `${group.name} - ${row.shortName}`.toLowerCase();
+
+                          return String(s.shiftId) === String(row.shiftId) && String(s.kipId || null) === String(row.kipId || null) ||
+                                 sLabel === rowFullName || sLabel === rowShortName || sLabel.includes(rowShortName);
                       });
+
+                      // Pick the "best" slot: prefer the one with users assigned, or the first one found
+                      const slot = daySlots.sort((a, b) => (b.assignedUsers?.length || 0) - (a.assignedUsers?.length || 0))[0];
 
                       
                       const isPast = day.isBefore(dayjs().startOf('day')) || (day.isSame(dayjs(), 'day') && dayjs(`${dateStr} ${row.time.split(' - ')[0]}`).isBefore(dayjs()));
@@ -248,21 +251,63 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                       {Array.from({ length: max }).map((_, idx) => {
                                         const user = currentUsers[idx];
                                         const isFirst = idx === 0;
+                                        
+                                        if (!user) {
+                                          return (
+                                            <div 
+                                              key={idx} 
+                                              style={{ 
+                                                padding: '4px 8px', 
+                                                borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
+                                                fontSize: '13px',
+                                                color: 'rgba(0,0,0,0.25)',
+                                                textAlign: 'center'
+                                              }}
+                                            >
+                                              ---
+                                            </div>
+                                          );
+                                        }
+
                                         return (
-                                          <div 
-                                            key={idx} 
-                                            className="stacked-user"
-                                            style={{ 
-                                              padding: '4px 8px', 
-                                              borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
-                                              fontSize: '13px',
-                                              color: user ? (isFirst ? '#dc2626' : '#1e293b') : 'rgba(0,0,0,0.25)',
-                                              textAlign: 'center',
-                                              fontWeight: isFirst ? 700 : 500
-                                            }}
-                                          >
-                                            {user ? user.name : '---'}
-                                          </div>
+                                          <Tooltip key={idx} title={user.name}>
+                                            <div 
+                                              className="stacked-user"
+                                              style={{ 
+                                                padding: '4px 8px', 
+                                                borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
+                                                fontSize: '12px',
+                                                color: isFirst ? '#dc2626' : '#1e293b',
+                                                textAlign: 'center',
+                                                fontWeight: isFirst ? 700 : 500,
+                                                cursor: isAdmin ? 'pointer' : 'default',
+                                                transition: 'all 0.2s'
+                                              }}
+                                              onMouseEnter={(e) => {
+                                                if (isAdmin) e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                                              }}
+                                              onMouseLeave={(e) => {
+                                                if (isAdmin) e.currentTarget.style.backgroundColor = 'transparent';
+                                              }}
+                                              onClick={(e) => {
+                                                if (!isAdmin) return;
+                                                e.stopPropagation();
+                                                window.open(`/users/detail/${user.id}`, '_blank');
+                                              }}
+                                            >
+                                              <Typography.Text 
+                                                ellipsis 
+                                                style={{ 
+                                                  width: '100%', 
+                                                  fontSize: 'inherit', 
+                                                  color: 'inherit',
+                                                  fontWeight: 'inherit'
+                                                }}
+                                              >
+                                                {user.name}
+                                              </Typography.Text>
+                                            </div>
+                                          </Tooltip>
                                         );
                                       })}
                                     </div>

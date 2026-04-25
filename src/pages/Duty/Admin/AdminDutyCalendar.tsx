@@ -379,9 +379,15 @@ const AdminDutyCalendar: React.FC = () => {
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực tuần</Title>
         <Space>
           <Button 
+            ghost
+            size="small"
             icon={<QuestionCircleOutlined />} 
             onClick={() => setIsGuideModalOpen(true)}
-            style={{ height: 32, padding: '4px 12px' }}
+            style={{ 
+              color: '#595959', 
+              borderColor: '#d9d9d9',
+              height: 32 
+            }}
           >
             Hướng dẫn
           </Button>
@@ -472,19 +478,8 @@ const AdminDutyCalendar: React.FC = () => {
                 </Tooltip>
                 
                 <Dropdown overlay={adminMenu} placement="bottomRight">
-                  <Button 
-                    type="default" 
-                    className="hifi-button" 
-                    style={{ 
-                      height: 32, 
-                      padding: '4px 12px', 
-                      borderRadius: 8,
-                      borderColor: 'var(--primary-color)',
-                      color: 'var(--primary-color)',
-                      fontWeight: 600
-                    }}
-                  >
-                    Quản trị <DownOutlined style={{ fontSize: 10 }} />
+                  <Button type="primary" className="hifi-button">
+                    Quản trị <DownOutlined />
                   </Button>
                 </Dropdown>
               </Space>

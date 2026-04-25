@@ -297,13 +297,13 @@ const LeaveRequestsPage: React.FC = () => {
         </Space>
         <Button
           variant="ghost"
+          buttonSize="small"
           icon={<QuestionCircleOutlined />}
           onClick={() => setIsGuideModalOpen(true)}
           style={{ 
-            borderRadius: 8, 
-            display: 'flex', 
-            alignItems: 'center', 
-            fontWeight: 500
+            color: '#595959',
+            border: '1px solid #d9d9d9',
+            height: 32
           }}
         >
           Hướng dẫn

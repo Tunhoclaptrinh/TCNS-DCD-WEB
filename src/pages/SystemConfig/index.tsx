@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Form, Tag, Space, Tooltip, message, Modal, Typography } from 'antd';
-import { StarOutlined, StarFilled, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { StarOutlined, StarFilled, EditOutlined, DeleteOutlined, EyeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useCRUD } from '../../hooks/useCRUD';
 import DataTable from '../../components/common/DataTable';
 import { DataTableColumn, FilterConfig } from '../../components/common/DataTable/types';
@@ -33,6 +33,7 @@ const GenerationPage = () => {
     const [isDetailVisible, setIsDetailVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [viewingRecord, setViewingRecord] = useState<Generation | null>(null);
+    const [isGuideModalVisible, setIsGuideModalVisible] = useState(false);
 
     const handleSetCurrent = async (record: Generation) => {
         try {
@@ -245,6 +246,21 @@ const GenerationPage = () => {
                 filterValues={filterValues}
                 onFilterChange={(key, value) => updateFilters({ [key]: value })}
                 onClearFilters={clearFilters}
+                extra={
+                    <Button 
+                        variant="ghost" 
+                        buttonSize="small" 
+                        icon={<QuestionCircleOutlined />} 
+                        onClick={() => setIsGuideModalVisible(true)} 
+                        style={{ 
+                            color: '#595959', 
+                            border: '1px solid #d9d9d9',
+                            height: 32 
+                        }}
+                    >
+                        Hướng dẫn
+                    </Button>
+                }
             />
 
             <GenerationForm
@@ -290,6 +306,38 @@ const GenerationPage = () => {
                         <p><strong>Ngày tạo:</strong> {viewingRecord.createdAt ? new Date(viewingRecord.createdAt).toLocaleString('vi-VN') : '--'}</p>
                     </div>
                 )}
+            </Modal>
+
+            <Modal
+                title={
+                    <Space>
+                        <QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />
+                        <span>Hướng dẫn Quản lý Khóa/Thế hệ</span>
+                    </Space>
+                }
+                open={isGuideModalVisible}
+                onCancel={() => setIsGuideModalVisible(false)}
+                footer={[
+                    <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                        <Button key="close" variant="primary" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 100 }}>Đã hiểu</Button>
+                    </div>
+                ]}
+                centered
+            >
+                <div style={{ padding: '8px 0' }}>
+                    <p>Trang này giúp bạn quản lý các Khóa/Thế hệ của tổ chức:</p>
+                    <ul style={{ paddingLeft: 20 }}>
+                        <li style={{ marginBottom: 8 }}>
+                            <b>Khóa hiện tại:</b> Sử dụng icon <StarOutlined /> trong bảng để đặt một khóa làm mặc định cho toàn hệ thống.
+                        </li>
+                        <li style={{ marginBottom: 8 }}>
+                            <b>Trạng thái:</b> Khóa đang hoạt động sẽ cho phép gán thành viên vào khóa đó trong phần quản lý Nhân sự.
+                        </li>
+                        <li style={{ marginBottom: 8 }}>
+                            <b>Phân loại:</b> Các khóa giúp phân loại và lọc dữ liệu nhân sự một cách khoa học.
+                        </li>
+                    </ul>
+                </div>
             </Modal>
         </>
     );

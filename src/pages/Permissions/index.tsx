@@ -13,6 +13,7 @@ import {
   Form,
   Tag,
   Empty,
+  Input
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -21,7 +22,8 @@ import {
   ThunderboltOutlined,
   SolutionOutlined,
   UserAddOutlined,
-  QuestionCircleOutlined
+  QuestionCircleOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 
 // Services
@@ -30,7 +32,7 @@ import permissionService, { Permission } from '@/services/permission.service';
 import userService from '@/services/user.service';
 
 // Components
-import { Button, SearchBar } from '@/components/common';
+import { Button } from '@/components/common';
 import UsersDetailModal from '../Users/components/Detail';
 import PermModal from './components/PermModal';
 import BulkModal from './components/BulkModal';
@@ -264,14 +266,6 @@ const PermissionsPage: React.FC = () => {
           </Col>
           <Col xs={24} md={12} style={{ textAlign: 'right' }}>
             <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-              <SearchBar 
-                placeholder="Tìm hành động..." 
-                searchValue={searchText}
-                onSearchChange={setSearchText}
-                size="small"
-                responsive={false}
-                style={{ width: 220, marginBottom: 0, height: 32 }}
-              />
               {hasPermission('system:permissions:edit') && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <Button variant="outline" buttonSize="small" icon={<ThunderboltOutlined />} onClick={() => setIsBulkModalVisible(true)} style={{ color: '#722ed1', borderColor: '#d3adf7', height: 32 }}>Tạo CRUD</Button>
@@ -289,7 +283,29 @@ const PermissionsPage: React.FC = () => {
           activeKey={activeTab}
           onChange={setActiveTab}
           tabBarExtraContent={
-            <Button variant="ghost" buttonSize="small" icon={<QuestionCircleOutlined />} onClick={() => setIsGuideModalVisible(true)} style={{ color: 'var(--primary-color)' }}>Hướng dẫn</Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Input 
+                placeholder="Tìm hành động..." 
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: 220, height: 32 }}
+                allowClear
+                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+              />
+              <Button 
+                variant="ghost" 
+                buttonSize="small" 
+                icon={<QuestionCircleOutlined />} 
+                onClick={() => setIsGuideModalVisible(true)} 
+                style={{ 
+                  color: '#595959', 
+                  border: '1px solid #d9d9d9',
+                  height: 32 
+                }}
+              >
+                Hướng dẫn
+              </Button>
+            </div>
           }
           items={[
             {

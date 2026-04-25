@@ -139,7 +139,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           </Card>
 
           <Tooltip title="Tự động tạo các khung giờ kíp trực dựa trên cấu hình Bản mẫu đã thiết lập" placement="right">
-            <Button buttonSize="small" fullWidth variant="outline" icon={<SettingOutlined />} onClick={() => {
+            <Button buttonSize="small" fullWidth variant="primary" icon={<SettingOutlined />} onClick={() => {
               Modal.confirm({
                 title: 'Xác nhận khởi tạo?',
                 content: 'Hệ thống sẽ dựa vào Bản mẫu để tạo các kíp trực cho tuần này. Các kíp đã có sẽ không bị ảnh hưởng.',

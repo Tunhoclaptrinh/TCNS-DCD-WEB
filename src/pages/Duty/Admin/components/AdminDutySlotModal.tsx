@@ -193,7 +193,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           <Button variant="outline" buttonSize="small" onClick={onCancel} disabled={loading} icon={<CloseOutlined />}>
             Hủy
           </Button>
-          <Button variant="outline" buttonSize="small" onClick={handleConfirm} loading={loading} icon={<SaveOutlined />} style={{ fontWeight: 600 }}>
+          <Button variant="primary" buttonSize="small" onClick={handleConfirm} loading={loading} icon={<SaveOutlined />} style={{ fontWeight: 600 }}>
             Lưu thay đổi
           </Button>
         </div>

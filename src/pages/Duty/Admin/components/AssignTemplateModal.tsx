@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Button, Alert, Progress } from 'antd';
+import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Alert, Progress } from 'antd';
+import { Button } from '@/components/common';
 import { CalendarOutlined, RocketOutlined, InteractionOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
 import { useSocket } from '@/contexts/SocketContext';
@@ -80,17 +81,13 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
     <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
       <Button disabled={loading} onClick={onCancel} style={{ minWidth: 100, borderRadius: 8 }}>Hủy</Button>
       <Button 
-        type="primary" 
+        variant="primary" 
         loading={loading} 
-        size="small"
+        buttonSize="small"
         icon={loading ? <InteractionOutlined spin /> : <RocketOutlined />}
         onClick={() => form.submit()} 
         style={{ 
           minWidth: 140, 
-          height: 32,
-          background: 'linear-gradient(to right, #991b1b, #7f1d1d)', 
-          border: 'none',
-          boxShadow: '0 4px 12px rgba(153, 27, 27, 0.3)',
           borderRadius: 8
         }}
       >

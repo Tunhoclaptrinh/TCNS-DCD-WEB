@@ -45,7 +45,7 @@ const PermModal: React.FC<PermModalProps> = ({
           <Button 
             variant="primary" 
             onClick={() => form.submit()}
-            style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            style={{ minWidth: 120 }}
           >
             {editingPerm ? "Lưu lại" : "Tạo ngay"}
           </Button>

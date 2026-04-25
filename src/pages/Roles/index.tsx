@@ -18,7 +18,8 @@ import {
   CheckCircleOutlined,
   StopOutlined,
   AppstoreOutlined,
-  ArrowRightOutlined
+  ArrowRightOutlined,
+  QuestionCircleOutlined
 } from '@ant-design/icons';
 import { DataTable, Button, StatisticsCard } from '@/components/common';
 import { DataTableColumn, FilterConfig } from '@/components/common/DataTable/types';
@@ -235,15 +236,34 @@ const RoleManagement: React.FC = () => {
         onExport={() => exportData('xlsx')}
         // Extra UI
         extra={
-          <Button 
-            variant="outline" 
-            buttonSize="small"
-            icon={<AppstoreOutlined />} 
-            onClick={() => navigate('/admin/system-config/permissions')}
-          >
-            Ma trận Phân quyền
-            <ArrowRightOutlined />
-          </Button>
+          <Space>
+            <Button 
+              variant="outline" 
+              buttonSize="small"
+              icon={<AppstoreOutlined />} 
+              onClick={() => navigate('/admin/system-config/permissions')}
+              style={{ height: 32 }}
+            >
+              Ma trận Phân quyền
+              <ArrowRightOutlined />
+            </Button>
+            <Button 
+              variant="ghost" 
+              buttonSize="small" 
+              icon={<QuestionCircleOutlined />} 
+              onClick={() => {
+                // Roles guide logic or shared modal
+                message.info('Tính năng hướng dẫn đang được cập nhật cho trang này');
+              }} 
+              style={{ 
+                color: '#595959', 
+                border: '1px solid #d9d9d9',
+                height: 32 
+              }}
+            >
+              Hướng dẫn
+            </Button>
+          </Space>
         }
         pagination={{ pageSize: 10 }}
         onPaginationChange={handleTableChange}

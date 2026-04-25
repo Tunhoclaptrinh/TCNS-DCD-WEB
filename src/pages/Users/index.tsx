@@ -11,7 +11,8 @@ import {
     EyeOutlined,
     UserDeleteOutlined,
     MenuOutlined,
-    SafetyOutlined
+    SafetyOutlined,
+    QuestionCircleOutlined
 } from '@ant-design/icons';
 import { useCRUD } from '../../hooks/useCRUD';
 import { Button, DataTable, StatisticsCard, TabSwitcher } from '@/components/common';
@@ -914,6 +915,19 @@ const UserPage = () => {
                 onExport={exportData}
                 onValidateImport={validateImport}
                 onDownloadTemplate={downloadTemplate}
+                extra={
+                  <Button 
+                    variant="ghost" 
+                    buttonSize="small" 
+                    icon={<QuestionCircleOutlined />} 
+                    onClick={() => {
+                       message.info('Tính năng hướng dẫn đang được cập nhật cho trang này');
+                    }} 
+                    style={{ color: '#595959', height: 32 }}
+                  >
+                    Hướng dẫn
+                  </Button>
+                }
             />
 
             <UsersForm
