@@ -39,23 +39,25 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
             <Text type="secondary" style={{ fontSize: 11 }}>{record.key}</Text>
           </div>
           <div className="permission-row-actions">
-            <Tooltip title="Xem ai có quyền này">
-              <Button 
-                variant="ghost" 
-                buttonSize="small"
-                icon={<UserOutlined />}
-                onClick={() => onAudit('permission', record.key)}
-              />
-            </Tooltip>
             <Dropdown
               trigger={['click']}
+              placement="bottomRight"
               overlay={
                 <Menu items={[
+                  {
+                    key: 'audit',
+                    icon: <UserOutlined />,
+                    label: 'Danh sách người',
+                    onClick: () => onAudit('permission', record.key)
+                  },
                   {
                     key: 'edit',
                     icon: <EditOutlined />,
                     label: 'Sửa thông tin',
                     onClick: () => onEdit(record)
+                  },
+                  {
+                    type: 'divider'
                   },
                   {
                     key: 'delete',

@@ -13,7 +13,11 @@ import {
   Form,
   Tag,
   Empty,
-  Input
+  Input,
+  Dropdown,
+  Menu,
+  Tooltip,
+  Divider
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -23,7 +27,8 @@ import {
   SolutionOutlined,
   UserAddOutlined,
   QuestionCircleOutlined,
-  SearchOutlined
+  SearchOutlined,
+  DownOutlined
 } from '@ant-design/icons';
 
 // Services
@@ -268,8 +273,28 @@ const PermissionsPage: React.FC = () => {
             <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
               {hasPermission('system:permissions:edit') && (
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Button variant="outline" buttonSize="small" icon={<ThunderboltOutlined />} onClick={() => setIsBulkModalVisible(true)} style={{ color: '#722ed1', borderColor: '#d3adf7', height: 32 }}>Tạo CRUD</Button>
-                  <Button variant="outline" buttonSize="small" icon={<UserAddOutlined />} onClick={() => { rForm.resetFields(); setIsRoleModalVisible(true); }} style={{ color: '#8b1d1d', borderColor: '#8b1d1d', height: 32 }}>Thêm vai trò</Button>
+                  <Dropdown
+                    trigger={['click']}
+                    placement="bottomRight"
+                    overlay={
+                      <Menu items={[
+                        {
+                          key: 'bulk',
+                          icon: <ThunderboltOutlined />,
+                          label: 'Tạo nhanh bộ CRUD',
+                          onClick: () => setIsBulkModalVisible(true)
+                        },
+                        {
+                          key: 'role',
+                          icon: <UserAddOutlined />,
+                          label: 'Thêm vai trò mới',
+                          onClick: () => { rForm.resetFields(); setIsRoleModalVisible(true); }
+                        }
+                      ]} />
+                    }
+                  >
+                    <Button variant="outline" buttonSize="small" icon={<DownOutlined />} style={{ color: '#595959', borderColor: '#d9d9d9', height: 32 }}>Thao tác khác</Button>
+                  </Dropdown>
                   <Button variant="primary" buttonSize="small" icon={<PlusOutlined />} onClick={() => { setEditingPerm(null); pForm.resetFields(); setIsPermModalVisible(true); }} style={{ background: '#8b1d1d', borderColor: '#8b1d1d', height: 32 }}>Thêm hành động</Button>
                 </div>
               )}
@@ -325,9 +350,27 @@ const PermissionsPage: React.FC = () => {
                                 <Text strong style={{ fontSize: 16 }}>{group.category}</Text>
                                 <Tag color="blue" style={{ borderRadius: 10 }}>{group.actions.length} hành động</Tag>
                               </Space>
-                              {hasPermission('system:permissions:edit') && (
-                                <Button variant="ghost" buttonSize="small" icon={<PlusOutlined />} onClick={(e) => { e.stopPropagation(); setEditingPerm(null); pForm.resetFields(); pForm.setFieldsValue({ module: group.category }); setIsPermModalVisible(true); }}>Thêm hành động</Button>
-                              )}
+                              <Space>
+                                <Tooltip title="Xem danh sách người dùng có quyền này">
+                                  <Button 
+                                    variant="ghost" 
+                                    buttonSize="small" 
+                                    icon={<SolutionOutlined />} 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      setAuditType('module'); 
+                                      setSelectedAuditId(group.category); 
+                                      setIsAuditModalVisible(true); 
+                                    }}
+                                  />
+                                </Tooltip>
+
+                                <Divider type="vertical" style={{width: 4, borderColor: 'red'}}/>
+                              
+                                {hasPermission('system:permissions:edit') && (
+                                  <Button variant="ghost" buttonSize="small" icon={<PlusOutlined />} onClick={(e) => { e.stopPropagation(); setEditingPerm(null); pForm.resetFields(); pForm.setFieldsValue({ module: group.category }); setIsPermModalVisible(true); }}>Thêm hành động</Button>
+                                )}
+                              </Space>
                             </div>
                           } 
                           key={group.category}
