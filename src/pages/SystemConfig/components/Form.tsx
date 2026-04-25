@@ -1,8 +1,9 @@
 import React from 'react';
-import { Form, Input, Switch, Divider } from 'antd';
+import { Form, Input, Switch, Divider, Space } from 'antd';
 import type { FormInstance } from 'antd';
 import { TeamOutlined, ScheduleOutlined } from '@ant-design/icons';
 import FormModal from '../../../components/common/FormModal';
+import Button from '@/components/common/Button';
 
 interface GenerationFormProps {
   open: boolean;
@@ -22,11 +23,37 @@ const GenerationForm: React.FC<GenerationFormProps> = ({
   return (
     <FormModal
       open={open}
-      title={editingId ? 'Cập nhật Khóa/Thế hệ' : 'Thêm mới Khóa/Thế hệ'}
-      onCancel={onCancel}
-      onOk={onOk}
+      title={
+        <div style={{ textAlign: 'left', width: '100%' }}>
+          <Space>
+            <TeamOutlined style={{ color: 'var(--primary-color)' }} />
+            <span style={{ fontWeight: 600, fontSize: 18 }}>
+              {editingId ? 'Cập nhật Khóa/Thế hệ' : 'Thêm mới Khóa/Thế hệ'}
+            </span>
+          </Space>
+        </div>
+      }
       form={form}
-      width={600}
+      onCancel={onCancel}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+          <Button 
+            variant="outline" 
+            onClick={onCancel}
+            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+          >
+            Hủy
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={onOk}
+            style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+          >
+            Lưu lại
+          </Button>
+        </div>
+      }
+      centered
     >
       <div style={{ padding: '0 4px' }}>
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>

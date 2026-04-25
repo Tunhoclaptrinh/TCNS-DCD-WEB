@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Form, Tag, Space, Tooltip, message, Modal } from 'antd';
+import { Form, Tag, Space, Tooltip, message, Modal, Typography } from 'antd';
 import { StarOutlined, StarFilled, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import { useCRUD } from '../../hooks/useCRUD';
 import DataTable from '../../components/common/DataTable';
@@ -7,6 +7,7 @@ import { DataTableColumn, FilterConfig } from '../../components/common/DataTable
 import generationService, { Generation } from '../../services/generation.service';
 import GenerationForm from './components/Form';
 import { Button } from '@/components/common';
+const { Text } = Typography;
 
 const GenerationPage = () => {
     const {
@@ -255,13 +256,30 @@ const GenerationPage = () => {
             />
 
             <Modal
-                title="Chi tiết Khóa/Thế hệ"
+                title={
+                    <div style={{ textAlign: 'left', width: '100%' }}>
+                        <Space>
+                            <EyeOutlined style={{ color: 'var(--primary-color)' }} />
+                            <Text strong style={{ fontSize: 18 }}>Chi tiết Khóa/Thế hệ</Text>
+                        </Space>
+                    </div>
+                }
                 open={isDetailVisible}
                 onCancel={() => setIsDetailVisible(false)}
-                footer={[
-                    <Button key="close" onClick={() => setIsDetailVisible(false)}>Đóng</Button>
-                ]}
+                footer={
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setIsDetailVisible(false)}
+                            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+                        >
+                            Đóng
+                        </Button>
+                    </div>
+                }
                 width={500}
+                centered
+                destroyOnClose
             >
                 {viewingRecord && (
                     <div className="generation-detail">

@@ -18,12 +18,14 @@ import {
   Empty,
   Tooltip,
   Tabs,
-  Popconfirm,
   List,
   Avatar,
   Row,
-  Col
+  Col,
+  Dropdown,
+  Menu
 } from 'antd';
+import UsersDetailModal from '../Users/components/Detail';
 import { 
   SafetyCertificateOutlined, 
   TeamOutlined, 
@@ -32,19 +34,25 @@ import {
   SettingOutlined,
   SearchOutlined,
   PlusOutlined,
+  PlusSquareOutlined,
   AppstoreOutlined,
   EditOutlined,
   DeleteOutlined,
   BlockOutlined,
   ThunderboltOutlined,
   UserOutlined,
-  SolutionOutlined
+  SolutionOutlined,
+  StopOutlined,
+  CheckCircleOutlined,
+  MoreOutlined
 } from '@ant-design/icons';
 import roleService, { Role } from '../../services/role.service';
 import permissionService, { Permission } from '../../services/permission.service';
 import userService from '../../services/user.service';
 import Button from '@/components/common/Button';
 import { useAccess } from '@/hooks/useAccess';
+import { formatDateTime } from '@/utils/formatters';
+import './styles.less';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -57,17 +65,26 @@ const PermissionsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [activeTab, setActiveTab] = useState('matrix');
   
-  // Audit states
-  const [auditType, setAuditType] = useState<'role' | 'permission'>('role');
+   // Audit states
+  const [auditType, setAuditType] = useState<'role' | 'permission' | 'module'>('role');
   const [selectedAuditId, setSelectedAuditId] = useState<any>(null);
+  const [isAuditModalVisible, setIsAuditModalVisible] = useState(false);
+  const [isUserDetailVisible, setIsUserDetailVisible] = useState(false);
+  const [selectedUserForDetail, setSelectedUserForDetail] = useState<any>(null);
 
   // Modal states
   const [isPermModalVisible, setIsPermModalVisible] = useState(false);
   const [isBulkModalVisible, setIsBulkModalVisible] = useState(false);
+  const [isUserAccessModalVisible, setIsUserAccessModalVisible] = useState(false);
+  const [isRoleModalVisible, setIsRoleModalVisible] = useState(false);
   const [editingPerm, setEditingPerm] = useState<Permission | null>(null);
+  const [editingUserAccess, setEditingUserAccess] = useState<any>(null);
   const [form] = Form.useForm();
   const [bulkForm] = Form.useForm();
+  const [userAccessForm] = Form.useForm();
+  const [roleForm] = Form.useForm();
 
   const fetchData = async () => {
     try {
@@ -75,7 +92,7 @@ const PermissionsPage: React.FC = () => {
       const [rolesRes, groupsRes, usersRes] = await Promise.all([
         roleService.getAll(),
         permissionService.getGroupedPermissions(),
-        userService.getAll({ limit: 1000 }) // Fetch all for audit
+        userService.getAll({ limit: 1000 }) // Fetch all for audit (up to 1000)
       ]);
 
       if (rolesRes.success && rolesRes.data) {
@@ -180,6 +197,39 @@ const PermissionsPage: React.FC = () => {
     }
   };
 
+  const handleUpdateUserAccess = async (values: any) => {
+    if (!editingUserAccess) return;
+    try {
+      setLoading(true);
+      const res = await userService.patch(editingUserAccess.id, values);
+      if (res.success) {
+        message.success(`Đã cập nhật quyền hạn cho ${editingUserAccess.name}`);
+        setIsUserAccessModalVisible(false);
+        fetchData();
+      }
+    } catch (error) {
+      message.error('Lỗi khi cập nhật quyền hạn người dùng');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateRole = async (values: any) => {
+    try {
+      setLoading(true);
+      const res = await roleService.create({ ...values, isActive: true, permissions: [] });
+      if (res.success) {
+        message.success(`Đã tạo vai trò mới: ${values.name}`);
+        setIsRoleModalVisible(false);
+        fetchData();
+      }
+    } catch (error) {
+      message.error('Lỗi khi tạo vai trò mới');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter groups and actions based on search
   const filteredGroups = useMemo(() => {
     if (!searchText) return permissionGroups;
@@ -204,20 +254,34 @@ const PermissionsPage: React.FC = () => {
     
     if (auditType === 'role') {
       return users.filter(u => Array.isArray(u.roleIds) && u.roleIds.includes(selectedAuditId));
-    } else {
-      // Permission audit: check via roles OR customPermissions.extra
+    } else if (auditType === 'permission') {
       const targetPerm = selectedAuditId;
       return users.filter(u => {
-        // 1. Direct extra permission
         if (u.customPermissions?.extra?.includes(targetPerm)) return true;
         if (u.customPermissions?.denied?.includes(targetPerm)) return false;
-
-        // 2. Via roles
         const userRoles = roles.filter(r => u.roleIds?.includes(r.id));
         return userRoles.some(r => r.permissions?.includes(targetPerm) || r.permissions?.includes('*'));
       });
+    } else if (auditType === 'module') {
+      // Find all permissions in this module
+      const group = permissionGroups.find(g => g.category === selectedAuditId);
+      if (!group) return [];
+      const modulePerms = group.actions.map((a: any) => a.key);
+      
+      return users.filter(u => {
+        // Has ANY extra permission from this module
+        if (u.customPermissions?.extra?.some((p: string) => modulePerms.includes(p))) return true;
+        
+        // Has ANY role that has ANY permission from this module
+        const userRoles = roles.filter(r => u.roleIds?.includes(r.id));
+        return userRoles.some(r => 
+          r.permissions?.includes('*') || 
+          r.permissions?.some((p: string) => modulePerms.includes(p))
+        );
+      });
     }
-  }, [auditType, selectedAuditId, users, roles]);
+    return [];
+  }, [auditType, selectedAuditId, users, roles, permissionGroups]);
 
   const getModuleIcon = (category: string) => {
     const lower = category.toLowerCase();
@@ -235,7 +299,7 @@ const PermissionsPage: React.FC = () => {
         title: 'Hành động / Quyền hạn',
         dataIndex: 'name',
         key: 'name',
-        width: 360,
+        width: 260,
         render: (text: string, record: any) => (
           <div className="permission-row-info">
             <Space direction="vertical" size={0}>
@@ -243,22 +307,51 @@ const PermissionsPage: React.FC = () => {
               <Text type="secondary" style={{ fontSize: 11 }}>{record.key}</Text>
             </Space>
             <div className="permission-row-actions">
-              <Tooltip title="Xem người dùng có quyền này">
-                <Button variant="ghost" icon={<UserOutlined />} onClick={() => {
-                  setAuditType('permission');
-                  setSelectedAuditId(record.key);
-                }} />
-              </Tooltip>
-              <Tooltip title="Chỉnh sửa">
-                <Button variant="ghost" icon={<EditOutlined />} onClick={() => {
-                  setEditingPerm(record);
-                  form.setFieldsValue(record);
-                  setIsPermModalVisible(true);
-                }} />
-              </Tooltip>
-              <Popconfirm title="Xác nhận xóa quyền?" onConfirm={() => handleDeletePermission(record.id)}>
-                <Button variant="ghost" icon={<DeleteOutlined />} danger />
-              </Popconfirm>
+              <Dropdown
+                trigger={['click']}
+                overlay={
+                  <Menu items={[
+                    {
+                      key: 'audit',
+                      icon: <UserOutlined />,
+                      label: 'Xem người dùng',
+                      onClick: () => {
+                        setAuditType('permission');
+                        setSelectedAuditId(record.key);
+                        setIsAuditModalVisible(true);
+                      }
+                    },
+                    {
+                      key: 'edit',
+                      icon: <EditOutlined />,
+                      label: 'Chỉnh sửa',
+                      onClick: () => {
+                        setEditingPerm(record);
+                        form.setFieldsValue(record);
+                        setIsPermModalVisible(true);
+                      }
+                    },
+                    {
+                      key: 'delete',
+                      icon: <DeleteOutlined />,
+                      label: 'Xóa quyền',
+                      danger: true,
+                      onClick: () => {
+                        Modal.confirm({
+                          title: 'Xác nhận xóa quyền?',
+                          content: `Bạn có chắc chắn muốn xóa quyền "${record.name}"? Hành động này không thể hoàn tác.`,
+                          okText: 'Xóa',
+                          okType: 'danger',
+                          cancelText: 'Hủy',
+                          onOk: () => handleDeletePermission(record.id)
+                        });
+                      }
+                    }
+                  ]} />
+                }
+              >
+                <Button variant="ghost" icon={<MoreOutlined />} />
+              </Dropdown>
             </div>
           </div>
         )
@@ -308,58 +401,75 @@ const PermissionsPage: React.FC = () => {
         bordered
         rowKey="key"
         className="matrix-inner-table"
+        scroll={{ x: 'max-content' }}
       />
     );
   };
 
   return (
     <div className="permissions-matrix-page">
-      <Card bordered={false} className="premium-card shadow-sm" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <Title level={3} style={{ margin: 0 }}>
+      <div className="page-header-wrapper" style={{ marginBottom: 24 }}>
+        <Row justify="space-between" align="middle" gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <Title level={2} style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
               <SafetyCertificateOutlined style={{ marginRight: 12, color: 'var(--primary-color)' }} />
-              Hệ thống Phân quyền Toàn diện
+              Phân quyền hệ thống
             </Title>
-            <Text type="secondary">Thiết lập chi tiết Hành động, Nhóm chức năng và Vai trò trong tổ chức</Text>
-          </div>
-          <Space size="middle">
-            <Input 
-              placeholder="Tìm kiếm hành động..." 
-              prefix={<SearchOutlined />} 
-              style={{ width: 250, borderRadius: 8 }}
-              onChange={e => setSearchText(e.target.value)}
-              allowClear
-            />
-            {hasPermission('system:permissions:edit') && (
-              <>
-                <Button 
-                  variant="ghost" 
-                  icon={<ThunderboltOutlined />} 
-                  onClick={() => setIsBulkModalVisible(true)}
-                  style={{ color: '#722ed1' }}
-                >
-                  Tạo nhanh CRUD
-                </Button>
-                <Button 
-                  variant="primary" 
-                  icon={<PlusOutlined />} 
-                  onClick={() => {
-                    setEditingPerm(null);
-                    form.resetFields();
-                    setIsPermModalVisible(true);
-                  }}
-                >
-                  Thêm hành động
-                </Button>
-              </>
-            )}
-          </Space>
-        </div>
-      </Card>
+            <Text type="secondary">Quản lý ma trận vai trò, hành động và kiểm soát truy cập chi tiết</Text>
+          </Col>
+          <Col xs={24} md={12} style={{ textAlign: 'right' }}>
+            <Space size="small" wrap>
+              <Input 
+                placeholder="Tìm hành động..." 
+                prefix={<SearchOutlined />} 
+                style={{ width: 220, borderRadius: 6 }}
+                onChange={e => setSearchText(e.target.value)}
+                allowClear
+              />
+              {hasPermission('system:permissions:edit') && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    icon={<ThunderboltOutlined />} 
+                    onClick={() => setIsBulkModalVisible(true)}
+                    style={{ color: '#722ed1' }}
+                  >
+                    Tạo CRUD
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    icon={<TeamOutlined />} 
+                    onClick={() => {
+                      roleForm.resetFields();
+                      setIsRoleModalVisible(true);
+                    }}
+                    style={{ color: '#1890ff' }}
+                  >
+                    Thêm vai trò
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    icon={<PlusOutlined />} 
+                    onClick={() => {
+                      setEditingPerm(null);
+                      form.resetFields();
+                      setIsPermModalVisible(true);
+                    }}
+                  >
+                    Thêm hành động
+                  </Button>
+                </>
+              )}
+            </Space>
+          </Col>
+        </Row>
+      </div>
+
+      <Card bordered={false} className="main-content-card">
 
       <Tabs 
-        defaultActiveKey="matrix" 
+        activeKey={activeTab}
+        onChange={setActiveTab}
         items={[
           {
             key: 'matrix',
@@ -395,6 +505,19 @@ const PermissionsPage: React.FC = () => {
                               </div>
                               <Text strong style={{ fontSize: 16 }}>{group.category}</Text>
                               <Tag color="blue" style={{ borderRadius: 10 }}>{group.actions.length} hành động</Tag>
+                              <Tooltip title="Xem tất cả người dùng có quyền trong nhóm này">
+                                <Button 
+                                  variant="ghost" 
+                                  buttonSize="small"
+                                  icon={<UserOutlined />} 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAuditType('module');
+                                    setSelectedAuditId(group.category);
+                                    setIsAuditModalVisible(true);
+                                  }}
+                                />
+                              </Tooltip>
                             </Space>
                             {hasPermission('system:permissions:edit') && (
                               <Button 
@@ -415,6 +538,7 @@ const PermissionsPage: React.FC = () => {
                         } 
                         key={group.category}
                         className="matrix-panel"
+                        style={{ marginBottom: 24, borderBottom: '1px solid #f0f0f0', borderRadius: 0, paddingBottom: 16 }}
                       >
                         {renderMatrixTable(group.actions)}
                       </Panel>
@@ -445,11 +569,16 @@ const PermissionsPage: React.FC = () => {
                       >
                         <Select.Option value="role">Theo Vai trò (Group)</Select.Option>
                         <Select.Option value="permission">Theo Quyền hạn (Permission)</Select.Option>
+                        <Select.Option value="module">Theo Nhóm chức năng (Module)</Select.Option>
                       </Select>
                       
                       <Divider style={{ margin: '12px 0' }} />
                       
-                      <Text type="secondary">{auditType === 'role' ? 'Chọn vai trò:' : 'Chọn quyền hạn:'}</Text>
+                      <Text type="secondary">
+                        {auditType === 'role' ? 'Chọn vai trò:' : 
+                         auditType === 'permission' ? 'Chọn quyền hạn:' : 
+                         'Chọn nhóm chức năng:'}
+                      </Text>
                       <Select
                         style={{ width: '100%' }}
                         placeholder="Chọn mục cần kiểm tra..."
@@ -459,6 +588,8 @@ const PermissionsPage: React.FC = () => {
                       >
                         {auditType === 'role' ? (
                           roles.map(r => <Select.Option key={r.id} value={r.id}>{r.name}</Select.Option>)
+                        ) : auditType === 'module' ? (
+                          permissionGroups.map(g => <Select.Option key={g.category} value={g.category}>{g.category}</Select.Option>)
                         ) : (
                           permissionGroups.flatMap(g => g.actions).map(a => (
                             <Select.Option key={a.key} value={a.key}>{a.name} ({a.key})</Select.Option>
@@ -495,11 +626,28 @@ const PermissionsPage: React.FC = () => {
                                 </Space>
                               }
                             />
-                            {item.customPermissions?.extra?.length > 0 && (
-                              <Tooltip title={`Được cấp thêm: ${item.customPermissions.extra.join(', ')}`}>
-                                <Tag color="orange">Quyền riêng (+)</Tag>
-                              </Tooltip>
-                            )}
+                            <Space>
+                              {item.customPermissions?.extra?.length > 0 && (
+                                <Tooltip title={`Được cấp thêm: ${item.customPermissions.extra.join(', ')}`}>
+                                  <Tag color="orange">Quyền riêng (+)</Tag>
+                                </Tooltip>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                buttonSize="small"
+                                icon={<EditOutlined />} 
+                                onClick={() => {
+                                  setEditingUserAccess(item);
+                                  userAccessForm.setFieldsValue({
+                                    roleIds: item.roleIds,
+                                    customPermissions: item.customPermissions || { extra: [], denied: [] }
+                                  });
+                                  setIsUserAccessModalVisible(true);
+                                }}
+                              >
+                                Chỉnh sửa
+                              </Button>
+                            </Space>
                           </List.Item>
                         )}
                       />
@@ -511,13 +659,40 @@ const PermissionsPage: React.FC = () => {
           }
         ]}
       />
+    </Card>
 
       {/* Permission Modal */}
       <Modal
-        title={editingPerm ? "Cấu hình hành động" : "Định nghĩa Hành động mới"}
+        title={
+          <div style={{ textAlign: 'left', width: '100%' }}>
+            <Space>
+              <PlusSquareOutlined style={{ color: 'var(--primary-color)' }} />
+              <Text strong style={{ fontSize: 18 }}>
+                {editingPerm ? "Cấu hình hành động" : "Định nghĩa Hành động"}
+              </Text>
+            </Space>
+          </div>
+        }
         open={isPermModalVisible}
         onCancel={() => setIsPermModalVisible(false)}
-        onOk={() => form.submit()}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPermModalVisible(false)}
+              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Hủy
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={() => form.submit()}
+              style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              {editingPerm ? "Lưu lại" : "Tạo ngay"}
+            </Button>
+          </div>
+        }
         width={500}
         centered
         destroyOnClose
@@ -579,11 +754,37 @@ const PermissionsPage: React.FC = () => {
 
       {/* Bulk CRUD Modal */}
       <Modal
-        title={<Space><ThunderboltOutlined /> Tạo nhanh bộ quyền CRUD</Space>}
+        title={
+          <div style={{ textAlign: 'left', width: '100%' }}>
+            <Space>
+              <ThunderboltOutlined style={{ color: '#722ed1' }} />
+              <Text strong style={{ fontSize: 18 }}>Tạo nhanh bộ quyền CRUD</Text>
+            </Space>
+          </div>
+        }
         open={isBulkModalVisible}
         onCancel={() => setIsBulkModalVisible(false)}
-        onOk={() => bulkForm.submit()}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsBulkModalVisible(false)}
+              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Hủy
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={() => bulkForm.submit()}
+              style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Tạo ngay
+            </Button>
+          </div>
+        }
+        width={550}
         centered
+        destroyOnClose
       >
         <Form
           form={bulkForm}
@@ -610,53 +811,267 @@ const PermissionsPage: React.FC = () => {
         </Form>
       </Modal>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .permissions-matrix-page .matrix-collapse .ant-collapse-item {
-          background: #fff;
-          margin-bottom: 20px;
-          border-radius: 16px !important;
-          border: 1px solid #f0f0f0;
-          overflow: hidden;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      {/* User Access Modal */}
+      <Modal
+        title={
+          <div style={{ textAlign: 'left', width: '100%' }}>
+            <Space>
+              <SafetyCertificateOutlined style={{ color: '#faad14' }} />
+              <Text strong style={{ fontSize: 18 }}>Thiết lập quyền đặc biệt</Text>
+            </Space>
+          </div>
         }
-        .permissions-matrix-page .matrix-panel-header {
-          width: 100%;
+        open={isUserAccessModalVisible}
+        onCancel={() => setIsUserAccessModalVisible(false)}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsUserAccessModalVisible(false)}
+              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Hủy
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={() => userAccessForm.submit()}
+              style={{ minWidth: 150, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Lưu thiết lập
+            </Button>
+          </div>
         }
-        .permissions-matrix-page .module-icon-wrapper {
-          width: 40px;
-          height: 40px;
-          background: #fff;
-          border-radius: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 20px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        width={650}
+        centered
+        destroyOnClose
+      >
+        <Form
+          form={userAccessForm}
+          layout="vertical"
+          onFinish={handleUpdateUserAccess}
+          style={{ marginTop: 16 }}
+        >
+          <Form.Item name="roleIds" label={<Text strong>Vai trò hệ thống (Groups)</Text>}>
+            <Select
+              mode="multiple"
+              placeholder="Chọn vai trò..."
+              style={{ width: '100%' }}
+              options={roles.map(r => ({ label: r.name, value: r.id }))}
+            />
+          </Form.Item>
+
+          <Divider style={{ margin: '12px 0' }} />
+          <Alert 
+            message="Quyền tùy chỉnh sẽ ghi đè lên quyền từ vai trò. Extra sẽ thêm quyền mới, Denied sẽ chặn quyền hiện có."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item 
+                name={['customPermissions', 'extra']} 
+                label={<Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> Cấp thêm quyền riêng</Space>}
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Chọn thêm quyền..."
+                  options={permissionGroups.flatMap(g => g.actions).map(a => ({ label: a.name, value: a.key }))}
+                  showSearch
+                  optionFilterProp="label"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item 
+                name={['customPermissions', 'denied']} 
+                label={<Space><StopOutlined style={{ color: '#ff4d4f' }} /> Chặn quyền cụ thể</Space>}
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Chọn quyền cần chặn..."
+                  options={permissionGroups.flatMap(g => g.actions).map(a => ({ label: a.name, value: a.key }))}
+                  showSearch
+                  optionFilterProp="label"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* Audit User Modal */}
+      <Modal
+        title={
+          <div style={{ textAlign: 'left', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <TeamOutlined style={{ color: 'var(--primary-color)', fontSize: 20 }} />
+              <div>
+                <Text strong style={{ fontSize: 18, display: 'block' }}>Danh sách thành viên</Text>
+                <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+                  Cơ chế: <Text strong>{auditType === 'role' ? 'Theo vai trò' : auditType === 'permission' ? 'Theo quyền' : 'Theo module'}</Text> - 
+                  Mục: <Tag color="blue" style={{ borderRadius: 4, margin: 0 }}>{selectedAuditId}</Tag>
+                </Text>
+              </div>
+            </div>
+          </div>
         }
-        .permissions-matrix-page .permission-row-info {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          width: 100%;
+        open={isAuditModalVisible}
+        onCancel={() => setIsAuditModalVisible(false)}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAuditModalVisible(false)}
+              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Đóng
+            </Button>
+          </div>
         }
-        .permissions-matrix-page .permission-row-actions {
-          opacity: 0;
-          transition: opacity 0.2s;
+        width={650}
+        centered
+        destroyOnClose
+        className="premium-modal"
+      >
+        <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '0 8px' }}>
+          {auditedUsers.length > 0 ? (
+            <List
+              dataSource={auditedUsers}
+              renderItem={item => (
+                <List.Item 
+                  style={{ borderBottom: '1px solid #f0f0f0', padding: '16px 0' }}
+                  actions={[
+                    <Button 
+                      key="view" 
+                      variant="ghost" 
+                      buttonSize="small"
+                      onClick={() => {
+                        setSelectedUserForDetail(item);
+                        setIsUserDetailVisible(true);
+                      }}
+                    >
+                      Chi tiết
+                    </Button>
+                  ]}
+                >
+                  <List.Item.Meta
+                    avatar={
+                      <Avatar 
+                        size={48} 
+                        src={item.avatar} 
+                        icon={<UserOutlined />} 
+                        style={{ border: '2px solid #f0f0f0' }}
+                      />
+                    }
+                    title={<Text strong style={{ fontSize: 16 }}>{item.name}</Text>}
+                    description={
+                      <Space wrap style={{ marginTop: 4 }}>
+                        <Tag color="blue" style={{ borderRadius: 4 }}>{item.department || 'Chưa xếp ban'}</Tag>
+                        <Tag color="orange" style={{ borderRadius: 4 }}>{item.position || 'Thành viên'}</Tag>
+                        {item.roleIds?.length > 0 && (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            ({roles.filter(r => item.roleIds.includes(r.id)).map(r => r.name).join(', ')})
+                          </Text>
+                        )}
+                      </Space>
+                    }
+                  />
+                  {item.customPermissions?.extra?.includes(selectedAuditId) && (
+                    <Tooltip title="Được cấp quyền riêng lẻ (không qua vai trò)">
+                      <Tag color="success" style={{ borderRadius: 10 }}>Quyền riêng (+)</Tag>
+                    </Tooltip>
+                  )}
+                </List.Item>
+              )}
+            />
+          ) : (
+            <div style={{ padding: '40px 0', textAlign: 'center' }}>
+              <Empty description="Không tìm thấy thành viên nào thỏa mãn điều kiện này" />
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Quick Role Create Modal */}
+      <Modal
+        title={
+          <div style={{ textAlign: 'center', width: '100%', paddingRight: 32 }}>
+            <Title level={4} style={{ margin: 0 }}>
+              <TeamOutlined style={{ marginRight: 12, color: '#1890ff' }} />
+              Thêm Vai trò mới
+            </Title>
+            <Text type="secondary">Định nghĩa nhóm vai trò mới cho hệ thống</Text>
+          </div>
         }
-        .permissions-matrix-page tr:hover .permission-row-actions {
-          opacity: 1;
+        open={isRoleModalVisible}
+        onCancel={() => setIsRoleModalVisible(false)}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsRoleModalVisible(false)}
+              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Hủy
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={() => roleForm.submit()}
+              style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Tạo vai trò
+            </Button>
+          </div>
         }
-        .permissions-matrix-page .matrix-inner-table {
-          margin: -16px;
-        }
-        .permissions-matrix-page .ant-tabs-nav::before {
-          border-bottom: none;
-        }
-        .permissions-matrix-page .ant-tabs-tab {
-          font-weight: 600;
-          padding: 12px 16px;
-        }
-      `}} />
+        width={500}
+        centered
+        destroyOnClose
+      >
+        <Form
+          form={roleForm}
+          layout="vertical"
+          onFinish={handleCreateRole}
+          style={{ marginTop: 16 }}
+        >
+          <Form.Item
+            name="name"
+            label="Tên vai trò"
+            rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}
+          >
+            <Input placeholder="VD: Ban Kỹ thuật, Trưởng nhóm..." size="large" />
+          </Form.Item>
+
+          <Form.Item
+            name="key"
+            label="Mã định danh (Key)"
+            rules={[
+              { required: true, message: 'Vui lòng nhập mã key' },
+              { pattern: /^[a-z0-9_]+$/, message: 'Chữ thường, số và dấu gạch dưới' }
+            ]}
+          >
+            <Input placeholder="vd: ban_ky_thuat" size="large" />
+          </Form.Item>
+
+          <Form.Item name="description" label="Mô tả">
+            <Input.TextArea rows={3} placeholder="Mô tả phạm vi quyền hạn của vai trò này..." />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+
+      {/* User Detail Modal Connection */}
+      <UsersDetailModal
+        open={isUserDetailVisible}
+        user={selectedUserForDetail}
+        avatarFallback="https://ui-avatars.com/api/?background=random"
+        formatDateTime={formatDateTime}
+        onCancel={() => {
+          setIsUserDetailVisible(false);
+          setSelectedUserForDetail(null);
+        }}
+      />
     </div>
   );
 };

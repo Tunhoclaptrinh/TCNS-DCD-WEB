@@ -251,11 +251,37 @@ const RoleManagement: React.FC = () => {
       />
 
       <Modal
-        title={editingRole ? "Cập nhật vai trò" : "Thêm vai trò mới"}
+        title={
+          <div style={{ textAlign: 'left', width: '100%' }}>
+            <Space>
+              <SafetyOutlined style={{ color: 'var(--primary-color)' }} />
+              <Text strong style={{ fontSize: 18 }}>
+                {editingRole ? "Cập nhật vai trò" : "Thêm vai trò mới"}
+              </Text>
+            </Space>
+          </div>
+        }
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
-        onOk={() => form.submit()}
-        confirmLoading={loading}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsModalVisible(false)}
+              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Hủy
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={() => form.submit()}
+              loading={loading}
+              style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              {editingRole ? "Lưu thay đổi" : "Tạo vai trò"}
+            </Button>
+          </div>
+        }
         destroyOnClose
         centered
         width={500}

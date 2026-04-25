@@ -1,0 +1,138 @@
+.permissions-matrix-page {
+
+  .page-header-wrapper {
+    margin-bottom: 24px;
+  }
+
+  .main-content-card {
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+
+  .ant-tabs-nav {
+    margin-bottom: 24px !important;
+    &::before {
+      border-bottom: 1px solid #f0f0f0;
+    }
+  }
+
+  .ant-tabs-tab {
+    padding: 12px 0 !important;
+    margin-right: 32px !important;
+  }
+
+  .matrix-collapse {
+    background: transparent;
+
+    .matrix-panel {
+      background: #fff !important;
+      border: 1px solid #f0f0f0 !important;
+      border-radius: 8px !important;
+      margin-bottom: 16px !important;
+      overflow: hidden;
+
+      .ant-collapse-header {
+        padding: 12px 20px !important;
+        background: #fafafa !important;
+        align-items: center !important;
+        border-bottom: 1px solid #f0f0f0 !important;
+      }
+
+      .ant-collapse-content-box {
+        padding: 0 !important; // Zero padding to make table edge-to-edge
+        background: #fff !important;
+      }
+    }
+  }
+
+  .module-icon-wrapper {
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .matrix-inner-table {
+    .ant-table {
+      background: transparent;
+      border-radius: 0 !important; // Remove border radius
+      border: none !important; // Avoid double borders with panel
+    }
+    .ant-table-container {
+      border-radius: 0 !important;
+    }
+    .ant-table-thead > tr > th {
+      background: #f5f5f5;
+      font-weight: 600;
+      border-bottom: 1px solid #f0f0f0;
+      border-radius: 0 !important; // Force square corners for all header cells
+      
+      &:first-child {
+        border-radius: 0 !important;
+      }
+      &:last-child {
+        border-radius: 0 !important;
+      }
+    }
+    .ant-table-tbody > tr > td {
+      border-radius: 0 !important;
+    }
+  }
+
+  .permission-row-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .permission-row-actions {
+    opacity: 0;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .ant-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      color: #8c8c8c;
+      
+      &:hover {
+        background: #e6f7ff;
+        color: #1890ff;
+      }
+    }
+  }
+
+  tr:hover .permission-row-actions {
+    opacity: 1;
+  }
+
+  .audit-card {
+    border-radius: 8px;
+    height: 100%;
+  }
+
+  .ant-list-item {
+    padding: 12px 16px !important;
+    transition: background 0.2s;
+    border-radius: 6px;
+    margin-bottom: 4px;
+
+    &:hover {
+      background: #f9f9f9;
+    }
+  }
+}

@@ -10,13 +10,14 @@ import {
   Col, 
   Spin, 
   message,
-  Divider,
-  Alert
+  Alert,
+  Tooltip,
+  Form,
+  Input
 } from 'antd';
 import { 
   SafetyOutlined, 
   AppstoreOutlined,
-  CheckCircleFilled,
   PlusOutlined
 } from '@ant-design/icons';
 import roleService, { Role } from '@/services/role.service';
@@ -25,7 +26,7 @@ import Button from '@/components/common/Button';
 import { useAccess } from '@/hooks/useAccess';
 
 const { Panel } = Collapse;
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface RolePermissionModalProps {
   open: boolean;
@@ -45,6 +46,9 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [permissionGroups, setPermissionGroups] = useState<any[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [isPermModalVisible, setIsPermModalVisible] = useState(false);
+  const [permForm] = Form.useForm();
+  const [currentModule, setCurrentModule] = useState<string>('');
 
   useEffect(() => {
     if (open && role) {
@@ -109,6 +113,22 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
     }
   };
 
+  const handleCreatePermission = async (values: any) => {
+    try {
+      setSaving(true);
+      const res = await permissionService.create(values);
+      if (res.success) {
+        message.success('Thêm hành động mới thành công');
+        setIsPermModalVisible(false);
+        fetchData(); // Refresh list to show new action
+      }
+    } catch (error) {
+      message.error('Lỗi khi tạo hành động');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const isAllSelected = (groupActions: any[]) => {
     return groupActions.every(a => selectedPermissions.includes(a.key));
   };
@@ -121,28 +141,40 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
   return (
     <Modal
       title={
-        <Space>
-          <SafetyOutlined style={{ color: 'var(--primary-color)' }} />
-          <span>Phân quyền chi tiết: <Text strong>{role?.name}</Text></span>
-        </Space>
+        <div style={{ textAlign: 'left', width: '100%' }}>
+          <Space>
+            <SafetyOutlined style={{ color: 'var(--primary-color)' }} />
+            <Text strong style={{ fontSize: 18 }}>
+              Phân quyền chi tiết: {role?.name}
+            </Text>
+          </Space>
+        </div>
       }
       open={open}
       onCancel={onCancel}
       width={800}
       centered
       destroyOnClose
-      footer={[
-        <Button key="cancel" variant="ghost" onClick={onCancel}>Hủy</Button>,
-        <Button 
-          key="save" 
-          variant="primary" 
-          loading={saving} 
-          onClick={handleSave}
-          disabled={role?.key === 'admin'}
-        >
-          Lưu thay đổi
-        </Button>
-      ]}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+          <Button 
+            variant="outline" 
+            onClick={onCancel}
+            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+          >
+            Hủy
+          </Button>
+          <Button 
+            variant="primary" 
+            loading={saving} 
+            onClick={handleSave}
+            disabled={role?.key === 'admin'}
+            style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+          >
+            Lưu thay đổi
+          </Button>
+        </div>
+      }
     >
       <Spin spinning={loading}>
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '4px 16px' }}>
@@ -175,13 +207,10 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
                             icon={<PlusOutlined />} 
                             buttonSize="small"
                             onClick={() => {
-                              // We don't have the permission modal here, 
-                              // but we can at least show a message or redirect.
-                              // Actually, to keep it simple, I will add a way to open a small input?
-                              // Or just tell the user to use the matrix?
-                              // Let's stick to the matrix for complex adding, 
-                              // but I'll make the matrix ADD button very clear.
-                              message.info('Vui lòng vào trang "Ma trận Phân quyền" để thêm hành động mới.');
+                              setCurrentModule(group.category);
+                              permForm.resetFields();
+                              permForm.setFieldsValue({ module: group.category });
+                              setIsPermModalVisible(true);
                             }}
                           />
                         </Tooltip>
@@ -220,6 +249,72 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
           </Collapse>
         </div>
       </Spin>
+
+      {/* Quick Add Permission Modal */}
+      <Modal
+        title={
+          <div style={{ textAlign: 'left', width: '100%' }}>
+            <Space>
+              <PlusOutlined style={{ color: 'var(--primary-color)' }} />
+              <Text strong style={{ fontSize: 18 }}>
+                Thêm hành động mới: {currentModule}
+              </Text>
+            </Space>
+          </div>
+        }
+        open={isPermModalVisible}
+        onCancel={() => setIsPermModalVisible(false)}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPermModalVisible(false)}
+              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Hủy
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={() => permForm.submit()}
+              loading={saving}
+              style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            >
+              Tạo hành động
+            </Button>
+          </div>
+        }
+        width={600}
+        centered
+        destroyOnClose
+      >
+        <Form
+          form={permForm}
+          layout="vertical"
+          onFinish={handleCreatePermission}
+          style={{ marginTop: 16 }}
+        >
+          <Form.Item name="module" hidden><Input /></Form.Item>
+          
+          <Form.Item
+            name="name"
+            label="Tên hành động"
+            rules={[{ required: true, message: 'Nhập tên hành động' }]}
+          >
+            <Input placeholder="VD: Gửi thông báo, In báo cáo..." size="large" />
+          </Form.Item>
+
+          <Form.Item
+            name="key"
+            label="Mã định danh (Key)"
+            rules={[
+              { required: true, message: 'Nhập mã key' },
+              { pattern: /^[a-z0-9_:]+$/, message: 'vd: module:action' }
+            ]}
+          >
+            <Input placeholder="vd: documents:print" size="large" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Modal>
   );
 };

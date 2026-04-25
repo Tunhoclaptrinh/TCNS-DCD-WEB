@@ -23,7 +23,7 @@ import UsersForm from './components/Form';
 import UsersDetailModal from './components/Detail';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
-import permissionService, { Permission } from '../../services/permission.service';
+import permissionService from '../../services/permission.service';
 
 const POSITION_LEVELS = ['ctv', 'tv', 'tvb', 'pb', 'tb', 'ctc', 'dt'];
 const POSITION_LABELS: Record<string, string> = {
