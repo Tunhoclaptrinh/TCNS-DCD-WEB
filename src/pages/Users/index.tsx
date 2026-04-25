@@ -72,7 +72,7 @@ const UserPage = () => {
         expand: 'generation',
     });
 
-    const { hasPermission } = useAccess();
+    const { hasPermission, user: currentUser } = useAccess();
 
     const [form] = Form.useForm();
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -477,19 +477,19 @@ const UserPage = () => {
                                     key="promote" 
                                     icon={<RiseOutlined />} 
                                     onClick={() => handlePromote(record)}
-                                    disabled={record.position === 'dt'}
-                                    style={{ color: '#52c41a' }}
+                                    disabled={record.position === 'dt' || record.id === currentUser?.id}
+                                    style={{ color: record.id === currentUser?.id ? undefined : '#52c41a' }}
                                 >
-                                    Nâng hạng
+                                    {record.id === currentUser?.id ? 'Nâng hạng (Khóa)' : 'Nâng hạng'}
                                 </Menu.Item>
                                 <Menu.Item 
                                     key="dismiss" 
                                     icon={<UserDeleteOutlined />} 
                                     onClick={() => handleDismiss(record)}
-                                    disabled={record.status === 'dismissed'}
+                                    disabled={record.status === 'dismissed' || record.id === currentUser?.id}
                                     danger
                                 >
-                                    Khai trừ
+                                    {record.id === currentUser?.id ? 'Khai trừ (Khóa)' : 'Khai trừ'}
                                 </Menu.Item>
                                 {hasPermission('users:delete') && (
                                     <>
@@ -498,6 +498,7 @@ const UserPage = () => {
                                             key="delete" 
                                             icon={<DeleteOutlined />} 
                                             onClick={() => handleDelete(record.id)}
+                                            disabled={record.id === currentUser?.id}
                                             danger
                                         >
                                             Xóa vĩnh viễn
@@ -879,6 +880,7 @@ const UserPage = () => {
                 formatDateTime={formatDateTime}
                 onPromote={handlePromote}
                 onDismiss={handleDismiss}
+                currentUser={currentUser}
                 onCancel={() => {
                     setIsDetailModalVisible(false);
                     setViewingUser(null);

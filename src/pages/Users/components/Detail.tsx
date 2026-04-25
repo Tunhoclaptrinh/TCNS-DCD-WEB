@@ -12,6 +12,7 @@ interface UsersDetailModalProps {
   formatDateTime: (value?: string) => string;
   onPromote?: (user: User) => void;
   onDismiss?: (user: User) => void;
+  currentUser?: User | null;
 }
 
 const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
@@ -22,6 +23,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
   formatDateTime,
   onPromote,
   onDismiss,
+  currentUser,
 }) => {
   return (
     <Modal
@@ -48,10 +50,10 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
               buttonSize="small"
               icon={<RiseOutlined />} 
               onClick={() => onPromote(user)}
-              disabled={user.position === 'dt'}
+              disabled={user.position === 'dt' || user.id === currentUser?.id}
               style={{ minWidth: 88 }}
             >
-              Nâng hạng
+              {user.id === currentUser?.id ? 'Nâng hạng (Khóa)' : 'Nâng hạng'}
             </Button>
           )}
           {user && onDismiss && user.status !== 'dismissed' && (
@@ -61,9 +63,10 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
               buttonSize="small"
               icon={<StopOutlined />} 
               onClick={() => onDismiss(user)}
+              disabled={user.id === currentUser?.id}
               style={{ minWidth: 88 }}
             >
-              Khai trừ
+              {user.id === currentUser?.id ? 'Khai trừ (Khóa)' : 'Khai trừ'}
             </Button>
           )}
         </div>
