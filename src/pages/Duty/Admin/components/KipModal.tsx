@@ -81,8 +81,8 @@ const KipModal: React.FC<KipModalProps> = ({
       <div style={{ padding: '0 4px' }}>
         <Form.Item name="shiftId" hidden><Input /></Form.Item>
 
-        <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-          <ScheduleOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin chi tiết Kíp</span>
+        <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16, borderColor: '#f1f5f9' }}>
+          <Space size={8}><ScheduleOutlined style={{ color: 'var(--primary-color)' }} /><span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Thông tin chi tiết Kíp</span></Space>
         </Divider>
 
         <Row gutter={[24, 0]}>
@@ -129,8 +129,8 @@ const KipModal: React.FC<KipModalProps> = ({
           }}
         />
 
-        <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16 }}>
-          <GlobalOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Cấu hình Hiển thị & Lịch</span>
+        <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16, borderColor: '#f1f5f9' }}>
+          <Space size={8}><GlobalOutlined style={{ color: 'var(--primary-color)' }} /><span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Cấu hình Hiển thị & Lịch</span></Space>
         </Divider>
 
         <Row gutter={[24, 0]}>

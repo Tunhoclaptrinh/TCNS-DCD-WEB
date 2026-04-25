@@ -378,8 +378,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         <div style={{ background: '#f8fafc', padding: '20px', borderRadius: 16, border: '1px solid #e2e8f0', marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div>
-              <Title level={5} style={{ margin: 0 }}>Danh sách trực thực tế</Title>
-              <Text type="secondary" style={{ fontSize: 12 }}>Tích chọn để xác nhận nhân sự thực hiện trực</Text>
+              <Title level={5} style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Danh sách trực thực tế</Title>
+              <Text type="secondary" style={{ fontSize: 12 }}>Tích chọn để xác nhận nhân sự thực hiện trực.</Text>
             </div>
             <Space size={12} align="center">
               <Form.Item name="assignedUserIds" noStyle>
@@ -401,9 +401,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
               <Form.Item name="attendedUserIds" noStyle>
                 <DutyPersonnelPicker
+                  variant="outline"
                   label="Thêm ĐD bổ sung"
-                  icon={<UsergroupAddOutlined style={{ color: '#16a34a' }} />}
-                  style={{ border: '1px solid #dcfce7', background: '#f0fdf4' }}
+                  icon={<UsergroupAddOutlined />}
                   onChange={(ids, rows) => {
                     form.setFieldsValue({ attendedUserIds: ids });
                     if (rows) {
@@ -419,12 +419,13 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
               <Button
                 variant="outline"
+                buttonSize="small"
                 onClick={() => {
                   const assigned = form.getFieldValue('assignedUserIds') || [];
                   form.setFieldsValue({ attendedUserIds: assigned });
                 }}
                 icon={<CheckCircleOutlined />}
-                style={{ minWidth: 120 }}
+                style={{ fontWeight: 600 }}
               >
                 Tất cả có mặt
               </Button>
@@ -452,9 +453,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     return (
                       <List.Item
                         style={{
-                          padding: '12px 16px',
-                          background: '#fff',
-                          borderRadius: 12,
+                          padding: '10px 16px',
+                          background: isAttended ? '#f0fdf4' : '#fff',
+                          borderRadius: 8,
                           marginBottom: 8,
                           border: `1px solid ${isAttended ? '#dcfce7' : '#f1f5f9'}`,
                           transition: 'all 0.2s',
@@ -510,7 +511,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         </Divider>
 
         <Form.Item name="note" noStyle>
-          <Input.TextArea placeholder="Thông tin thêm..." rows={2} />
+          <Input.TextArea size="small" placeholder="Thông tin thêm..." rows={2} />
         </Form.Item>
       </div>
     </FormModal>

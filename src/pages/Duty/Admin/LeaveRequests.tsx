@@ -20,7 +20,7 @@ import apiClient from "@/config/axios.config";
 import DataTable from '@/components/common/DataTable';
 import StatisticsCard from '@/components/common/StatisticsCard';
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
 
 const LeaveRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -290,6 +290,28 @@ const LeaveRequestsPage: React.FC = () => {
 
   return (
     <div className="leave-requests-page" style={{ paddingBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Space size={12}>
+          <Title level={4} style={{ margin: 0, fontWeight: 700, fontSize: '20px', letterSpacing: '-0.5px', color: '#1e293b' }}>
+            Quản lý đơn xin nghỉ
+          </Title>
+          <Tag color="orange" bordered={false} style={{ borderRadius: 6, fontWeight: 500 }}>Phê duyệt</Tag>
+        </Space>
+        <Button
+          variant="ghost"
+          icon={<QuestionCircleOutlined />}
+          onClick={() => setIsGuideModalOpen(true)}
+          style={{ 
+            borderRadius: 8, 
+            display: 'flex', 
+            alignItems: 'center', 
+            fontWeight: 500
+          }}
+        >
+          Hướng dẫn
+        </Button>
+      </div>
+
       <DataTable
         headerContent={
           <div style={{ marginBottom: 16 }}>
@@ -347,7 +369,7 @@ const LeaveRequestsPage: React.FC = () => {
             />
           </div>
         }
-        title="Quản lý đơn xin nghỉ"
+        title={null}
         loading={loading}
         dataSource={requests}
         columns={columns}
@@ -358,15 +380,7 @@ const LeaveRequestsPage: React.FC = () => {
         }}
         searchable={true}
         searchPlaceholder="Tìm kiếm thành viên, lý do..."
-        extra={
-          <Button
-            icon={<QuestionCircleOutlined />}
-            onClick={() => setIsGuideModalOpen(true)}
-            variant="ghost"
-          >
-            Hướng dẫn
-          </Button>
-        }
+        extra={null}
         customActions={(r) => (
           <Space size="small">
             <Tooltip title="Chấp thuận">

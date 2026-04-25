@@ -253,7 +253,7 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & {
         onClick={handleOpen}
         style={{ 
           minWidth: 150, 
-          height: 36,
+          height: 32,
           textAlign: 'left', 
           display: 'flex', 
           alignItems: 'center', 

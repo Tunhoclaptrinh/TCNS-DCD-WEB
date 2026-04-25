@@ -270,8 +270,8 @@ class DutyService {
   /**
    * Generate slots for a specific range from templates
    */
-  async generateRangeSlots(startDate: string, endDate: string, templateId?: number, mode: string = 'kips'): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.post<BaseApiResponse<any>>('/duty/generate-range', { startDate, endDate, templateId, mode });
+  async generateRangeSlots(startDate: string, endDate: string, templateId?: number, mode: string = 'kips', jobId?: string): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.post<BaseApiResponse<any>>('/duty/generate-range', { startDate, endDate, templateId, mode, jobId });
     return response;
   }
 

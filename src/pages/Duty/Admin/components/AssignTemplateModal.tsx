@@ -82,11 +82,12 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
       <Button 
         type="primary" 
         loading={loading} 
-        size="large"
+        size="small"
         icon={loading ? <InteractionOutlined spin /> : <RocketOutlined />}
         onClick={() => form.submit()} 
         style={{ 
           minWidth: 140, 
+          height: 32,
           background: 'linear-gradient(to right, #991b1b, #7f1d1d)', 
           border: 'none',
           boxShadow: '0 4px 12px rgba(153, 27, 27, 0.3)',
@@ -127,7 +128,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
             <Col span={11}>
               <Form.Item name="templateId" label={<span style={{ fontWeight: 500 }}>Chọn Nhóm Bản mẫu</span>} rules={[{ required: true, message: 'Vui lòng chọn bản mẫu' }]}>
                 <Select
-                  size="large"
+                  size="small"
                   placeholder="Mùa Đông, Mùa Hè..."
                   onChange={async (val) => {
                     form.setFieldsValue({ templateId: val });
@@ -148,11 +149,11 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
               <Form.Item label={<span style={{ fontWeight: 500 }}>Giai đoạn áp dụng</span>} required>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <Form.Item name="startDate" noStyle rules={[{ required: true, message: 'Thiếu' }]}>
-                    <DatePicker size="large" placeholder="Từ ngày" style={{ flex: 1 }} format="DD/MM/YYYY" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body} />
+                    <DatePicker size="small" placeholder="Từ ngày" style={{ flex: 1 }} format="DD/MM/YYYY" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body} />
                   </Form.Item>
                   <span style={{ color: '#9ca3af' }}>~</span>
                   <Form.Item name="endDate" noStyle rules={[{ required: true, message: 'Thiếu' }]}>
-                    <DatePicker size="large" placeholder="Đến ngày" style={{ flex: 1 }} format="DD/MM/YYYY" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body} />
+                    <DatePicker size="small" placeholder="Đến ngày" style={{ flex: 1 }} format="DD/MM/YYYY" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body} />
                   </Form.Item>
                 </div>
               </Form.Item>
@@ -161,7 +162,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
           <Row gutter={[24, 16]}>
             <Col span={11}>
               <Form.Item name="mode" label={<span style={{ fontWeight: 500 }}>Chế độ dập khuôn</span>} initialValue="kips">
-                <Select size="large" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body}>
+                <Select size="small" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body}>
                   <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
                   <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
                   <Select.Option value="all">Cả 2 cấp độ (Khuyên dùng)</Select.Option>
@@ -170,7 +171,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
             </Col>
             <Col span={13}>
               <Form.Item name="note" label={<span style={{ fontWeight: 500 }}>Ghi chú cho đợt lập lịch này</span>}>
-                <Input size="large" placeholder="VD: Áp dụng Lịch trực HKII - 2024..." />
+                <Input size="small" placeholder="VD: Áp dụng Lịch trực HKII - 2024..." />
               </Form.Item>
             </Col>
           </Row>

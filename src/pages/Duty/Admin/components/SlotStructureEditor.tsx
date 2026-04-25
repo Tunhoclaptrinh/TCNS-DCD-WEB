@@ -36,7 +36,7 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({ form, name = 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space>
           <ClusterOutlined style={{ color: '#64748b' }} />
-          <Text strong style={{ fontSize: 13, color: '#334155' }}>CƠ CẤU NHÂN SỰ</Text>
+          <Text strong style={{ fontSize: 14, color: '#334155' }}>CƠ CẤU NHÂN SỰ</Text>
         </Space>
         {totalSlots > 0 && (
           <Text type="secondary" style={{ fontSize: 12 }}>
@@ -112,6 +112,7 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({ form, name = 
             <div style={{ marginTop: 16 }}>
               <Button 
                 variant="outline" 
+                buttonSize="small"
                 onClick={() => add({ label: '', slots: 1, positions: [] })} 
                 icon={<PlusOutlined />}
                 style={{ borderStyle: 'dashed', color: '#64748b', borderColor: '#cbd5e1' }}

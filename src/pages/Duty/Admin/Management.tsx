@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Form, Input, InputNumber, Space, message, Typography, TimePicker, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch } from 'antd';
+import { Card, Button, Modal, Form, Space, message, Typography, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch, InputNumber } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   ScheduleOutlined, SettingOutlined,
@@ -8,10 +8,10 @@ import {
   QuestionCircleOutlined,
   LockOutlined, UnlockOutlined,
   ExclamationCircleOutlined,
-  CalendarOutlined, PlusSquareOutlined, InfoCircleOutlined,
+  CalendarOutlined,
   UnorderedListOutlined,
   StopOutlined, SyncOutlined,
-  UserOutlined, ClockCircleOutlined
+  UserOutlined, TeamOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -27,6 +27,11 @@ import GroupModal from './components/GroupModal';
 import KipModal from './components/KipModal';
 import AdminDutySlotModal from './components/AdminDutySlotModal';
 import '../DutyCalendar.less';
+import { useSocket } from '@/contexts/SocketContext';
+import { Progress } from 'antd';
+import BulkSchedulingForm from './components/BulkSchedulingForm';
+import ManualSlotForm from './components/ManualSlotForm';
+import DutyPersonnelTable from '../components/DutyPersonnelTable';
 
 const { Text, Title } = Typography;
 
@@ -46,6 +51,9 @@ const DutyManagement: React.FC = () => {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isSlotEditModalOpen, setIsSlotEditModalOpen] = useState(false);
   const [isReviewMode, setIsReviewMode] = useState(false);
+  const [percent, setPercent] = useState(0);
+  const [statusText, setStatusText] = useState('');
+  const { socket } = useSocket();
 
   // Forms
   const [shiftForm] = Form.useForm();
@@ -676,20 +684,21 @@ const DutyManagement: React.FC = () => {
   const tabList = [
     { key: '1', label: <span><InboxOutlined /> Lịch trực hiện tại</span> },
     { key: '2', label: <span><ScheduleOutlined /> Điều phối & Lập lịch</span> },
-    { key: '3', label: <span><LayoutOutlined /> Cấu hình Bản mẫu</span> },
-    { key: '5', label: <span><SettingOutlined /> Cài đặt chung</span> },
+    { key: '3', label: <span><LayoutOutlined /> Cấu hình bản mẫu</span> },
+    { key: '5', label: <span><SettingOutlined /> Cấu hình hệ thống</span> },
   ];
 
   const renderTabSwitcher = () => (
-    <div className="tab-switcher-container">
+    <div className="tab-switcher-container" style={{ borderBottom: '1px solid #f1f5f9', marginBottom: 0 }}>
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
         size="small"
         className="hifi-tabs-management"
+        tabBarGutter={24}
         items={tabList.map(t => ({ 
           ...t, 
-          label: <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{t.label}</span> 
+          label: <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>{t.label}</span> 
         }))}
       />
     </div>
@@ -722,6 +731,7 @@ const DutyManagement: React.FC = () => {
                     <Button icon={<LeftOutlined />} size="small" type="text" onClick={() => setSlotFilterWeek(slotFilterWeek.subtract(1, 'week'))} />
                     <DatePicker
                       picker="week"
+                      size="small"
                       value={slotFilterWeek}
                       allowClear={false}
                       bordered={false}
@@ -730,12 +740,12 @@ const DutyManagement: React.FC = () => {
                       style={{ width: 85, fontWeight: 700, padding: 0 }}
                     />
                     <Button icon={<RightOutlined />} size="small" type="text" onClick={() => setSlotFilterWeek(slotFilterWeek.add(1, 'week'))} />
-                    <Divider type="vertical" />
+                    <Divider type="vertical" style={{ height: 16 }} />
                     <Button
                       size="small"
                       type="text"
                       style={{
-                        fontSize: '13px',
+                        fontSize: '12px',
                         fontWeight: 600,
                         color: slotFilterWeek.isSame(dayjs().startOf('isoWeek' as any), 'week')
                           ? 'var(--primary-color)'
@@ -879,7 +889,7 @@ const DutyManagement: React.FC = () => {
           title={null}
           filters={[]}
           extra={
-            <Button type="primary" icon={<PlusOutlined />} className="hifi-button" onClick={() => {
+            <Button type="primary" icon={<PlusOutlined />} className="hifi-button" style={{ borderRadius: 8, height: 32, padding: '4px 16px' }} onClick={() => {
               manualSlotForm.setFieldsValue({ date: selectedDate || dayjs() });
               setActiveTab('2');
               message.info('Vui lòng thêm ca tại phần "Thêm Ca đơn lẻ" phía dưới');
@@ -940,6 +950,7 @@ const DutyManagement: React.FC = () => {
                   <Tooltip title={r.status === 'locked' ? 'Mở khóa' : 'Khóa ca'}>
                     <Button
                       type="text"
+                      size="small"
                       shape="circle"
                       icon={r.status === 'locked' ? <LockOutlined /> : <UnlockOutlined />}
                       onClick={() => toggleSlotStatus(r)}
@@ -948,6 +959,7 @@ const DutyManagement: React.FC = () => {
                   <Tooltip title="Chỉnh sửa">
                     <Button
                       type="text"
+                      size="small"
                       shape="circle"
                       icon={<EditOutlined />}
                       style={{ color: 'var(--primary-color)' }}
@@ -966,7 +978,7 @@ const DutyManagement: React.FC = () => {
                     okButtonProps={{ danger: true }}
                     icon={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
                   >
-                    <Button type="text" shape="circle" danger icon={<DeleteOutlined />} />
+                    <Button type="text" size="small" shape="circle" danger icon={<DeleteOutlined />} />
                   </Popconfirm>
                 </Space>
               )
@@ -981,188 +993,204 @@ const DutyManagement: React.FC = () => {
       children: (
         <div id="bulk-scheduling-section" className="coordination-tab">
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Title level={4} style={{ margin: 0 }}>Lập lịch Hàng loạt</Title>
-                <Tooltip title="Tiện ích hỗ trợ tạo tự động toàn bộ Khung trực cho một khoảng thời gian dài dựa trên Bản mẫu.">
-                  <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
-                </Tooltip>
-              </div>
-            </div>
             {!isReviewMode ? (
-              <Form form={coordinationForm} layout="vertical" onFinish={async (v) => {
-                const [start, end] = v.range;
-                const genTemplateId = v.templateId;
-                const genMode = v.mode || 'kips';
-                const proceedPreview = async (targetTemplates: any[]) => {
-                  const days = [];
-                  let curr = dayjs(start);
-                  let assignments: any[] = [];
-                  try {
-                    if (!genTemplateId) {
-                      const res = await dutyService.getTemplateAssignments();
-                      if (res.success && res.data) assignments = res.data;
-                    }
-                  } catch (e) { console.error(e); }
-                  while (curr.isBefore(end) || curr.isSame(end, 'day')) {
-                    const dateStr = curr.format('YYYY-MM-DD');
-                    const dayOfWeek = (curr.day() + 6) % 7;
-                    const daySlots: any[] = [];
-                    let effectiveTemplates = targetTemplates;
-                    if (!genTemplateId) {
-                      const assignment = assignments.find(a => dayjs(dateStr).isSameOrAfter(dayjs(a.startDate), 'day') && dayjs(dateStr).isSameOrBefore(dayjs(a.endDate), 'day'));
-                      if (assignment) {
-                        const assignedShifts = await dutyService.getShiftTemplates(assignment.templateId);
-                        if (assignedShifts.success && assignedShifts.data) effectiveTemplates = assignedShifts.data;
-                      }
-                    }
-                    effectiveTemplates.forEach(s => {
-                      const shiftDays = s.daysOfWeek || [0, 1, 2, 3, 4, 5, 6];
-                      if (!shiftDays.includes(dayOfWeek) || !s.kips) return;
-                      if (genMode === 'shifts' || genMode === 'all') daySlots.push({ name: s.name, startTime: s.startTime, endTime: s.endTime, isShift: true });
-                      if (genMode === 'kips' || genMode === 'all') {
-                        s.kips.forEach((k: any) => {
-                          const kipDays = k.daysOfWeek || [0, 1, 2, 3, 4, 5, 6];
-                          if (kipDays.includes(dayOfWeek)) daySlots.push({ ...k, shiftName: s.name, sStart: s.startTime, sEnd: s.endTime, isShift: false });
-                        });
-                      }
-                    });
-                    days.push({ date: curr.clone(), kips: daySlots, isSelected: daySlots.length > 0 });
-                    curr = curr.add(1, 'day');
-                  }
-                  setPreviewDates(days); setIsReviewMode(true); setPreviewWeekOffset(0);
-                };
-                if (genTemplateId && genTemplateId !== currentTemplateId) {
-                  setLoading(true);
-                  dutyService.getShiftTemplates(genTemplateId).then((res: any) => {
-                    if (res.success && res.data) proceedPreview(res.data);
-                    else message.error('Không thể lấy thông tin bản mẫu');
-                  }).finally(() => setLoading(false));
-                } else { proceedPreview(templates); }
-              }}>
-                <Row gutter={[24, 16]}>
-                  <Col span={10}><Form.Item name="range" label="Khoảng ngày áp dụng" rules={[{ required: true }]}><DatePicker.RangePicker style={{ width: '100%', borderRadius: 8 }} /></Form.Item></Col>
-                  <Col span={7}><Form.Item name="templateId" label="Sử dụng Bản mẫu" tooltip="Để trống để tự động áp dụng theo Giai đoạn (nếu đã gắn Bản mẫu)"><Select allowClear placeholder="Theo Giai đoạn (Automatic)" options={templateGroups.map(g => ({ label: g.isDefault ? `${g.name} (Mặc định)` : g.name, value: g.id }))} style={{ borderRadius: 8 }} /></Form.Item></Col>
-                  <Col span={7}><Form.Item name="mode" label="Chế độ khởi tạo" initialValue="kips"><Select options={[{ label: 'Chỉ mình Ca (Shifts only)', value: 'shifts' }, { label: 'Chỉ mình Kíp (Kips only)', value: 'kips' }, { label: 'Cả 2 (Both)', value: 'all' }]} style={{ borderRadius: 8 }} /></Form.Item></Col>
-                </Row>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                  <Space>
-                    <Button danger icon={<DeleteOutlined />} onClick={() => { const r = coordinationForm.getFieldValue('range'); if (r) { Modal.confirm({ title: 'Xóa toàn bộ Khung trực?', content: 'Hành động này sẽ xóa sạch tất cả Ca & Kíp trực trong khoảng thời gian đã chọn.', okText: 'Xóa ngay', okType: 'danger', cancelText: 'Hủy', onOk: () => dutyService.deleteRangeSlots(r[0].format('YYYY-MM-DD'), r[1].format('YYYY-MM-DD')).then(() => { message.success('Đã xóa vùng chọn'); fetchSlots(); }) }); } }}>Xóa vùng chọn</Button>
-                    <Button type="primary" htmlType="submit" icon={<ScheduleOutlined />} style={{ borderRadius: 8 }}>Xem trước Lịch trực</Button>
-                  </Space>
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <Title level={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: '15px' }}>
+                    <div style={{ width: 3, height: 14, background: 'var(--primary-color)', borderRadius: 2 }} />
+                    Lập lịch tự động theo Bản mẫu
+                  </Title>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Khởi tạo hàng loạt kíp trực dựa trên cấu trúc bản mẫu.</Text>
                 </div>
-              </Form>
+                <BulkSchedulingForm 
+                  form={coordinationForm}
+                  templateGroups={templateGroups}
+                  onPreview={(values) => {
+                    const range = values.range;
+                    if (!range) return;
+                    const start = range[0];
+                    const end = range[1];
+                    const genTemplateId = values.templateId;
+                    const genMode = values.mode;
+
+                    const proceedPreview = async (targetTemplates: any[]) => {
+                      let curr = start.clone();
+                      const days: any[] = [];
+                      let assignments: any[] = [];
+                      try {
+                        if (!genTemplateId) {
+                          const res = await dutyService.getTemplateAssignments();
+                          if (res.success && res.data) assignments = res.data;
+                        }
+                      } catch (e) { console.error(e); }
+                      while (curr.isBefore(end) || curr.isSame(end, 'day')) {
+                        const dateStr = curr.format('YYYY-MM-DD');
+                        const dayOfWeek = (curr.day() + 6) % 7;
+                        const daySlots: any[] = [];
+                        let effectiveTemplates = targetTemplates;
+                        if (!genTemplateId) {
+                          const assignment = assignments.find(a => dayjs(dateStr).isSameOrAfter(dayjs(a.startDate), 'day') && dayjs(dateStr).isSameOrBefore(dayjs(a.endDate), 'day'));
+                          if (assignment) {
+                            const assignedShifts = await dutyService.getShiftTemplates(assignment.templateId);
+                            if (assignedShifts.success && assignedShifts.data) effectiveTemplates = assignedShifts.data;
+                          }
+                        }
+                        effectiveTemplates.forEach(s => {
+                          const shiftDays = s.daysOfWeek || [0, 1, 2, 3, 4, 5, 6];
+                          if (!shiftDays.includes(dayOfWeek) || !s.kips) return;
+                          if (genMode === 'shifts' || genMode === 'all') daySlots.push({ name: s.name, startTime: s.startTime, endTime: s.endTime, isShift: true });
+                          if (genMode === 'kips' || genMode === 'all') {
+                            s.kips.forEach((k: any) => {
+                              const kipDays = k.daysOfWeek || [0, 1, 2, 3, 4, 5, 6];
+                              if (kipDays.includes(dayOfWeek)) daySlots.push({ ...k, shiftName: s.name, sStart: s.startTime, sEnd: s.endTime, isShift: false });
+                            });
+                          }
+                        });
+                        days.push({ date: curr.clone(), kips: daySlots, isSelected: daySlots.length > 0 });
+                        curr = curr.add(1, 'day');
+                      }
+                      setPreviewDates(days); setIsReviewMode(true); setPreviewWeekOffset(0);
+                    };
+                    
+                    if (genTemplateId && genTemplateId !== currentTemplateId) {
+                      setLoading(true);
+                      dutyService.getShiftTemplates(genTemplateId).then((res: any) => {
+                        if (res.success && res.data) proceedPreview(res.data);
+                        else message.error('Không thể lấy thông tin bản mẫu');
+                      }).finally(() => setLoading(false));
+                    } else { proceedPreview(templates); }
+                  }}
+                  onRefresh={fetchSlots}
+                  loading={loading}
+                />
+              </>
             ) : (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <Space><Button onClick={() => setIsReviewMode(false)} icon={<LeftOutlined />}>Quay lại thiết lập</Button><Text type="secondary" style={{ fontSize: 13 }}>Có <Text strong>{previewDates.filter((x: any) => x.isSelected).length}</Text> ngày được chọn</Text></Space>
+                  <Space><Button size="small" onClick={() => setIsReviewMode(false)} icon={<LeftOutlined />}>Quay lại</Button><Text type="secondary" style={{ fontSize: 13 }}>Có <Text strong>{previewDates.filter((x: any) => x.isSelected).length}</Text> ngày được chọn</Text></Space>
                   <Space>
-                    <Segmented options={[{ label: 'Danh sách', value: 'list', icon: <UnorderedListOutlined /> }, { label: 'Lịch tuần', value: 'week', icon: <CalendarOutlined /> }]} value={previewViewMode} onChange={(v) => { setPreviewViewMode(v as any); setPreviewWeekOffset(0); }} style={{ borderRadius: 8 }} />
-                    <Button type="primary" loading={loading} icon={<ScheduleOutlined />} style={{ borderRadius: 8 }} onClick={async () => {
-                      setLoading(true); try {
+                    <Segmented size="small" options={[{ label: 'Danh sách', value: 'list', icon: <UnorderedListOutlined /> }, { label: 'Lịch tuần', value: 'week', icon: <CalendarOutlined /> }]} value={previewViewMode} onChange={(v) => { setPreviewViewMode(v as any); setPreviewWeekOffset(0); }} />
+                    <Button type="primary" size="small" loading={loading} icon={<ScheduleOutlined />} style={{ fontWeight: 700, padding: '0 24px', background: 'var(--primary-color)', borderColor: 'var(--primary-color)' }} onClick={async () => {
+                      setLoading(true);
+                      setPercent(0);
+                      setStatusText('Đang khởi tạo kết nối...');
+                      const jobId = Math.random().toString(36).substring(2, 15);
+                      
+                      if (socket) {
+                        socket.emit('joinRoom', jobId);
+                        socket.on('job_progress', (data: { percent: number, text: string }) => {
+                          setPercent(data.percent);
+                          setStatusText(data.text);
+                        });
+                      }
+
+                      try {
                         const range = coordinationForm.getFieldValue('range');
                         const genTemplateId = coordinationForm.getFieldValue('templateId') || currentTemplateId;
                         const genMode = coordinationForm.getFieldValue('mode') || 'kips';
-                        const res = await dutyService.generateRangeSlots(range[0].format('YYYY-MM-DD'), range[1].format('YYYY-MM-DD'), genTemplateId, genMode);
-                        if (res.success) { message.success('Xác nhận tạo lịch thành công!'); setIsReviewMode(false); fetchSlots(); }
-                      } catch (e) { message.error('Lỗi khi lập lịch'); } finally { setLoading(false); }
-                    }}>Xác nhận tạo {previewDates.filter((x: any) => x.isSelected).length} ngày</Button>
+                        const res = await dutyService.generateRangeSlots(
+                          range[0].format('YYYY-MM-DD'), 
+                          range[1].format('YYYY-MM-DD'), 
+                          genTemplateId, 
+                          genMode,
+                          jobId
+                        );
+                        if (res.success) { 
+                          message.success('Xác nhận tạo lịch thành công!'); 
+                          setIsReviewMode(false); 
+                          fetchSlots(); 
+                        }
+                      } catch (e) { 
+                        message.error('Lỗi khi lập lịch'); 
+                      } finally { 
+                        if (socket) {
+                          socket.off('job_progress');
+                          socket.emit('leaveRoom', jobId);
+                        }
+                        setLoading(false); 
+                      }
+                    }}>Xác nhận & Đưa lên lịch</Button>
                   </Space>
                 </div>
-                {previewViewMode === 'week' ? renderBulkPreviewCalendar() : (
-                  <div style={{ maxHeight: 420, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                 {previewViewMode === 'week' ? renderBulkPreviewCalendar() : (
+                  <div style={{ maxHeight: 420, overflowY: 'auto', border: '1px solid #f1f5f9', borderRadius: 12, background: '#fff' }}>
                     {previewDates.map((d: any, i: number) => (
-                      <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: d.isSelected ? 'rgba(5, 150, 105, 0.03)' : undefined }}>
+                      <div 
+                        key={i} 
+                        style={{ 
+                          padding: '12px 20px', 
+                          borderBottom: i === previewDates.length - 1 ? 'none' : '1px solid #f1f5f9', 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          background: d.isSelected ? 'rgba(5, 150, 105, 0.02)' : undefined,
+                          transition: 'all 0.2s'
+                        }}
+                      >
                         <Checkbox checked={d.isSelected} onChange={e => { const n = [...previewDates]; n[i].isSelected = e.target.checked; setPreviewDates(n); }}>
-                          <Space>
-                            <CalendarOutlined style={{ color: '#64748b' }} />
-                            <Text strong style={{ color: '#1e293b' }}>{d.date.format('DD/MM/YYYY')}</Text>
-                            <span style={{ fontSize: '13px', color: '#94a3b8' }}>({d.date.locale('vi').format('dddd')})</span>
+                          <Space size={12}>
+                            <div style={{ 
+                              width: 32, height: 32, borderRadius: 8, 
+                              background: d.isSelected ? '#f0fdf4' : '#f8fafc', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                            }}>
+                              <CalendarOutlined style={{ color: d.isSelected ? '#10b981' : '#94a3b8' }} />
+                            </div>
+                            <div>
+                              <Text strong style={{ color: '#1e293b', display: 'block' }}>{d.date.format('DD/MM/YYYY')}</Text>
+                              <Text type="secondary" style={{ fontSize: '11px' }}>{d.date.locale('vi').format('dddd')}</Text>
+                            </div>
                           </Space>
                         </Checkbox>
-                        <Space>
-                          {d.kips.filter((x: any) => x.isShift).length > 0 && <Tag color="blue" style={{ borderRadius: 6 }}>{d.kips.filter((x: any) => x.isShift).length} Ca</Tag>}
-                          {d.kips.filter((x: any) => !x.isShift).length > 0 && <Tag color="cyan" style={{ borderRadius: 6 }}>{d.kips.filter((x: any) => !x.isShift).length} Kíp</Tag>}
+                        <Space size={8}>
+                          {d.kips.filter((x: any) => x.isShift).length > 0 && (
+                            <Tag color="blue" bordered={false} style={{ borderRadius: 6, margin: 0 }}>
+                              {d.kips.filter((x: any) => x.isShift).length} Ca
+                            </Tag>
+                          )}
+                          {d.kips.filter((x: any) => !x.isShift).length > 0 && (
+                            <Tag color="cyan" bordered={false} style={{ borderRadius: 6, margin: 0 }}>
+                              {d.kips.filter((x: any) => !x.isShift).length} Kíp
+                            </Tag>
+                          )}
+                          {d.kips.length === 0 && <Text type="secondary" style={{ fontSize: 12 }}>Trống</Text>}
                         </Space>
                       </div>
                     ))}
                   </div>
                 )}
+                {loading && (
+                  <div style={{ marginTop: 20, padding: '16px 24px', background: '#fef2f2', borderRadius: 12, border: '1px dashed #fca5a5' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <Text strong style={{ color: '#b91c1c' }}>{statusText}</Text>
+                      <Text type="secondary">{percent}%</Text>
+                    </div>
+                    <Progress percent={percent} strokeColor={{ '0%': '#fca5a5', '100%': '#991b1b' }} status="active" showInfo={false} />
+                  </div>
+                )}
               </div>
             )}
           </div>
-          <Divider style={{ margin: '32px 0', borderColor: '#e2e8f0', opacity: 0.6 }} />
-          <div>
-             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, alignItems: 'center' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                 <Title level={4} style={{ margin: 0 }}>Thêm Khung trực Đơn lẻ</Title>
-                 <Tooltip title="Tạo một Ca hoặc Kíp phát sinh tùy chỉnh độc lập mà không cần dùng Bản mẫu.">
-                   <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
-                 </Tooltip>
-               </div>
-             </div>
-            <Form form={manualSlotForm} layout="vertical" onFinish={async (v) => {
-              try {
-                const s = templates.find(x => x.id === v.shiftId);
-                const k = s?.kips.find(x => x.id === v.kipId);
-                  const res = await dutyService.createSlot({
-                    shiftDate: v.date.format('YYYY-MM-DD'),
-                    shiftLabel: v.shiftLabel || (k ? `${s?.name} - Kíp ${k?.name}` : s?.name || 'Kíp trực lẻ'),
-                    startTime: v.timeRange?.[0]?.format('HH:mm') || k?.startTime || s?.startTime,
-                    endTime: v.timeRange?.[1]?.format('HH:mm') || k?.endTime || s?.endTime,
-                    capacity: v.capacity || k?.capacity || 1,
-                    kipId: k?.id,
-                    status: v.status || 'open'
-                  });
 
-                if (res.success) { message.success('Đã thêm kíp trực mới'); manualSlotForm.resetFields(); fetchSlots(); }
-              } catch (err) { message.error('Lỗi khi thêm ca lẻ'); }
-            }} initialValues={{ status: 'open' }}>
-              <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
-                <Row gutter={[24, 16]}>
-                  <Col span={6}><Form.Item name="date" label="Ngày trực" rules={[{ required: true }]}><DatePicker style={{ width: '100%', borderRadius: 8 }} /></Form.Item></Col>
-                  <Col span={18}>
-                    <Form.Item name="templateSelection" label="Chọn Mẫu khung trực" rules={[{ required: true }]}>
-                      <Select placeholder="Chọn mẫu Ca hoặc Kíp trực..." showSearch optionFilterProp="label" style={{ borderRadius: 8 }} onChange={(val: string) => {
-                          const [type, id] = val.split(':'); const sId = Number(id);
-                          if (type === 'shift') {
-                            const s = templates.find(x => x.id === sId);
-                            if (s) {
-                              const targetDate = manualSlotForm.getFieldValue('date');
-                              let nextOrder = s.order || 1;
-                              if (targetDate) {
-                                const dateStr = targetDate.format('YYYY-MM-DD');
-                                const daySlots = slots.filter(sl => dayjs(sl.shiftDate).format('YYYY-MM-DD') === dateStr && String(sl.shiftId) === String(s.id));
-                                if (daySlots.length > 0) { const maxOrder = Math.max(...daySlots.map(sl => sl.order || 0)); nextOrder = maxOrder + 1; }
-                              }
-                              manualSlotForm.setFieldsValue({ shiftId: s.id, kipId: undefined, shiftLabel: `${s.name} - Kíp ${nextOrder}`, timeRange: [dayjs(s.startTime, 'HH:mm'), dayjs(s.endTime, 'HH:mm')], order: nextOrder });
-                            }
-                          } else {
-                            let foundKip: any = null; let parentShift: any = null;
-                            for (const s of templates) { const k = s.kips?.find(x => x.id === sId); if (k) { foundKip = k; parentShift = s; break; } }
-                            if (foundKip && parentShift) {
-                              manualSlotForm.setFieldsValue({ shiftId: parentShift.id, kipId: foundKip.id, shiftLabel: `${parentShift.name} - Kíp ${foundKip.order}`, timeRange: foundKip.startTime && foundKip.endTime ? [dayjs(foundKip.startTime, 'HH:mm'), dayjs(foundKip.endTime, 'HH:mm')] : [dayjs(parentShift.startTime, 'HH:mm'), dayjs(parentShift.endTime, 'HH:mm')], order: foundKip.order, endPeriod: foundKip.endPeriod, capacity: foundKip.capacity });
-                            }
-                          }
-                        }} options={[...templates.map(s => ({ label: `Ca: ${s.name} (${s.startTime}-${s.endTime})`, value: `shift:${s.id}`, group: 'Cấu hình Ca' })), ...templates.flatMap(s => (s.kips || []).map(k => ({ label: `${s.name} - ${k.name} (${k.startTime || s.startTime}-${k.endTime || s.endTime})`, value: `kip:${k.id}`, group: 'Cấu hình Kíp' })))]} />
-                    </Form.Item>
-                    <Form.Item name="shiftId" noStyle><Input type="hidden" /></Form.Item>
-                    <Form.Item name="kipId" noStyle><Input type="hidden" /></Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={[24, 16]}>
-                  <Col span={10}><Form.Item name="shiftLabel" label="Tiêu đề hiển thị" rules={[{ required: true }]}><Input prefix={<EditOutlined style={{ color: 'var(--primary-color)' }} />} placeholder="VD: Ca Sáng - Kíp 1" style={{ borderRadius: 8 }} /></Form.Item></Col>
-                  <Col span={14}><Form.Item name="timeRange" label="Khoảng thời gian (Thực tế)" rules={[{ required: true }]}><TimePicker.RangePicker format="HH:mm" style={{ width: '100% ', borderRadius: 8 }} /></Form.Item></Col>
-                </Row>
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <Button type="primary" htmlType="submit" icon={<PlusSquareOutlined />} style={{ borderRadius: 8 }}>Tạo kíp trực và đưa lên lịch</Button>
-                <div style={{ marginTop: 12, fontSize: 13, color: '#64748b' }}><InfoCircleOutlined style={{ marginRight: 6 }} /> Lưu ý: Ca trực lẻ này sẽ tạo ra bản sao độc lập, không ảnh hưởng bởi thay đổi bản mẫu gốc sau này.</div>
-              </div>
-            </Form>
-          </div>
+          {!isReviewMode && (
+            <div className="manual-section" style={{ marginTop: 24, borderTop: '1px dashed #e2e8f0', paddingTop: 20 }}>
+               <div style={{ marginBottom: 12 }}>
+                  <Title level={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6, fontSize: '15px' }}>
+                    <div style={{ width: 3, height: 14, background: '#10b981', borderRadius: 2 }} />
+                    Bổ sung Kíp trực lẻ
+                  </Title>
+                  <Text type="secondary" style={{ fontSize: 12 }}>Thêm thủ công các kíp trực phát sinh ngoài bản mẫu.</Text>
+                </div>
+                <ManualSlotForm 
+                  form={manualSlotForm}
+                  templates={templates}
+                  onSuccess={fetchSlots}
+                  loading={loading}
+                />
+            </div>
+          )}
         </div>
-      )
+      ),
     },
     {
       key: '3',
@@ -1179,7 +1207,7 @@ const DutyManagement: React.FC = () => {
             <Button
               type="primary"
               icon={<ScheduleOutlined />}
-              style={{ borderRadius: 8, fontWeight: 600 }}
+              style={{ borderRadius: 8, fontWeight: 600, padding: '0 16px', background: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
               onClick={() => {
                 coordinationForm.setFieldsValue({ templateId: currentTemplateId });
                 setActiveTab('2');
@@ -1204,7 +1232,7 @@ const DutyManagement: React.FC = () => {
           }}>
             <Space size={8} wrap>
               <Select
-                style={{ width: 220 }}
+                style={{ width: 180, borderRadius: 8 }}
                 value={currentTemplateId}
                 onChange={setCurrentTemplateId}
                 placeholder="Chọn nhóm..."
@@ -1224,22 +1252,22 @@ const DutyManagement: React.FC = () => {
                   <Menu.Item key="delete" icon={<DeleteOutlined />} danger disabled={!currentTemplateId} onClick={() => { if (currentTemplateId) handleDeleteGroup(currentTemplateId); }}>Xóa nhóm</Menu.Item>
                 </Menu>
               }>
-                <Button icon={<SettingOutlined />} disabled={!currentTemplateId} />
+                <Button icon={<SettingOutlined />} disabled={!currentTemplateId} style={{ borderRadius: 8, height: 32 }} />
               </Dropdown>
             </Space>
 
             <Space size={8}>
               <Segmented 
                 options={[
-                  { value: 'list', icon: <UnorderedListOutlined /> },
-                  { value: 'calendar', icon: <CalendarOutlined /> }
+                  { label: 'Danh sách', value: 'list', icon: <UnorderedListOutlined /> },
+                  { label: 'Trực quan', value: 'calendar', icon: <CalendarOutlined /> }
                 ]} 
                 value={templateViewMode}
                 onChange={(val) => setTemplateViewMode(val as any)}
               />
               <Divider type="vertical" style={{ height: 24 }} />
-              <Button icon={<PlusOutlined />} onClick={() => { setEditingGroup(null); setIsGroupModalOpen(true); }}>Thêm Nhóm</Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }} style={{ borderRadius: 8 }}>Thêm Ca</Button>
+              <Button icon={<PlusOutlined />} onClick={() => { setEditingGroup(null); setIsGroupModalOpen(true); }} style={{ borderRadius: 8, height: 32 }}>Thêm Nhóm</Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }} style={{ borderRadius: 8, fontWeight: 600, height: 32, padding: '4px 16px', background: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}>Thêm Ca</Button>
             </Space>
           </div>
           <Divider style={{ marginTop: 0, marginBottom: 24, borderColor: '#e2e8f0', opacity: 0.6 }} />
@@ -1249,7 +1277,7 @@ const DutyManagement: React.FC = () => {
                 <Card className="hifi-border" style={{ textAlign: 'center', padding: '60px 0', borderStyle: 'dashed', borderRadius: 8 }}>
                   <InboxOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
                   <div><Text type="secondary" style={{ fontSize: 16 }}>Chưa có bản mẫu Ca trực nào trong nhóm này.</Text></div>
-                  <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 24, borderRadius: 8 }} onClick={() => { setEditingShift(null); setIsShiftModalOpen(true); }}>Bắt đầu tạo Ca đầu tiên</Button>
+                  <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 24, borderRadius: 8, background: 'var(--primary-color)', borderColor: 'var(--primary-color)' }} onClick={() => { setEditingShift(null); setIsShiftModalOpen(true); }}>Bắt đầu tạo Ca đầu tiên</Button>
                 </Card>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -1260,7 +1288,7 @@ const DutyManagement: React.FC = () => {
                       style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0' }} 
                       title={
                         <Space size="middle">
-                          <Text strong style={{ fontSize: '18px', color: '#1e293b' }}>{s.name}</Text>
+                          <Text strong style={{ fontSize: '16px', color: '#1e293b' }}>{s.name}</Text>
                           <Tag color="red-outline" style={{ borderRadius: 6, fontWeight: 700, padding: '0 8px', height: 24, lineHeight: '22px', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             {s.startTime} - {s.endTime}
                           </Tag>
@@ -1273,16 +1301,16 @@ const DutyManagement: React.FC = () => {
                       } 
                       extra={
                         <Space>
-                          <Button size="small" shape="circle" icon={<EditOutlined />} style={{ color: 'var(--primary-color)' }} onClick={() => { setEditingShift(s); setIsShiftModalOpen(true); }} />
+                          <Button shape="circle" icon={<EditOutlined />} style={{ color: 'var(--primary-color)' }} onClick={() => { setEditingShift(s); setIsShiftModalOpen(true); }} />
                           <Popconfirm title="Xác nhận xóa bản mẫu Ca?" description="Các kíp trực thuộc ca này cũng sẽ mất vĩnh viễn." onConfirm={() => handleDeleteShift(s.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
-                            <Button size="small" shape="circle" danger icon={<DeleteOutlined />} />
+                            <Button shape="circle" danger icon={<DeleteOutlined />} />
                           </Popconfirm>
                         </Space>
                       }
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <Text strong style={{ fontSize: '13px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Kíp trực thành phần</Text>
-                        <Button type="link" size="small" icon={<PlusOutlined />} style={{ fontWeight: 600, color: 'var(--primary-color)' }} onClick={() => { setEditingKip({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm Kíp</Button>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text strong style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kíp trực thành phần</Text>
+                        <Button type="link" icon={<PlusOutlined />} style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: 12 }} onClick={() => { setEditingKip({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm Kíp</Button>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {s.kips.length === 0 ? (
@@ -1297,7 +1325,7 @@ const DutyManagement: React.FC = () => {
                               <div 
                                 key={k.id} 
                                 style={{ 
-                                  padding: '14px 20px', 
+                                  padding: '10px 16px', 
                                   background: '#fff', 
                                   borderBottom: idx === s.kips.length - 1 ? 'none' : '1px solid #f1f5f9', 
                                   display: 'flex', 
@@ -1349,8 +1377,8 @@ const DutyManagement: React.FC = () => {
                                     <Text style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 600 }}>#{k.order}</Text>
                                   )}
                                   <div style={{ display: 'flex', gap: 4 }}>
-                                    <Tooltip title="Chỉnh sửa"><Button size="small" type="text" shape="circle" icon={<EditOutlined />} style={{ color: '#94a3b8' }} onClick={() => { setEditingKip(k); setIsKipModalOpen(true); }} /></Tooltip>
-                                    <Tooltip title="Xóa"><Button size="small" type="text" shape="circle" danger icon={<DeleteOutlined />} style={{ opacity: 0.6 }} onClick={() => handleDeleteKip(k.id)} /></Tooltip>
+                                    <Tooltip title="Chỉnh sửa"><Button type="text" shape="circle" icon={<EditOutlined />} style={{ color: '#94a3b8' }} onClick={() => { setEditingKip(k); setIsKipModalOpen(true); }} /></Tooltip>
+                                    <Tooltip title="Xóa"><Button type="text" shape="circle" danger icon={<DeleteOutlined />} style={{ opacity: 0.6 }} onClick={() => handleDeleteKip(k.id)} /></Tooltip>
                                   </div>
                                 </div>
                               </div>
@@ -1369,7 +1397,7 @@ const DutyManagement: React.FC = () => {
     },
     {
       key: '5',
-      label: <span><SettingOutlined /> Cài đặt chung</span>,
+      label: <span><SettingOutlined /> Cấu hình hệ thống</span>,
       children: (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
@@ -1399,7 +1427,7 @@ const DutyManagement: React.FC = () => {
                           <InputNumber 
                             min={1} 
                             placeholder="Ví dụ: 2" 
-                            style={{ width: '100%', height: 40 }} 
+                            style={{ width: '100%' }} 
                             addonAfter="kíp / tuần"
                           />
                         </Form.Item>
@@ -1414,15 +1442,29 @@ const DutyManagement: React.FC = () => {
               </Col>
               <Col xs={24} md={12}>
                 <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <Form.Item 
-                    label={<span style={{ fontWeight: 600, color: '#1e293b' }}>Chính sách Hủy kíp</span>} 
-                    name="allowUnregisterWhenFull" 
-                    valuePropName="checked"
-                    style={{ marginBottom: 0 }}
-                  >
-                    <Checkbox>
-                      Cho phép <b>tự hủy</b> đăng ký khi kíp đã đủ người (Full slot)
-                    </Checkbox>
+                  <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 600, color: '#1e293b' }}>Chính sách Hủy kíp</span>
+                    <Tooltip 
+                      color="white"
+                      overlayInnerStyle={{ color: '#1e293b', padding: '12px', borderRadius: 8 }}
+                      title={
+                        <div style={{ fontSize: '12px' }}>
+                          <div style={{ marginBottom: 8 }}>
+                            <Text strong style={{ color: '#166534' }}>● Chế độ Chặt chẽ (Tắt):</Text><br/>
+                            Khi kíp đã FULL, thành viên không thể tự hủy. Giúp đảm bảo quân số trực ổn định.
+                          </div>
+                          <div>
+                            <Text strong style={{ color: '#9a3412' }}>● Chế độ Linh hoạt (Bật):</Text><br/>
+                            Cho phép tự hủy tự do. Rủi ro thiếu hụt nhân sự phút chót.
+                          </div>
+                        </div>
+                      }
+                    >
+                      <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
+                    </Tooltip>
+                  </div>
+                  <Form.Item name="allowUnregisterWhenFull" valuePropName="checked" noStyle>
+                    <Checkbox>Cho phép tự hủy đăng ký ngay cả khi kíp đã FULL</Checkbox>
                   </Form.Item>
                 </div>
               </Col>
@@ -1431,7 +1473,7 @@ const DutyManagement: React.FC = () => {
             <Divider style={{ margin: '32px 0' }} />
 
             <Alert
-              message={<span style={{ fontWeight: 600, fontSize: 14 }}>Hướng dẫn Cấu hình</span>}
+              message={<span style={{ fontWeight: 600, fontSize: 14 }}>Hướng dẫn Cấu hình Hệ thống</span>}
               description={
                 <div style={{ marginTop: 8 }}>
                   <div style={{ marginBottom: 12 }}>
@@ -1441,9 +1483,9 @@ const DutyManagement: React.FC = () => {
                     </Text>
                   </div>
                   <div>
-                    <Text strong style={{ color: 'var(--primary-color)' }}>2. Tự hủy khi đủ người:</Text>
+                    <Text strong style={{ color: 'var(--primary-color)' }}>2. Chính sách Hủy kíp:</Text>
                     <Text type="secondary" style={{ marginLeft: 8 }}>
-                      Nên tắt cài đặt này nếu bạn muốn đảm bảo các kíp quan trọng luôn có người trực. Nếu tắt, thành viên phải liên hệ Quản trị viên để được xóa tên khỏi kíp đã full.
+                      Chế độ <b>"Chặt chẽ"</b> ngăn thành viên tự rút tên khỏi kíp đã đủ người (Full). Chế độ <b>"Linh hoạt"</b> cho phép hủy tự do nhưng rủi ro thiếu hụt nhân sự.
                     </Text>
                   </div>
                 </div>
@@ -1454,7 +1496,7 @@ const DutyManagement: React.FC = () => {
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button type="primary" htmlType="submit" loading={settingsLoading} icon={<SettingOutlined />} style={{ borderRadius: 8, height: 40, padding: '0 24px' }}>Lưu cấu hình</Button>
+              <Button type="primary" htmlType="submit" loading={settingsLoading} icon={<SettingOutlined />} style={{ borderRadius: 8, padding: '0 24px', fontWeight: 600 }}>Lưu cấu hình</Button>
             </div>
           </Form>
         </div>
@@ -1464,20 +1506,35 @@ const DutyManagement: React.FC = () => {
 
   return (
     <div className="duty-management-page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Thiết lập lịch trực</Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Space size={12}>
+          <Title level={4} style={{ margin: 0, fontWeight: 700, fontSize: '20px', letterSpacing: '-0.5px', color: '#1e293b' }}>
+            Thiết lập lịch trực
+          </Title>
+          <Tag color="blue" bordered={false} style={{ borderRadius: 6, fontWeight: 500 }}>Admin</Tag>
+        </Space>
         <Button
+          type="default"
           icon={<QuestionCircleOutlined />}
           onClick={() => setIsGuideModalOpen(true)}
+          style={{ 
+            borderRadius: 8, 
+            display: 'flex', 
+            alignItems: 'center', 
+            fontWeight: 500,
+            height: 32
+          }}
         >
           Hướng dẫn
         </Button>
       </div>
 
-      <Card className="hifi-border">
+      <div className="management-content-wrapper" style={{ background: '#fff', padding: '16px', borderRadius: 16, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px -10px rgba(0,0,0,0.03)' }}>
         {renderTabSwitcher()}
-        {tabItems.find(t => t.key === activeTab)?.children}
-      </Card>
+        <div style={{ marginTop: 12 }}>
+          {tabItems.find(t => t.key === activeTab)?.children}
+        </div>
+      </div>
 
       <GroupModal
         open={isGroupModalOpen}

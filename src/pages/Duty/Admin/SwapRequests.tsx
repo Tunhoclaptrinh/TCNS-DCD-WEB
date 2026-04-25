@@ -21,7 +21,7 @@ import StatisticsCard from '@/components/common/StatisticsCard';
 import { useAccess } from '@/hooks/useAccess';
 import apiClient from "@/config/axios.config";
 
-const { Text } = Typography;
+const { Title, Text } = Typography;
 
 const SwapRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -287,6 +287,28 @@ const SwapRequestsPage: React.FC = () => {
 
   return (
     <div className="swap-requests-page" style={{ paddingBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Space size={12}>
+          <Title level={4} style={{ margin: 0, fontWeight: 700, fontSize: '20px', letterSpacing: '-0.5px', color: '#1e293b' }}>
+            Quản lý đổi kíp trực
+          </Title>
+          <Tag color="cyan" bordered={false} style={{ borderRadius: 6, fontWeight: 500 }}>Điều chuyển</Tag>
+        </Space>
+        <Button
+          variant="ghost"
+          icon={<QuestionCircleOutlined />}
+          onClick={() => setIsGuideModalOpen(true)}
+          style={{ 
+            borderRadius: 8, 
+            display: 'flex', 
+            alignItems: 'center', 
+            fontWeight: 500
+          }}
+        >
+          Hướng dẫn
+        </Button>
+      </div>
+
       <DataTable
         headerContent={
           <div style={{ marginBottom: 16 }}>
@@ -335,7 +357,7 @@ const SwapRequestsPage: React.FC = () => {
             />
           </div>
         }
-        title="Quản lý đổi kíp trực"
+        title={null}
         loading={loading}
         dataSource={requests}
         columns={columns}
@@ -346,15 +368,7 @@ const SwapRequestsPage: React.FC = () => {
         }}
         searchable={true}
         searchPlaceholder="Tìm kiếm thành viên..."
-        extra={
-          <Button
-            icon={<QuestionCircleOutlined />}
-            onClick={() => setIsGuideModalOpen(true)}
-            variant="ghost"
-          >
-            Hướng dẫn
-          </Button>
-        }
+        extra={null}
         customActions={(r) => {
           const isTarget = Number(r.targetUserId) === Number(user?.id);
           const isAdmin = user?.role === 'admin' || user?.role === 'staff';

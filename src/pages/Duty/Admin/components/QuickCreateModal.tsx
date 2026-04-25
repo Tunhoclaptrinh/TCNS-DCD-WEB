@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Space, Typography, TimePicker, message, List, Tag, Modal, Tooltip, Alert } from 'antd';
+import { Form, Input, Space, Typography, TimePicker, message, List, Tag, Modal, Tooltip, Alert, InputNumber } from 'antd';
 import { CalendarOutlined, TeamOutlined, EditOutlined, CloseOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutyShift, DutySlot } from '@/services/duty.service';
@@ -391,7 +391,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
         {viewMode === 'kip' && (
           <Form.Item name="capacity" label="Số lượng người trực" initialValue={1}>
-            <Input type="number" min={1} style={{ width: '100%' }} />
+            <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
         )}
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, Form, Space, Card, Select, Button, Tooltip, Divider, message } from 'antd';
+import { Modal, Form, Space, Card, Select, Tooltip, Divider, message } from 'antd';
+import Button from '@/components/common/Button';
 import { SettingOutlined, QuestionCircleOutlined, CopyOutlined, ClearOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
 import dayjs from 'dayjs';
@@ -117,7 +118,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
       onCancel={onCancel}
       footer={[
         <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-          <Button onClick={onCancel} style={{ minWidth: 120 }}>Đóng</Button>
+          <Button variant="outline" buttonSize="small" onClick={onCancel} style={{ minWidth: 120 }}>Đóng</Button>
         </div>
       ]}
       width={400}
@@ -127,10 +128,10 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           <Card size="small" title="Cấu hình Khởi tạo" style={{ backgroundColor: '#f8fafc' }}>
             <Form.Item name="templateId" label="Chọn Bản mẫu" rules={[{ required: true }]}>
-              <Select placeholder="Chọn nhóm bản mẫu" options={templateGroups.map(g => ({ label: g.name, value: g.id }))} />
+              <Select size="small" placeholder="Chọn nhóm bản mẫu" options={templateGroups.map(g => ({ label: g.name, value: g.id }))} />
             </Form.Item>
             <Form.Item name="mode" label="Chế độ khởi tạo" rules={[{ required: true }]}>
-              <Select options={[
+              <Select size="small" options={[
                 { label: 'Chi tiết Kíp (Kips)', value: 'kips' },
                 { label: 'Chỉ Ca (Shifts)', value: 'shifts' },
                 { label: 'Toàn bộ (Both)', value: 'all' }
@@ -139,7 +140,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           </Card>
 
           <Tooltip title="Tự động tạo các khung giờ kíp trực dựa trên cấu hình Bản mẫu đã thiết lập" placement="right">
-            <Button block type="primary" icon={<SettingOutlined />} onClick={() => {
+            <Button buttonSize="small" fullWidth type="primary" icon={<SettingOutlined />} onClick={() => {
               Modal.confirm({
                 title: 'Xác nhận khởi tạo?',
                 content: 'Hệ thống sẽ dựa vào Bản mẫu để tạo các kíp trực cho tuần này. Các kíp đã có sẽ không bị ảnh hưởng.',
@@ -149,7 +150,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           </Tooltip>
  
           <Tooltip title="Lấy dữ liệu kíp trực của tuần trước đó áp dụng cho tuần này" placement="right">
-            <Button block icon={<CopyOutlined />} onClick={() => {
+            <Button buttonSize="small" fullWidth icon={<CopyOutlined />} onClick={() => {
               Modal.confirm({
                 title: 'Xác nhận sao chép?',
                 content: 'Toàn bộ kíp trực từ tuần trước sẽ được nhân bản sang tuần này.',
@@ -161,7 +162,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           <Divider style={{ margin: '4px 0' }} />
  
           <Tooltip title="Xóa toàn bộ các kíp trực trong tuần này để làm lại từ đầu" placement="right">
-            <Button block danger ghost icon={<ClearOutlined />} onClick={handleClearWeek}>Xóa sạch lịch tuần</Button>
+            <Button buttonSize="small" fullWidth variant="danger" ghost icon={<ClearOutlined />} onClick={handleClearWeek}>Xóa sạch lịch tuần</Button>
           </Tooltip>
         </Space>
       </Form>

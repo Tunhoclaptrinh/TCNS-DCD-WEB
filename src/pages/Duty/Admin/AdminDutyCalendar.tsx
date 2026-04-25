@@ -12,6 +12,7 @@ import {
   DeleteOutlined,
   DownOutlined,
   QuestionCircleOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -380,6 +381,7 @@ const AdminDutyCalendar: React.FC = () => {
           <Button 
             icon={<QuestionCircleOutlined />} 
             onClick={() => setIsGuideModalOpen(true)}
+            style={{ height: 32, padding: '4px 12px' }}
           >
             Hướng dẫn
           </Button>
@@ -388,109 +390,95 @@ const AdminDutyCalendar: React.FC = () => {
       <Card
         className="duty-calendar-card"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
-              <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
-              <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600 }}>H.tại</Button>
-              <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
+                <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
+                <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '11px', fontWeight: 600 }}>H.tại</Button>
+                <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px', whiteSpace: 'nowrap' }}>
+                  Tuần {currentWeek.format('ww')}
+                </Title>
+                <Text type="secondary" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</Text>
+              </div>
+              
+              <Select
+                value={viewMode}
+                onChange={setViewMode}
+                bordered={false}
+                options={[
+                  { label: <Space size={4}><CalendarOutlined /><span>Lịch</span></Space>, value: 'calendar' },
+                  { label: <Space size={4}><UnorderedListOutlined /><span>Bảng</span></Space>, value: 'table' }
+                ]}
+                style={{ width: 95, fontWeight: 600 }}
+              />
             </div>
-            <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '16px' }}>
-              Tuần {currentWeek.format('ww')} <span style={{ fontWeight: 400, color: '#64748b', fontSize: '14px' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</span>
-            </Title>
-          </div>
-        }
-        extra={
-          <Space size="middle">
-            <Space size="middle" align="center">
-              <Tooltip title="Chế độ hiển thị">
-                <Select
-                  value={viewMode}
-                  onChange={setViewMode}
-                  bordered={false}
-                  size="small"
-                  options={[
-                    { label: 'Lịch', value: 'calendar' },
-                    { label: 'Bảng', value: 'table' }
-                  ]}
-                  style={{ width: 80, fontWeight: 600 }}
-                  className="view-mode-select"
-                />
-              </Tooltip>
 
-              <Divider type="vertical" style={{ height: 16, borderColor: '#e2e8f0' }} />
-              
-              <Space size={4}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Chế độ xem</span>
-                <Segmented 
-                  size="small"
-                  options={[
-                    { label: 'Bình thường', value: 'off' },
-                    { label: viewMode === 'table' ? 'Tất cả' : 'Sự kiện + Ca', value: 'overlap' },
-                    { label: 'Chỉ Sự kiện', value: 'all' }
-                  ]}
-                  value={eventFocusMode}
-                  onChange={(v: any) => setEventFocusMode(v)}
-                />
-              </Space>
-              
-              <Divider type="vertical" style={{ height: 16, borderColor: '#e2e8f0' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Segmented 
+                options={[
+                  { label: 'Chuẩn', value: 'off' },
+                  { label: viewMode === 'table' ? 'Tất cả' : 'Ca + Sự kiện', value: 'overlap' },
+                  { label: 'Sự kiện', value: 'all' }
+                ]}
+                value={eventFocusMode}
+                onChange={(v: any) => setEventFocusMode(v)}
+              />
 
-              <Space size={4}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Hiện mẫu</span>
-                <Switch 
-                  size="small" 
-                  checked={showDefaultBoundaries} 
-                  onChange={(checked) => {
-                    setShowDefaultBoundaries(checked);
-                    if (!checked) setManualTemplateGroupId(null);
-                  }}
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Tooltip title="Hiện bản mẫu">
+                  <Switch 
+                    checked={showDefaultBoundaries} 
+                    onChange={(checked) => {
+                      setShowDefaultBoundaries(checked);
+                      if (!checked) setManualTemplateGroupId(null);
+                    }}
+                  />
+                </Tooltip>
                 
                 <Select
-                  size="small"
-                  placeholder="🤖 Tự động lọc"
+                  placeholder="Lọc mẫu"
                   value={manualTemplateGroupId}
                   onChange={setManualTemplateGroupId}
+                  dropdownMatchSelectWidth={false}
                   style={{ 
-                    width: 140, 
-                    marginLeft: 8,
+                    width: 160, 
                     opacity: showDefaultBoundaries ? 1 : 0.5,
                     pointerEvents: showDefaultBoundaries ? 'auto' : 'none',
-                    transition: 'all 0.3s'
                   }}
                   disabled={!showDefaultBoundaries}
                   allowClear
                   options={[
-                    { label: '🤖 Tự động lọc', value: null },
                     ...templateGroups.map(g => ({
                       label: g.name,
                       value: String(g.id)
                     }))
                   ]}
                 />
-              </Space>
-            </Space>
+              </div>
 
-            <Space size={8}>
-              <Tooltip title="Tải lại dữ liệu">
-                <Button 
-                  icon={<SyncOutlined spin={loading} />} 
-                  onClick={fetchSchedule} 
-                  loading={loading}
-                  disabled={loading}
-                />
-              </Tooltip>
-              <Tooltip title="Xuất dữ liệu Excel">
-                <Button icon={<CloudDownloadOutlined />} />
-              </Tooltip>
-              
-              <Dropdown overlay={adminMenu} placement="bottomRight">
-                <Button type="primary" className="hifi-button">
-                  Quản trị <DownOutlined />
-                </Button>
-              </Dropdown>
-            </Space>
-          </Space>
+              <Space size={6}>
+                <Tooltip title="Tải lại">
+                  <Button 
+                    icon={<SyncOutlined spin={loading} />} 
+                    onClick={fetchSchedule} 
+                    loading={loading}
+                  />
+                </Tooltip>
+                <Tooltip title="Tải về Excel">
+                  <Button icon={<CloudDownloadOutlined />} />
+                </Tooltip>
+                
+                <Dropdown overlay={adminMenu} placement="bottomRight">
+                  <Button type="primary" className="hifi-button" style={{ height: 32, padding: '4px 12px', borderRadius: 8 }}>
+                    Quản trị <DownOutlined style={{ fontSize: 10 }} />
+                  </Button>
+                </Dropdown>
+              </Space>
+            </div>
+          </div>
         }
         bodyStyle={{ padding: 0 }}
       >
