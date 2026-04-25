@@ -1,11 +1,21 @@
 import React from 'react';
-import { Col, Form, Input, Row, Select, Switch, Divider, DatePicker, AutoComplete, Tooltip, Image } from 'antd';
+import { Col, Form, Input, Row, Select, Divider, Tooltip, Collapse, Space, Tag, Alert, DatePicker, Image } from 'antd';
 import type { FormInstance } from 'antd';
-import { UserOutlined, TeamOutlined, SettingOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
-import { API_BASE_URL } from '@/config/axios.config';
+import { 
+  UserOutlined, 
+  SafetyOutlined, 
+  InfoCircleOutlined,
+  CheckCircleOutlined,
+  StopOutlined,
+  LockOutlined,
+  FacebookOutlined,
+  HomeOutlined
+} from '@ant-design/icons';
 import FormModal from '../../../components/common/FormModal';
 import FileUpload from '../../../components/common/Upload/FileUpload';
+import { API_BASE_URL } from '@/config/axios.config';
+
+const { Panel } = Collapse;
 
 interface UsersFormProps {
   open: boolean;
@@ -15,9 +25,20 @@ interface UsersFormProps {
   onCancel: () => void;
   generations: { id: number; name: string }[];
   roles: { id: number; name: string }[];
+  permissions: { id: number; name: string; key: string; module: string }[];
 }
 
-const DEPARTMENT_OPTIONS = ['Tài chính', 'Truyền thông', 'Nhân sự'];
+const DEPARTMENT_OPTIONS = ['Nhân sự', 'Tài chính', 'Truyền thông'];
+
+const POSITION_LABELS: Record<string, string> = {
+  ctv: 'Cộng tác viên',
+  tv: 'Thành viên thường',
+  tvb: 'Thành viên ban',
+  pb: 'Phó ban',
+  tb: 'Trưởng ban',
+  ctc: 'Chủ tịch',
+  dt: 'Đội trưởng'
+};
 
 const UsersForm: React.FC<UsersFormProps> = ({
   open,
@@ -27,9 +48,63 @@ const UsersForm: React.FC<UsersFormProps> = ({
   onCancel,
   generations,
   roles,
+  permissions,
 }) => {
+  // Watch position to handle department visibility/requirement
+  const position = Form.useWatch('position', form);
 
-  // No manual fetch needed anymore as it comes via props
+  // Mapping logic for auto-sync (Duplicate of backend logic for instant UI feedback)
+  const getSuggestedRoles = (pos: string, dept?: string): number[] => {
+    if (!pos) return [];
+    const findRoleId = (key: string) => roles.find(r => (r as any).key === key)?.id || null;
+    
+    switch (pos) {
+      case 'dt':
+      case 'ctc':
+        return [findRoleId('admin')].filter(Boolean) as number[];
+      case 'tb':
+        return dept === 'Nhân sự' 
+          ? [findRoleId('ns_leader')].filter(Boolean) as number[]
+          : [findRoleId('other_leader')].filter(Boolean) as number[];
+      case 'pb':
+        return dept === 'Nhân sự' 
+          ? [findRoleId('ns_sub_leader')].filter(Boolean) as number[]
+          : [findRoleId('other_sub_leader')].filter(Boolean) as number[];
+      case 'tvb':
+        return dept === 'Nhân sự' 
+          ? [findRoleId('ns_specialist')].filter(Boolean) as number[]
+          : [roles.find(r => (r as any).key === 'member')?.id].filter(Boolean) as number[];
+      case 'tv':
+        return [roles.find(r => (r as any).key === 'member')?.id].filter(Boolean) as number[];
+      case 'ctv':
+        return [roles.find(r => (r as any).key === 'ctv')?.id].filter(Boolean) as number[];
+      default:
+        return [];
+    }
+  };
+
+  const handlePositionChange = (value: string) => {
+    const department = form.getFieldValue('department');
+    // Clear department if not applicable (CTV/TV)
+    if (['ctv', 'tv'].includes(value)) {
+      form.setFieldsValue({ department: undefined });
+    }
+    const suggested = getSuggestedRoles(value, department);
+    if (suggested.length > 0) {
+      form.setFieldsValue({ roleIds: suggested });
+    }
+  };
+
+  const handleDepartmentChange = (value: string) => {
+    const pos = form.getFieldValue('position');
+    const suggested = getSuggestedRoles(pos, value);
+    if (suggested.length > 0) {
+      form.setFieldsValue({ roleIds: suggested });
+    }
+  };
+
+  // Helper to determine if department is needed
+  const isDeptApplicable = !['ctv', 'tv'].includes(position);
 
   return (
     <FormModal
@@ -38,21 +113,36 @@ const UsersForm: React.FC<UsersFormProps> = ({
       onCancel={onCancel}
       onOk={onOk}
       form={form}
-      width={900}
-      onValuesChange={(changedValues, allValues) => {
-        if (changedValues.lastName !== undefined || changedValues.firstName !== undefined) {
-          const lName = allValues.lastName || '';
-          const fName = allValues.firstName || '';
-          const fullName = `${lName} ${fName}`.trim();
-          form.setFieldsValue({ name: fullName });
-        }
-      }}
+      width={1000}
     >
-      <div style={{ padding: '0 4px' }}>
-        <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-          <UserOutlined /> <span style={{ fontSize: 13 }}>Thông tin cá nhân & Định danh</span>
-        </Divider>
-        <Row gutter={[24, 16]}>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ isActive: true, status: 'active', position: 'tv', gender: 'male' }}
+        onValuesChange={(changedValues, allValues) => {
+          // 1. Auto-generate username (name) from lastName + firstName if name is empty
+          if (changedValues.lastName || changedValues.firstName) {
+            const name = allValues.name;
+            if (!name) {
+              const generated = `${allValues.lastName || ''} ${allValues.firstName || ''}`.trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/\s+/g, '');
+              form.setFieldsValue({ name: generated });
+            }
+          }
+
+          // 2. Handle role sync on position or department change
+          if (changedValues.position !== undefined) {
+            handlePositionChange(changedValues.position);
+          }
+          if (changedValues.department !== undefined) {
+            handleDepartmentChange(changedValues.department);
+          }
+        }}
+      >
+        <Row gutter={24}>
           <Col xs={24} md={6}>
             <Form.Item label="Ảnh đại diện" style={{ marginBottom: 0 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '16px 0' }}>
@@ -116,193 +206,235 @@ const UsersForm: React.FC<UsersFormProps> = ({
               </div>
             </Form.Item>
           </Col>
-
+          
           <Col xs={24} md={18}>
-            <Row gutter={[16, 0]}>
-              <Col xs={24} md={12}>
-                <Form.Item name="lastName" label="Họ và tên đệm" rules={[{ required: true, message: 'Vui lòng nhập họ và tên đệm' }]}>
-                  <Input placeholder="Nhập họ và tên đệm" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="firstName" label="Tên" rules={[{ required: true, message: 'Vui lòng nhập tên' }]}>
-                  <Input placeholder="Nhập tên" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
+            <Divider orientation="left">Thông tin tài khoản</Divider>
+            <Row gutter={16}>
+              <Col span={12}>
                 <Form.Item 
                   name="name" 
-                  label={
-                    <span>
-                      Username &nbsp;
-                      <Tooltip title="Tự động tạo từ Họ và Tên nếu không điền">
-                        <InfoCircleOutlined style={{ color: '#ccc' }} />
-                      </Tooltip>
-                    </span>
-                  } 
-                  rules={[{ required: true, message: 'Vui lòng nhập username' }]}
+                  label="Tên đăng nhập (Username)" 
+                  rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }]}
                 >
-                  <Input placeholder="Nhập username" />
+                  <Input prefix={<UserOutlined />} placeholder="nguyenvana" />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Vui lòng nhập email hợp lệ' }]}>
-                  <Input placeholder="example@gmail.com" disabled={!!editingId} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="gender" label="Giới tính">
-                  <Select placeholder="Chọn giới tính" options={[
-                    { label: 'Nam', value: 'male' },
-                    { label: 'Nữ', value: 'female' },
-                    { label: 'Khác', value: 'other' },
-                  ]} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
+              <Col span={12}>
                 <Form.Item 
-                  name="dob" 
-                  label="Ngày sinh"
-                  getValueProps={(value) => ({
-                    value: value ? dayjs(value) : undefined,
-                  })}
-                  getValueFromEvent={(value) => (value ? value.format('YYYY-MM-DD') : '')}
+                  name={editingId ? "newPassword" : "password"} 
+                  label={editingId ? "Mật khẩu mới (Để trống nếu không đổi)" : "Mật khẩu"}
+                  rules={[{ required: !editingId, message: 'Vui lòng nhập mật khẩu' }]}
                 >
-                  <DatePicker style={{ width: '100%' }} placeholder="Chọn ngày sinh" format="DD/MM/YYYY" />
+                  <Input.Password prefix={<LockOutlined />} placeholder="******" />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={8}>
-                <Form.Item name="phone" label="Số điện thoại" rules={[{ pattern: /^[0-9]{10,11}$/, message: 'Số điện thoại không hợp lệ' }]}>
-                  <Input placeholder="Nhập số điện thoại" />
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={6}>
+                <Form.Item name="lastName" label="Họ và tên đệm" rules={[{ required: true, message: 'Vui lòng nhập họ' }]}>
+                  <Input placeholder="Nguyễn Văn" />
                 </Form.Item>
               </Col>
-              
-              
+              <Col span={6}>
+                <Form.Item name="firstName" label="Tên" rules={[{ required: true, message: 'Vui lòng nhập tên' }]}>
+                  <Input placeholder="An" />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item 
+                  name="studentId" 
+                  label="Mã sinh viên" 
+                  rules={[{ required: true, message: 'Vui lòng nhập MSV' }]}
+                  getValueProps={(value) => ({ value: value === 'string' ? '' : value })}
+                >
+                  <Input placeholder="202160xxxx" />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item 
+                  name="classId" 
+                  label="Mã lớp"
+                  getValueProps={(value) => ({ value: value === 'string' ? '' : value })}
+                >
+                  <Input placeholder="KTPM01-K16" />
+                </Form.Item>
+              </Col>
             </Row>
           </Col>
         </Row>
 
-        <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
-          <TeamOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin tổ chức & Công việc</span>
-        </Divider>
-
-        <Row gutter={[16, 0]}>
+        <Divider orientation="left">Thông tin cá nhân & Liên hệ</Divider>
+        <Row gutter={16}>
           <Col xs={24} md={8}>
-            <Form.Item name="studentId" label="Mã số sinh viên">
-              <Input placeholder="Nhập MSSV" />
+            <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
+              <Input placeholder="example@gmail.com" />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
-            <Form.Item name="classId" label="Lớp">
-              <Input placeholder="Nhập mã lớp" />
+            <Form.Item name="phone" label="Số điện thoại">
+              <Input placeholder="0987xxxxxx" />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
-            <Form.Item name="generationId" label="Khóa/Thế hệ">
-              <Select
-                placeholder="Chọn Khóa/Thế hệ"
-                options={generations.map(g => ({ label: g.name, value: g.id }))}
-                showSearch
-                filterOption={(inputValue, option) =>
-                  String(option?.label || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
-                }
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
-            <Form.Item name="position" label="Chức vụ">
-              <Select placeholder="Chọn chức vụ" options={[
-                { label: 'Chủ tịch/Trưởng ban', value: 'ctc' },
-                { label: 'Thành viên chính thức', value: 'tv' },
-                { label: 'Thành viên tập sự', value: 'tvb' },
-                { label: 'Phó ban', value: 'pb' },
-                { label: 'Trưởng ban', value: 'tb' },
-                { label: 'Đội trưởng', value: 'dt' },
-              ]} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
-            <Form.Item name="department" label="Ban/Bộ phận">
-              <Select placeholder="Chọn ban" options={DEPARTMENT_OPTIONS.map(d => ({ label: d, value: d }))} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
-            <Form.Item name="hometown" label="Quê quán">
-              <Input placeholder="Nhập quê quán" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
-            <Form.Item name="address" label="Địa chỉ hiện tại">
-              <Input placeholder="Nhập địa chỉ" />
-            </Form.Item>
-          </Col>
-          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.position !== curr.position}>
-            {({ getFieldValue }) => {
-              const pos = getFieldValue('position');
-              const isBanRole = ['pb', 'tb', 'tvb'].includes(pos);
-              return (
-                <Col xs={24} md={8}>
-                  <Form.Item 
-                    name="department" 
-                    label="Tên Ban" 
-                    style={{ marginBottom: 12 }} 
-                    rules={[{ required: isBanRole, message: 'Vui lòng nhập tên ban' }]}
-                  >
-                    <AutoComplete
-                      placeholder={isBanRole ? "Chọn hoặc nhập tên ban" : "Không khả dụng"}
-                      disabled={!isBanRole}
-                      options={DEPARTMENT_OPTIONS.map(d => ({ value: d }))}
-                      filterOption={(inputValue, option) =>
-                        String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-              );
-            }}
-          </Form.Item>
-          <Col xs={24} md={8}>
-            <Form.Item name="status" label="Trạng thái" style={{ marginBottom: 12 }}>
-              <Select
-                placeholder="Chọn trạng thái"
-                options={[
-                  { label: 'Hoạt động', value: 'active' },
-                  { label: 'Không hoạt động', value: 'inactive' },
-                  { label: 'Khai trừ', value: 'dismissed' },
-                ]}
-              />
+            <Form.Item name="facebook" label="Link Facebook">
+              <Input prefix={<FacebookOutlined />} placeholder="fb.com/username" />
             </Form.Item>
           </Col>
         </Row>
 
-        <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16 }}>
-          <SettingOutlined /> <span style={{ fontSize: 13 }}>Cài đặt trong hệ thống</span>
-        </Divider>
-        <Row gutter={[24, 0]}>
-          <Col xs={24} md={8}>
-            <Form.Item name="roleIds" label="Vai trò hệ thống" style={{ marginBottom: 12 }}>
+        <Row gutter={16}>
+          <Col xs={12} md={6}>
+            <Form.Item name="gender" label="Giới tính">
+              <Select options={[{ label: 'Nam', value: 'male' }, { label: 'Nữ', value: 'female' }, { label: 'Khác', value: 'other' }]} />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item name="dob" label="Ngày sinh">
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày sinh" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="hometown" label="Quê quán">
+              <Input prefix={<HomeOutlined />} placeholder="Tỉnh/Thành phố" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Divider orientation="left">Tổ chức & Phân quyền</Divider>
+        <Row gutter={16}>
+          <Col xs={24} md={6}>
+            <Form.Item name="position" label="Chức vụ" rules={[{ required: true }]}>
+              <Select 
+                placeholder="Chọn chức vụ" 
+                onChange={handlePositionChange}
+                options={Object.entries(POSITION_LABELS).map(([val, label]) => ({ label, value: val }))}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={6}>
+            <Form.Item 
+              name="department" 
+              label="Ban chuyên môn" 
+              rules={[{ required: isDeptApplicable, message: 'Vui lòng chọn ban' }]}
+            >
+              <Select 
+                placeholder={isDeptApplicable ? "Chọn ban" : "Không thuộc ban"} 
+                disabled={!isDeptApplicable}
+                allowClear 
+                onChange={handleDepartmentChange}
+                options={DEPARTMENT_OPTIONS.map(d => ({ label: d, value: d }))} 
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item name="generationId" label="Khóa/Thế hệ" rules={[{ required: true }]}>
+              <Select
+                placeholder="Chọn Khóa"
+                options={generations.map(g => ({ label: g.name, value: g.id }))}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item name="joinDate" label="Ngày vào Đội">
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={18}>
+            <Form.Item 
+              name="roleIds" 
+              label={
+                <Space>
+                  Vai trò hệ thống
+                  <Tooltip title="Mặc định sẽ tự động thay đổi theo chức vụ, bạn có thể chỉnh sửa thủ công nếu cần">
+                    <InfoCircleOutlined style={{ color: 'var(--primary-color)' }} />
+                  </Tooltip>
+                </Space>
+              }
+            >
               <Select
                 mode="multiple"
                 placeholder="Chọn vai trò"
                 style={{ width: '100%' }}
                 options={roles.map(r => ({ label: r.name, value: r.id }))}
+                optionFilterProp="label"
               />
             </Form.Item>
           </Col>
-          {!editingId && (
-            <Col xs={24} md={8}>
-              <Form.Item name="password" label="Mật khẩu" style={{ marginBottom: 12 }} rules={[{ required: true }, { min: 8 }]}>
-                <Input.Password placeholder="Nhập mật khẩu" />
-              </Form.Item>
-            </Col>
-          )}
-          <Col xs={24} md={8}>
-             <Form.Item name="isActive" label="Trạng thái kích hoạt" style={{ marginBottom: 12 }} valuePropName="checked">
-              <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+          <Col xs={24} md={6}>
+            <Form.Item name="status" label="Trạng thái">
+              <Select options={[
+                { label: 'Đang hoạt động', value: 'active' },
+                { label: 'Ngừng hoạt động', value: 'inactive' },
+                { label: 'Đã khai trừ', value: 'dismissed' }
+              ]} />
             </Form.Item>
           </Col>
         </Row>
-      </div>
+
+        <Row gutter={16} style={{ marginTop: 8 }}>
+          <Col span={24}>
+            <Form.Item name="bio" label="Tiểu sử / Ghi chú">
+              <Input.TextArea rows={3} placeholder="Giới thiệu bản thân hoặc ghi chú thêm về thành viên này..." />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Collapse ghost style={{ marginTop: 8 }}>
+          <Panel 
+            header={
+              <Space>
+                <SafetyOutlined style={{ color: '#faad14' }} />
+                <span style={{ fontWeight: 600 }}>Cấu hình Quyền tùy chỉnh (Nâng cao)</span>
+                <Tag color="orange" style={{ fontSize: 10 }}>Dành cho thành viên đặc biệt</Tag>
+              </Space>
+            } 
+            key="custom_perms"
+          >
+            <Alert 
+              message="Lưu ý: Quyền tùy chỉnh sẽ ghi đè lên quyền từ vai trò. Extra sẽ thêm quyền mới, Denied sẽ chặn quyền hiện có."
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item 
+                  name={['customPermissions', 'extra']} 
+                  label={<Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> Cấp thêm quyền riêng</Space>}
+                >
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn thêm quyền..."
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    options={permissions.map(p => ({ label: `${p.name} (${p.key})`, value: p.key }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item 
+                  name={['customPermissions', 'denied']} 
+                  label={<Space><StopOutlined style={{ color: '#ff4d4f' }} /> Chặn quyền cụ thể</Space>}
+                >
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn quyền cần chặn..."
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    options={permissions.map(p => ({ label: `${p.name} (${p.key})`, value: p.key }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Panel>
+        </Collapse>
+      </Form>
     </FormModal>
   );
 };

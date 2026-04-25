@@ -36,7 +36,7 @@ const ResizableTitle: React.FC<ResizableTitleProps> = (props) => {
       <th 
         {...restProps} 
         onDoubleClick={handleDoubleClick}
-        style={{ cursor: "pointer", userSelect: "none" }} 
+        style={{ ...restProps.style, cursor: "pointer", userSelect: "none" }} 
       />
     </Resizable>
   );

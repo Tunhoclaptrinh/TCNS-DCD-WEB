@@ -212,10 +212,18 @@ export const useCRUD = (service: any, options: any = {}) => {
             try {
                 setLoading(true);
                 const response = await service.create(values);
-                message.success(successMessage.create);
-                await fetchAll();
-                if (onSuccess) onSuccess('create', response);
-                return true;
+                
+                if (response.success) {
+                    message.success(successMessage.create);
+                    await fetchAll();
+                    if (onSuccess) onSuccess('create', response);
+                    return true;
+                } else {
+                    const errorMsg = response.message || errorMessage.create;
+                    message.error(errorMsg);
+                    if (onError) onError('create', response);
+                    return false;
+                }
             } catch (err) {
                 message.error(errorMessage.create);
                 if (onError) onError('create', err);
@@ -235,10 +243,18 @@ export const useCRUD = (service: any, options: any = {}) => {
             try {
                 setLoading(true);
                 const response = await service.update(id, values);
-                message.success(successMessage.update);
-                await fetchAll();
-                if (onSuccess) onSuccess('update', response);
-                return true;
+                
+                if (response.success) {
+                    message.success(successMessage.update);
+                    await fetchAll();
+                    if (onSuccess) onSuccess('update', response);
+                    return true;
+                } else {
+                    const errorMsg = response.message || errorMessage.update;
+                    message.error(errorMsg);
+                    if (onError) onError('update', response);
+                    return false;
+                }
             } catch (err) {
                 message.error(errorMessage.update);
                 if (onError) onError('update', err);

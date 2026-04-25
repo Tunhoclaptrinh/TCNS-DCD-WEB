@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, AutoComplete, Input } from 'antd';
+import dayjs from 'dayjs';
+import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, AutoComplete, Input, Typography } from 'antd';
 import { 
     CheckCircleOutlined, 
     RiseOutlined, 
@@ -20,21 +21,22 @@ import { User, UserStats } from '../../types';
 import { useAccess } from '../../hooks';
 import UsersForm from './components/Form';
 import UsersDetailModal from './components/Detail';
-import Access from '@/components/common/Access';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
+import permissionService, { Permission } from '../../services/permission.service';
 
-const POSITION_LEVELS = ['ctc', 'tv', 'tvb', 'pb', 'tb', 'dt'];
+const POSITION_LEVELS = ['ctv', 'tv', 'tvb', 'pb', 'tb', 'ctc', 'dt'];
 const POSITION_LABELS: Record<string, string> = {
-    ctc: 'Cộng tác viên',
-    tv: 'Thành viên',
+    ctv: 'Cộng tác viên',
+    tv: 'Thành viên thường',
     tvb: 'Thành viên ban',
     pb: 'Phó ban',
     tb: 'Trưởng ban',
+    ctc: 'Chủ tịch',
     dt: 'Đội trưởng'
 };
 
-const DEPARTMENT_OPTIONS = ['Tài chính', 'Truyền thông', 'Nhân sự'];
+const DEPARTMENT_OPTIONS = ['Nhân sự', 'Tài chính', 'Truyền thông'];
 
 const UserPage = () => {
     const formatDateTime = (value?: string) => {
@@ -108,6 +110,7 @@ const UserPage = () => {
     });
     const [generationList, setGenerationList] = useState<Generation[]>([]);
     const [roleList, setRoleList] = useState<Role[]>([]);
+    const [permissionList, setPermissionList] = useState<any[]>([]);
     const [selectedGenerationId, setSelectedGenerationId] = useState<number | typeof ACTIVE_ONLY | undefined>(ACTIVE_ONLY);
 
     // Optimized: Memoized active generation IDs
@@ -151,9 +154,21 @@ const UserPage = () => {
         }
     };
 
+    const fetchPermissions = async () => {
+        try {
+            const res = await permissionService.getAll();
+            if (res.success && res.data) {
+                setPermissionList(res.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch permissions:', error);
+        }
+    };
+
     useEffect(() => {
         fetchGenerations();
         fetchRoles();
+        fetchPermissions();
     }, []);
 
     const fetchUserStats = async (filters: any = {}) => {
@@ -335,10 +350,15 @@ const UserPage = () => {
             ellipsis: true,
             align: 'left',
             render: (_: any, record: User) => {
-                if (record.lastName || record.firstName) {
-                    return `${record.lastName || ''} ${record.firstName || ''}`.trim();
-                }
-                return record.name;
+                const name = record.lastName || record.firstName ? `${record.lastName || ''} ${record.firstName || ''}`.trim() : record.name;
+                return (
+                    <Typography.Link 
+                        onClick={() => openView(record)} 
+                        style={{ fontWeight: 500, color: '#262626' }}
+                    >
+                        {name}
+                    </Typography.Link>
+                );
             }
         },
         {
@@ -348,18 +368,21 @@ const UserPage = () => {
             width: 120,
             resizable: true,
             searchable: true,
+            render: (val: string) => (val === 'string' || !val) ? '--' : val
         },
         {
-            title: "Khóa/Thế hệ",
-            key: "generation",
-            width: 300,
-            resizable: true,
-            filters: generationList.map(g => ({ text: g.name, value: g.id })),
-            render: (_: any, record: any) => {
-                const gen = record.generation?.name;
-                return gen ? <Tag color="geekblue">{gen}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>
-            }
-        },
+                title: <div style={{ whiteSpace: 'nowrap !important', width: 'max-content', display: 'block' }}>Khóa/Thế hệ</div>,
+                key: "generation",
+                dataIndex: "generation",
+                width: 180,
+                resizable: true,
+                align: 'left',
+                filters: generationList.map(g => ({ text: g.name, value: g.id })),
+                render: (_: any, record: any) => {
+                    const gen = record.generation?.name;
+                    return gen ? <Tag color="geekblue">{gen}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>;
+                }
+            },
         {
             title: "Email",
             dataIndex: "email",
@@ -370,6 +393,13 @@ const UserPage = () => {
             ellipsis: true,
             align: 'left',
             required: true,
+            render: (email: string) => email ? (
+                <Typography.Text copyable={{ text: email }}>
+                    <Typography.Link href={`mailto:${email}`} style={{ fontSize: '13px', color: 'inherit' }}>
+                        {email}
+                    </Typography.Link>
+                </Typography.Text>
+            ) : '--'
         },
         {
             title: "Số điện thoại",
@@ -490,43 +520,36 @@ const UserPage = () => {
                         placement="bottomRight"
                         overlay={
                             <Menu>
-                                <Access permission="users:update:org">
-                                    <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
-                                        Chỉnh sửa
-                                    </Menu.Item>
-                                </Access>
-                                <Access permission="users:promote">
-                                    <Menu.Item 
-                                        key="promote" 
-                                        icon={<RiseOutlined />} 
-                                        onClick={() => handlePromote(record)}
-                                        disabled={record.position === 'dt' || record.id === currentUser?.id}
-                                        style={{ color: record.id === currentUser?.id ? undefined : '#52c41a' }}
-                                    >
-                                        {record.id === currentUser?.id ? 'Nâng hạng (Khóa)' : 'Nâng hạng'}
-                                    </Menu.Item>
-                                    <Menu.Item 
-                                        key="dismiss" 
-                                        icon={<UserDeleteOutlined />} 
-                                        onClick={() => handleDismiss(record)}
-                                        disabled={record.status === 'dismissed' || record.id === currentUser?.id}
-                                        danger
-                                    >
-                                        {record.id === currentUser?.id ? 'Khai trừ (Khóa)' : 'Khai trừ'}
-                                    </Menu.Item>
-                                </Access>
-                                <Access permission="users:delete">
-                                    <Menu.Divider />
-                                    <Menu.Item 
-                                        key="delete" 
-                                        icon={<DeleteOutlined />} 
-                                        onClick={() => handleDelete(record.id)}
-                                        disabled={record.id === currentUser?.id}
-                                        danger
-                                    >
-                                        Xóa vĩnh viễn
-                                    </Menu.Item>
-                                </Access>
+                                <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                                    Chỉnh sửa
+                                </Menu.Item>
+                                <Menu.Item 
+                                    key="promote" 
+                                    icon={<RiseOutlined />} 
+                                    onClick={() => handlePromote(record)}
+                                    disabled={record.position === 'dt'}
+                                    style={{ color: '#52c41a' }}
+                                >
+                                    Nâng hạng
+                                </Menu.Item>
+                                <Menu.Item 
+                                    key="dismiss" 
+                                    icon={<UserDeleteOutlined />} 
+                                    onClick={() => handleDismiss(record)}
+                                    disabled={record.status === 'dismissed'}
+                                    danger
+                                >
+                                    Khai trừ
+                                </Menu.Item>
+                                <Menu.Divider />
+                                <Menu.Item 
+                                    key="delete" 
+                                    icon={<DeleteOutlined />} 
+                                    onClick={() => handleDelete(record.id)}
+                                    danger
+                                >
+                                    Xóa vĩnh viễn
+                                </Menu.Item>
                             </Menu>
                         }
                     >
@@ -678,10 +701,11 @@ const UserPage = () => {
 
     const openEdit = (record: User) => {
         setEditingId(record.id);
-        // Ensure roleIds is populated from expanded roles if missing
         const formData = { 
             ...record, 
-            roleIds: record.roleIds || (record as any).roles?.map((r: any) => r.id) || [] 
+            roleIds: record.roleIds || (record as any).roles?.map((r: any) => r.id) || [],
+            dob: record.dob ? dayjs(record.dob) : undefined,
+            joinDate: record.joinDate ? dayjs(record.joinDate) : undefined
         };
         form.setFieldsValue(formData);
         setIsModalVisible(true);
@@ -852,8 +876,9 @@ const UserPage = () => {
                 pagination={pagination}
                 onPaginationChange={handleTableChange}
                 tableLayout="fixed"
+                scroll={{ x: 1800 }}
                 saveColumnWidths
-                columnResizeKey="users-table-v2"
+                columnResizeKey="users-table-v11"
                 onAdd={hasPermission('users:create') ? openCreate : undefined}
                 onRefresh={refreshData}
                 onEdit={hasPermission('users:update') ? openEdit : undefined}
@@ -899,6 +924,7 @@ const UserPage = () => {
                 onCancel={() => setIsModalVisible(false)}
                 generations={generationList}
                 roles={roleList}
+                permissions={permissionList}
             />
 
             <UsersDetailModal

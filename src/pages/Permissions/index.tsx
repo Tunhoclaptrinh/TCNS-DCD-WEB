@@ -18,7 +18,11 @@ import {
   Empty,
   Tooltip,
   Tabs,
-  Popconfirm
+  Popconfirm,
+  List,
+  Avatar,
+  Row,
+  Col
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -33,10 +37,12 @@ import {
   DeleteOutlined,
   BlockOutlined,
   ThunderboltOutlined,
-  InfoCircleOutlined
+  UserOutlined,
+  SolutionOutlined
 } from '@ant-design/icons';
 import roleService, { Role } from '../../services/role.service';
 import permissionService, { Permission } from '../../services/permission.service';
+import userService from '../../services/user.service';
 import Button from '@/components/common/Button';
 import { useAccess } from '@/hooks/useAccess';
 
@@ -47,10 +53,15 @@ const PermissionsPage: React.FC = () => {
   const { hasPermission } = useAccess();
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissionGroups, setPermissionGroups] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   
+  // Audit states
+  const [auditType, setAuditType] = useState<'role' | 'permission'>('role');
+  const [selectedAuditId, setSelectedAuditId] = useState<any>(null);
+
   // Modal states
   const [isPermModalVisible, setIsPermModalVisible] = useState(false);
   const [isBulkModalVisible, setIsBulkModalVisible] = useState(false);
@@ -61,9 +72,10 @@ const PermissionsPage: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [rolesRes, groupsRes] = await Promise.all([
+      const [rolesRes, groupsRes, usersRes] = await Promise.all([
         roleService.getAll(),
-        permissionService.getGroupedPermissions()
+        permissionService.getGroupedPermissions(),
+        userService.getAll({ limit: 1000 }) // Fetch all for audit
       ]);
 
       if (rolesRes.success && rolesRes.data) {
@@ -71,6 +83,9 @@ const PermissionsPage: React.FC = () => {
       }
       if (groupsRes) {
         setPermissionGroups(groupsRes);
+      }
+      if (usersRes.success && usersRes.data) {
+        setUsers(usersRes.data);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -102,7 +117,7 @@ const PermissionsPage: React.FC = () => {
         newPermissions = newPermissions.filter(p => p !== permissionKey);
       }
 
-      const res = await roleService.update(role.id, { permissions: newPermissions });
+      const res = await roleService.patch(role.id, { permissions: newPermissions });
       if (res.success) {
         setRoles(prev => prev.map(r => r.id === role.id ? { ...r, permissions: newPermissions } : r));
         message.success(`Đã cập nhật quyền cho nhóm ${role.name}`);
@@ -183,6 +198,27 @@ const PermissionsPage: React.FC = () => {
     }).filter(Boolean);
   }, [permissionGroups, searchText]);
 
+  // Audit calculations
+  const auditedUsers = useMemo(() => {
+    if (!selectedAuditId) return [];
+    
+    if (auditType === 'role') {
+      return users.filter(u => Array.isArray(u.roleIds) && u.roleIds.includes(selectedAuditId));
+    } else {
+      // Permission audit: check via roles OR customPermissions.extra
+      const targetPerm = selectedAuditId;
+      return users.filter(u => {
+        // 1. Direct extra permission
+        if (u.customPermissions?.extra?.includes(targetPerm)) return true;
+        if (u.customPermissions?.denied?.includes(targetPerm)) return false;
+
+        // 2. Via roles
+        const userRoles = roles.filter(r => u.roleIds?.includes(r.id));
+        return userRoles.some(r => r.permissions?.includes(targetPerm) || r.permissions?.includes('*'));
+      });
+    }
+  }, [auditType, selectedAuditId, users, roles]);
+
   const getModuleIcon = (category: string) => {
     const lower = category.toLowerCase();
     if (lower.includes('thành viên')) return <TeamOutlined style={{ color: '#1890ff' }} />;
@@ -207,6 +243,12 @@ const PermissionsPage: React.FC = () => {
               <Text type="secondary" style={{ fontSize: 11 }}>{record.key}</Text>
             </Space>
             <div className="permission-row-actions">
+              <Tooltip title="Xem người dùng có quyền này">
+                <Button variant="ghost" icon={<UserOutlined />} onClick={() => {
+                  setAuditType('permission');
+                  setSelectedAuditId(record.key);
+                }} />
+              </Tooltip>
               <Tooltip title="Chỉnh sửa">
                 <Button variant="ghost" icon={<EditOutlined />} onClick={() => {
                   setEditingPerm(record);
@@ -326,7 +368,7 @@ const PermissionsPage: React.FC = () => {
               <>
                 <Alert
                   message="Mẹo quản trị"
-                  description="Bạn có thể tạo thêm Vai trò mới trong mục 'Quản lý Vai trò' và các cột sẽ tự động hiển thị tại đây. Nhấn vào tên nhóm chức năng để đóng/mở."
+                  description="Bạn có thể tạo thêm Vai trò mới trong mục 'Quản lý Vai trò' và các cột sẽ tự động hiển thị tại đây. Nhấn vào biểu tượng User để xem danh sách người dùng có quyền đó."
                   type="success"
                   showIcon
                   style={{ marginBottom: 24, borderRadius: 12 }}
@@ -386,8 +428,86 @@ const PermissionsPage: React.FC = () => {
           },
           {
             key: 'audit',
-            label: <Space><InfoCircleOutlined />Nhật ký Thay đổi</Space>,
-            children: <Card style={{ borderRadius: 12 }}><Empty description="Tính năng đang phát triển" /></Card>
+            label: <Space><SolutionOutlined />Kiểm tra Người dùng</Space>,
+            children: (
+              <Row gutter={24}>
+                <Col span={8}>
+                  <Card title="Chọn tiêu chí kiểm tra" style={{ borderRadius: 12 }}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Text type="secondary">Loại kiểm tra:</Text>
+                      <Select 
+                        style={{ width: '100%' }} 
+                        value={auditType} 
+                        onChange={(val) => {
+                          setAuditType(val);
+                          setSelectedAuditId(null);
+                        }}
+                      >
+                        <Select.Option value="role">Theo Vai trò (Group)</Select.Option>
+                        <Select.Option value="permission">Theo Quyền hạn (Permission)</Select.Option>
+                      </Select>
+                      
+                      <Divider style={{ margin: '12px 0' }} />
+                      
+                      <Text type="secondary">{auditType === 'role' ? 'Chọn vai trò:' : 'Chọn quyền hạn:'}</Text>
+                      <Select
+                        style={{ width: '100%' }}
+                        placeholder="Chọn mục cần kiểm tra..."
+                        showSearch
+                        value={selectedAuditId}
+                        onChange={setSelectedAuditId}
+                      >
+                        {auditType === 'role' ? (
+                          roles.map(r => <Select.Option key={r.id} value={r.id}>{r.name}</Select.Option>)
+                        ) : (
+                          permissionGroups.flatMap(g => g.actions).map(a => (
+                            <Select.Option key={a.key} value={a.key}>{a.name} ({a.key})</Select.Option>
+                          ))
+                        )}
+                      </Select>
+                    </Space>
+                  </Card>
+                </Col>
+                <Col span={16}>
+                  <Card 
+                    title={
+                      <Space>
+                        <TeamOutlined />
+                        <span>Danh sách người dùng ({auditedUsers.length})</span>
+                      </Space>
+                    }
+                    style={{ borderRadius: 12 }}
+                  >
+                    {!selectedAuditId ? (
+                      <Empty description="Vui lòng chọn tiêu chí để xem danh sách" />
+                    ) : (
+                      <List
+                        dataSource={auditedUsers}
+                        renderItem={item => (
+                          <List.Item>
+                            <List.Item.Meta
+                              avatar={<Avatar icon={<UserOutlined />} src={item.avatar} />}
+                              title={<Text strong>{item.name}</Text>}
+                              description={
+                                <Space>
+                                  <Tag color="cyan">{item.department || 'Không ban'}</Tag>
+                                  <Tag color="purple">{item.position || 'Thành viên'}</Tag>
+                                </Space>
+                              }
+                            />
+                            {item.customPermissions?.extra?.length > 0 && (
+                              <Tooltip title={`Được cấp thêm: ${item.customPermissions.extra.join(', ')}`}>
+                                <Tag color="orange">Quyền riêng (+)</Tag>
+                              </Tooltip>
+                            )}
+                          </List.Item>
+                        )}
+                      />
+                    )}
+                  </Card>
+                </Col>
+              </Row>
+            )
           }
         ]}
       />
@@ -435,7 +555,6 @@ const PermissionsPage: React.FC = () => {
             <Select 
               placeholder="Chọn nhóm hoặc nhập tên nhóm mới" 
               showSearch
-              mode="tags"
               size="large"
               options={permissionGroups.map(g => ({ value: g.category, label: g.category }))}
               dropdownRender={(menu) => (

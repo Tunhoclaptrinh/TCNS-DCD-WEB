@@ -39,6 +39,8 @@ export interface User extends BaseEntity, TimestampEntity {
   address?: string;
   avatar?: string;
   bio?: string;
+  facebook?: string;
+  joinDate?: string;
   lastLogin?: string;
   role: UserRole;
   isActive: boolean;

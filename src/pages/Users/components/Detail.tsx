@@ -1,8 +1,10 @@
-import { Descriptions, Image, Modal, Tag, Space, Divider } from 'antd';
+import { Descriptions, Image, Modal, Tag, Space, Typography, Divider } from 'antd';
 import { RiseOutlined, StopOutlined } from '@ant-design/icons';
 import Button from '../../../components/common/Button';
 import { User } from '../../../types';
 import { formatDate } from '../../../utils/formatters';
+
+const { Text, Link } = Typography;
 
 interface UsersDetailModalProps {
   open: boolean;
@@ -23,8 +25,9 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
   formatDateTime,
   onPromote,
   onDismiss,
-  currentUser,
 }) => {
+  if (!user) return null;
+
   return (
     <Modal
       open={open}
@@ -43,17 +46,16 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
           >
             Đóng
           </Button>
-          {user && onPromote && (
+          {user && onPromote && user.position !== 'ctc' && (
             <Button 
               key="promote" 
               variant="primary" 
               buttonSize="small"
               icon={<RiseOutlined />} 
               onClick={() => onPromote(user)}
-              disabled={user.position === 'dt' || user.id === currentUser?.id}
-              style={{ minWidth: 88 }}
+              style={{ minWidth: 88, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
             >
-              {user.id === currentUser?.id ? 'Nâng hạng (Khóa)' : 'Nâng hạng'}
+              Nâng hạng
             </Button>
           )}
           {user && onDismiss && user.status !== 'dismissed' && (
@@ -63,90 +65,91 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
               buttonSize="small"
               icon={<StopOutlined />} 
               onClick={() => onDismiss(user)}
-              disabled={user.id === currentUser?.id}
               style={{ minWidth: 88 }}
             >
-              {user.id === currentUser?.id ? 'Khai trừ (Khóa)' : 'Khai trừ'}
+              Khai trừ
             </Button>
           )}
         </div>
       }
     >
-      {user && (
-        <div className="user-detail-content">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
-            <Image
-              src={user.avatar || avatarFallback}
-              alt="avatar"
-              width={80}
-              height={80}
-              style={{ borderRadius: '8px', objectFit: 'cover', border: '1px solid #f0f0f0' }}
-            />
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#262626' }}>
-                {user.lastName || user.firstName ? `${user.lastName || ''} ${user.firstName || ''}`.trim() : user.name || '--'}
-              </div>
-              <Space direction="vertical" size={0}>
-                 <div style={{ color: '#8c8c8c' }}>{user.email || '--'}</div>
-                 <Space size={[0, 4]} wrap style={{ marginTop: 4 }}>
-                   {((user as any).roles || []).length > 0 ? (
-                     (user as any).roles.map((r: any) => {
-                       const color = r.key === 'admin' ? 'volcano' : r.key === 'staff' ? 'blue' : 'gold';
-                       return <Tag key={r.id} color={color} style={{ fontSize: '10px' }}>{r.name.toUpperCase()}</Tag>;
-                     })
-                   ) : (
-                     <Tag color="blue">{String(user.role || '').toUpperCase()}</Tag>
-                   )}
-                 </Space>
-              </Space>
+      <div className="user-detail-content">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
+          <Image
+            src={user.avatar || avatarFallback}
+            alt="avatar"
+            width={80}
+            height={80}
+            style={{ borderRadius: '50%', objectFit: 'cover', border: '1px solid #f0f0f0' }}
+          />
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#262626' }}>
+              {user.lastName || user.firstName ? `${user.lastName || ''} ${user.firstName || ''}`.trim() : user.name || '--'}
             </div>
-          </div>
-
-          <Divider orientation="left">Thông tin cơ bản</Divider>
-          <Descriptions column={2} bordered>
-            <Descriptions.Item label="Mã SV">{user.studentId || '--'}</Descriptions.Item>
-            <Descriptions.Item label="Mã lớp">{user.classId || '--'}</Descriptions.Item>
-            <Descriptions.Item label="Họ tên đệm">{user.lastName || '--'}</Descriptions.Item>
-            <Descriptions.Item label="Tên">{user.firstName || '--'}</Descriptions.Item>
-            <Descriptions.Item label="Khóa/Thế hệ">
-              {user.generation?.name ? <Tag color="geekblue">{user.generation.name}</Tag> : '--'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày sinh">{formatDate(user.dob) || '--'}</Descriptions.Item>
-            <Descriptions.Item label="Giới tính">
-              {user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : user.gender === 'other' ? 'Khác' : '--'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Quê quán">{user.hometown || '--'}</Descriptions.Item>
-          </Descriptions>
-
-          <Divider orientation="left">Tổ chức & Thao tác</Divider>
-          <Descriptions column={2} bordered>
-            <Descriptions.Item label="Hạng/Chức vụ">
-              <Space>
-                {user.position ? (
-                  <Tag color="cyan" style={{ fontWeight: 600 }}>
-                    {user.position.toUpperCase()}
-                  </Tag>
-                ) : '--'}
-                {user.department && <span style={{ color: '#595959' }}>({user.department})</span>}
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              <Tag color={user.status === 'dismissed' ? 'magenta' : user.isActive ? 'green' : 'red'}>
-                {user.status === 'dismissed' ? 'KHAI TRỪ' : user.isActive ? 'HOẠT ĐỘNG' : 'TẮT'}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Số điện thoại">{user.phone || '--'}</Descriptions.Item>
-            <Descriptions.Item label="Đăng nhập">{formatDateTime(user.lastLogin)}</Descriptions.Item>
-            <Descriptions.Item label="Ghi chú" span={2}>
-              {user.bio || '--'}
-            </Descriptions.Item>
-          </Descriptions>
-
-          <div style={{ marginTop: 16, textAlign: 'right', fontSize: 12, color: '#bfbfbf' }}>
-            ID: {user.id} • Tạo ngày: {formatDateTime(user.createdAt)}
+            <Space direction="vertical" size={0}>
+               <Typography.Text copyable={{ text: user.email }}>
+                 <Link href={`mailto:${user.email}`} style={{ color: 'inherit' }}>
+                   {user.email || '--'}
+                 </Link>
+               </Typography.Text>
+               <Space size={[0, 4]} wrap style={{ marginTop: 4 }}>
+                 {((user as any).roles || []).length > 0 ? (
+                   (user as any).roles.map((r: any) => {
+                     const color = r.key === 'admin' ? 'volcano' : r.key === 'staff' ? 'blue' : 'gold';
+                     return <Tag key={r.id} color={color} style={{ fontSize: '10px' }}>{r.name.toUpperCase()}</Tag>;
+                   })
+                 ) : (
+                   <Tag color="blue">{String(user.role || '').toUpperCase()}</Tag>
+                 )}
+               </Space>
+            </Space>
           </div>
         </div>
-      )}
+
+        <Divider orientation="left" style={{ fontSize: 14 }}>Thông tin cơ bản</Divider>
+        <Descriptions column={2} bordered size="small">
+          <Descriptions.Item label="Mã SV">{user.studentId || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Mã lớp">{user.classId || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Khóa/Thế hệ">
+            {user.generation?.name ? <Tag color="geekblue">{user.generation.name}</Tag> : '--'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Ngày sinh">{formatDate(user.dob) || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Giới tính">
+            {user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : 'Khác'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Quê quán">{user.hometown || '--'}</Descriptions.Item>
+        </Descriptions>
+
+        <Divider orientation="left" style={{ fontSize: 14 }}>Liên hệ & Tổ chức</Divider>
+        <Descriptions column={2} bordered size="small">
+          <Descriptions.Item label="Hạng/Chức vụ">
+            <Space>
+              <Tag color="cyan" style={{ fontWeight: 600 }}>{(user.position || '').toUpperCase()}</Tag>
+              {user.department && <span style={{ color: '#595959' }}>({user.department})</span>}
+            </Space>
+          </Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">
+            <Tag color={user.status === 'dismissed' ? 'magenta' : user.isActive ? 'green' : 'red'}>
+              {user.status === 'dismissed' ? 'KHAI TRỪ' : user.isActive ? 'HOẠT ĐỘNG' : 'TẮT'}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="Số điện thoại">
+            <Text copyable>{user.phone || '--'}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="Facebook">
+            {user.facebook ? <Link href={user.facebook} target="_blank">Link Facebook</Link> : '--'}
+          </Descriptions.Item>
+          <Descriptions.Item label="Ngày vào Đội">{formatDate((user as any).joinDate) || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Đăng nhập">{formatDateTime(user.lastLogin)}</Descriptions.Item>
+          <Descriptions.Item label="Ghi chú" span={2}>
+            {user.bio || '--'}
+          </Descriptions.Item>
+        </Descriptions>
+
+        <div style={{ marginTop: 16, textAlign: 'right', fontSize: 11, color: '#bfbfbf' }}>
+          ID: {user.id} • Tạo ngày: {formatDateTime(user.createdAt)}
+        </div>
+      </div>
     </Modal>
   );
 };
