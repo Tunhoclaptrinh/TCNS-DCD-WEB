@@ -1603,7 +1603,7 @@ const DutyManagement: React.FC = () => {
 
   return (
     <div className="duty-management-page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Space size={12}>
           <Title level={4} style={{ margin: 0, fontWeight: 700, fontSize: '20px', letterSpacing: '-0.5px', color: '#1e293b' }}>
             Thiết lập lịch trực

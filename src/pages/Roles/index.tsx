@@ -18,7 +18,6 @@ import {
   CheckCircleOutlined,
   StopOutlined,
   AppstoreOutlined,
-  RightOutlined,
   ArrowRightOutlined
 } from '@ant-design/icons';
 import { DataTable, Button, StatisticsCard } from '@/components/common';
