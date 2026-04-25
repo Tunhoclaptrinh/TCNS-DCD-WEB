@@ -15,8 +15,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
-import DataTable from '@/components/common/DataTable';
-import { Button } from '@/components/common';
+import { Button, TabSwitcher, DataTable } from '@/components/common';
 import StatisticsCard from '@/components/common/StatisticsCard';
 import { useAccess } from '@/hooks/useAccess';
 import apiClient from "@/config/axios.config";
@@ -345,16 +344,18 @@ const SwapRequestsPage: React.FC = () => {
               rowGutter={16}
             />
             
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              style={{ marginTop: 16 }}
-              items={[
-                { label: 'Cần xác nhận', key: 'pending', icon: <ClockCircleOutlined /> },
-                { label: 'Đã xử lý', key: 'approved', icon: <CheckCircleOutlined /> },
-                { label: 'Tất cả', key: 'all', icon: <HistoryOutlined /> },
-              ]}
-            />
+            <TabSwitcher>
+              <Tabs
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                style={{ marginTop: 16 }}
+                items={[
+                  { label: 'Cần xác nhận', key: 'pending', icon: <ClockCircleOutlined /> },
+                  { label: 'Đã xử lý', key: 'approved', icon: <CheckCircleOutlined /> },
+                  { label: 'Tất cả', key: 'all', icon: <HistoryOutlined /> },
+                ]}
+              />
+            </TabSwitcher>
           </div>
         }
         title={null}

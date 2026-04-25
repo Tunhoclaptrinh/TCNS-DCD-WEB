@@ -14,7 +14,7 @@ import {
   Tag,
   Avatar,
   List,
-  Switch,
+  Checkbox,
   Alert,
   Row,
   Col,
@@ -32,7 +32,6 @@ import {
   CheckCircleOutlined,
   UsergroupAddOutlined,
   UserOutlined,
-  CheckOutlined,
   CloseOutlined,
   DeleteOutlined,
   SaveOutlined,
@@ -69,6 +68,14 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [selectedUsersCache, setSelectedUsersCache] = useState<any[]>([]);
 
+  const updateCache = (rows: any[]) => {
+    setSelectedUsersCache(prev => {
+      const map = new Map(prev.map(r => [r.id, r]));
+      rows.forEach(r => map.set(r.id, r));
+      return Array.from(map.values());
+    });
+  };
+
   useEffect(() => {
     if (open && slot) {
       form.setFieldsValue({
@@ -101,8 +108,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
       const res = await dutyService.updateSlot(slot.id, payload);
       if (res.success) {
-        await dutyService.markAttendance(slot.id, values.attendedUserIds || []);
-        message.success('Cập nhật kíp trực và điểm danh thành công');
+        message.success('Cập nhật kíp trực thành công');
         onSuccess();
         onCancel();
       }
@@ -187,7 +193,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           <Button variant="outline" buttonSize="small" onClick={onCancel} disabled={loading} icon={<CloseOutlined />}>
             Hủy
           </Button>
-          <Button variant="primary" buttonSize="small" onClick={handleConfirm} loading={loading} icon={<SaveOutlined />}>
+          <Button variant="outline" buttonSize="small" onClick={handleConfirm} loading={loading} icon={<SaveOutlined />} style={{ fontWeight: 600 }}>
             Lưu thay đổi
           </Button>
         </div>
@@ -349,8 +355,21 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             </Form.Item>
           </Col>
           <Col span={6}>
-            <Form.Item label="Chỉ tiêu (người)" name="capacity" rules={[{ required: true }]}>
+            <Form.Item label="Chỉ tiêu (người)" name="capacity" rules={[{ required: true }]} style={{ marginBottom: 0 }}>
               <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.assignedUserIds !== curr.assignedUserIds || prev.capacity !== curr.capacity}>
+              {({ getFieldsValue }) => {
+                const { assignedUserIds = [], capacity = 0 } = getFieldsValue();
+                const count = assignedUserIds.length;
+                if (count > 0 && count >= capacity) {
+                  return <div style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>⚠️ Đã đạt/vượt chỉ tiêu ({count}/{capacity})</div>;
+                }
+                if (count > 0 && count < capacity) {
+                  return <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>ℹ️ Còn trống {capacity - count} chỗ</div>;
+                }
+                return null;
+              }}
             </Form.Item>
           </Col>
           <Col span={8}>
@@ -368,15 +387,15 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
         <SlotStructureEditor form={form} />
 
-        <Divider orientation="left" style={{ marginTop: 24, marginBottom: 16 }}>
+        <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space>
             <TeamOutlined />
             <span style={{ fontSize: 13, fontWeight: 600 }}>Quản lý nhân sự & Điểm danh</span>
           </Space>
         </Divider>
 
-        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: 16, border: '1px solid #e2e8f0', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div>
               <Title level={5} style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Danh sách trực thực tế</Title>
               <Text type="secondary" style={{ fontSize: 12 }}>Tích chọn để xác nhận nhân sự thực hiện trực.</Text>
@@ -388,13 +407,12 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   label="Phân công"
                   onChange={(ids, rows) => {
                     form.setFieldsValue({ assignedUserIds: ids });
-                    if (rows) {
-                      setSelectedUsersCache(prev => {
-                        const map = new Map(prev.map(r => [r.id, r]));
-                        rows.forEach(r => map.set(r.id, r));
-                        return Array.from(map.values());
-                      });
+                    // Auto-increase capacity if assigned users exceed it
+                    const currentCapacity = form.getFieldValue('capacity') || 0;
+                    if (ids.length > currentCapacity) {
+                      form.setFieldsValue({ capacity: ids.length });
                     }
+                    if (rows) updateCache(rows);
                   }}
                 />
               </Form.Item>
@@ -402,17 +420,12 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               <Form.Item name="attendedUserIds" noStyle>
                 <DutyPersonnelPicker
                   variant="outline"
-                  label="Thêm ĐD bổ sung"
+                  label="Thêm ĐĐ bổ sung"
                   icon={<UsergroupAddOutlined />}
+                  hideBadge
                   onChange={(ids, rows) => {
                     form.setFieldsValue({ attendedUserIds: ids });
-                    if (rows) {
-                      setSelectedUsersCache(prev => {
-                        const map = new Map(prev.map(r => [r.id, r]));
-                        rows.forEach(r => map.set(r.id, r));
-                        return Array.from(map.values());
-                      });
-                    }
+                    if (rows) updateCache(rows);
                   }}
                 />
               </Form.Item>
@@ -452,6 +465,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
                     return (
                       <List.Item
+                        onClick={() => handleToggleAttendance(id, !isAttended)}
                         style={{
                           padding: '10px 16px',
                           background: isAttended ? '#f0fdf4' : '#fff',
@@ -459,22 +473,24 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                           marginBottom: 8,
                           border: `1px solid ${isAttended ? '#dcfce7' : '#f1f5f9'}`,
                           transition: 'all 0.2s',
+                          cursor: 'pointer'
                         }}
                         actions={[
                           <Space size={12} key="actions">
                             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                               <Text strong style={{ fontSize: 12, color: isAttended ? '#16a34a' : '#64748b' }}>
-                                {isAttended ? 'CÓ MẶT' : 'CHƯA ĐIỂM DANH'}
+                                {isAttended ? 'ĐÃ CÓ MẶT' : 'CHƯA ĐIỂM DANH'}
                               </Text>
                               {!isAssigned && <Tag color="orange" style={{ fontSize: '0.6rem', border: 'none', margin: 0 }}>BỔ SUNG</Tag>}
                             </div>
-                            <Switch
-                              size="small"
-                              checked={isAttended}
-                              checkedChildren={<CheckOutlined />}
-                              unCheckedChildren={<CloseOutlined />}
-                              onChange={checked => handleToggleAttendance(id, checked)}
-                            />
+                            <Checkbox
+                                checked={isAttended}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleAttendance(id, e.target.checked);
+                                }}
+                                style={{ transform: 'scale(1.2)' }}
+                              />
                           </Space>,
                         ]}
                       >

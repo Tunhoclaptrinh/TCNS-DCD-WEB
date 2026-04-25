@@ -301,14 +301,14 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
           <Col span={10}>
             <div style={{ 
               background: themeBg, 
-              borderRadius: 16, 
-              padding: 20, 
+              borderRadius: 12, 
+              padding: '16px', 
               height: '100%', 
               border: `1px solid ${themeBorder}`,
               display: 'flex',
               flexDirection: 'column'
             }}>
-              <Title level={5} style={{ marginTop: 0, marginBottom: 20, color: themeText }}>Thao tác</Title>
+              <Title level={5} style={{ marginTop: 0, marginBottom: 12, color: themeText }}>Thao tác</Title>
               
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 {!isUserRegistered ? (

@@ -24,6 +24,7 @@ export { default as Button } from "./Button";
 
 // Data Display
 export { default as DataTable } from "./DataTable";
+export { default as TabSwitcher } from "./TabSwitcher";
 
 // Loading States
 export { default as Loading } from "./Loading";

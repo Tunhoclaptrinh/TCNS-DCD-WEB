@@ -5,7 +5,6 @@ import { SettingOutlined, QuestionCircleOutlined, CopyOutlined, ClearOutlined } 
 import dutyService from '@/services/duty.service';
 import dayjs from 'dayjs';
 
-
 interface SetupWeekModalProps {
   open: boolean;
   onCancel: () => void;
@@ -125,7 +124,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
       destroyOnClose
     >
       <Form form={form} layout="vertical" initialValues={{ templateId: templateGroups.find(g => g.isDefault)?.id, mode: 'kips' }}>
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space direction="vertical" style={{ width: '100%' }} size={16}>
           <Card size="small" title="Cấu hình Khởi tạo" style={{ backgroundColor: '#f8fafc' }}>
             <Form.Item name="templateId" label="Chọn Bản mẫu" rules={[{ required: true }]}>
               <Select size="small" placeholder="Chọn nhóm bản mẫu" options={templateGroups.map(g => ({ label: g.name, value: g.id }))} />
@@ -140,7 +139,7 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           </Card>
 
           <Tooltip title="Tự động tạo các khung giờ kíp trực dựa trên cấu hình Bản mẫu đã thiết lập" placement="right">
-            <Button buttonSize="small" fullWidth type="primary" icon={<SettingOutlined />} onClick={() => {
+            <Button buttonSize="small" fullWidth variant="outline" icon={<SettingOutlined />} onClick={() => {
               Modal.confirm({
                 title: 'Xác nhận khởi tạo?',
                 content: 'Hệ thống sẽ dựa vào Bản mẫu để tạo các kíp trực cho tuần này. Các kíp đã có sẽ không bị ảnh hưởng.',
@@ -148,9 +147,9 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
               });
             }}>Khởi tạo từ Bản mẫu</Button>
           </Tooltip>
- 
+
           <Tooltip title="Lấy dữ liệu kíp trực của tuần trước đó áp dụng cho tuần này" placement="right">
-            <Button buttonSize="small" fullWidth icon={<CopyOutlined />} onClick={() => {
+            <Button buttonSize="small" fullWidth variant="outline" icon={<CopyOutlined />} onClick={() => {
               Modal.confirm({
                 title: 'Xác nhận sao chép?',
                 content: 'Toàn bộ kíp trực từ tuần trước sẽ được nhân bản sang tuần này.',
@@ -158,9 +157,9 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
               });
             }}>Sao chép từ tuần trước</Button>
           </Tooltip>
- 
+
           <Divider style={{ margin: '4px 0' }} />
- 
+
           <Tooltip title="Xóa toàn bộ các kíp trực trong tuần này để làm lại từ đầu" placement="right">
             <Button buttonSize="small" fullWidth variant="danger" ghost icon={<ClearOutlined />} onClick={handleClearWeek}>Xóa sạch lịch tuần</Button>
           </Tooltip>

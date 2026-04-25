@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Space, message, Typography, Tag, Modal, Tooltip, Tabs, Input, Form, Avatar as AntdAvatar, Select, Row, Col, Dropdown, Menu } from 'antd';
-import { Button } from '@/components/common';
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
@@ -17,8 +16,7 @@ import {
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
 import apiClient from "@/config/axios.config";
-import DataTable from '@/components/common/DataTable';
-import StatisticsCard from '@/components/common/StatisticsCard';
+import { Button, TabSwitcher, DataTable, StatisticsCard } from '@/components/common';
 
 const { Title, Text } = Typography;
 
@@ -356,17 +354,19 @@ const LeaveRequestsPage: React.FC = () => {
               rowGutter={16}
             />
             
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              style={{ marginTop: 16 }}
-              items={[
-                { label: 'Cần xử lý', key: 'pending', icon: <ClockCircleOutlined /> },
-                { label: 'Đã duyệt', key: 'approved', icon: <CheckCircleOutlined /> },
-                { label: 'Từ chối', key: 'rejected', icon: <CloseCircleOutlined /> },
-                { label: 'Tất cả đơn', key: 'all', icon: <HistoryOutlined /> },
-              ]}
-            />
+            <TabSwitcher>
+              <Tabs
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                style={{ marginTop: 16 }}
+                items={[
+                  { label: 'Cần xử lý', key: 'pending', icon: <ClockCircleOutlined /> },
+                  { label: 'Đã duyệt', key: 'approved', icon: <CheckCircleOutlined /> },
+                  { label: 'Từ chối', key: 'rejected', icon: <CloseCircleOutlined /> },
+                  { label: 'Tất cả đơn', key: 'all', icon: <HistoryOutlined /> },
+                ]}
+              />
+            </TabSwitcher>
           </div>
         }
         title={null}

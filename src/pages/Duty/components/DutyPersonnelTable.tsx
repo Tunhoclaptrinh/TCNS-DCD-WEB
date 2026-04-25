@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Image, Tag, Modal, Badge, Space, Typography } from 'antd';
 import Button from '@/components/common/Button';
-import { TeamOutlined, UserOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { TeamOutlined, UserOutlined, InfoCircleOutlined, UsergroupAddOutlined } from '@ant-design/icons';
 import DataTable from '@/components/common/DataTable';
 import { useCRUD } from '@/hooks/useCRUD';
 import userService from '@/services/user.service';
@@ -225,13 +225,14 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
   buttonSize?: 'small' | 'medium' | 'large';
   style?: React.CSSProperties;
+  hideBadge?: boolean;
 }> = (props) => {
   const [open, setOpen] = useState(false);
   const [tempSelectedIds, setTempSelectedIds] = useState<number[]>([]);
   const [tempSelectedRows, setTempSelectedRows] = useState<User[]>([]);
   const count = props.value?.length || 0;
   const tempCount = tempSelectedIds.length;
-  const { userIds, icon, variant = 'outline', buttonSize = 'medium', style } = props;
+  const { userIds, icon, variant = 'outline', buttonSize = 'medium', style, hideBadge = false } = props;
 
   const handleOpen = () => {
     setTempSelectedIds(props.value || []);
@@ -249,30 +250,46 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & {
       <Button 
         variant={variant}
         buttonSize={buttonSize}
-        icon={icon || <TeamOutlined />} 
+        icon={icon || <UsergroupAddOutlined style={{ fontSize: 16 }} />} 
         onClick={handleOpen}
         style={{ 
-          minWidth: 150, 
-          height: 32,
-          textAlign: 'left', 
-          display: 'flex', 
+          height: 36,
+          display: 'inline-flex', 
           alignItems: 'center', 
           gap: 8,
           borderRadius: 8,
+          fontWeight: 600,
+          fontSize: '13px',
+          padding: '0 12px',
+          ...(variant === 'primary' ? {
+            backgroundColor: '#fff',
+            borderColor: '#2563eb',
+            color: '#2563eb',
+          } : {}),
           ...style 
         }}
         className="duty-picker-trigger"
       >
-        <span style={{ flex: 1, fontWeight: variant === 'primary' ? 600 : 400 }}>{props.label || "Quản lý nhân sự kíp trực"}</span>
-        <Badge 
-          count={count} 
-          showZero={false} 
-          style={{ 
-            backgroundColor: variant === 'primary' ? '#fff' : '#ff4d4f',
-            color: variant === 'primary' ? 'var(--primary-color)' : '#fff',
-            boxShadow: 'none'
-          }} 
-        />
+        <span style={{ whiteSpace: 'nowrap' }}>{props.label || "Phân công nhân sự"}</span>
+        {(count > 0 && !hideBadge) && (
+          <div style={{ 
+          backgroundColor: variant === 'primary' ? '#2563eb' : (style?.color || style?.borderColor || '#ef4444'),
+          color: '#fff',
+          borderRadius: 6,
+          padding: '0 6px',
+          height: 18,
+          minWidth: 18,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 10,
+          fontWeight: 800,
+          lineHeight: 1,
+          marginLeft: 4,
+        }}>
+          {count}
+        </div>
+        )}
       </Button>
 
       <Modal

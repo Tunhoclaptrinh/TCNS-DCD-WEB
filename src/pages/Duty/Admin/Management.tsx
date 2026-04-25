@@ -20,8 +20,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import dutyService, { DutyShift } from '@/services/duty.service';
-import DataTable from '@/components/common/DataTable';
-import StatisticsCard from '@/components/common/StatisticsCard';
+import { DataTable, StatisticsCard, TabSwitcher } from '@/components/common';
 import ShiftTemplateModal from './components/ShiftTemplateModal';
 import GroupModal from './components/GroupModal';
 import KipModal from './components/KipModal';
@@ -689,7 +688,7 @@ const DutyManagement: React.FC = () => {
   ];
 
   const renderTabSwitcher = () => (
-    <div className="tab-switcher-container" style={{ borderBottom: '1px solid #f1f5f9', marginBottom: 0 }}>
+    <TabSwitcher className="tab-switcher-container">
       <Tabs
         activeKey={activeTab}
         onChange={setActiveTab}
@@ -701,7 +700,7 @@ const DutyManagement: React.FC = () => {
           label: <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>{t.label}</span> 
         }))}
       />
-    </div>
+    </TabSwitcher>
   );
 
   const tabItems = [
@@ -889,11 +888,25 @@ const DutyManagement: React.FC = () => {
           title={null}
           filters={[]}
           extra={
-            <Button type="primary" icon={<PlusOutlined />} className="hifi-button" style={{ borderRadius: 8, height: 32, padding: '4px 16px' }} onClick={() => {
-              manualSlotForm.setFieldsValue({ date: selectedDate || dayjs() });
-              setActiveTab('2');
-              message.info('Vui lòng thêm ca tại phần "Thêm Ca đơn lẻ" phía dưới');
-            }}>Thêm ca</Button>
+            <Button 
+              type="default" 
+              icon={<PlusOutlined />} 
+              style={{ 
+                borderRadius: 8, 
+                height: 32, 
+                padding: '4px 16px',
+                borderColor: 'var(--primary-color)',
+                color: 'var(--primary-color)',
+                fontWeight: 600
+              }} 
+              onClick={() => {
+                manualSlotForm.setFieldsValue({ date: selectedDate || dayjs() });
+                setActiveTab('2');
+                message.info('Vui lòng thêm ca tại phần "Thêm Ca đơn lẻ" phía dưới');
+              }}
+            >
+              Thêm ca
+            </Button>
           }
           columns={[
             ...(!selectedDate ? [{
@@ -1225,14 +1238,11 @@ const DutyManagement: React.FC = () => {
             flexWrap: 'wrap', 
             gap: 12,
             marginBottom: 20,
-            padding: '8px 12px',
-            background: '#fff',
-            borderRadius: 8,
-            border: '1px solid #f0f0f0'
           }}>
             <Space size={8} wrap>
               <Select
-                style={{ width: 180, borderRadius: 8 }}
+                style={{ width: 220, borderRadius: 8 }}
+                dropdownMatchSelectWidth={false}
                 value={currentTemplateId}
                 onChange={setCurrentTemplateId}
                 placeholder="Chọn nhóm..."
@@ -1254,31 +1264,76 @@ const DutyManagement: React.FC = () => {
               }>
                 <Button icon={<SettingOutlined />} disabled={!currentTemplateId} style={{ borderRadius: 8, height: 32 }} />
               </Dropdown>
+              <Tooltip title="Thêm Nhóm bản mẫu mới">
+                <Button 
+                  icon={<PlusOutlined />} 
+                  onClick={() => { setEditingGroup(null); setIsGroupModalOpen(true); }} 
+                  style={{ 
+                    borderRadius: 8, 
+                    height: 32, 
+                    width: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#eff6ff',
+                    borderColor: '#dbeafe',
+                    color: '#2563eb',
+                    padding: 0
+                  }} 
+                />
+              </Tooltip>
             </Space>
 
             <Space size={8}>
               <Segmented 
                 options={[
                   { label: 'Danh sách', value: 'list', icon: <UnorderedListOutlined /> },
-                  { label: 'Trực quan', value: 'calendar', icon: <CalendarOutlined /> }
+                  { label: 'Lịch', value: 'calendar', icon: <CalendarOutlined /> }
                 ]} 
                 value={templateViewMode}
                 onChange={(val) => setTemplateViewMode(val as any)}
               />
               <Divider type="vertical" style={{ height: 24 }} />
-              <Button icon={<PlusOutlined />} onClick={() => { setEditingGroup(null); setIsGroupModalOpen(true); }} style={{ borderRadius: 8, height: 32 }}>Thêm Nhóm</Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }} style={{ borderRadius: 8, fontWeight: 600, height: 32, padding: '4px 16px', background: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}>Thêm Ca</Button>
+              <Button 
+                type="default" 
+                icon={<PlusOutlined />} 
+                onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }} 
+                style={{ 
+                  borderRadius: 8, 
+                  fontWeight: 600, 
+                  height: 32, 
+                  padding: '4px 16px', 
+                  borderColor: 'var(--primary-color)',
+                  color: 'var(--primary-color)'
+                }}
+              >
+                Thêm Ca
+              </Button>
             </Space>
           </div>
-          <Divider style={{ marginTop: 0, marginBottom: 24, borderColor: '#e2e8f0', opacity: 0.6 }} />
           {templateViewMode === 'calendar' ? renderTemplateWeeklyView() : (
             <>
               {templates.length === 0 ? (
-                <Card className="hifi-border" style={{ textAlign: 'center', padding: '60px 0', borderStyle: 'dashed', borderRadius: 8 }}>
-                  <InboxOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
-                  <div><Text type="secondary" style={{ fontSize: 16 }}>Chưa có bản mẫu Ca trực nào trong nhóm này.</Text></div>
-                  <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 24, borderRadius: 8, background: 'var(--primary-color)', borderColor: 'var(--primary-color)' }} onClick={() => { setEditingShift(null); setIsShiftModalOpen(true); }}>Bắt đầu tạo Ca đầu tiên</Button>
-                </Card>
+                  <Card className="hifi-border" style={{ textAlign: 'center', padding: '60px 0', borderStyle: 'dashed', borderRadius: 8 }}>
+                    <InboxOutlined style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 16 }} />
+                    <div><Text type="secondary" style={{ fontSize: 16 }}>Chưa có bản mẫu Ca trực nào trong nhóm này.</Text></div>
+                    <Button 
+                      type="default" 
+                      icon={<PlusOutlined />} 
+                      style={{ 
+                        marginTop: 24, 
+                        borderRadius: 8, 
+                        borderColor: 'var(--primary-color)',
+                        color: 'var(--primary-color)',
+                        fontWeight: 600,
+                        padding: '0 24px',
+                        height: 40
+                      }} 
+                      onClick={() => { setEditingShift(null); setIsShiftModalOpen(true); }}
+                    >
+                      Bắt đầu tạo Ca đầu tiên
+                    </Button>
+                  </Card>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                   {templates.map(s => (
@@ -1310,14 +1365,42 @@ const DutyManagement: React.FC = () => {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <Text strong style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kíp trực thành phần</Text>
-                        <Button type="link" icon={<PlusOutlined />} style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: 12 }} onClick={() => { setEditingKip({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm Kíp</Button>
+                        <Button 
+                          type="default" 
+                          icon={<PlusOutlined />} 
+                          style={{ 
+                            fontWeight: 600, 
+                            color: 'var(--primary-color)', 
+                            fontSize: 11,
+                            height: 28,
+                            borderRadius: 6,
+                            borderColor: 'var(--primary-color)',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }} 
+                          onClick={() => { setEditingKip({ shiftId: s.id }); setIsKipModalOpen(true); }}
+                        >
+                          Thêm Kíp
+                        </Button>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {s.kips.length === 0 ? (
                           <div style={{ padding: '24px', borderRadius: 12, border: '1px dashed #e2e8f0', textAlign: 'center', background: '#fcfcfc' }}>
                             <InboxOutlined style={{ fontSize: 32, color: '#cbd5e1', marginBottom: 8 }} />
                             <div><Text type="secondary" style={{ fontStyle: 'italic', fontSize: '13px' }}>Chưa có kíp nào trong bản mẫu này.</Text></div>
-                            <Button type="link" onClick={() => { setEditingKip({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm kíp ngay</Button>
+                            <Button 
+                              type="default" 
+                              style={{ 
+                                marginTop: 8, 
+                                borderRadius: 6, 
+                                color: 'var(--primary-color)', 
+                                borderColor: 'var(--primary-color)',
+                                fontWeight: 600
+                              }} 
+                              onClick={() => { setEditingKip({ shiftId: s.id }); setIsKipModalOpen(true); }}
+                            >
+                              Thêm kíp ngay
+                            </Button>
                           </div>
                         ) : (
                           <div style={{ border: '1px solid #f1f5f9', borderRadius: 12, overflow: 'hidden' }}>
@@ -1496,7 +1579,22 @@ const DutyManagement: React.FC = () => {
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button type="primary" htmlType="submit" loading={settingsLoading} icon={<SettingOutlined />} style={{ borderRadius: 8, padding: '0 24px', fontWeight: 600 }}>Lưu cấu hình</Button>
+              <Button 
+                type="default" 
+                htmlType="submit" 
+                loading={settingsLoading} 
+                icon={<SettingOutlined />} 
+                style={{ 
+                  borderRadius: 8, 
+                  padding: '0 24px', 
+                  fontWeight: 600,
+                  borderColor: 'var(--primary-color)',
+                  color: 'var(--primary-color)',
+                  height: 40
+                }}
+              >
+                Lưu cấu hình
+              </Button>
             </div>
           </Form>
         </div>
@@ -1506,7 +1604,7 @@ const DutyManagement: React.FC = () => {
 
   return (
     <div className="duty-management-page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
         <Space size={12}>
           <Title level={4} style={{ margin: 0, fontWeight: 700, fontSize: '20px', letterSpacing: '-0.5px', color: '#1e293b' }}>
             Thiết lập lịch trực
@@ -1529,9 +1627,9 @@ const DutyManagement: React.FC = () => {
         </Button>
       </div>
 
-      <div className="management-content-wrapper" style={{ background: '#fff', padding: '16px', borderRadius: 16, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px -10px rgba(0,0,0,0.03)' }}>
+      <div className="management-content-wrapper" style={{ background: '#fff', padding: '16px', borderRadius: 16,  boxShadow: '0 4px 20px -10px rgba(0,0,0,0.03)' }}>
         {renderTabSwitcher()}
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 0 }}>
           {tabItems.find(t => t.key === activeTab)?.children}
         </div>
       </div>
@@ -1584,7 +1682,7 @@ const DutyManagement: React.FC = () => {
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
           <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+            <Button key="close" type="default" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120, borderColor: 'var(--primary-color)', color: 'var(--primary-color)', fontWeight: 600 }}>Đã hiểu</Button>
           </div>
         ]}
         width={600}

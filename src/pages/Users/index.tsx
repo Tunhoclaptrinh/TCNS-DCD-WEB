@@ -13,16 +13,13 @@ import {
     SafetyOutlined
 } from '@ant-design/icons';
 import { useCRUD } from '../../hooks/useCRUD';
-import DataTable from '../../components/common/DataTable';
-import StatisticsCard from '../../components/common/StatisticsCard';
+import { Button, DataTable, StatisticsCard, TabSwitcher } from '@/components/common';
 import { DataTableColumn, FilterConfig } from '../../components/common/DataTable/types';
 import userService from '../../services/user.service';
 import { User, UserStats } from '../../types';
 import { useAccess } from '../../hooks';
 import UsersForm from './components/Form';
 import UsersDetailModal from './components/Detail';
-
-import { Button } from '@/components/common';
 import generationService, { Generation } from '../../services/generation.service';
 
 const POSITION_LEVELS = ['ctc', 'tv', 'tvb', 'pb', 'tb', 'dt'];
@@ -783,19 +780,21 @@ const UserPage = () => {
                         rowGutter={12}
                         statShadow={false}
                     />
-                    <Tabs
-                        style={{ marginTop: 8 }}
-                        activeKey={activeTab} 
-                        onChange={onTabChange}
-                        items={[
-                            { label: 'Toàn bộ Đội', key: 'all' },
-                            ...DEPARTMENT_OPTIONS.map(dept => ({ 
-                                label: `Ban ${dept}`, 
-                                key: dept 
-                            })),
-                            { label: 'Khác', key: 'others' }
-                        ]}
-                    />
+                    <TabSwitcher>
+                        <Tabs
+                            style={{ marginTop: 8 }}
+                            activeKey={activeTab} 
+                            onChange={onTabChange}
+                            items={[
+                                { label: 'Toàn bộ Đội', key: 'all' },
+                                ...DEPARTMENT_OPTIONS.map(dept => ({ 
+                                    label: `Ban ${dept}`, 
+                                    key: dept 
+                                })),
+                                { label: 'Khác', key: 'others' }
+                            ]}
+                        />
+                    </TabSwitcher>
                 </div>
                 )}
                 </>

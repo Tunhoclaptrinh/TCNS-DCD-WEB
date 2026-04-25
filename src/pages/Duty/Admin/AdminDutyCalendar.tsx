@@ -375,7 +375,7 @@ const AdminDutyCalendar: React.FC = () => {
 
   return (
     <div className="duty-calendar-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực tuần</Title>
         <Space>
           <Button 
@@ -472,7 +472,18 @@ const AdminDutyCalendar: React.FC = () => {
                 </Tooltip>
                 
                 <Dropdown overlay={adminMenu} placement="bottomRight">
-                  <Button type="primary" className="hifi-button" style={{ height: 32, padding: '4px 12px', borderRadius: 8 }}>
+                  <Button 
+                    type="default" 
+                    className="hifi-button" 
+                    style={{ 
+                      height: 32, 
+                      padding: '4px 12px', 
+                      borderRadius: 8,
+                      borderColor: 'var(--primary-color)',
+                      color: 'var(--primary-color)',
+                      fontWeight: 600
+                    }}
+                  >
                     Quản trị <DownOutlined style={{ fontSize: 10 }} />
                   </Button>
                 </Dropdown>

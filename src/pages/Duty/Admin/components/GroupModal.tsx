@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Checkbox, Typography, Divider, Space } from 'antd';
+import { Form, Input, Switch, Typography, Divider, Space } from 'antd';
 import { LayoutOutlined, SettingOutlined } from '@ant-design/icons';
 import FormModal from '@/components/common/FormModal';
 import { DutyTemplate } from '@/services/duty.service';
@@ -77,14 +77,22 @@ const GroupModal: React.FC<GroupModalProps> = ({
           <SettingOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Cấu hình hệ thống</span>
         </Divider>
 
-        <Form.Item name="isDefault" valuePropName="checked" style={{ marginBottom: 8 }}>
-          <Checkbox>
-            Đặt làm bản mẫu mặc định cho toàn hệ thống
-          </Checkbox>
+        <Form.Item 
+          name="isDefault" 
+          valuePropName="checked" 
+          style={{ marginBottom: 12 }}
+          label={<span style={{ fontSize: 13, color: '#64748b' }}>Thiết lập mặc định</span>}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '12px 16px', borderRadius: 8, border: '1px solid #f1f5f9' }}>
+            <Switch size="small" />
+            <Text style={{ fontSize: 13 }}>Đặt làm bản mẫu mặc định cho toàn hệ thống</Text>
+          </div>
         </Form.Item>
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Lưu ý: Chỉ một nhóm bản mẫu có thể được đặt làm mặc định tại một thời điểm.
-        </Text>
+        <div style={{ paddingLeft: 16 }}>
+          <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+            Lưu ý: Chỉ một nhóm bản mẫu có thể được đặt làm mặc định tại một thời điểm.
+          </Text>
+        </div>
       </div>
     </FormModal>
   );

@@ -215,8 +215,8 @@ const MemberCalendar: React.FC = () => {
 
   return (
     <div className="duty-calendar-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực của tôi</Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
+        <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b', fontSize: '20px', letterSpacing: '-0.5px' }}>Lịch trực của tôi</Title>
         <Space>
           {isOldGeneration && (
             <Alert 
@@ -226,7 +226,20 @@ const MemberCalendar: React.FC = () => {
               style={{ padding: '4px 12px', borderRadius: 8 }}
             />
           )}
-          <Button icon={<QuestionCircleOutlined />}>Hướng dẫn</Button>
+          <Button 
+            icon={<QuestionCircleOutlined />}
+            style={{ 
+              borderRadius: 8, 
+              display: 'flex', 
+              alignItems: 'center', 
+              fontWeight: 500,
+              height: 32,
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0'
+            }}
+          >
+            Hướng dẫn
+          </Button>
         </Space>
       </div>
 
