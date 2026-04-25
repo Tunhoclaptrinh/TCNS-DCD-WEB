@@ -8,12 +8,12 @@ interface AdminDutyTableViewProps {
   loading: boolean;
   templates: DutyShift[];
   weekDays: dayjs.Dayjs[];
-  dutyDays: any[];
+
   slots: DutySlot[];
   isAdmin: boolean;
   openSlotDetail: (slot: DutySlot) => void;
   handleStampShift: (day: dayjs.Dayjs, shiftId: number) => void;
-  openQuickCreate: (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any) => void;
+  openQuickCreate: (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any, viewMode?: 'shift' | 'kip') => void;
   collapsedGroups: string[];
   setCollapsedGroups: (groups: string[]) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
@@ -23,7 +23,6 @@ interface AdminDutyTableViewProps {
 const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
   templates,
   weekDays,
-  dutyDays,
   slots,
   isAdmin,
   openSlotDetail,
@@ -35,10 +34,17 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
   showDefaultBoundaries
 }) => {
 
+
   const groupedShifts = useMemo(() => {
     const shiftMap = new Map();
 
+    // Only group from DEFINITIONS (templates with templateId and no date)
+    // to build the skeleton of the table rows.
+    // If we have ad-hoc shifts in 'templates' prop, they should also be handled.
     templates.forEach(shift => {
+      // If it's an actual instance (has date), we use its definition info for grouping if available
+      const isInstance = !!shift.date;
+      
       const shiftSig = `${shift.name}|${shift.startTime}|${shift.endTime}`;
       if (!shiftMap.has(shiftSig)) {
         shiftMap.set(shiftSig, {
@@ -59,8 +65,8 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
           if (!group.kips.has(kipSig)) {
             group.kips.set(kipSig, {
               key: `${shiftSig}|${kipSig}`,
-              shiftId: shift.templateId || shift.id,
-              kipId: kip.id,
+              shiftId: isInstance ? (shift.fromTemplateShiftId || shift.id) : (shift.templateId || shift.id),
+              kipId: isInstance ? (kip.fromTemplateKipId || kip.id) : kip.id,
               shift: shift,
               kip: kip,
               shortName: kip.name,
@@ -70,20 +76,23 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
           }
         });
       } else {
+        // Fallback for empty shifts (both templates and instances)
+        // This ensures manually created shifts without kips show up as "Toàn ca"
         const kipSig = `Toàn ca|${shift.startTime}-${shift.endTime}`;
         if (!group.kips.has(kipSig)) {
           group.kips.set(kipSig, {
             key: `${shiftSig}|${kipSig}`,
-            shiftId: shift.templateId || shift.id,
+            shiftId: isInstance ? shift.id : (shift.templateId || shift.id),
             kipId: null,
             shift: shift,
             kip: null,
             shortName: 'Toàn ca',
             time: `${shift.startTime} - ${shift.endTime}`,
-            note: shift.description === 'INSTANCE' ? '' : (shift.description || '')
+            note: isInstance ? '' : (shift.description || '')
           });
         }
       }
+
     });
 
     return Array.from(shiftMap.values()).map(g => ({
@@ -92,6 +101,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
       kips: Array.from(g.kips.values())
     }));
   }, [templates]);
+
 
   return (
     <div className="matrix-view-container" style={{ overflowX: 'auto' }}>
@@ -165,21 +175,26 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                     </td>
                     {weekDays.map((day, dIdx) => {
                       const dateStr = day.format('YYYY-MM-DD');
-                      const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === dateStr);
-                      const isStamped = (dayData?.shiftTemplateIds || []).map(String).includes(String(row.shiftId));
+                      const actualShiftForDay = templates.find(t => t.date && dayjs(t.date).format('YYYY-MM-DD') === dateStr && (String(t.fromTemplateShiftId) === String(row.shiftId) || (t.name === group.name && t.startTime === group.originalShift.startTime)));
+
+                      const isStamped = !!actualShiftForDay;
                       
                       const slot = slots.find(s => {
-                          if (dayjs(s.shiftDate).format('YYYY-MM-DD') !== dateStr) return false;
-                          const targetShift = templates.find(t => String(t.id) === String(s.shiftId));
-                          const targetKip = targetShift?.kips?.find((k: any) => String(k.id) === String(s.kipId));
-                          const sName = targetShift?.name || s.shiftLabel || '';
-                          const kName = targetKip?.name || s.kip?.name || 'Toàn ca';
-                          const kStart = targetKip?.startTime || targetShift?.startTime || s.kip?.startTime || s.startTime || '';
-                          const kEnd = targetKip?.endTime || targetShift?.endTime || s.kip?.endTime || s.endTime || '';
-                          const sig = `${sName}|${kName}|${kStart}-${kEnd}`;
-                          const rowShiftSig = `${group.name}|${row.shortName}|${row.time.replace(' - ', '-')}`;
-                          return sig === rowShiftSig;
+                          if (s.shiftDate && dayjs(s.shiftDate).format('YYYY-MM-DD') !== dateStr) return false;
+
+                          
+                          // Match by kipId if available
+                          if (row.kipId && s.kipId) {
+                            const targetKip = actualShiftForDay?.kips?.find((k: any) => String(k.id) === String(s.kipId) || String(k.fromTemplateKipId) === String(row.kipId));
+                            if (targetKip) return true;
+                          }
+
+                          // Fallback to signature matching
+                          const sig = `${s.shiftLabel || ''}|${s.startTime}-${s.endTime}`;
+                          const rowSig = `${group.name} - ${row.shortName}|${row.time.replace(' - ', '-')}`;
+                          return sig === rowSig;
                       });
+
                       
                       const isPast = day.isBefore(dayjs().startOf('day')) || (day.isSame(dayjs(), 'day') && dayjs(`${dateStr} ${row.time.split(' - ')[0]}`).isBefore(dayjs()));
 

@@ -37,8 +37,8 @@ const MemberCalendar: React.FC = () => {
   const [currentWeek, setCurrentWeek] = useState(dayjs().startOf('isoWeek' as any));
   const [slots, setSlots] = useState<DutySlot[]>([]);
   const [templates, setTemplates] = useState<DutyShift[]>([]);
-  const [days, setDays] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
   const [dutySettings, setDutySettings] = useState<any>(null);
   const [showDefaultBoundaries] = useState(false);
@@ -82,10 +82,8 @@ const MemberCalendar: React.FC = () => {
         const rawSlots = res.data.slots || [];
         setSlots(Array.isArray(rawSlots) ? rawSlots : []);
         
-        const rawDays = res.data.days || [];
-        setDays(Array.isArray(rawDays) ? rawDays : []);
-        
         const rawAssignments = res.data.assignments || [];
+
         setAssignments(Array.isArray(rawAssignments) ? rawAssignments : []);
         
         // Merge "Snapshot" templates into the local pool to ensure historical rendering
@@ -118,7 +116,7 @@ const MemberCalendar: React.FC = () => {
   const getEffectiveTemplatesForDay = (day: dayjs.Dayjs) => {
     const targetStr = day.format('YYYY-MM-DD');
     const dIdx = (day.day() + 6) % 7; // 0=Mon, ..., 6=Sun
-    const dayData = days.find(d => dayjs(d.date).format('YYYY-MM-DD') === targetStr);
+
     
     // Determine the "Authorized" template group for this day (Assigned or Global Default)
     const assignment = assignments.find(a => {
@@ -131,21 +129,32 @@ const MemberCalendar: React.FC = () => {
 
     let candidates: any[] = [];
 
-    // 1. Check for manual/stamped day record
-    if (dayData) {
-      const templateIds = (dayData.shiftTemplateIds || []);
-      candidates = templateIds.map((id: number) => {
-        const t = templates.find(temp => String(temp.id) === String(id));
-        return t ? { ...t, isStamped: true } : null;
-      }).filter(Boolean);
-    } else if (showDefaultBoundaries) {
-      // 2. Fallback to range-based assignment
-      if (assignment) {
-        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(assignment.templateId)).map(t => ({ ...t, isStamped: false }));
-      } else if (defaultGroup) {
-        candidates = templates.filter(t => t.description !== 'INSTANCE' && String(t.templateId) === String(defaultGroup.id)).map(t => ({ ...t, isStamped: false }));
-      }
+    // 1. Add ACTUAL SHIFT instances for this day (The source of truth)
+    const dayActualShifts = templates
+      .filter(t => t.date && dayjs(t.date).format('YYYY-MM-DD') === targetStr)
+      .map(t => ({ ...t, isStamped: true }));
+    candidates = [...dayActualShifts];
+
+
+    // 2. Add templates from the active group IF showDefaultBoundaries is ON
+    if (showDefaultBoundaries && activeGroupId) {
+      const activeGroupTemplates = templates.filter(t => 
+        String(t.templateId) === String(activeGroupId) && 
+        !t.date // Only definitions
+      );
+      
+      // Only add if not already present as an actual instance
+      activeGroupTemplates.forEach(tpl => {
+        const alreadyStamped = dayActualShifts.some(act => 
+          String(act.fromTemplateShiftId) === String(tpl.id) || 
+          (act.name === tpl.name && act.startTime === tpl.startTime)
+        );
+        if (!alreadyStamped) {
+          candidates.push({ ...tpl, isStamped: false });
+        }
+      });
     }
+
 
     // 3. Include Special Events ONLY IF Focus Mode is ON
     if (eventFocusMode !== 'off') {

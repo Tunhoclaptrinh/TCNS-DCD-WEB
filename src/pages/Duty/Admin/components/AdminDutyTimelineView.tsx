@@ -1,6 +1,6 @@
 import React from 'react';
 import { Space, Tooltip, Avatar, Modal } from 'antd';
-import { InfoCircleOutlined, CloseOutlined, SyncOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, CloseOutlined, SyncOutlined, EditOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DutySlot, DutyShift } from '@/services/duty.service';
@@ -9,7 +9,6 @@ interface AdminDutyTimelineViewProps {
   now: dayjs.Dayjs;
   currentWeek: dayjs.Dayjs;
   weekDays: dayjs.Dayjs[];
-  dutyDays: any[];
   slotsByDay: Record<string, DutySlot[]>;
   templates: DutyShift[];
   getEffectiveTemplatesForDay: (day: dayjs.Dayjs) => { shifts: any[], activeGroupId: any };
@@ -17,7 +16,7 @@ interface AdminDutyTimelineViewProps {
   isAdmin: boolean;
   currentUserId: number | undefined;
   openSlotDetail: (slot: DutySlot) => void;
-  openQuickCreate: (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any) => void;
+  openQuickCreate: (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any, viewMode?: 'shift' | 'kip') => void;
   handleRemoveShiftFromDay: (date: string, shiftId: number) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
 }
@@ -45,7 +44,6 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
   now,
   currentWeek,
   weekDays,
-  dutyDays,
   slotsByDay,
   templates,
   getEffectiveTemplatesForDay,
@@ -58,6 +56,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
   eventFocusMode
 }) => {
 
+
   const isSelectedWeekCurrent = now.startOf('isoWeek' as any).isSame(currentWeek.startOf('isoWeek' as any), 'day');
   const currentDayIndex = (now.day() + 6) % 7;
   const redLineTop = isSelectedWeekCurrent && now.hour() >= START_HOUR && now.hour() < END_HOUR
@@ -69,29 +68,23 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
       <div className="calendar-header">
         <div className="header-axis-spacer" />
         {weekDays.map((d, idx) => {
-          const dateStr = d.format('YYYY-MM-DD');
-          const dayData = dutyDays.find(dd => dayjs(dd.date).format('YYYY-MM-DD') === dateStr);
           const isToday = isSelectedWeekCurrent && idx === currentDayIndex;
 
           return (
-            <div key={idx} className={`header-day ${isToday ? 'is-today' : ''} ${dayData?.status === 'locked' ? 'is-locked' : ''}`}>
+            <div key={idx} className={`header-day ${isToday ? 'is-today' : ''}`}>
               <div className="day-header-content">
                 <Space direction="vertical" align="center" size={0}>
                   {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#ef4444', marginBottom: -2 }}>HÔM NAY</span>}
                   <Space size={4}>
                     <span className="day-name">{d.locale('vi').format('ddd')},</span>
                     <span className="day-date">{d.format('DD')}</span>
-                    {dayData?.note && dayData.note !== 'INSTANCE' && (
-                      <Tooltip title={dayData.note}>
-                        <InfoCircleOutlined style={{ marginLeft: 4, color: '#3b82f6', fontSize: 12 }} />
-                      </Tooltip>
-                    )}
                   </Space>
                 </Space>
               </div>
             </div>
           );
         })}
+
         <div className="header-scroll-spacer" />
       </div>
 
@@ -105,7 +98,20 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
           <div className="axis-hour"><span>24:00</span></div>
           {redLineTop !== null && (
             <div className="current-time-line axis-indicator" style={{ top: `${redLineTop}px` }}>
-              <span className="time-label">{now.format('HH:mm')}</span>
+              <span className="time-label" style={{ 
+                position: 'absolute', 
+                left: -45, 
+                top: -8, 
+                background: '#ef4444', 
+                color: '#fff', 
+                fontSize: '10px', 
+                padding: '2px 4px', 
+                borderRadius: '4px',
+                fontWeight: 800,
+                boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)'
+              }}>
+                {now.format('HH:mm')}
+              </span>
             </div>
           )}
         </div>
@@ -205,18 +211,46 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                     >
                       <div className="shift-tag" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'none' }}>{shift.name}</span>
-                      <CloseOutlined
-                        className="shift-delete-icon"
-                        style={{ fontSize: 10, cursor: 'pointer', padding: '2px', background: 'rgba(0,0,0,0.05)', borderRadius: '2px' }}
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          Modal.confirm({
-                            title: 'Xác nhận xóa lẻ',
-                            content: `Bạn có chắc muốn xóa khung ca "${shift.name}" chỉ riêng cho ngày ${day.format('DD/MM')} này không?`,
-                            onOk: () => handleRemoveShiftFromDay(day.format('YYYY-MM-DD'), shift.id)
-                          });
-                        }}
-                      />
+                        <Space size={4}>
+                          <EditOutlined
+                            className="shift-edit-icon"
+                            style={{ 
+                              fontSize: 10, 
+                              cursor: 'pointer', 
+                              padding: '2px', 
+                              background: 'rgba(0,0,0,0.05)', 
+                              borderRadius: '2px',
+                              color: '#3b82f6',
+                              transition: 'all 0.2s'
+                            }}
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              openQuickCreate(day, getTimeTop(shift.startTime), shift, null, 'shift');
+                            }}
+                          />
+                          <CloseOutlined
+                            className="shift-delete-icon"
+                            style={{ 
+                              fontSize: 10, 
+                              cursor: 'pointer', 
+                              padding: '2px', 
+                              background: 'rgba(0,0,0,0.05)', 
+                              borderRadius: '2px',
+                              transition: 'all 0.2s'
+                            }}
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              Modal.confirm({
+                                title: 'Xác nhận xóa lẻ',
+                                content: `Bạn có chắc muốn xóa khung ca "${shift.name}" chỉ riêng cho ngày ${day.format('DD/MM')} này không?`,
+                                okText: 'Xóa',
+                                cancelText: 'Hủy',
+                                okType: 'danger',
+                                onOk: () => handleRemoveShiftFromDay(day.format('YYYY-MM-DD'), shift.id)
+                              });
+                            }}
+                          />
+                        </Space>
                       </div>
                       {isSpecialEvent && (
                         <div style={{ position: 'absolute', top: 4, right: 8, opacity: 0.1, fontSize: '24px', pointerEvents: 'none' }}>
@@ -228,16 +262,8 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                 })}
 
                 <AnimatePresence>
-                  {filteredDaySlots
-                    .filter(slot => {
-                      // If it's a Shift-level slot (kipId null), check if there are any Kip-level slots for the same shift
-                      if (slot.kipId === null) {
-                        const hasKips = daySlots.some(s => s.kipId !== null && String(s.shiftId) === String(slot.shiftId));
-                        if (hasKips) return false; // Hide redundant shift container slot
-                      }
-                      return true;
-                    })
-                    .map(slot => {
+                  {filteredDaySlots.map(slot => {
+
                     const isPastSlot = isPastDay || (isToday && dayjs(`${dateStr} ${slot.startTime}`).isBefore(now));
                     return (
                       <motion.div
@@ -253,14 +279,16 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                         }}
                         onClick={() => openSlotDetail(slot)}
                       >
-                        <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                          <div className="title-area" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                            <span className="slot-title" style={{ fontWeight: 600 }}>
-                              <span style={{ verticalAlign: 'middle' }}>{slot.shiftLabel}</span>
-                              {slot.note && slot.note !== 'INSTANCE' && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#fff' }} /></Tooltip>}
-                            </span>
-                          </div>
-                          <span className="slot-count" style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 10, flexShrink: 0 }}>
+                        <div className="slot-header">
+                          <span className="slot-title">
+                            {slot.shiftLabel}
+                            {slot.note && slot.note !== 'INSTANCE' && (
+                              <Tooltip title={slot.note}>
+                                <InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: 'inherit' }} />
+                              </Tooltip>
+                            )}
+                          </span>
+                          <span className="slot-count">
                             {slot.assignedUserIds?.length || 0}/{slot.capacity || slot.kip?.capacity || 0}
                           </span>
                         </div>
@@ -272,7 +300,9 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                             </Tooltip>
                           ))}
                           {(!slot.assignedUsers || slot.assignedUsers.length === 0) && (
-                            <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{slot.capacity || slot.kip?.capacity || 0} người</span>
+                            <span style={{ fontSize: '0.65rem', color: '#a16207', opacity: 0.7, fontStyle: 'italic' }}>
+                              {slot.capacity || slot.kip?.capacity || 0} người
+                            </span>
                           )}
                         </div>
 

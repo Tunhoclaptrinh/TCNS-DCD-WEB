@@ -1,5 +1,6 @@
 import React from 'react';
-import { Form, Input, InputNumber, Row, Col, Space, Divider, Select, TimePicker, Checkbox, message } from 'antd';
+import { Form, Input, Row, Col, Space, Divider, Select, TimePicker, Checkbox, message } from 'antd';
+
 import { ScheduleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutyShift } from '@/services/duty.service';
@@ -58,8 +59,8 @@ const ShiftTemplateModal: React.FC<ShiftTemplateModalProps> = ({
         onSuccess();
         onCancel();
       }
-    } catch (err) {
-      message.error('Lỗi khi lưu bản mẫu');
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi lưu bản mẫu');
     } finally {
       setLoading(false);
     }

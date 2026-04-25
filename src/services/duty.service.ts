@@ -20,11 +20,18 @@ export interface DutyKip {
   daysOfWeek?: number[];
   slotStructure?: any[];
   config?: any;
+  status?: string;
+  fromTemplateKipId?: number;
+  order?: number;
 }
+
+
 
 export interface DutyShift {
   id: number;
   templateId?: number;
+  dayId?: number;
+  date?: string;
   name: string;
   startTime: string;
   endTime: string;
@@ -32,7 +39,12 @@ export interface DutyShift {
   daysOfWeek?: number[];
   isSpecialEvent: boolean;
   kips: DutyKip[];
+  status?: string;
+  fromTemplateShiftId?: number;
+  order?: number;
 }
+
+
 
 export interface DutySlot {
   id: number;
@@ -51,10 +63,10 @@ export interface DutySlot {
   capacity?: number;
   attendedUserIds?: number[];
   isSpecialEvent?: boolean;
-  dayId?: number;
-  slotStructure?: any[];
   config?: any;
+  order?: number;
 }
+
 
 export interface DutyDay {
   id: number;
@@ -288,6 +300,27 @@ class DutyService {
     const response = await apiClient.post<BaseApiResponse<DutySlot>>("/duty/slots", data);
     return response;
   }
+
+  async createActualShift(data: { date: string, name: string, startTime: string, endTime: string, note?: string }): Promise<BaseApiResponse<DutyShift>> {
+    const response = await apiClient.post<BaseApiResponse<DutyShift>>("/duty/shifts", data);
+    return response;
+  }
+
+  async createActualKip(data: { shiftId: number, name: string, coefficient: number, capacity: number, startTime?: string, endTime?: string, note?: string }): Promise<BaseApiResponse<DutyKip>> {
+    const response = await apiClient.post<BaseApiResponse<DutyKip>>("/duty/kips", data);
+    return response;
+  }
+
+  async deleteActualKip(kipId: number): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/kips/${kipId}`);
+    return response;
+  }
+
+  async updateActualShift(shiftId: number, data: Partial<DutyShift>): Promise<BaseApiResponse<DutyShift>> {
+    const response = await apiClient.put<BaseApiResponse<DutyShift>>(`/duty/shifts/${shiftId}`, data);
+    return response;
+  }
+
 
   /**
    * Clear all slots for a specific week

@@ -44,8 +44,8 @@ const AdminDutyCalendar: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(dayjs().startOf('isoWeek' as any));
   const [slots, setSlots] = useState<DutySlot[]>([]);
-  const [dutyDays, setDutyDays] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+
   const [templates, setTemplates] = useState<DutyShift[]>([]);
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
 
@@ -62,6 +62,16 @@ const AdminDutyCalendar: React.FC = () => {
   const [quickCreateContext, setQuickCreateContext] = useState<any>(null);
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+
+  // Chuyển từ modal Kíp → modal Ca cha
+  const handleOpenCaFromSlot = (slot: DutySlot) => {
+    setIsSlotDetailOpen(false);
+    const shift = templates.find(t => String(t.id) === String(slot.shiftId)) || null;
+    const slotDate = dayjs(slot.shiftDate);
+    setQuickCreateDate(slotDate);
+    setQuickCreateContext({ day: slotDate, yOffset: 0, shift, viewMode: 'shift' });
+    setIsQuickCreateVisible(true);
+  };
 
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
   const [now, setNow] = useState(dayjs());
@@ -100,17 +110,34 @@ const AdminDutyCalendar: React.FC = () => {
       const res = await dutyService.getWeeklySchedule(start);
       if (res.success && res.data) {
         setSlots(res.data.slots || []);
-        setDutyDays(res.data.days || []);
         setAssignments(res.data.assignments || []);
+
         
         // Merge "Snapshot" templates into the local pool to ensure historical rendering
         if (res.data?.templates) {
           setTemplates(prev => {
-            const existingIds = new Set(prev.map(t => String(t.id)));
-            const newTemplates = (res.data?.templates || []).filter((t: any) => !existingIds.has(String(t.id)));
-            return [...prev, ...newTemplates];
+            // Keep definitions from previous state
+            const oldDefinitions = prev.filter(t => !t.date);
+            // Get everything from current response
+            const currentResponseTemplates = res.data?.templates || [];
+
+            
+            // Build a new map to avoid duplicates, prioritizing current response
+            const templateMap = new Map();
+            
+            // 1. Add old definitions
+            oldDefinitions.forEach(t => templateMap.set(`def-${t.id}`, t));
+            
+            // 2. Add/Overwrite with everything from current response
+            currentResponseTemplates.forEach((t: any) => {
+              const key = t.date ? `inst-${t.id}` : `def-${t.id}`;
+              templateMap.set(key, t);
+            });
+            
+            return Array.from(templateMap.values());
           });
         }
+
       }
     } catch (err) {
       message.error('Không thể tải lịch trực');
@@ -131,9 +158,10 @@ const AdminDutyCalendar: React.FC = () => {
   const getEffectiveTemplatesForDay = (day: dayjs.Dayjs) => {
     const targetStr = day.format('YYYY-MM-DD');
     const dIdx = (day.day() + 6) % 7; // 0=Mon, ..., 6=Sun
-    const dayData = dutyDays.find(d => dayjs(d.date).format('YYYY-MM-DD') === targetStr);
+
     
     // Determine the "Authorized" template group for this day (Assigned or Global Default)
+    
     const assignment = assignments.find(a => {
       const startStr = dayjs(a.startDate).format('YYYY-MM-DD');
       const endStr = dayjs(a.endDate).format('YYYY-MM-DD');
@@ -144,26 +172,32 @@ const AdminDutyCalendar: React.FC = () => {
 
     let candidates: any[] = [];
 
-    // 1. Add templates from the active group IF showDefaultBoundaries is ON
+    // 1. Add ACTUAL SHIFT instances for this day (The source of truth)
+    const dayActualShifts = templates
+      .filter(t => t.date && dayjs(t.date).format('YYYY-MM-DD') === targetStr)
+      .map(t => ({ ...t, isStamped: true }));
+    candidates = [...dayActualShifts];
+
+
+    // 2. Add templates from the active group IF showDefaultBoundaries is ON
     if (showDefaultBoundaries && activeGroupId) {
-      candidates = templates.filter(t => String(t.templateId) === String(activeGroupId));
+      const activeGroupTemplates = templates.filter(t => 
+        String(t.templateId) === String(activeGroupId) && 
+        !t.date // Only definitions
+      );
+      
+      // Only add if not already present as an actual instance (by name/time or fromTemplateShiftId)
+      activeGroupTemplates.forEach(tpl => {
+        const alreadyStamped = dayActualShifts.some(act => 
+          String(act.fromTemplateShiftId) === String(tpl.id) || 
+          (act.name === tpl.name && act.startTime === tpl.startTime)
+        );
+        if (!alreadyStamped) {
+          candidates.push({ ...tpl, isStamped: false });
+        }
+      });
     }
 
-    // 2. Overwrite with or Merge manual/stamped day record (The "Stencil" source of truth)
-    if (dayData) {
-      const templateIds = (dayData.shiftTemplateIds || []);
-      const stampedTemplates = templateIds.map((id: number) => {
-        const t = templates.find(temp => String(temp.id) === String(id));
-        return t ? { ...t, isStamped: true } : null;
-      }).filter(Boolean);
-
-      // Union: Start with stamped, then add boundaries that aren't already there
-      const stampedIds = new Set(stampedTemplates.map((t: any) => String(t.id)));
-      candidates = [
-        ...stampedTemplates,
-        ...candidates.filter(c => !stampedIds.has(String(c.id)))
-      ];
-    }
     
     // 3. Include Special Events ONLY IF Focus Mode is ON
     if (eventFocusMode !== 'off') {
@@ -235,9 +269,9 @@ const AdminDutyCalendar: React.FC = () => {
     }
   };
 
-  const openQuickCreate = (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any) => {
+  const openQuickCreate = (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any, viewMode?: 'shift' | 'kip') => {
     setQuickCreateDate(day);
-    setQuickCreateContext({ day, yOffset, shift: shiftArg, kip: kipArg });
+    setQuickCreateContext({ day, yOffset, shift: shiftArg, kip: kipArg, viewMode });
     setIsQuickCreateVisible(true);
   };
 
@@ -299,11 +333,15 @@ const AdminDutyCalendar: React.FC = () => {
       activeGroupIds.add(String(manualTemplateGroupId));
     }
 
-    // Get shift IDs from existing slots and manual stamps in the current week
+    // Get shift IDs from existing slots
     const inUseShiftIds = new Set(slots.map(s => String(s.shiftId)));
-    const stampedShiftIds = new Set(dutyDays.flatMap(d => (d.shiftTemplateIds || []).map(String)));
+    const stampedShiftIds = new Set(templates.filter(t => t.date).map(t => String(t.fromTemplateShiftId || t.id)));
+
 
     return templates.filter(t => {
+      const isInstance = !!t.date;
+      if (isInstance) return true; // Always show actual instances on admin calendar
+
       const isAutoActive = activeGroupIds.has(String(t.templateId));
       const isInUse = inUseShiftIds.has(String(t.id)) || stampedShiftIds.has(String(t.id));
       const isSpecial = t.isSpecialEvent;
@@ -317,7 +355,9 @@ const AdminDutyCalendar: React.FC = () => {
       // Otherwise, ONLY show kips that are actually being used
       return isInUse;
     });
-  }, [templates, assignments, templateGroups, slots, dutyDays, currentWeek, showDefaultBoundaries, manualTemplateGroupId, eventFocusMode]);
+
+  }, [templates, assignments, templateGroups, slots, currentWeek, showDefaultBoundaries, manualTemplateGroupId, eventFocusMode]);
+
 
   const adminMenu = (
     <Menu onClick={({ key }) => {
@@ -470,8 +510,8 @@ const AdminDutyCalendar: React.FC = () => {
               loading={loading}
               templates={relevantTemplates}
               weekDays={weekDays}
-              dutyDays={dutyDays}
               slots={slots}
+
               isAdmin={isAdmin}
               openSlotDetail={openSlotDetail}
               handleStampShift={handleStampShift}
@@ -486,8 +526,8 @@ const AdminDutyCalendar: React.FC = () => {
               now={now}
               currentWeek={currentWeek}
               weekDays={weekDays}
-              dutyDays={dutyDays}
               slotsByDay={slotsByDay}
+
               templates={relevantTemplates}
               getEffectiveTemplatesForDay={getEffectiveTemplatesForDay}
               showDefaultBoundaries={showDefaultBoundaries}
@@ -509,6 +549,12 @@ const AdminDutyCalendar: React.FC = () => {
         date={quickCreateDate}
         context={quickCreateContext}
         templates={templates}
+        slotsByDay={slotsByDay}
+        onOpenSlot={(slot) => {
+          setIsQuickCreateVisible(false);
+          setSelectedSlot(slot);
+          setIsSlotDetailOpen(true);
+        }}
       />
 
       <AdminDutySlotModal
@@ -517,6 +563,7 @@ const AdminDutyCalendar: React.FC = () => {
         onSuccess={fetchSchedule}
         slot={selectedSlot}
         templates={templates}
+        onOpenCa={handleOpenCaFromSlot}
       />
 
       <SetupWeekModal

@@ -9,8 +9,9 @@ import {
   LockOutlined, UnlockOutlined,
   ExclamationCircleOutlined,
   CalendarOutlined, PlusSquareOutlined, InfoCircleOutlined,
-  DownOutlined, UnorderedListOutlined,
-  StopOutlined, SyncOutlined
+  UnorderedListOutlined,
+  StopOutlined, SyncOutlined,
+  UserOutlined, ClockCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -80,6 +81,11 @@ const DutyManagement: React.FC = () => {
   }, [manualOrder, manualShiftId, templates, activeTab]);
 
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(dayjs().startOf('day'));
+
+  const currentParentShift = useMemo(() => {
+    if (!editingKip || !editingKip.shiftId) return null;
+    return templates.find(s => s.id === editingKip.shiftId) || null;
+  }, [editingKip, templates]);
 
   const weekDays = useMemo(() => {
     if (!slotFilterWeek || !slotFilterWeek.isValid()) return [];
@@ -224,7 +230,32 @@ const DutyManagement: React.FC = () => {
         setIsKipModalOpen(false);
         fetchTemplates();
       }
-    } catch (err) { message.error('Lỗi khi lưu'); }
+    } catch (err: any) { 
+      message.error(err.response?.data?.message || 'Lỗi khi lưu'); 
+    }
+  };
+
+  const formatDaysCompact = (days: number[] | undefined) => {
+    if (!days || days.length === 0) return 'Chưa chọn';
+    const sorted = [...days].sort((a, b) => a - b);
+    const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    
+    if (sorted.length === 7) return 'Hàng ngày';
+    
+    // Check if consecutive
+    let isConsecutive = true;
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] !== sorted[i-1] + 1) {
+        isConsecutive = false;
+        break;
+      }
+    }
+    
+    if (isConsecutive && sorted.length >= 3) {
+      return `${dayNames[sorted[0]]} - ${dayNames[sorted[sorted.length - 1]]}`;
+    }
+    
+    return sorted.map(d => dayNames[d]).join(', ');
   };
 
   const handleDeleteShift = (id: number) => {
@@ -1074,18 +1105,16 @@ const DutyManagement: React.FC = () => {
               try {
                 const s = templates.find(x => x.id === v.shiftId);
                 const k = s?.kips.find(x => x.id === v.kipId);
-                const res = await dutyService.createSlot({
-                  shiftDate: v.date.format('YYYY-MM-DD'),
-                  shiftLabel: v.shiftLabel || (k ? `${s?.name} - Kíp ${k?.order}` : s?.name || 'Kíp trực lẻ'),
-                  startTime: v.timeRange?.[0]?.format('HH:mm') || k?.startTime || s?.startTime,
-                  endTime: v.timeRange?.[1]?.format('HH:mm') || k?.endTime || s?.endTime,
-                  order: v.order || k?.order || s?.order,
-                  endPeriod: v.endPeriod || k?.endPeriod,
-                  capacity: v.capacity || k?.capacity || 1,
-                  kipId: k?.id,
-                  shiftId: s?.id,
-                  status: v.status || 'open'
-                });
+                  const res = await dutyService.createSlot({
+                    shiftDate: v.date.format('YYYY-MM-DD'),
+                    shiftLabel: v.shiftLabel || (k ? `${s?.name} - Kíp ${k?.name}` : s?.name || 'Kíp trực lẻ'),
+                    startTime: v.timeRange?.[0]?.format('HH:mm') || k?.startTime || s?.startTime,
+                    endTime: v.timeRange?.[1]?.format('HH:mm') || k?.endTime || s?.endTime,
+                    capacity: v.capacity || k?.capacity || 1,
+                    kipId: k?.id,
+                    status: v.status || 'open'
+                  });
+
                 if (res.success) { message.success('Đã thêm kíp trực mới'); manualSlotForm.resetFields(); fetchSlots(); }
               } catch (err) { message.error('Lỗi khi thêm ca lẻ'); }
             }} initialValues={{ status: 'open' }}>
@@ -1140,69 +1169,78 @@ const DutyManagement: React.FC = () => {
       label: <span><LayoutOutlined /> Cấu hình Bản mẫu</span>,
       children: (
         <div className="templates-tab">
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, alignItems: 'flex-start', flexWrap: 'wrap', gap: 24 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Title level={4} style={{ margin: 0 }}>Bản mẫu Ca & Kíp</Title>
-                <Tooltip title="Cấu hình khung giờ cố định cho nhóm đã chọn">
-                  <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
-                </Tooltip>
-              </div>
-              <Space size="middle" wrap>
-                <Select
-                  style={{ width: 280 }}
-                  value={currentTemplateId}
-                  onChange={setCurrentTemplateId}
-                  placeholder="Chọn nhóm bản mẫu..."
-                  className="premium-select"
-                  options={templateGroups.map(g => ({ 
-                    label: (
-                      <Space>
-                        <span style={{ fontWeight: 600, color: '#1e293b' }}>{g.name}</span>
-                        {g.isDefault && <Tag color="gold" style={{ fontSize: '10px', height: '18px', lineHeight: '18px', border: 'none', borderRadius: 4, fontWeight: 700 }}>MẶC ĐỊNH</Tag>}
-                      </Space>
-                    ), 
-                    value: g.id 
-                  }))}
-                />
-                <Dropdown overlay={
-                  <Menu>
-                    <Menu.Item key="edit" icon={<EditOutlined />} disabled={!currentTemplateId} onClick={() => { setEditingGroup(templateGroups.find(g => g.id === currentTemplateId) || null); setIsGroupModalOpen(true); }}>Sửa nhóm đang chọn</Menu.Item>
-                    <Menu.Item key="delete" icon={<DeleteOutlined />} danger disabled={!currentTemplateId} onClick={() => { if (currentTemplateId) handleDeleteGroup(currentTemplateId); }}>Xóa nhóm đang chọn</Menu.Item>
-                  </Menu>
-                }>
-                  <Button icon={<SettingOutlined />} disabled={!currentTemplateId} style={{ borderRadius: 8 }}>Thiết lập nhóm <DownOutlined /></Button>
-                </Dropdown>
-                <Divider type="vertical" style={{ height: 24 }} />
-                <Button type="dashed" icon={<PlusOutlined />} onClick={() => { setEditingGroup(null); setIsGroupModalOpen(true); }} style={{ borderRadius: 8 }}>Thêm nhóm mới</Button>
-              </Space>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 16 }}>
-              <Button
-                type="primary"
-                icon={<ScheduleOutlined />}
-                style={{ borderRadius: 8, fontWeight: 600 }}
-                onClick={() => {
-                  coordinationForm.setFieldsValue({ templateId: currentTemplateId });
-                  setActiveTab('2');
-                }}
-                disabled={!currentTemplateId}
-              >
-                Áp dụng sang Điều phối & Lập lịch
-              </Button>
-              <Space>
-                <Segmented 
-                  options={[
-                    { label: 'Danh sách', value: 'list', icon: <UnorderedListOutlined /> },
-                    { label: 'Lịch tuần', value: 'calendar', icon: <CalendarOutlined /> }
-                  ]} 
-                  value={templateViewMode}
-                  onChange={(val) => setTemplateViewMode(val as any)}
-                  style={{ borderRadius: 8 }}
-                />
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }} style={{ borderRadius: 8 }}>Thêm Ca mới</Button>
-              </Space>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Space size={8}>
+              <Title level={4} style={{ margin: 0, fontSize: 18 }}>Bản mẫu Ca & Kíp</Title>
+              <Tooltip title="Cấu hình khung giờ cố định.">
+                <QuestionCircleOutlined style={{ color: '#94a3b8', fontSize: 14 }} />
+              </Tooltip>
+            </Space>
+            <Button
+              type="primary"
+              icon={<ScheduleOutlined />}
+              style={{ borderRadius: 8, fontWeight: 600 }}
+              onClick={() => {
+                coordinationForm.setFieldsValue({ templateId: currentTemplateId });
+                setActiveTab('2');
+              }}
+              disabled={!currentTemplateId}
+            >
+              Áp dụng Bản mẫu sang Lập lịch
+            </Button>
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: 12,
+            marginBottom: 20,
+            padding: '8px 12px',
+            background: '#fff',
+            borderRadius: 8,
+            border: '1px solid #f0f0f0'
+          }}>
+            <Space size={8} wrap>
+              <Select
+                style={{ width: 220 }}
+                value={currentTemplateId}
+                onChange={setCurrentTemplateId}
+                placeholder="Chọn nhóm..."
+                options={templateGroups.map(g => ({ 
+                  label: (
+                    <Space>
+                      <span style={{ fontWeight: 500 }}>{g.name}</span>
+                      {g.isDefault && <Tag color="blue" style={{ fontSize: 9, borderRadius: 4 }}>MẶC ĐỊNH</Tag>}
+                    </Space>
+                  ), 
+                  value: g.id 
+                }))}
+              />
+              <Dropdown overlay={
+                <Menu>
+                  <Menu.Item key="edit" icon={<EditOutlined />} disabled={!currentTemplateId} onClick={() => { setEditingGroup(templateGroups.find(g => g.id === currentTemplateId) || null); setIsGroupModalOpen(true); }}>Đổi tên</Menu.Item>
+                  <Menu.Item key="delete" icon={<DeleteOutlined />} danger disabled={!currentTemplateId} onClick={() => { if (currentTemplateId) handleDeleteGroup(currentTemplateId); }}>Xóa nhóm</Menu.Item>
+                </Menu>
+              }>
+                <Button icon={<SettingOutlined />} disabled={!currentTemplateId} />
+              </Dropdown>
+            </Space>
+
+            <Space size={8}>
+              <Segmented 
+                options={[
+                  { value: 'list', icon: <UnorderedListOutlined /> },
+                  { value: 'calendar', icon: <CalendarOutlined /> }
+                ]} 
+                value={templateViewMode}
+                onChange={(val) => setTemplateViewMode(val as any)}
+              />
+              <Divider type="vertical" style={{ height: 24 }} />
+              <Button icon={<PlusOutlined />} onClick={() => { setEditingGroup(null); setIsGroupModalOpen(true); }}>Thêm Nhóm</Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingShift(null); shiftForm.resetFields(); setIsShiftModalOpen(true); }} style={{ borderRadius: 8 }}>Thêm Ca</Button>
+            </Space>
           </div>
           <Divider style={{ marginTop: 0, marginBottom: 24, borderColor: '#e2e8f0', opacity: 0.6 }} />
           {templateViewMode === 'calendar' ? renderTemplateWeeklyView() : (
@@ -1228,7 +1266,7 @@ const DutyManagement: React.FC = () => {
                           </Tag>
                           {s.daysOfWeek && s.daysOfWeek.length < 7 && (
                             <Tag color="processing" style={{ borderRadius: 6, padding: '0 8px', height: 24, lineHeight: '22px', fontSize: '12px' }}>
-                              {s.daysOfWeek.map((d: number) => ['T2','T3','T4','T5','T6','T7','CN'][d]).join(', ')}
+                              {formatDaysCompact(s.daysOfWeek)}
                             </Tag>
                           )}
                         </Space>
@@ -1248,36 +1286,77 @@ const DutyManagement: React.FC = () => {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {s.kips.length === 0 ? (
-                          <div style={{ padding: '16px', borderRadius: 12, border: '1px dashed #e2e8f0', textAlign: 'center' }}>
-                            <Text type="secondary" style={{ fontStyle: 'italic', fontSize: '13px' }}>Chưa có kíp nào. Hãy nhấp "Thêm Kíp" để bắt đầu.</Text>
+                          <div style={{ padding: '24px', borderRadius: 12, border: '1px dashed #e2e8f0', textAlign: 'center', background: '#fcfcfc' }}>
+                            <InboxOutlined style={{ fontSize: 32, color: '#cbd5e1', marginBottom: 8 }} />
+                            <div><Text type="secondary" style={{ fontStyle: 'italic', fontSize: '13px' }}>Chưa có kíp nào trong bản mẫu này.</Text></div>
+                            <Button type="link" onClick={() => { setEditingKip({ shiftId: s.id }); setIsKipModalOpen(true); }}>Thêm kíp ngay</Button>
                           </div>
-                        ) : s.kips.map(k => (
-                          <div key={k.id} style={{ padding: '16px 20px', background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} className="kip-item-row-hover">
-                            <Space size="middle">
-                               <div style={{ width: 4, height: 32, borderRadius: 2, background: 'var(--primary-color)', opacity: 0.4 }} />
-                               <div>
-                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                   <Text strong style={{ color: '#1e293b', fontSize: '15px' }}>{k.name}</Text>
-                                   {(k.startTime || k.endTime) && (
-                                     <Tag color="cyan" style={{ fontSize: '11px', fontWeight: 700, borderRadius: 6 }}>Giờ riêng: {k.startTime || '??:??'} - {k.endTime || '??:??'}</Tag>
-                                   )}
-                                 </div>
-                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 4 }}>
-                                   <Text type="secondary" style={{ fontSize: '12px' }}>Tiết: <Text strong style={{ color: '#475569' }}>{k.order} {k.endPeriod ? ` - ${k.endPeriod}` : ''}</Text></Text>
-                                   <Divider type="vertical" />
-                                   <Text type="secondary" style={{ fontSize: '12px' }}>Chỉ tiêu: <Text strong style={{ color: 'var(--primary-color)' }}>{k.capacity}</Text> người</Text>
-                                   {k.daysOfWeek && k.daysOfWeek.length < 7 && (
-                                     <><Divider type="vertical" /><Text type="secondary" style={{ fontSize: '12px' }}>Ngày: <Text strong style={{ color: 'var(--primary-color)' }}>{k.daysOfWeek.map((d: number) => ['T2','T3','T4','T5','T6','T7','CN'][d]).join(', ')}</Text></Text></>
-                                   )}
-                                 </div>
-                               </div>
-                            </Space>
-                            <Space>
-                              <Tooltip title="Sửa kíp"><Button size="small" type="text" shape="circle" icon={<EditOutlined />} onClick={() => { setEditingKip(k); setIsKipModalOpen(true); }} /></Tooltip>
-                              <Tooltip title="Xóa kíp"><Button size="small" type="text" shape="circle" danger icon={<DeleteOutlined />} onClick={() => handleDeleteKip(k.id)} /></Tooltip>
-                            </Space>
+                        ) : (
+                          <div style={{ border: '1px solid #f1f5f9', borderRadius: 12, overflow: 'hidden' }}>
+                            {s.kips.map((k, idx) => (
+                              <div 
+                                key={k.id} 
+                                style={{ 
+                                  padding: '14px 20px', 
+                                  background: '#fff', 
+                                  borderBottom: idx === s.kips.length - 1 ? 'none' : '1px solid #f1f5f9', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between',
+                                  transition: 'all 0.2s'
+                                }} 
+                                className="kip-item-row-refined"
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
+                                  <div style={{ width: 3, height: 16, borderRadius: 2, background: 'var(--primary-color)', opacity: 0.3 }} />
+                                  
+                                  {/* GROUP 1: NAME & TIME */}
+                                  <div style={{ width: '30%', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <Text strong style={{ color: '#1e293b', fontSize: '14px', whiteSpace: 'nowrap' }}>{k.name}</Text>
+                                    {(k.startTime || k.endTime) && (
+                                      <Tag color="default" style={{ fontSize: '11px', borderRadius: 4, background: '#f1f5f9', border: 'none', color: '#64748b', margin: 0 }}>
+                                        {k.startTime || '??:??'} - {k.endTime || '??:??'}
+                                      </Tag>
+                                    )}
+                                  </div>
+
+                                  {/* GROUP 2: CAPACITY & DAYS */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 24, color: '#64748b' }}>
+                                    <Space size={6}>
+                                      <UserOutlined style={{ fontSize: 12, opacity: 0.7 }} />
+                                      <Text style={{ fontSize: '13px' }}>{k.capacity} người</Text>
+                                    </Space>
+                                    
+                                    <div style={{ width: 1, height: 14, background: '#e2e8f0' }} />
+                                    
+                                    <Space size={6}>
+                                      <CalendarOutlined style={{ fontSize: 12, opacity: 0.7 }} />
+                                      <Tooltip title={JSON.stringify(k.daysOfWeek?.sort()) === JSON.stringify(s.daysOfWeek?.sort()) ? "Sử dụng toàn bộ các ngày của Ca trực" : "Lịch trực riêng"}>
+                                        <Text style={{ fontSize: '13px' }}>
+                                          {formatDaysCompact(k.daysOfWeek)}
+                                          {JSON.stringify(k.daysOfWeek?.sort()) === JSON.stringify(s.daysOfWeek?.sort()) && (
+                                            <Text type="secondary" style={{ fontSize: 11, marginLeft: 4, opacity: 0.6 }}>(Theo Ca)</Text>
+                                          )}
+                                        </Text>
+                                      </Tooltip>
+                                    </Space>
+                                  </div>
+                                </div>
+
+                                {/* GROUP 3: ORDER & ACTIONS */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                  {k.order !== undefined && k.order > 0 && (
+                                    <Text style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 600 }}>#{k.order}</Text>
+                                  )}
+                                  <div style={{ display: 'flex', gap: 4 }}>
+                                    <Tooltip title="Chỉnh sửa"><Button size="small" type="text" shape="circle" icon={<EditOutlined />} style={{ color: '#94a3b8' }} onClick={() => { setEditingKip(k); setIsKipModalOpen(true); }} /></Tooltip>
+                                    <Tooltip title="Xóa"><Button size="small" type="text" shape="circle" danger icon={<DeleteOutlined />} style={{ opacity: 0.6 }} onClick={() => handleDeleteKip(k.id)} /></Tooltip>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
                     </Card>
                   ))}
@@ -1422,8 +1501,8 @@ const DutyManagement: React.FC = () => {
         onCancel={() => setIsKipModalOpen(false)}
         onSuccess={fetchTemplates}
         editingKip={editingKip}
+        parentShift={currentParentShift}
         onSubmit={handleCreateKip}
-        templates={templates}
         loading={loading}
       />
 
@@ -1432,8 +1511,10 @@ const DutyManagement: React.FC = () => {
         onCancel={() => setIsSlotEditModalOpen(false)}
         onSuccess={fetchSlots}
         slot={editingSlot}
+        templates={templates}
         loading={loading}
       />
+
 
       <Modal
         title={

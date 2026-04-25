@@ -19,7 +19,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
-import { DutyKip } from '@/services/duty.service';
+import { DutyKip, DutyShift } from '@/services/duty.service';
 import SlotStructureEditor from './SlotStructureEditor';
 
 
@@ -31,6 +31,7 @@ interface KipModalProps {
   onCancel: () => void;
   onSuccess: () => void;
   editingKip: Partial<DutyKip> | null;
+  parentShift?: DutyShift | null;
   onSubmit: (values: any) => Promise<void>;
   loading?: boolean;
 }
@@ -40,6 +41,7 @@ const KipModal: React.FC<KipModalProps> = ({
   onCancel,
   onSuccess,
   editingKip,
+  parentShift,
   onSubmit,
   loading = false,
 }) => {
@@ -181,7 +183,10 @@ const KipModal: React.FC<KipModalProps> = ({
                   { label: 'Thứ 6', value: 4 },
                   { label: 'Thứ 7', value: 5 },
                   { label: 'Chủ nhật', value: 6 }
-                ]}
+                ].map(opt => ({
+                  ...opt,
+                  disabled: parentShift?.daysOfWeek?.length ? !parentShift.daysOfWeek.includes(opt.value) : false
+                }))}
               />
             </Form.Item>
           </Col>
