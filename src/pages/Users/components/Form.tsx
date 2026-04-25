@@ -14,6 +14,7 @@ interface UsersFormProps {
   onOk: () => void;
   onCancel: () => void;
   generations: { id: number; name: string }[];
+  roles: { id: number; name: string }[];
 }
 
 const DEPARTMENT_OPTIONS = ['Tài chính', 'Truyền thông', 'Nhân sự'];
@@ -25,6 +26,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
   onOk,
   onCancel,
   generations,
+  roles,
 }) => {
 
   // No manual fetch needed anymore as it comes via props
@@ -278,13 +280,12 @@ const UsersForm: React.FC<UsersFormProps> = ({
         </Divider>
         <Row gutter={[24, 0]}>
           <Col xs={24} md={8}>
-            <Form.Item name="role" label="Vai trò hệ thống" style={{ marginBottom: 12 }}>
+            <Form.Item name="roleIds" label="Vai trò hệ thống" style={{ marginBottom: 12 }}>
               <Select
-                options={[
-                  { label: 'Admin', value: 'admin' },
-                  { label: 'Staff', value: 'staff' },
-                  { label: 'Customer', value: 'customer' },
-                ]}
+                mode="multiple"
+                placeholder="Chọn vai trò"
+                style={{ width: '100%' }}
+                options={roles.map(r => ({ label: r.name, value: r.id }))}
               />
             </Form.Item>
           </Col>

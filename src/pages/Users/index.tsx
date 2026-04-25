@@ -20,7 +20,9 @@ import { User, UserStats } from '../../types';
 import { useAccess } from '../../hooks';
 import UsersForm from './components/Form';
 import UsersDetailModal from './components/Detail';
+import Access from '@/components/common/Access';
 import generationService, { Generation } from '../../services/generation.service';
+import roleService, { Role } from '../../services/role.service';
 
 const POSITION_LEVELS = ['ctc', 'tv', 'tvb', 'pb', 'tb', 'dt'];
 const POSITION_LABELS: Record<string, string> = {
@@ -69,7 +71,7 @@ const UserPage = () => {
         downloadTemplate,
     } = useCRUD(userService, {
         autoFetch: true,
-        expand: 'generation',
+        expand: 'generation,roles',
     });
 
     const { hasPermission, user: currentUser } = useAccess();
@@ -105,6 +107,7 @@ const UserPage = () => {
         byDepartment: {},
     });
     const [generationList, setGenerationList] = useState<Generation[]>([]);
+    const [roleList, setRoleList] = useState<Role[]>([]);
     const [selectedGenerationId, setSelectedGenerationId] = useState<number | typeof ACTIVE_ONLY | undefined>(ACTIVE_ONLY);
 
     // Optimized: Memoized active generation IDs
@@ -126,20 +129,32 @@ const UserPage = () => {
         };
     }, [selectedGenerationId, activeGenerationIds]);
 
+    const fetchRoles = async () => {
+        try {
+            const res = await roleService.getAll();
+            if (res.success && res.data) {
+                setRoleList(res.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch roles:', error);
+        }
+    };
+
     const fetchGenerations = async () => {
         try {
             const res = await generationService.getAll();
             if (res.success && res.data) {
                 setGenerationList(res.data);
-                
-                setGenerationList(res.data);
-                
-                // On first load, initial filter is handled by the reactive effect and memo
             }
         } catch (error) {
             console.error('Failed to fetch generations:', error);
         }
     };
+
+    useEffect(() => {
+        fetchGenerations();
+        fetchRoles();
+    }, []);
 
     const fetchUserStats = async (filters: any = {}) => {
         if (!hasPermission('users:view_stats')) return;
@@ -389,15 +404,20 @@ const UserPage = () => {
             title: "Vai trò",
             dataIndex: "role",
             key: "role",
-            width: 100,
+            width: 180,
             resizable: true,
-            sortable: false,
-            filters: [
-                { text: 'Admin', value: 'admin' },
-                { text: 'Staff', value: 'staff' },
-                { text: 'Customer', value: 'customer' },
-            ],
-            render: (role: string) => {
+            render: (role: string, record: User) => {
+                const roles = (record as any).roles || [];
+                if (roles.length > 0) {
+                    return (
+                        <Space size={[0, 4]} wrap>
+                            {roles.map((r: any) => {
+                                const color = r.key === 'admin' ? 'volcano' : r.key === 'staff' ? 'blue' : 'gold';
+                                return <Tag key={r.id} color={color} style={{ fontSize: '11px' }}>{r.name.toUpperCase()}</Tag>;
+                            })}
+                        </Space>
+                    );
+                }
                 const color = role === 'admin' ? 'volcano' : role === 'staff' ? 'blue' : 'gold';
                 return <Tag color={color}>{role.toUpperCase()}</Tag>;
             },
@@ -470,41 +490,43 @@ const UserPage = () => {
                         placement="bottomRight"
                         overlay={
                             <Menu>
-                                <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
-                                    Chỉnh sửa
-                                </Menu.Item>
-                                <Menu.Item 
-                                    key="promote" 
-                                    icon={<RiseOutlined />} 
-                                    onClick={() => handlePromote(record)}
-                                    disabled={record.position === 'dt' || record.id === currentUser?.id}
-                                    style={{ color: record.id === currentUser?.id ? undefined : '#52c41a' }}
-                                >
-                                    {record.id === currentUser?.id ? 'Nâng hạng (Khóa)' : 'Nâng hạng'}
-                                </Menu.Item>
-                                <Menu.Item 
-                                    key="dismiss" 
-                                    icon={<UserDeleteOutlined />} 
-                                    onClick={() => handleDismiss(record)}
-                                    disabled={record.status === 'dismissed' || record.id === currentUser?.id}
-                                    danger
-                                >
-                                    {record.id === currentUser?.id ? 'Khai trừ (Khóa)' : 'Khai trừ'}
-                                </Menu.Item>
-                                {hasPermission('users:delete') && (
-                                    <>
-                                        <Menu.Divider />
-                                        <Menu.Item 
-                                            key="delete" 
-                                            icon={<DeleteOutlined />} 
-                                            onClick={() => handleDelete(record.id)}
-                                            disabled={record.id === currentUser?.id}
-                                            danger
-                                        >
-                                            Xóa vĩnh viễn
-                                        </Menu.Item>
-                                    </>
-                                )}
+                                <Access permission="users:update:org">
+                                    <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                                        Chỉnh sửa
+                                    </Menu.Item>
+                                </Access>
+                                <Access permission="users:promote">
+                                    <Menu.Item 
+                                        key="promote" 
+                                        icon={<RiseOutlined />} 
+                                        onClick={() => handlePromote(record)}
+                                        disabled={record.position === 'dt' || record.id === currentUser?.id}
+                                        style={{ color: record.id === currentUser?.id ? undefined : '#52c41a' }}
+                                    >
+                                        {record.id === currentUser?.id ? 'Nâng hạng (Khóa)' : 'Nâng hạng'}
+                                    </Menu.Item>
+                                    <Menu.Item 
+                                        key="dismiss" 
+                                        icon={<UserDeleteOutlined />} 
+                                        onClick={() => handleDismiss(record)}
+                                        disabled={record.status === 'dismissed' || record.id === currentUser?.id}
+                                        danger
+                                    >
+                                        {record.id === currentUser?.id ? 'Khai trừ (Khóa)' : 'Khai trừ'}
+                                    </Menu.Item>
+                                </Access>
+                                <Access permission="users:delete">
+                                    <Menu.Divider />
+                                    <Menu.Item 
+                                        key="delete" 
+                                        icon={<DeleteOutlined />} 
+                                        onClick={() => handleDelete(record.id)}
+                                        disabled={record.id === currentUser?.id}
+                                        danger
+                                    >
+                                        Xóa vĩnh viễn
+                                    </Menu.Item>
+                                </Access>
                             </Menu>
                         }
                     >
@@ -656,7 +678,12 @@ const UserPage = () => {
 
     const openEdit = (record: User) => {
         setEditingId(record.id);
-        form.setFieldsValue(record);
+        // Ensure roleIds is populated from expanded roles if missing
+        const formData = { 
+            ...record, 
+            roleIds: record.roleIds || (record as any).roles?.map((r: any) => r.id) || [] 
+        };
+        form.setFieldsValue(formData);
         setIsModalVisible(true);
     };
 
@@ -871,6 +898,7 @@ const UserPage = () => {
                 onOk={onOk}
                 onCancel={() => setIsModalVisible(false)}
                 generations={generationList}
+                roles={roleList}
             />
 
             <UsersDetailModal

@@ -88,7 +88,16 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
               </div>
               <Space direction="vertical" size={0}>
                  <div style={{ color: '#8c8c8c' }}>{user.email || '--'}</div>
-                 <Tag color="blue" style={{ marginTop: 4 }}>{String(user.role || '').toUpperCase()}</Tag>
+                 <Space size={[0, 4]} wrap style={{ marginTop: 4 }}>
+                   {((user as any).roles || []).length > 0 ? (
+                     (user as any).roles.map((r: any) => {
+                       const color = r.key === 'admin' ? 'volcano' : r.key === 'staff' ? 'blue' : 'gold';
+                       return <Tag key={r.id} color={color} style={{ fontSize: '10px' }}>{r.name.toUpperCase()}</Tag>;
+                     })
+                   ) : (
+                     <Tag color="blue">{String(user.role || '').toUpperCase()}</Tag>
+                   )}
+                 </Space>
               </Space>
             </div>
           </div>

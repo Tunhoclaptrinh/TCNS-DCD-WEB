@@ -49,6 +49,11 @@ export interface User extends BaseEntity, TimestampEntity {
     description?: string;
     status?: string;
   };
+  roleIds?: number[];
+  customPermissions?: {
+    extra: string[];
+    denied: string[];
+  };
   permissions?: string[];
 }
 

@@ -4,7 +4,7 @@ import { PlusSquareOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
 import dayjs from 'dayjs';
 
-const { Text } = Typography;
+const { } = Typography;
 
 interface ManualSlotFormProps {
   form: any;

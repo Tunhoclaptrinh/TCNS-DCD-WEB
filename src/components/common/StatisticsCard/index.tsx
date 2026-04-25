@@ -113,9 +113,8 @@ const StatisticsCard: React.FC<StatisticsCardProps> = ({
 		<Spin spinning={loading}>
 			<div style={{ ...containerStyle }}>
 				{title && <div style={{ fontWeight: 600, marginBottom: 8 }}>{title}</div>}
-
 				<Row gutter={[rowGutter, rowGutter]}>
-					{data.map((item, index) => (
+					{(data || []).map((item, index) => (
 						<Col {...(item.colSpan || colSpan)} key={index}>
 							{renderStatisticItem(item)}
 						</Col>
@@ -132,7 +131,7 @@ const StatisticsCard: React.FC<StatisticsCardProps> = ({
 			{title && <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>{title}</div>}
 
 			<Row gutter={[rowGutter, rowGutter]} wrap>
-				{data.map((item, index) => (
+				{(data || []).map((item, index) => (
 					<Col {...(item.colSpan || colSpan)} key={index}>
 						{renderStatisticItem(item)}
 					</Col>

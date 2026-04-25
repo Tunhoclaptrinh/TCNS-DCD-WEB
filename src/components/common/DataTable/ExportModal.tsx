@@ -240,7 +240,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                     </Checkbox.Group>
                   </div>
                   <div style={{ marginTop: 8, textAlign: 'right' }}>
-                    <Typography.Link size="small" onClick={() => setSelectedColumns(columns.map(c => c.key))}>Chọn tất cả</Typography.Link>
+                    <Typography.Link onClick={() => setSelectedColumns(columns.map(c => c.key))}>Chọn tất cả</Typography.Link>
                   </div>
               </section>
           </div>

@@ -11,7 +11,7 @@ import {
   CalendarOutlined,
   UnorderedListOutlined,
   StopOutlined, SyncOutlined,
-  UserOutlined, TeamOutlined
+  UserOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -30,7 +30,6 @@ import { useSocket } from '@/contexts/SocketContext';
 import { Progress } from 'antd';
 import BulkSchedulingForm from './components/BulkSchedulingForm';
 import ManualSlotForm from './components/ManualSlotForm';
-import DutyPersonnelTable from '../components/DutyPersonnelTable';
 
 const { Text, Title } = Typography;
 

@@ -31,6 +31,9 @@ const LeaveRequests = lazy(() => import("@/pages/Duty/Admin/LeaveRequests"));
 const SwapRequests = lazy(() => import("@/pages/Duty/Admin/SwapRequests"));
 const SystemConfig = lazy(() => import("@/pages/SystemConfig"));
 const Permissions = lazy(() => import("@/pages/Permissions"));
+const Roles = lazy(() => import("@/pages/Roles"));
+
+// ... (rest of the lazy loads)
 
 // Member Duty Pages
 const MemberDashboard = lazy(() => import("@/pages/Duty/Member/PersonalDashboard"));
@@ -220,6 +223,10 @@ const routes: RouteObject[] = [
           {
             path: "permissions",
             element: <Permissions />,
+          },
+          {
+            path: "roles",
+            element: <Roles />,
           },
         ]
       },

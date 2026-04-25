@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Image, Tag, Modal, Badge, Space, Typography } from 'antd';
+import { Image, Tag, Modal, Space, Typography } from 'antd';
 import Button from '@/components/common/Button';
-import { TeamOutlined, UserOutlined, InfoCircleOutlined, UsergroupAddOutlined } from '@ant-design/icons';
+import { UserOutlined, InfoCircleOutlined, UsergroupAddOutlined } from '@ant-design/icons';
 import DataTable from '@/components/common/DataTable';
 import { useCRUD } from '@/hooks/useCRUD';
 import userService from '@/services/user.service';

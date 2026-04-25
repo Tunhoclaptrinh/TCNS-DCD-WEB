@@ -3,7 +3,7 @@ import { Form, Row, Col, DatePicker, Select, Button, Typography, Divider, Space,
 import { ScheduleOutlined, DeleteOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
 
-const { Text } = Typography;
+const { } = Typography;
 
 interface BulkSchedulingFormProps {
   form: any;

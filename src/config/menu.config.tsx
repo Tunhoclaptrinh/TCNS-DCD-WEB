@@ -6,6 +6,7 @@ import {
     SwapOutlined,
     SafetyOutlined,
     SettingOutlined,
+    TeamOutlined,
 } from '@ant-design/icons';
 
 export interface IMenuItem {
@@ -33,12 +34,14 @@ export const adminMenu: IMenuItem[] = [
         path: '/admin/users',
         name: 'Thành viên',
         icon: <UserOutlined />,
+        accessFilter: ['users:list:all', 'users:list:dept'],
     },
     {
         key: 'duty',
         path: '/admin/duty',
         name: 'Lịch trực',
         icon: <CalendarOutlined />,
+        accessFilter: ['duty:view'],
         routes: [
             {
                 key: 'duty-calendar',
@@ -49,19 +52,19 @@ export const adminMenu: IMenuItem[] = [
                 key: 'duty-setup',
                 path: '/admin/duty/setup',
                 name: 'Thiết lập',
-                accessFilter: ['admin'],
+                accessFilter: ['system:manage_config'],
             },
             {
                 key: 'duty-leave',
                 path: '/admin/duty/leave',
                 name: 'Duyệt đơn nghỉ',
-                accessFilter: ['admin', 'staff'],
+                accessFilter: ['duty:approve_leave'],
             },
             {
                 key: 'duty-swaps',
                 path: '/admin/duty/swaps',
                 name: 'Đổi kíp',
-                accessFilter: ['admin', 'staff'],
+                accessFilter: ['duty:approve_swap'],
             },
         ]
     },
@@ -70,17 +73,27 @@ export const adminMenu: IMenuItem[] = [
         path: '/admin/system-config',
         name: 'Cấu hình hệ thống',
         icon: <SettingOutlined />,
+        accessFilter: ['system:manage:gen', 'system:roles:view', 'system:permissions:view'],
         routes: [
             {
                 key: 'system-settings',
                 path: '/admin/system-config/generations',
                 name: 'Khóa/Thế hệ',
+                accessFilter: ['system:manage:gen'],
             },
             {
                 key: 'permissions',
                 path: '/admin/system-config/permissions',
-                name: 'Phân quyền',
+                name: 'Ma trận Phân quyền',
                 icon: <SafetyOutlined />,
+                accessFilter: ['system:permissions:view'],
+            },
+            {
+                key: 'roles',
+                path: '/admin/system-config/roles',
+                name: 'Quản lý Vai trò',
+                icon: <TeamOutlined />,
+                accessFilter: ['system:roles:view'],
             },
         ]
     },
