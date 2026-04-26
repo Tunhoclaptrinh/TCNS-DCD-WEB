@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider } from 'antd';
+import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider, Modal } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -27,7 +27,7 @@ import MemberDutySlotModal from './components/MemberDutySlotModal';
 import MemberDutyTableView from './components/MemberDutyTableView';
 import MemberDutyTimelineView from './components/MemberDutyTimelineView';
 
-const { Title } = Typography;
+const { Title, Paragraph, Text } = Typography;
 
 const MemberCalendar: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -214,34 +214,51 @@ const MemberCalendar: React.FC = () => {
   );
 
   return (
-    <div className="duty-calendar-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
-        <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#1e293b', fontSize: '20px', letterSpacing: '-0.5px' }}>Lịch trực của tôi</Title>
+    <div className="duty-calendar-container" style={{ padding: '0 8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <Title level={3} style={{ margin: 0, color: '#1e293b', fontSize: '24px', letterSpacing: '-0.5px' }}>Lịch trực tuần này</Title>
+          <Text type="secondary">Đăng ký, xem lịch và quản lý ca trực của bạn.</Text>
+        </div>
         <Space>
-          {isOldGeneration && (
-            <Alert 
-              message={`Chế độ lưu trữ: Thế hệ ${userGeneration}`} 
-              type="warning" 
-              showIcon 
-              style={{ padding: '4px 12px', borderRadius: 8 }}
-            />
-          )}
           <Button 
             icon={<QuestionCircleOutlined />}
+            onClick={() => {
+              Modal.info({
+                title: 'Hướng dẫn sử dụng Lịch trực',
+                width: 600,
+                content: (
+                  <div style={{ marginTop: 16 }}>
+                    <Paragraph><strong>1. Đăng ký kíp:</strong> Nhấn vào các ô trống trong bảng hoặc nhấn "Đăng ký" trong giao diện lịch để tham gia kíp trực.</Paragraph>
+                    <Paragraph><strong>2. Hủy kíp:</strong> Bạn có thể tự hủy đăng ký nếu kíp chưa đầy hoặc chưa bị khóa. Nếu không, hãy gửi đơn xin nghỉ.</Paragraph>
+                    <Paragraph><strong>3. Đổi ca:</strong> Sử dụng tính năng "Đổi ca" để gửi yêu cầu cho thành viên khác hoặc chuyển ca cho Admin duyệt.</Paragraph>
+                    <Paragraph><strong>4. Quy định:</strong> Tuân thủ giới hạn số kíp tối đa trong tuần theo cấu hình của Đội.</Paragraph>
+                  </div>
+                ),
+                okText: 'Đã hiểu'
+              });
+            }}
             style={{ 
-              borderRadius: 8, 
-              display: 'flex', 
-              alignItems: 'center', 
-              fontWeight: 500,
-              height: 32,
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0'
+              borderRadius: 10, 
+              fontWeight: 600,
+              height: 40,
+              background: '#fff',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
             }}
           >
             Hướng dẫn
           </Button>
         </Space>
       </div>
+
+      <Alert 
+        message={<Text style={{ fontSize: 13, color: '#0369a1' }}><strong>Lưu ý:</strong> Mọi thay đổi (hủy/đổi) cần thực hiện sớm nhất có thể. Kíp đã khóa không thể tự ý thay đổi.</Text>}
+        type="info"
+        showIcon
+        closable
+        style={{ marginBottom: 16, borderRadius: 8, backgroundColor: '#f0f9ff', border: '1px solid #e0f2fe', padding: '8px 12px' }}
+      />
 
       <Card
         className="duty-calendar-card"
@@ -339,6 +356,7 @@ const MemberCalendar: React.FC = () => {
         currentUserId={currentUserId ?? 0}
         allSlots={slots}
         isOldGeneration={isOldGeneration}
+        settings={dutySettings}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Typography, Space, Spin, Tag, Button, Empty, Alert } from 'antd';
 import { 
   HistoryOutlined, 
@@ -21,11 +21,24 @@ const PersonalDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [upcomingSlots, setUpcomingSlots] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>({
+        totalHours: 0,
+        attendedCount: 0,
+        points: 0,
+        pendingRequests: 0,
+        upcomingCount: 0
+    });
 
     const fetchData = async () => {
         if (!user) return;
         setLoading(true);
         try {
+            // Get personal stats
+            const statsRes = await dutyService.getPersonalStats();
+            if (statsRes.success) {
+                setStats(statsRes.data);
+            }
+
             // Get weekly schedule to find upcoming slots
             const scheduleRes = await dutyService.getWeeklySchedule();
             const allSlots = scheduleRes.data?.slots || [];
@@ -50,16 +63,6 @@ const PersonalDashboard: React.FC = () => {
         fetchData();
     }, [user]);
 
-    const myStats = useMemo(() => {
-        // In a real app, these would come from a dedicated personal stats endpoint
-        return {
-            totalHours: 24, // Mock
-            attendedCount: 12, // Mock
-            points: 120, // Mock
-            pendingRequests: 2 // Mock
-        };
-    }, []);
-
     return (
         <div className="personal-dashboard" style={{ padding: '24px' }}>
             <div style={{ marginBottom: 24 }}>
@@ -73,7 +76,7 @@ const PersonalDashboard: React.FC = () => {
                         hideCard
                         data={[{
                             title: "Số giờ đã trực",
-                            value: myStats.totalHours,
+                            value: stats.totalHours,
                             valueColor: "#1890ff",
                             icon: <HistoryOutlined />
                         }]}
@@ -83,8 +86,8 @@ const PersonalDashboard: React.FC = () => {
                   <StatisticsCard
                       hideCard
                       data={[{
-                          title: "Tỷ lệ chuyên cần",
-                          value: 100,
+                          title: "Số ca đã hoàn thành",
+                          value: stats.attendedCount,
                           valueColor: "#52c41a",
                           icon: <CheckCircleOutlined />
                       }]}
@@ -95,7 +98,7 @@ const PersonalDashboard: React.FC = () => {
                         hideCard
                         data={[{
                             title: "Điểm tích lũy",
-                            value: myStats.points,
+                            value: stats.points,
                             valueColor: "#faad14",
                             icon: <CalendarOutlined />
                         }]}
@@ -106,7 +109,7 @@ const PersonalDashboard: React.FC = () => {
                         hideCard
                         data={[{
                             title: "Yêu cầu chờ duyệt",
-                            value: myStats.pendingRequests,
+                            value: stats.pendingRequests,
                             valueColor: "#722ed1",
                             icon: <ClockCircleOutlined />
                         }]}
@@ -117,9 +120,10 @@ const PersonalDashboard: React.FC = () => {
             <Row gutter={[24, 24]}>
                 <Col xs={24} lg={16}>
                     <Card 
-                        title={<Title level={5} style={{ margin: 0 }}>Ca trực sắp tới của tôi</Title>}
-                        extra={<Button type="link" onClick={() => navigate('/duty/calendar')}>Xem toàn bộ</Button>}
-                        style={{ height: '100%' }}
+                        title={<Title level={5} style={{ margin: 0 }}>Lịch trực tuần này của tôi</Title>}
+                        extra={<Button type="link" onClick={() => navigate('/duty/calendar')}>Xem chi tiết <ArrowRightOutlined /></Button>}
+                        style={{ height: '100%', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+                        bodyStyle={{ padding: '12px 24px' }}
                     >
                         <Spin spinning={loading}>
                             {upcomingSlots.length > 0 ? (
@@ -132,73 +136,97 @@ const PersonalDashboard: React.FC = () => {
                                                 display: 'flex', 
                                                 justifyContent: 'space-between', 
                                                 alignItems: 'center',
-                                                padding: '16px',
+                                                padding: '16px 20px',
                                                 borderRadius: '12px',
-                                                background: index === 0 ? '#fafafa' : 'transparent',
-                                                border: index === 0 ? '1px solid #f0f0f0' : '1px solid transparent',
-                                                marginBottom: 12
+                                                background: index === 0 ? 'rgba(24, 144, 255, 0.03)' : '#fff',
+                                                border: index === 0 ? '1px solid rgba(24, 144, 255, 0.1)' : '1px solid #f1f5f9',
+                                                marginBottom: 12,
+                                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => navigate('/duty/calendar')}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = 'none';
                                             }}
                                         >
                                             <Space size="middle">
                                                 <div style={{ 
-                                                    width: 48, 
-                                                    height: 48, 
-                                                    borderRadius: 12, 
-                                                    background: '#e6f7ff', 
+                                                    width: 44, 
+                                                    height: 44, 
+                                                    borderRadius: 10, 
+                                                    background: index === 0 ? '#1890ff' : '#f1f5f9', 
                                                     display: 'flex', 
                                                     alignItems: 'center', 
                                                     justifyContent: 'center',
-                                                    color: '#1890ff',
-                                                    fontSize: '20px'
+                                                    color: index === 0 ? '#fff' : '#64748b',
+                                                    fontSize: '18px'
                                                 }}>
                                                     <CalendarOutlined />
                                                 </div>
                                                 <div>
-                                                    <Title level={5} style={{ margin: 0 }}>{slot.shiftLabel}</Title>
-                                                    <Text type="secondary">{dayjs(slot.shiftDate).format('dddd, DD/MM/YYYY')}</Text>
+                                                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>{slot.shiftLabel}</div>
+                                                    <div style={{ fontSize: '13px', color: '#64748b' }}>{dayjs(slot.shiftDate).format('dddd, DD [Tháng] MM')}</div>
                                                 </div>
                                             </Space>
                                             <div style={{ textAlign: 'right' }}>
-                                                <Tag color="blue" icon={<ClockCircleOutlined />}>
+                                                <Tag color={index === 0 ? "blue" : "default"} style={{ margin: 0, borderRadius: 6, fontWeight: 500 }}>
                                                     {slot.startTime} - {slot.endTime}
                                                 </Tag>
-                                                <div style={{ marginTop: 4 }}>
-                                                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                        {index === 0 ? <Text type="success">Sắp diễn ra</Text> : 'Đã lên lịch'}
-                                                    </Text>
-                                                </div>
+                                                {index === 0 && <div style={{ marginTop: 4, fontSize: '11px', color: '#1890ff', fontWeight: 600 }}>CA TRỰC TIẾP THEO</div>}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <Empty description="Bạn không có ca trực nào sắp tới." />
+                                <div style={{ padding: '40px 0' }}>
+                                    <Empty description="Bạn chưa đăng ký ca trực nào trong tuần này." />
+                                    <div style={{ textAlign: 'center', marginTop: 16 }}>
+                                        <Button type="primary" onClick={() => navigate('/duty/calendar')}>Đăng ký ngay</Button>
+                                    </div>
+                                </div>
                             )}
                         </Spin>
                     </Card>
                 </Col>
                 <Col xs={24} lg={8}>
-                    <Card title={<Title level={5} style={{ margin: 0 }}>Thông báo & Ghi chú</Title>} style={{ height: '100%' }}>
-                        <Alert 
-                            message="Quy định nghỉ phép" 
-                            description="Vui lòng gửi đơn xin nghỉ trước ít nhất 24h để được xét duyệt kịp thời."
-                            type="info"
-                            showIcon
-                            style={{ marginBottom: 16 }}
-                        />
-                        <Alert 
-                            message="Ca trực cuối tuần" 
-                            description="Bạn có kíp trực vào Chủ nhật tới. Hãy chuẩn bị nhé!"
-                            type="warning"
-                            showIcon
-                            style={{ marginBottom: 16 }}
-                        />
-                         <div style={{ marginTop: 16 }}>
-                            <Button block type="primary" size="large" onClick={() => navigate('/duty/calendar')}>
-                                Đăng ký thêm ca trực <ArrowRightOutlined />
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                        <Card 
+                            title={<Title level={5} style={{ margin: 0 }}>Ghi chú & Quy định</Title>} 
+                            style={{ borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+                        >
+                            <Alert 
+                                message="Đơn xin nghỉ" 
+                                description="Gửi trước 24h để được duyệt."
+                                type="info"
+                                showIcon
+                                style={{ marginBottom: 12, borderRadius: 10 }}
+                            />
+                            <Alert 
+                                message="Đổi ca" 
+                                description="Tự thỏa thuận và gửi yêu cầu xác nhận."
+                                type="warning"
+                                showIcon
+                                style={{ marginBottom: 16, borderRadius: 10 }}
+                            />
+                            <Button block type="primary" ghost size="large" style={{ borderRadius: 10 }} onClick={() => navigate('/duty/calendar')}>
+                                Xem lịch tuần <ArrowRightOutlined />
                             </Button>
-                        </div>
-                    </Card>
+                        </Card>
+
+                        <Card 
+                             bodyStyle={{ padding: 20, background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)', borderRadius: 16 }}
+                             style={{ border: 'none', borderRadius: 16, color: '#fff' }}
+                        >
+                            <Title level={5} style={{ margin: 0, color: '#fff' }}>Bạn cần hỗ trợ?</Title>
+                            <Text style={{ color: 'rgba(255,255,255,0.85)', display: 'block', margin: '8px 0 16px' }}>Liên hệ ngay với Ban Chỉ huy Đội nếu gặp sự cố trong quá trình trực.</Text>
+                            <Button block style={{ borderRadius: 8, fontWeight: 600 }}>Liên hệ Admin</Button>
+                        </Card>
+                    </Space>
                 </Col>
             </Row>
         </div>

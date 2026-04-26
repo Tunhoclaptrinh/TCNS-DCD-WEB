@@ -75,7 +75,7 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
             }
         };
 
-        const interval = setInterval(fetchUnreadCount, 60000);
+        const interval = setInterval(fetchUnreadCount, 15000);
         window.addEventListener('focus', handleFocus);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 

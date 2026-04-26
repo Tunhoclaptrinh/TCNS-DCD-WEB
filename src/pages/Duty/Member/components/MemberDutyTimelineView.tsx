@@ -1,6 +1,6 @@
 import React from 'react';
 import { Space, Tooltip, Avatar, Tag } from 'antd';
-import { InfoCircleOutlined, LockOutlined, SyncOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, LockOutlined, SyncOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DutySlot, DutyShift } from '@/services/duty.service';
@@ -190,48 +190,102 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                     .map(slot => {
                     const isPastSlot = isPastDay || (isToday && dayjs(`${dateStr} ${slot.startTime}`).isBefore(now));
                     const isMySlot = currentUserId && slot.assignedUserIds?.includes(currentUserId);
+                    const isAdminAssigned = currentUserId && (slot as any).config?.adminAssignedUserIds?.includes(currentUserId);
                     const isSpecialEvent = !!slot.isSpecialEvent;
                     
+                    const isAssigned = isAdminAssigned || slot.status === 'locked' || isSpecialEvent;
+
                     return (
                       <motion.div
                         key={slot.id}
                         layoutId={String(slot.id)}
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className={`calendar-slot-box ${isPastSlot ? 'locked' : ''} ${isMySlot ? 'my-slot' : ''} ${slot.status === 'locked' ? 'admin-locked' : ''} ${isSpecialEvent ? 'special-event' : ''}`}
+                        className={`calendar-slot-box ${isPastSlot ? 'locked' : ''} ${isMySlot ? 'my-slot' : ''} ${isAssigned ? 'assigned-slot' : ''}`}
                         style={{
                           top: `${getTimeTop(slot.startTime)}px`,
                           height: `${getTimeHeight(slot.startTime, slot.endTime)}px`,
-                          borderLeft: isMySlot ? '4px solid #d4a574' : (slot.status === 'locked' ? '4px solid #94a3b8' : undefined),
-                          background: isMySlot ? 'rgba(212, 165, 116, 0.1)' : (slot.status === 'locked' ? 'rgba(148, 163, 184, 0.05)' : undefined)
+                          border: isMySlot ? `1px solid ${isAssigned ? '#dbeafe' : '#d1fae5'}` : undefined,
+                          borderLeft: isMySlot 
+                            ? `5px solid ${isAssigned ? '#2563eb' : '#059669'}` 
+                            : (slot.status === 'locked' ? '5px solid #94a3b8' : undefined),
+                          background: isMySlot 
+                            ? (isAssigned ? '#eff6ff' : '#ecfdf5') 
+                            : (slot.status === 'locked' ? '#f8fafc' : undefined),
+                          boxShadow: isMySlot ? '0 4px 12px rgba(0,0,0,0.08)' : undefined,
+                          padding: '6px 10px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          overflow: 'hidden'
                         }}
                         onClick={() => openSlotDetail(slot)}
                       >
-                        <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                          <div className="title-area" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                            <span className="slot-title" style={{ fontWeight: 600 }}>
-                              {isSpecialEvent && <Tag color="blue" style={{ fontSize: 9, padding: '0 4px', marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }}>EVENT</Tag>}
-                              <span style={{ verticalAlign: 'middle' }}>{slot.shiftLabel || 'Kíp trực'}</span>
-                            </span>
-                            {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 4, color: '#64748b' }} />}
-                            {slot.note && slot.note !== 'INSTANCE' && <Tooltip title={slot.note}><InfoCircleOutlined style={{ marginLeft: 4, fontSize: 10, color: '#64748b' }} /></Tooltip>}
+                        <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                          <div className="title-area" style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                              {isMySlot && (
+                                <Tag 
+                                  color={isAssigned ? "blue" : "emerald"} 
+                                  style={{ 
+                                    fontSize: '9px', 
+                                    margin: 0, 
+                                    lineHeight: '14px', 
+                                    padding: '0 4px',
+                                    borderRadius: 4,
+                                    border: 'none',
+                                    fontWeight: 700,
+                                    background: isAssigned ? '#3b82f6' : '#10b981',
+                                    color: '#fff'
+                                  }}
+                                >
+                                  {isAssigned ? 'PHÂN CÔNG' : 'CỦA TÔI'}
+                                </Tag>
+                              )}
+                              <span className="slot-title" style={{ 
+                                fontWeight: 700, 
+                                fontSize: '12px', 
+                                color: isMySlot ? (isAssigned ? '#1e40af' : '#065f46') : '#1e293b',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: 'block'
+                              }}>
+                                {slot.shiftLabel || 'Kíp trực'}
+                              </span>
+                            </div>
                           </div>
-                          <span className="slot-count" style={{ fontSize: '0.7rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: 10 }}>
+                          
+                          <div className="slot-count" style={{ 
+                            fontSize: '10px', 
+                            color: '#64748b', 
+                            background: 'rgba(0,0,0,0.05)', 
+                            padding: '1px 6px', 
+                            borderRadius: 6,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                            marginLeft: 4
+                          }}>
                             {slot.assignedUserIds?.length || 0}/{slot.capacity || 0}
-                          </span>
+                          </div>
                         </div>
-                        <div className="slot-time">{slot.startTime} - {slot.endTime}</div>
-                        <div className="slot-users">
-                          {slot.assignedUsers?.map((u: any) => (
-                            <Tooltip key={u.id} title={u.name}>
-                              <Avatar size={18} src={u.avatar} className="user-avatar-mini">{u.name.split(' ').pop()?.charAt(0)}</Avatar>
-                            </Tooltip>
-                          ))}
-                          {(!slot.assignedUsers || slot.assignedUsers.length === 0) && (
-                            <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{slot.capacity || 0} người</span>
-                          )}
+
+                        <div className="slot-time" style={{ fontSize: '11px', color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                           <ClockCircleOutlined style={{ fontSize: 10 }} />
+                           {slot.startTime} - {slot.endTime}
                         </div>
-                        {/* In Calendar View, we prioritize the Modal for registration and details as per user request */}
+
+                        <div className="slot-users" style={{ display: 'flex', alignItems: 'center', marginTop: 'auto' }}>
+                          <Avatar.Group maxCount={3} size="small" maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf', fontSize: 10 }}>
+                            {slot.assignedUsers?.map((u: any) => (
+                              <Tooltip key={u.id} title={u.name}>
+                                <Avatar size={18} src={u.avatar} style={{ border: '1px solid #fff' }}>
+                                  {u.name.split(' ').pop()?.charAt(0)}
+                                </Avatar>
+                              </Tooltip>
+                            ))}
+                          </Avatar.Group>
+                          {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 'auto', color: '#94a3b8' }} />}
+                        </div>
                       </motion.div>
                     );
                   })}

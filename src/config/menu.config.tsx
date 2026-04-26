@@ -119,4 +119,11 @@ export const customerMenu: IMenuItem[] = [
         name: 'Đơn của tôi',
         icon: <SwapOutlined />,
     },
+    {
+        key: 'admin-switch',
+        path: '/admin/dashboard',
+        name: 'Trang Quản trị',
+        icon: <SettingOutlined />,
+        accessFilter: ['dashboard:view', 'duty:manage'],
+    },
 ];

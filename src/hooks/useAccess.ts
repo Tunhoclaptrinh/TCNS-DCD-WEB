@@ -9,6 +9,7 @@ export const useAccess = () => {
     const { user } = useSelector((state: RootState) => state.auth);
     const permissions = user?.permissions || [];
     const isAdmin = user?.role === 'admin' || permissions.includes('*');
+    const isStaff = user?.role === 'staff' || isAdmin;
 
     /**
      * Check if user has a specific permission
@@ -46,6 +47,7 @@ export const useAccess = () => {
         hasAllPermissions,
         permissions,
         isAdmin,
+        isStaff,
         user
     };
 };

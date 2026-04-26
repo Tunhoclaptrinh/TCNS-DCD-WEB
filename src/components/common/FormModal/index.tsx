@@ -91,7 +91,7 @@ const FormModal: React.FC<FormModalProps> = ({
       centered={centered}
       destroyOnClose={destroyOnClose}
       maskClosable={maskClosable}
-      footer={footer ?? defaultFooter}
+      footer={footer === undefined ? defaultFooter : footer}
       {...modalProps}
     >
       <Spin spinning={loading}>

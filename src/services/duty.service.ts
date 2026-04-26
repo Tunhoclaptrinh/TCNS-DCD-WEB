@@ -42,6 +42,7 @@ export interface DutyShift {
   status?: string;
   fromTemplateShiftId?: number;
   order?: number;
+  slotStructure?: any[];
 }
 
 
@@ -65,6 +66,7 @@ export interface DutySlot {
   isSpecialEvent?: boolean;
   config?: any;
   order?: number;
+  slotStructure?: any[];
 }
 
 
@@ -383,6 +385,10 @@ class DutyService {
   }
   async getStats() {
     const response = await apiClient.get(`/duty/stats/summary`);
+    return response;
+  }
+  async getPersonalStats() {
+    const response = await apiClient.get(`/users/me/stats`);
     return response;
   }
 }

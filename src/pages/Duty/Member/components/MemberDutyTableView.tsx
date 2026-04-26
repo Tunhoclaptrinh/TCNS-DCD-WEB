@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Space, Tag, Button } from 'antd';
+import { Space, Tag, Button, Tooltip, Typography } from 'antd';
 import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DutySlot, DutyShift } from '@/services/duty.service';
@@ -158,18 +158,24 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                     </td>
                     {weekDays.map((day, dIdx) => {
                       const dateStr = day.format('YYYY-MM-DD');
-                      const slot = slots.find(s => {
+                      const daySlots = slots.filter(s => {
                           if (dayjs(s.shiftDate).format('YYYY-MM-DD') !== dateStr) return false;
-                          const targetShift = templates.find(t => String(t.id) === String(s.shiftId));
-                          const targetKip = targetShift?.kips?.find((k: any) => String(k.id) === String(s.kipId));
-                          const sName = targetShift?.name || s.shiftLabel || '';
-                          const kName = targetKip?.name || s.kip?.name || 'Toàn ca';
-                          const kStart = targetKip?.startTime || targetShift?.startTime || s.kip?.startTime || s.startTime || '';
-                          const kEnd = targetKip?.endTime || targetShift?.endTime || s.kip?.endTime || s.endTime || '';
-                          const sig = `${sName}|${kName}|${kStart}-${kEnd}`;
-                          const rowShiftSig = `${group.name}|${row.shortName}|${row.time.replace(' - ', '-')}`;
-                          return sig === rowShiftSig;
+                          
+                          const formatTime = (t: string) => t?.split(':').slice(0, 2).join(':');
+                          const sTime = `${formatTime(s.startTime)}-${formatTime(s.endTime)}`;
+                          const rowTime = row.time.replace(/\s+/g, '');
+                          if (sTime !== rowTime) return false;
+
+                          const sLabel = (s.shiftLabel || '').toLowerCase();
+                          const rowShortName = row.shortName.toLowerCase();
+                          const rowFullName = `${group.name} - ${row.shortName}`.toLowerCase();
+
+                          return (String(s.shiftId) === String(row.shiftId) && String(s.kipId || null) === String(row.kipId || null)) ||
+                                 sLabel === rowFullName || sLabel === rowShortName || sLabel.includes(rowShortName);
                       });
+                      
+                      // Pick the "best" slot: prefer the one with users assigned
+                      const slot = daySlots.sort((a, b) => (b.assignedUsers?.length || 0) - (a.assignedUsers?.length || 0))[0];
                       
                       const isPast = day.isBefore(dayjs().startOf('day')) || (day.isSame(dayjs(), 'day') && dayjs(`${dateStr} ${row.time.split(' - ')[0]}`).isBefore(dayjs()));
 
@@ -189,81 +195,143 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                           }}
                           onClick={() => { if (slot) openSlotDetail(slot); }}
                         >
-                            {slot ? (
-                              <div className={`slot-container ${isSpecialRow ? 'special-slot' : 'normal-slot'}`} style={{ 
-                                padding: '0px',
-                                minHeight: '60px',
-                                background: isPast ? '#e2e8f0' : (isSpecialRow ? 'rgba(59, 130, 246, 0.12)' : 'rgba(14, 165, 233, 0.15)'),
-                                borderRadius: 0,
-                                border: 'none',
-                                position: 'relative',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                height: '100%',
-                                boxSizing: 'border-box'
-                              }}>
-                                {(() => {
-                                  const currentUsers = slot.assignedUsers || [];
-                                  const max = slot.capacity || row.kip?.capacity || 1;
-                                  
-                                  return (
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                      {Array.from({ length: max }).map((_, idx) => {
-                                        const user = currentUsers[idx];
-                                        const isFirst = idx === 0;
+                            {(() => {
+                              if (!slot) return showDefaultBoundaries && (
+                                <div className="phantom-slot" style={{ 
+                                  height: '100%', 
+                                  minHeight: '48px', 
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  justifyContent: 'center',
+                                  background: 'rgba(0,0,0,0.02)',
+                                  border: '1px dashed rgba(0,0,0,0.1)'
+                                }}>
+                                  {(() => {
+                                    const max = row.kip?.capacity || row.shift?.capacity || 1;
+                                    return Array.from({ length: max }).map((_, idx) => (
+                                      <div 
+                                        key={idx} 
+                                        style={{ 
+                                          padding: '4px 8px', 
+                                          borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.05)' : 'none',
+                                          fontSize: '13px',
+                                          color: 'rgba(0,0,0,0.15)',
+                                          textAlign: 'center',
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        ---
+                                      </div>
+                                    ));
+                                  })()}
+                                </div>
+                              );
+
+                              const currentUsers = slot.assignedUsers || [];
+                              const hasMe = currentUsers.some(u => u.id === currentUserId);
+                              const isSpecialRow = group.originalShift.isSpecialEvent;
+                              const isAssigned = slot.status === 'locked' || isSpecialRow;
+                              const max = slot.capacity || row.kip?.capacity || 1;
+
+                              return (
+                                <div className={`slot-container ${isSpecialRow ? 'special-slot' : 'normal-slot'} ${hasMe ? 'has-me' : ''}`} style={{ 
+                                  padding: '0px',
+                                  minHeight: '60px',
+                                  background: isPast 
+                                    ? '#e2e8f0' 
+                                    : (hasMe 
+                                        ? (isAssigned ? '#eff6ff' : '#ecfdf5') 
+                                        : (isSpecialRow ? 'rgba(59, 130, 246, 0.12)' : 'rgba(14, 165, 233, 0.15)')),
+                                  borderRadius: 0,
+                                  position: 'relative',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  height: '100%',
+                                  boxSizing: 'border-box',
+                                  border: hasMe ? `1px solid ${isAssigned ? '#dbeafe' : '#d1fae5'}` : 'none',
+                                  borderLeft: hasMe ? `5px solid ${isAssigned ? '#2563eb' : '#059669'}` : 'none',
+                                  boxShadow: hasMe ? `0 2px 8px ${isAssigned ? 'rgba(37, 99, 235, 0.1)' : 'rgba(16, 185, 129, 0.1)'}` : 'none'
+                                }}>
+                                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                    {Array.from({ length: max }).map((_, idx) => {
+                                      const user = currentUsers[idx];
+                                      const isFirst = idx === 0;
+                                      const isMe = user && user.id === currentUserId;
+
+                                      if (!user) {
                                         return (
                                           <div 
                                             key={idx} 
-                                            className="stacked-user"
                                             style={{ 
                                               padding: '4px 8px', 
                                               borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
                                               fontSize: '13px',
-                                              color: user ? (isFirst ? '#dc2626' : (user.id === currentUserId ? '#b91c1c' : '#1e293b')) : 'rgba(0,0,0,0.25)',
-                                              textAlign: 'center',
-                                              fontWeight: isFirst || (user && user.id === currentUserId) ? 700 : 500
+                                              color: 'rgba(0,0,0,0.25)',
+                                              textAlign: 'center'
                                             }}
                                           >
-                                            {user ? user.name : '---'}
+                                            ---
                                           </div>
                                         );
-                                      })}
-                                    </div>
-                                  );
-                                })() }
-                                
-                                {/* Slot Capacity Indicator */}
-                                {(() => {
-                                  const current = slot.assignedUsers?.length || 0;
-                                  const max = slot.capacity || row.kip?.capacity || 1;
-                                  const isFull = current >= max;
-                                  return (
-                                    <div style={{ 
-                                      position: 'absolute', 
-                                      bottom: 2, 
-                                      right: 2, 
-                                      padding: '1px 4px',
-                                      background: isFull ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)',
-                                      borderRadius: 4,
-                                      fontSize: '9px',
-                                      fontWeight: 700,
-                                      color: isFull ? '#059669' : '#64748b',
-                                      border: isFull ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(0,0,0,0.05)',
-                                      pointerEvents: 'none'
-                                    }}>
-                                      {isFull ? 'FULL' : `${current}/${max}`}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            ) : (showDefaultBoundaries && (
-                                <div style={{ 
-                                  height: '100%', 
-                                  minHeight: '48px', 
-                                  border: '1px dashed rgba(0,0,0,0.05)',
-                                  borderRadius: 0,
-                                }} />
-                            ))}
+                                      }
+
+                                      return (
+                                        <Tooltip key={idx} title={`${user.name}${isMe ? ' (Tôi)' : ''}`}>
+                                          <div 
+                                            className={`stacked-user ${isMe ? 'is-me' : ''}`}
+                                            style={{ 
+                                              padding: '4px 8px', 
+                                              borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
+                                              fontSize: '12px',
+                                              color: isFirst ? '#dc2626' : (isMe ? '#b91c1c' : '#1e293b'),
+                                              textAlign: 'center',
+                                              fontWeight: isFirst || isMe ? 700 : 500,
+                                              transition: 'all 0.2s',
+                                              background: isMe ? 'rgba(220, 38, 38, 0.05)' : 'transparent'
+                                            }}
+                                          >
+                                            <Typography.Text 
+                                              ellipsis 
+                                              style={{ 
+                                                width: '100%', 
+                                                fontSize: 'inherit', 
+                                                color: 'inherit',
+                                                fontWeight: 'inherit'
+                                              }}
+                                            >
+                                              {user.name}
+                                            </Typography.Text>
+                                          </div>
+                                        </Tooltip>
+                                      );
+                                    })}
+                                  </div>
+                                  
+                                  {/* Slot Capacity Indicator */}
+                                  {(() => {
+                                    const current = slot.assignedUsers?.length || 0;
+                                    const isFull = current >= max;
+                                    return (
+                                      <div style={{ 
+                                        position: 'absolute', 
+                                        bottom: 2, 
+                                        right: 2, 
+                                        padding: '1px 4px',
+                                        background: isFull ? 'rgba(16, 185, 129, 0.15)' : 'rgba(0,0,0,0.05)',
+                                        borderRadius: 4,
+                                        fontSize: '9px',
+                                        fontWeight: 700,
+                                        color: isFull ? '#059669' : '#64748b',
+                                        border: isFull ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(0,0,0,0.05)',
+                                        pointerEvents: 'none'
+                                      }}>
+                                        {isFull ? 'FULL' : `${current}/${max}`}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              );
+                            })()}
                         </td>
                       );
                     })}

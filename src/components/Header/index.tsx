@@ -1,11 +1,11 @@
 import React from "react";
 import { Layout, Button, Avatar, Dropdown, Space, theme } from "antd";
 import { UserOutlined, LogoutOutlined, CalendarOutlined, DashboardOutlined } from "@ant-design/icons";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/store/slices/authSlice";
-import { RootState } from "@/store";
 import logo from "@/assets/images/logo.png";
+import { useAccess } from "@/hooks";
 import NotificationPopover from "@/components/common/NotificationPopover";
 
 const { Header: AntHeader } = Layout;
@@ -14,12 +14,14 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { token } = theme.useToken();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, isAdmin } = useAccess();
 
   const handleLogout = () => {
     dispatch(logout() as any);
     navigate("/login");
   };
+
+  const isStaff = isAdmin || (user as any)?.department === 'Ban Nhân sự';
 
   const menuItems = [
     {
@@ -34,8 +36,8 @@ const Header: React.FC = () => {
     {
       key: "duty",
       icon: <CalendarOutlined />,
-      label: user?.role === 'admin' || user?.role === 'staff' ? "Quản lý lịch trực" : "Lịch trực của tôi",
-      onClick: () => navigate(user?.role === 'admin' || user?.role === 'staff' ? "/admin/duty" : "/duty"),
+      label: isStaff ? "Quản lý lịch trực" : "Lịch trực của tôi",
+      onClick: () => navigate(isStaff ? "/admin/duty" : "/duty/calendar"),
     },
     {
       key: "logout",
@@ -71,11 +73,11 @@ const Header: React.FC = () => {
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <Button 
               type="text" 
-              icon={user.role === 'admin' || user.role === 'staff' ? <DashboardOutlined /> : <CalendarOutlined />}
-              onClick={() => navigate(user.role === 'admin' || user.role === 'staff' ? "/admin/dashboard" : "/duty")}
+              icon={isStaff ? <DashboardOutlined /> : <CalendarOutlined />}
+              onClick={() => navigate(isStaff ? "/admin/dashboard" : "/duty/dashboard")}
               style={{ fontWeight: 500 }}
             >
-              {user.role === 'admin' || user.role === 'staff' ? "Quản trị" : "Lịch trực"}
+              {isStaff ? "Quản trị" : "Lịch trực"}
             </Button>
             <NotificationPopover />
             <Dropdown menu={{ items: menuItems as any }} placement="bottomRight">

@@ -89,6 +89,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         visibilityMode: slot.config?.visibilityMode || 'public',
         assignedUserIds: slot.assignedUserIds || [],
         attendedUserIds: slot.attendedUserIds || [],
+        slotStructure: slot.slotStructure || (slot as any).kip?.slotStructure || (slot as any).shift?.slotStructure || [],
       });
     }
   }, [open, slot, form]);
@@ -108,7 +109,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
       const res = await dutyService.updateSlot(slot.id, payload);
       if (res.success) {
-        message.success('Cập nhật kíp trực thành công');
+        message.success('Cập nhật kíp trực thành công. Thông báo đã được gửi đến các thành viên.');
         onSuccess();
         onCancel();
       }
@@ -385,7 +386,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           </Col>
         </Row>
 
-        <SlotStructureEditor form={form} />
+        <SlotStructureEditor form={form} assignedUsers={selectedUsersCache} />
 
         <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space>

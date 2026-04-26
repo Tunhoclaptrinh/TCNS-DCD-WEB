@@ -9,14 +9,24 @@ const { Title, Paragraph } = Typography;
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, isInitialized } = useSelector((state: RootState) => state.auth);
+
+  React.useEffect(() => {
+    if (isInitialized && user) {
+      if (user.role === 'admin' || user.role === 'staff') {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/duty/dashboard");
+      }
+    }
+  }, [isInitialized, user, navigate]);
 
   return (
-    <div style={{ padding: "50px", maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
+    <div style={{ padding: "100px 50px", maxWidth: "1200px", margin: "0 auto", textAlign: "center", minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        <Title level={1}>Base Web Boilerplate</Title>
-        <Paragraph>
-          Một nền tảng vững chắc cho ứng dụng Web của bạn, tích hợp sẵn Ant Design, Redux Toolkit và Axios.
+        <Title level={1} style={{ fontSize: '48px', fontWeight: 800, color: 'var(--primary-color)' }}>TCNS - Đội Cờ Đỏ PTIT</Title>
+        <Paragraph style={{ fontSize: '18px', color: '#64748b', maxWidth: '600px', margin: '0 auto' }}>
+          Hệ thống Quản lý Tổ chức và Điều phối Lịch trực dành riêng cho thành viên Đội Cờ Đỏ.
         </Paragraph>
 
         {user ? (
