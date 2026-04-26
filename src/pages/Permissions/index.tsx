@@ -16,8 +16,7 @@ import {
   Input,
   Dropdown,
   Menu,
-  Tooltip,
-  Divider
+  Tooltip
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -365,7 +364,7 @@ const PermissionsPage: React.FC = () => {
                                   />
                                 </Tooltip>
 
-                                <Divider type="vertical" style={{width: 4, borderColor: 'red'}}/>
+                                
                               
                                 {hasPermission('system:permissions:edit') && (
                                   <Button variant="ghost" buttonSize="small" icon={<PlusOutlined />} onClick={(e) => { e.stopPropagation(); setEditingPerm(null); pForm.resetFields(); pForm.setFieldsValue({ module: group.category }); setIsPermModalVisible(true); }}>Thêm hành động</Button>

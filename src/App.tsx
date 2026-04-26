@@ -12,12 +12,9 @@ import { ToastProvider } from "./components/common/Toast";
 import { STORAGE_KEYS } from "./config/constants";
 
 const App: React.FC = () => {
-  console.log("App component rendering...");
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  console.log("Hooks initialized");
   const routing = useRoutes(routes);
-  console.log("Routes initialized");
 
   const { isInitialized, loading } = useSelector(
     (state: RootState) => state.auth,

@@ -38,8 +38,10 @@ class PermissionService extends BaseService<Permission> {
         grouped[moduleName] = [];
       }
       grouped[moduleName].push({
+        id: p.id,
         key: p.key,
         name: p.name,
+        module: p.module,
         description: p.description
       });
     });
