@@ -3,7 +3,7 @@ import {
   Card, 
   Typography, 
   message, 
-  Spin, 
+  Spin,
   Space, 
   Collapse,
   Tabs,
@@ -256,47 +256,86 @@ const PermissionsPage: React.FC = () => {
     }
   };
 
+  // Unified Tree Data for Matrix
+  const unifiedData = useMemo(() => {
+    return filteredGroups.map(group => ({
+      name: group.category,
+      isCategory: true,
+      children: group.actions.map((action: any) => ({
+        ...action,
+        isCategory: false
+      }))
+    }));
+  }, [filteredGroups]);
+
+  const [viewMode, setViewMode] = useState<'unified' | 'collapse'>('unified');
+
   return (
     <div className="permissions-matrix-page">
       {/* Header */}
       <div className="page-header-wrapper" style={{ marginBottom: 24 }}>
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
-          <Col xs={24} md={12}>
+          <Col xs={24} md={8}>
             <Title level={2} style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
               <SafetyCertificateOutlined style={{ marginRight: 12, color: 'var(--primary-color)' }} />
               Phân quyền hệ thống
             </Title>
             <Text type="secondary">Quản lý ma trận vai trò, hành động và kiểm soát truy cập chi tiết</Text>
           </Col>
-          <Col xs={24} md={12} style={{ textAlign: 'right' }}>
-            <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-              {hasPermission('system:permissions:edit') && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Dropdown
-                    trigger={['click']}
-                    placement="bottomRight"
-                    overlay={
-                      <Menu items={[
-                        {
-                          key: 'bulk',
-                          icon: <ThunderboltOutlined />,
-                          label: 'Tạo nhanh bộ CRUD',
-                          onClick: () => setIsBulkModalVisible(true)
-                        },
-                        {
-                          key: 'role',
-                          icon: <UserAddOutlined />,
-                          label: 'Thêm vai trò mới',
-                          onClick: () => { rForm.resetFields(); setIsRoleModalVisible(true); }
-                        }
-                      ]} />
-                    }
-                  >
-                    <Button variant="outline" buttonSize="small" icon={<DownOutlined />} style={{ color: '#595959', borderColor: '#d9d9d9', height: 32 }}>Thao tác khác</Button>
-                  </Dropdown>
-                  <Button variant="primary" buttonSize="small" icon={<PlusOutlined />} onClick={() => { setEditingPerm(null); pForm.resetFields(); setIsPermModalVisible(true); }} style={{ background: '#8b1d1d', borderColor: '#8b1d1d', height: 32 }}>Thêm hành động</Button>
-                </div>
-              )}
+          <Col xs={24} md={16} style={{ textAlign: 'right' }}>
+            <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <Input 
+                placeholder="Tìm hành động..." 
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: 220, height: 32 }}
+                allowClear
+                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+              />
+              
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button 
+                  variant="outline" 
+                  buttonSize="small" 
+                  icon={viewMode === 'unified' ? <BlockOutlined /> : <ThunderboltOutlined />} 
+                  onClick={() => setViewMode(viewMode === 'unified' ? 'collapse' : 'unified')}
+                  style={{ height: 32, color: '#1890ff', borderColor: '#1890ff' }}
+                >
+                  {viewMode === 'unified' ? 'Giao diện Cũ' : 'Giao diện Mới'}
+                </Button>
+
+                {hasPermission('system:permissions:edit') && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      buttonSize="small" 
+                      icon={<ThunderboltOutlined />} 
+                      onClick={() => setIsBulkModalVisible(true)} 
+                      style={{ color: '#722ed1', borderColor: '#d3adf7', height: 32 }}
+                    >
+                      Tạo CRUD
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      buttonSize="small" 
+                      icon={<UserAddOutlined />} 
+                      onClick={() => { rForm.resetFields(); setIsRoleModalVisible(true); }} 
+                      style={{ color: '#8b1d1d', borderColor: '#8b1d1d', height: 32 }}
+                    >
+                      Thêm vai trò
+                    </Button>
+                    <Button 
+                      variant="primary" 
+                      buttonSize="small" 
+                      icon={<PlusOutlined />} 
+                      onClick={() => { setEditingPerm(null); pForm.resetFields(); setIsPermModalVisible(true); }} 
+                      style={{ background: '#8b1d1d', borderColor: '#8b1d1d', height: 32 }}
+                    >
+                      Thêm hành động
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </Col>
         </Row>
@@ -307,29 +346,19 @@ const PermissionsPage: React.FC = () => {
           activeKey={activeTab}
           onChange={setActiveTab}
           tabBarExtraContent={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Input 
-                placeholder="Tìm hành động..." 
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: 220, height: 32 }}
-                allowClear
-                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-              />
-              <Button 
-                variant="ghost" 
-                buttonSize="small" 
-                icon={<QuestionCircleOutlined />} 
-                onClick={() => setIsGuideModalVisible(true)} 
-                style={{ 
-                  color: '#595959', 
-                  border: '1px solid #d9d9d9',
-                  height: 32 
-                }}
-              >
-                Hướng dẫn
-              </Button>
-            </div>
+            <Button 
+              variant="ghost" 
+              buttonSize="small" 
+              icon={<QuestionCircleOutlined />} 
+              onClick={() => setIsGuideModalVisible(true)} 
+              style={{ 
+                color: '#595959', 
+                border: '1px solid #d9d9d9',
+                height: 32 
+              }}
+            >
+              Hướng dẫn
+            </Button>
           }
           items={[
             {
@@ -339,6 +368,24 @@ const PermissionsPage: React.FC = () => {
                 <>
                   {loading ? (
                     <div style={{ textAlign: 'center', padding: '100px 0' }}><Spin size="large" tip="Đang đồng bộ dữ liệu..." /></div>
+                  ) : viewMode === 'unified' ? (
+                    <MatrixTable 
+                      dataSource={unifiedData}
+                      roles={roles} 
+                      updating={updating} 
+                      loading={loading}
+                      canEdit={hasPermission('system:permissions:edit')}
+                      onTogglePermission={handleTogglePermission}
+                      onAudit={(type, id) => { setAuditType(type); setSelectedAuditId(id); setIsAuditModalVisible(true); }}
+                      onAddAction={(category) => {
+                        setEditingPerm(null);
+                        pForm.resetFields();
+                        pForm.setFieldsValue({ module: category });
+                        setIsPermModalVisible(true);
+                      }}
+                      onEdit={(action) => { setEditingPerm(action); pForm.setFieldsValue(action); setIsPermModalVisible(true); }}
+                      onDelete={handleDeletePermission}
+                    />
                   ) : filteredGroups.length > 0 ? (
                     <Collapse defaultActiveKey={filteredGroups.map(g => g.category)} ghost expandIconPosition="right" className="matrix-collapse">
                       {filteredGroups.map(group => (
@@ -350,7 +397,7 @@ const PermissionsPage: React.FC = () => {
                                 <Tag color="blue" style={{ borderRadius: 10 }}>{group.actions.length} hành động</Tag>
                               </Space>
                               <Space>
-                                <Tooltip title="Xem danh sách người dùng có quyền này">
+                                <Tooltip title="Xem danh sách người dùng trong module này">
                                   <Button 
                                     variant="ghost" 
                                     buttonSize="small" 
@@ -363,11 +410,21 @@ const PermissionsPage: React.FC = () => {
                                     }}
                                   />
                                 </Tooltip>
-
-                                
-                              
                                 {hasPermission('system:permissions:edit') && (
-                                  <Button variant="ghost" buttonSize="small" icon={<PlusOutlined />} onClick={(e) => { e.stopPropagation(); setEditingPerm(null); pForm.resetFields(); pForm.setFieldsValue({ module: group.category }); setIsPermModalVisible(true); }}>Thêm hành động</Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    buttonSize="small" 
+                                    icon={<PlusOutlined />} 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      setEditingPerm(null); 
+                                      pForm.resetFields(); 
+                                      pForm.setFieldsValue({ module: group.category }); 
+                                      setIsPermModalVisible(true); 
+                                    }}
+                                  >
+                                    Thêm hành động
+                                  </Button>
                                 )}
                               </Space>
                             </div>
@@ -376,11 +433,18 @@ const PermissionsPage: React.FC = () => {
                           className="matrix-panel"
                         >
                           <MatrixTable 
-                            actions={group.actions} 
+                            dataSource={group.actions.map((a: any) => ({ ...a, isCategory: false }))} 
                             roles={roles} 
                             updating={updating} 
+                            canEdit={hasPermission('system:permissions:edit')}
                             onTogglePermission={handleTogglePermission}
                             onAudit={(type, id) => { setAuditType(type); setSelectedAuditId(id); setIsAuditModalVisible(true); }}
+                            onAddAction={(category) => {
+                              setEditingPerm(null);
+                              pForm.resetFields();
+                              pForm.setFieldsValue({ module: category });
+                              setIsPermModalVisible(true);
+                            }}
                             onEdit={(action) => { setEditingPerm(action); pForm.setFieldsValue(action); setIsPermModalVisible(true); }}
                             onDelete={handleDeletePermission}
                           />

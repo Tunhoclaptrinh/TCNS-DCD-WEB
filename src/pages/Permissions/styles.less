@@ -130,6 +130,67 @@
     }
   }
 
+  .matrix-unified-table {
+    .ant-table {
+      border: 1px solid #f0f0f0 !important;
+    }
+    
+    .ant-table-thead > tr > th {
+      background: #fafafa !important;
+      font-weight: 700;
+      font-size: 13px;
+      color: #262626;
+      border-bottom: 2px solid #f0f0f0 !important;
+    }
+
+    .ant-table-row-level-0 {
+      background-color: #fafafa;
+      
+      &:hover > td {
+        background-color: #f5f5f5 !important;
+      }
+      
+      td {
+        border-bottom: 1px solid #f0f0f0 !important;
+      }
+    }
+
+    .matrix-category-header {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      width: 100%;
+      cursor: pointer;
+      
+      .ant-typography {
+        letter-spacing: 0.5px;
+        margin: 0 !important;
+      }
+    }
+
+    .ant-table-row-level-0 {
+      background-color: #fafafa;
+      
+      td {
+        padding: 0 !important; // Let the header div handle padding
+        border-bottom: 1px solid #f0f0f0 !important;
+      }
+
+      &:hover > td {
+        background-color: #f5f5f5 !important;
+      }
+    }
+
+    .ant-table-row-level-1 {
+      td {
+        padding: 10px 16px !important;
+      }
+      &:hover > td {
+        background-color: #fff9f9 !important;
+      }
+    }
+  }
+
   .admin-checkbox-full-access {
     pointer-events: none;
     .ant-checkbox-inner {
