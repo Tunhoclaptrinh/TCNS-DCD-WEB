@@ -31,7 +31,7 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
       title: 'Hành động / Quyền hạn',
       key: 'action',
       fixed: 'left' as const,
-      width: 280,
+      width: 250,
       render: (_: any, record: Permission) => (
         <div className="permission-row-info">
           <div style={{ flex: 1 }}>
@@ -75,7 +75,13 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
         </div>
       )
     },
-    ...roles.map(role => ({
+    ...[...roles].sort((a, b) => {
+      const aKey = a.key.trim().toLowerCase();
+      const bKey = b.key.trim().toLowerCase();
+      if (aKey === 'admin') return 1;
+      if (bKey === 'admin') return -1;
+      return a.id - b.id;
+    }).map(role => ({
       title: (
         <div style={{ textAlign: 'center' }}>
           <Tooltip title={role.description}>
@@ -89,10 +95,25 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
       key: role.key,
       width: 130,
       align: 'center' as const,
+      fixed: undefined,
       render: (_: any, record: Permission) => {
         const hasPermission = role.permissions?.includes('*') || role.permissions?.includes(record.key);
-        const isAdminWildcard = role.key === 'admin' && role.permissions?.includes('*');
+        const isAdminWildcard = role.key.trim().toLowerCase() === 'admin' && role.permissions?.includes('*');
         const isPending = updating === `${role.id}-${record.key}`;
+
+        if (isAdminWildcard) {
+          return (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <Tooltip title="Toàn quyền hệ thống">
+                <Checkbox 
+                  checked 
+                  disabled
+                  className="admin-checkbox-full-access"
+                />
+              </Tooltip>
+            </div>
+          );
+        }
 
         return (
           <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -101,7 +122,7 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
             ) : (
               <Checkbox 
                 checked={hasPermission}
-                disabled={isAdminWildcard || !role.isActive}
+                disabled={!role.isActive}
                 onChange={(e) => onTogglePermission(role, record.key, e.target.checked)}
               />
             )}
@@ -112,16 +133,18 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
   ];
 
   return (
-    <Table 
-      columns={columns} 
-      dataSource={actions} 
-      pagination={false} 
-      size="small" 
-      bordered
-      rowKey="key"
-      className="matrix-inner-table"
-      scroll={{ x: 'max-content' }}
-    />
+    <div className="matrix-table-container">
+      <Table 
+        columns={columns} 
+        dataSource={actions} 
+        pagination={false} 
+        size="small" 
+        bordered
+        rowKey="key"
+        className="matrix-inner-table"
+        scroll={{ x: 'max-content' }}
+      />
+    </div>
   );
 };
 

@@ -11,11 +11,10 @@ import {
     EyeOutlined,
     UserDeleteOutlined,
     MenuOutlined,
-    SafetyOutlined,
-    QuestionCircleOutlined
+    SafetyOutlined
 } from '@ant-design/icons';
 import { useCRUD } from '../../hooks/useCRUD';
-import { Button, DataTable, StatisticsCard, TabSwitcher } from '@/components/common';
+import { Button, DataTable, StatisticsCard, TabSwitcher, Access } from '@/components/common';
 import { DataTableColumn, FilterConfig } from '../../components/common/DataTable/types';
 import userService from '../../services/user.service';
 import { User, UserStats } from '../../types';
@@ -61,6 +60,7 @@ const UserPage = () => {
         update,
         handleTableChange,
         updateFilters,
+        setFilters,
         clearFilters,
         search,
         searchTerm,
@@ -90,6 +90,10 @@ const UserPage = () => {
     const [targetPosition, setTargetPosition] = useState<string>('');
     const [targetDepartment, setTargetDepartment] = useState<string>('');
     const [activeTab, setActiveTab] = useState<string>('all');
+    const [potentialAlumni, setPotentialAlumni] = useState<User[]>([]);
+    const [isAlumniModalVisible, setIsAlumniModalVisible] = useState(false);
+    const [syncingAlumni, setSyncingAlumni] = useState(false);
+    const [alumniSelectedIds, setAlumniSelectedIds] = useState<number[]>([]);
     
     const initialStatObject = {
         total: 0,
@@ -99,9 +103,11 @@ const UserPage = () => {
         ctv: 0,
         official: 0,
         management: 0,
+        alumni: 0,
         recentSignups: 0,
         byRole: {},
         byPosition: {},
+        byGeneration: {},
     };
 
     const ACTIVE_ONLY = 'active_only';
@@ -195,17 +201,81 @@ const UserPage = () => {
         fetchGenerations();
     }, []);
 
-    // Reactive stats update when filter changes
+    // Reactive data & stats update when ANY filter criteria changes
     useEffect(() => {
-        fetchUserStats(currentGenFilter);
-        // Also ensure useCRUD filters are synced on value change
-        updateFilters(currentGenFilter);
-    }, [selectedGenerationId, activeGenerationIds]);
+        const combinedFilters: any = { ...currentGenFilter };
+        
+        // Apply Tab filters
+        if (activeTab === 'alumni') {
+            combinedFilters.status = 'inactive';
+            combinedFilters.department = undefined;
+            combinedFilters.department_nin = undefined;
+        } else {
+            combinedFilters.status = 'active'; // Default for all other tabs
+            if (activeTab === 'all') {
+                combinedFilters.department = undefined;
+                combinedFilters.department_nin = undefined;
+            } else if (activeTab === 'others') {
+                combinedFilters.department = undefined;
+                combinedFilters.department_nin = DEPARTMENT_OPTIONS;
+            } else {
+                combinedFilters.department = activeTab;
+                combinedFilters.department_nin = undefined;
+            }
+        }
+
+        // Use setFilters to REPLACE instead of merge, ensuring old filters are cleared
+        fetchUserStats(combinedFilters);
+        setFilters(combinedFilters);
+    }, [selectedGenerationId, activeGenerationIds, activeTab]);
     
     // Synced refresh helper
     const refreshData = async () => {
         await fetchAll();
         await fetchUserStats(currentGenFilter);
+    };
+
+    const handleSyncAlumni = async () => {
+        try {
+            setSyncingAlumni(true);
+            const res = await userService.getPotentialAlumni();
+            if (res.success && res.data) {
+                if (res.data.length === 0) {
+                    message.info('Không có thành viên nào cần đồng bộ sang trạng thái cựu.');
+                    return;
+                }
+                setPotentialAlumni(res.data);
+                setAlumniSelectedIds(res.data.map(u => u.id));
+                setIsAlumniModalVisible(true);
+            }
+        } catch (error) {
+            console.error('Failed to fetch potential alumni:', error);
+            message.error('Không thể tải danh sách ứng viên cựu thành viên');
+        } finally {
+            setSyncingAlumni(false);
+        }
+    };
+
+    const confirmSyncAlumni = async () => {
+        if (alumniSelectedIds.length === 0) {
+            message.warning('Vui lòng chọn ít nhất một thành viên');
+            return;
+        }
+
+        try {
+            setSyncingAlumni(true);
+            const res = await userService.syncAlumniStatus(alumniSelectedIds);
+            if (res.success) {
+                message.success(res.message);
+                setIsAlumniModalVisible(false);
+                await refreshData();
+            }
+        } catch (error) {
+            console.error('Sync alumni failed:', error);
+            message.error('Đồng bộ thất bại');
+        } finally {
+            setSyncingAlumni(false);
+        }
     };
 
     const handleToggleStatus = async (record: User) => {
@@ -428,7 +498,6 @@ const UserPage = () => {
             key: "department",
             width: 150,
             resizable: true,
-            filters: DEPARTMENT_OPTIONS.map(d => ({ text: d, value: d })),
             render: (dept: string) => dept ? <Tag color="blue">{dept}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>
         },
         {
@@ -437,20 +506,32 @@ const UserPage = () => {
             key: "role",
             width: 180,
             resizable: true,
-            render: (role: string, record: User) => {
+            render: (_: string, record: User) => {
                 const roles = (record as any).roles || [];
-                if (roles.length > 0) {
-                    return (
-                        <Space size={[0, 4]} wrap>
-                            {roles.map((r: any) => {
-                                const color = r.key === 'admin' ? 'volcano' : r.key === 'staff' ? 'blue' : 'gold';
-                                return <Tag key={r.id} color={color} style={{ fontSize: '11px' }}>{r.name.toUpperCase()}</Tag>;
-                            })}
-                        </Space>
-                    );
-                }
-                const color = role === 'admin' ? 'volcano' : role === 'staff' ? 'blue' : 'gold';
-                return <Tag color={color}>{role.toUpperCase()}</Tag>;
+                const isDt = record.position === 'dt';
+                
+                return (
+                    <Space size={[0, 4]} wrap>
+                        {isDt && (
+                            <Tag color="#8b1d1d" style={{ fontSize: '11px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                ĐỘI TRƯỞNG (ADMIN)
+                            </Tag>
+                        )}
+                        {roles.filter((r: any) => !(isDt && (r.id === 1 || r.key === 'admin'))).map((r: any) => {
+                            const isAdmin = r.id === 1 || r.key === 'admin';
+                            return (
+                                <Tag 
+                                    key={r.id} 
+                                    color={isAdmin ? '#8b1d1d' : 'blue'} 
+                                    style={{ fontSize: '11px', borderRadius: '4px' }}
+                                >
+                                    {r.name.toUpperCase()}
+                                </Tag>
+                            );
+                        })}
+                        {!isDt && roles.length === 0 && <Tag color="default">GUEST</Tag>}
+                    </Space>
+                );
             },
         },
         {
@@ -497,6 +578,50 @@ const UserPage = () => {
             dataIndex: "password",
             required: true,
             hidden: true, // Only for import/export
+        },
+        {
+            title: "Quyền Admin",
+            key: "adminToggle",
+            width: 120,
+            fixed: 'right',
+            align: 'center',
+            render: (_: any, record: User) => {
+                const roles = (record as any).roles || [];
+                const isAdmin = roles.some((r: any) => r.id === 1 || r.key === 'admin') || record.position === 'dt';
+                const isSelf = record.id === currentUser?.id || record.position === 'dt';
+
+                return (
+                    <Tooltip title={isSelf ? "Không thể tự hạ quyền của chính mình" : (isAdmin ? "Tắt quyền Admin" : "Bật quyền Admin")}>
+                        <Switch
+                            checked={isAdmin}
+                            loading={loading && editingId === record.id}
+                            disabled={isSelf || !hasPermission('users:promote')}
+                            onChange={async (checked) => {
+                                setEditingId(record.id);
+                                try {
+                                    let currentRoleIds = roles.map((r: any) => r.id);
+                                    if (checked) {
+                                        if (!currentRoleIds.includes(1)) currentRoleIds.push(1);
+                                    } else {
+                                        currentRoleIds = currentRoleIds.filter((id: number) => id !== 1);
+                                    }
+                                    await update(record.id, { roleIds: currentRoleIds });
+                                    message.success(`Đã cập nhật quyền Admin cho ${record.name}`);
+                                    refreshData();
+                                } catch (error) {
+                                    message.error("Thao tác thất bại");
+                                } finally {
+                                    setEditingId(null);
+                                }
+                            }}
+                            style={{ 
+                                background: isAdmin ? '#8b1d1d' : undefined,
+                                borderColor: isAdmin ? '#8b1d1d' : undefined 
+                            }}
+                        />
+                    </Tooltip>
+                );
+            }
         },
         {
             title: "Thao tác",
@@ -759,13 +884,7 @@ const UserPage = () => {
 
     const onTabChange = (key: string) => {
         setActiveTab(key);
-        if (key === 'all') {
-            updateFilters({ department: undefined, department_nin: undefined });
-        } else if (key === 'others') {
-            updateFilters({ department: undefined, department_nin: DEPARTMENT_OPTIONS });
-        } else {
-            updateFilters({ department: key, department_nin: undefined });
-        }
+        // Combined logic moved to useEffect for reactivity
     };
 
     return (
@@ -797,6 +916,12 @@ const UserPage = () => {
                                 value: currentStats.ctv || 0,
                                 icon: <TeamOutlined />,
                                 valueColor: '#fa8c16', // Orange
+                            },
+                            {
+                                title: 'Cựu thành viên',
+                                value: currentStats.alumni || 0,
+                                icon: <TeamOutlined />,
+                                valueColor: '#8c8c8c', // Gray
                             },
                             {
                                 title: activeTab === 'all' ? 'Ban quản lý' : `Quản lý (${activeTab === 'others' ? 'Khác' : activeTab})`,
@@ -844,7 +969,8 @@ const UserPage = () => {
                                     label: `Ban ${dept}`, 
                                     key: dept 
                                 })),
-                                { label: 'Khác', key: 'others' }
+                                { label: 'Khác', key: 'others' },
+                                { label: 'Cựu thành viên', key: 'alumni' }
                             ]}
                         />
                     </TabSwitcher>
@@ -916,17 +1042,19 @@ const UserPage = () => {
                 onValidateImport={validateImport}
                 onDownloadTemplate={downloadTemplate}
                 extra={
-                  <Button 
-                    variant="ghost" 
-                    buttonSize="small" 
-                    icon={<QuestionCircleOutlined />} 
-                    onClick={() => {
-                       message.info('Tính năng hướng dẫn đang được cập nhật cho trang này');
-                    }} 
-                    style={{ color: '#595959', height: 32 }}
-                  >
-                    Hướng dẫn
-                  </Button>
+                  <Space>
+                    <Access permission="users:update">
+                        <Button 
+                            variant="outline" 
+                            buttonSize="small" 
+                            icon={<SafetyOutlined />} 
+                            onClick={handleSyncAlumni}
+                            style={{ height: 32 }}
+                        >
+                            Chốt danh sách Cựu
+                        </Button>
+                    </Access>
+                  </Space>
                 }
             />
 
@@ -993,6 +1121,46 @@ const UserPage = () => {
                         </div>
                     )}
                 </div>
+            </Modal>
+
+            <Modal
+                title="Chốt danh sách Cựu thành viên"
+                open={isAlumniModalVisible}
+                onOk={confirmSyncAlumni}
+                onCancel={() => setIsAlumniModalVisible(false)}
+                width={700}
+                confirmLoading={syncingAlumni}
+                okText="Xác nhận chuyển thành Cựu"
+                cancelText="Hủy"
+            >
+                <div style={{ marginBottom: 16 }}>
+                    Dưới đây là danh sách các thành viên thuộc những Khóa đã ngưng hoạt động. 
+                    Mặc định tất cả sẽ được chuyển sang trạng thái <strong>"Không hoạt động"</strong>. 
+                    Bạn hãy bỏ tích những người vẫn còn đang hoạt động.
+                </div>
+                <DataTable
+                    dataSource={potentialAlumni}
+                    columns={[
+                        {
+                            title: 'Tên thành viên',
+                            render: (_, record) => record.name || `${record.lastName} ${record.firstName}`.trim(),
+                        },
+                        {
+                            title: 'Mã SV',
+                            dataIndex: 'studentId',
+                        },
+                        {
+                            title: 'Khóa',
+                            render: (_, record) => (record as any).generation?.name || '--',
+                        }
+                    ]}
+                    selectedRowKeys={alumniSelectedIds}
+                    onSelectChange={(keys) => setAlumniSelectedIds(keys as number[])}
+                    batchOperations={true}
+                    searchable={false}
+                    pagination={false}
+                    scroll={{ y: 400 }}
+                />
             </Modal>
         </>
     );

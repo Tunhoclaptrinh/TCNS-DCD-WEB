@@ -558,6 +558,7 @@ export const useCRUD = (service: any, options: any = {}) => {
 
         // Filters
         filters,
+        setFilters,
         updateFilters,
         clearFilters,
 

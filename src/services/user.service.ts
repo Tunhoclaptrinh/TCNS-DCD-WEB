@@ -248,6 +248,47 @@ class UserService extends BaseService<User, UserCreateDTO, UserUpdateDTO> {
       throw error;
     }
   }
+
+  /**
+   * Sync alumni status based on generation activity
+   */
+  async syncAlumniStatus(userIds?: number[]): Promise<BaseApiResponse<{ count: number }>> {
+    try {
+      const response = await apiClient.post<BaseApiResponse<{ count: number }>>(
+        `${this.endpoint}/sync-alumni`,
+        { userIds }
+      );
+
+      return {
+        success: response.success ?? true,
+        data: response.data ?? (response as any),
+        message: response.message ?? 'Đã đồng bộ trạng thái cựu thành viên',
+      };
+    } catch (error) {
+      logger.error('[User] syncAlumniStatus error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get potential alumni (active users in inactive generations)
+   */
+  async getPotentialAlumni(): Promise<BaseApiResponse<User[]>> {
+    try {
+      const response = await apiClient.get<BaseApiResponse<User[]>>(
+        `${this.endpoint}/potential-alumni`
+      );
+
+      return {
+        success: response.success ?? true,
+        data: response.data ?? (response as any),
+        message: response.message,
+      };
+    } catch (error) {
+      logger.error('[User] getPotentialAlumni error:', error);
+      throw error;
+    }
+  }
 }
 
 export const userService = new UserService();

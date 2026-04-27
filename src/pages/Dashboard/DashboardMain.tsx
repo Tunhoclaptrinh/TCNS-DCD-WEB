@@ -38,9 +38,11 @@ const DashboardPage: React.FC = () => {
       ctv: 0,
       official: 0,
       management: 0,
+      alumni: 0,
       recentSignups: 0,
       byRole: {},
       byPosition: {},
+      byGeneration: {},
     },
     byDepartment: {},
   });
@@ -91,6 +93,12 @@ const DashboardPage: React.FC = () => {
                 value: stats.global?.active || 0,
                 icon: <CheckCircleOutlined />,
                 valueColor: "#52c41a",
+              },
+              {
+                title: "Cựu thành viên",
+                value: stats.global?.alumni || 0,
+                icon: <TeamOutlined />,
+                valueColor: "#8c8c8c",
               },
               {
                 title: "Đang bị khóa",

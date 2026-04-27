@@ -39,3 +39,4 @@ export { default as CardGrid } from "./CardGrid";
 
 // Guards
 export { default as AuthGuard } from "./guards/AuthGuard";
+export { default as Access } from "./Access";

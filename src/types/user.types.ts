@@ -129,9 +129,11 @@ export interface UserStatItem {
   ctv: number;
   official: number;
   management: number;
+  alumni: number;
   recentSignups: number;
   byRole: Record<string, number>;
   byPosition: Record<string, number>;
+  byGeneration: Record<string, number>;
 }
 
 export interface UserStats {

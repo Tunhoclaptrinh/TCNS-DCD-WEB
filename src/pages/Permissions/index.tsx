@@ -94,7 +94,7 @@ const PermissionsPage: React.FC = () => {
     try {
       setLoading(true);
       const [rolesRes, groupsRes, usersRes] = await Promise.all([
-        roleService.getAll(),
+        roleService.getAll({ limit: 1000 }),
         permissionService.getGroupedPermissions(),
         userService.getAll({ limit: 1000 })
       ]);
