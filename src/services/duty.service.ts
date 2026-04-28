@@ -63,10 +63,15 @@ export interface DutySlot {
   status: 'open' | 'locked';
   capacity?: number;
   attendedUserIds?: number[];
+  tempLeaderId?: number | null;
+  attendanceData?: Record<number, { time: string, ip: string, method: string, markedBy?: number }>;
   isSpecialEvent?: boolean;
   config?: any;
   order?: number;
   slotStructure?: any[];
+  violations?: any[];
+  leaveRequests?: any[];
+  swapRequests?: any[];
 }
 
 
@@ -389,6 +394,22 @@ class DutyService {
   }
   async getPersonalStats() {
     const response = await apiClient.get(`/users/me/stats`);
+    return response;
+  }
+
+  // V2 Attendance Methods
+  async selfCheckIn(slotId: number): Promise<BaseApiResponse<DutySlot>> {
+    const response = await apiClient.post<BaseApiResponse<DutySlot>>(`/duty/slots/${slotId}/self-checkin`);
+    return response;
+  }
+
+  async leaderMarkAttendance(slotId: number, targetUserId: number): Promise<BaseApiResponse<DutySlot>> {
+    const response = await apiClient.post<BaseApiResponse<DutySlot>>(`/duty/slots/${slotId}/leader-mark`, { targetUserId });
+    return response;
+  }
+
+  async reportViolation(data: { slotId: number, userId: number, type: string, coefficient: number, note?: string }): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.post<BaseApiResponse<any>>(`/duty/violation`, data);
     return response;
   }
 }

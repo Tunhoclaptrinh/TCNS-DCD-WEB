@@ -16,8 +16,9 @@ import {
   List,
   Checkbox,
   Alert,
-  Row,
   Col,
+  Tooltip,
+  Row,
 } from 'antd';
 import Button from '@/components/common/Button';
 import {
@@ -35,6 +36,7 @@ import {
   CloseOutlined,
   DeleteOutlined,
   SaveOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
@@ -67,6 +69,11 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedUsersCache, setSelectedUsersCache] = useState<any[]>([]);
+
+  // Violation Management
+  const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
+  const [violationUser, setViolationUser] = useState<any>(null);
+  const [violationForm] = Form.useForm();
 
   const updateCache = (rows: any[]) => {
     setSelectedUsersCache(prev => {
@@ -120,6 +127,28 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     }
   };
 
+  const handleReportViolation = async (values: any) => {
+    if (!slot || !violationUser) return;
+    setLoading(true);
+    try {
+      const res = await dutyService.reportViolation({
+        slotId: slot.id,
+        userId: violationUser.id,
+        ...values
+      });
+      if (res.success) {
+        message.success(`Đã ghi nhận lỗi cho ${violationUser.name || violationUser.fullName}`);
+        setIsViolationModalOpen(false);
+        violationForm.resetFields();
+        onSuccess();
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi ghi nhận vi phạm');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleToggleAttendance = (userId: number, checked: boolean) => {
     const currentAttended = form.getFieldValue('attendedUserIds') || [];
     const nextAttended = checked
@@ -152,6 +181,52 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           message.error('Lỗi khi xóa kíp');
         }
       },
+    });
+  };
+
+  const handleScanAbsentees = () => {
+    if (!slot) return;
+    const assignedIds = form.getFieldValue('assignedUserIds') || [];
+    const attendedIds = form.getFieldValue('attendedUserIds') || [];
+
+    // Identify absentees
+    const absentees = assignedIds.filter((id: number) => !attendedIds.includes(id));
+    
+    // Filter out those with approved leave
+    const unexcusedAbsentees = absentees.filter((id: number) => {
+      const hasApprovedLeave = slot.leaveRequests?.some(r => String(r.userId) === String(id) && r.status === 'approved');
+      const hasApprovedSwap = slot.swapRequests?.some(r => String(r.fromSlotId) === String(slot.id) && String(r.userId) === String(id) && r.status === 'approved');
+      const alreadyHasViolation = slot.violations?.some(v => String(v.userId) === String(id));
+      return !hasApprovedLeave && !hasApprovedSwap && !alreadyHasViolation;
+    });
+
+    if (unexcusedAbsentees.length === 0) {
+      message.info('Không tìm thấy trường hợp vắng mặt không phép mới nào.');
+      return;
+    }
+
+    Modal.confirm({
+      title: `Phát hiện ${unexcusedAbsentees.length} trường hợp vắng mặt`,
+      content: `Hệ thống ghi nhận ${unexcusedAbsentees.length} nhân sự vắng mặt không lý do. Bạn có muốn ghi lỗi "Vắng mặt không phép" (Hệ số 1) cho những người này không?`,
+      okText: 'Ghi lỗi hàng loạt',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await Promise.all(unexcusedAbsentees.map((id: number) => 
+            dutyService.reportViolation({
+              slotId: slot.id,
+              userId: id,
+              type: 'Vắng mặt không phép',
+              coefficient: 1,
+              note: 'Hệ thống tự động ghi nhận vắng mặt'
+            })
+          ));
+          message.success(`Đã ghi lỗi cho ${unexcusedAbsentees.length} nhân sự.`);
+          onSuccess();
+        } catch (err) {
+          message.error('Lỗi khi ghi lỗi hàng loạt');
+        }
+      }
     });
   };
 
@@ -448,6 +523,15 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               >
                 Tất cả có mặt
               </Button>
+              <Button
+                variant="danger"
+                buttonSize="small"
+                onClick={handleScanAbsentees}
+                icon={<WarningOutlined />}
+                style={{ fontWeight: 600 }}
+              >
+                Quét vắng mặt
+              </Button>
             </Space>
           </div>
 
@@ -465,6 +549,10 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   renderItem={(id: number) => {
                     const isAssigned = assignedIds.includes(id);
                     const isAttended = attendedIds.includes(id);
+                    const existingViolation = slot?.violations?.find(v => String(v.userId) === String(id));
+                    const leaveReq = slot?.leaveRequests?.find(r => String(r.userId) === String(id));
+                    const swapReq = slot?.swapRequests?.find(r => String(r.userId) === String(id));
+                    
                     const userDetail =
                       (slot?.assignedUsers || []).find(u => u.id === id) ||
                       selectedUsersCache.find(u => u.id === id);
@@ -489,6 +577,30 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                               </Text>
                               {!isAssigned && <Tag color="orange" style={{ fontSize: '0.6rem', border: 'none', margin: 0 }}>BỔ SUNG</Tag>}
                             </div>
+                            <Tooltip title={existingViolation ? "Sửa lỗi vi phạm" : "Ghi lỗi vi phạm"}>
+                              <Button 
+                                variant={existingViolation ? "primary" : "danger"} 
+                                buttonSize="small" 
+                                shape="circle" 
+                                style={existingViolation ? { background: '#f59e0b', borderColor: '#f59e0b' } : {}}
+                                icon={<WarningOutlined />} 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViolationUser(userDetail);
+                                  if (existingViolation) {
+                                    violationForm.setFieldsValue({
+                                      type: existingViolation.type,
+                                      coefficient: existingViolation.coefficient,
+                                      note: existingViolation.note
+                                    });
+                                  } else {
+                                    violationForm.resetFields();
+                                    violationForm.setFieldsValue({ coefficient: 1 });
+                                  }
+                                  setIsViolationModalOpen(true);
+                                }} 
+                              />
+                            </Tooltip>
                             <Checkbox
                                 checked={isAttended}
                                 onChange={(e) => {
@@ -503,11 +615,18 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                         <List.Item.Meta
                           avatar={<Avatar icon={<UserOutlined />} src={userDetail?.avatar} />}
                           title={
-                            <Text strong={isAttended}>
-                              {userDetail?.lastName || userDetail?.firstName
-                                ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim()
-                                : userDetail?.name || userDetail?.username || `#${id}`}
-                            </Text>
+                            <Space>
+                              <Text strong={isAttended}>
+                                {userDetail?.lastName || userDetail?.firstName
+                                  ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim()
+                                  : userDetail?.name || userDetail?.username || `#${id}`}
+                              </Text>
+                              {isAssigned && (slot?.assignedUserIds || []).indexOf(id) === 0 && (
+                                <div color="#8b1d1d" >
+                                  - Quản lý kíp
+                                </div>
+                              )}
+                            </Space>
                           }
                           description={
                             <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }}>
@@ -515,6 +634,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                               {isAssigned
                                 ? <Tag color="blue" style={{ fontSize: '0.6rem' }}>Theo lịch</Tag>
                                 : <Text type="warning">Ngoài kíp</Text>}
+                              {existingViolation && <Tag color="error" style={{ fontSize: '0.6rem' }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
+                              {leaveReq && <Tag color="warning" style={{ fontSize: '0.6rem' }}>Xin nghỉ ({leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})</Tag>}
+                              {swapReq && <Tag color="processing" style={{ fontSize: '0.6rem' }}>Xin đổi ({swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})</Tag>}
                             </Space>
                           }
                         />
@@ -536,6 +658,43 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           <Input.TextArea size="small" placeholder="Thông tin thêm..." rows={2} />
         </Form.Item>
       </div>
+
+      {/* Violation Modal for Admin */}
+      <FormModal 
+        open={isViolationModalOpen} 
+        form={violationForm} 
+        title={<Space><WarningOutlined style={{ color: '#ef4444' }} /> <span>Ghi nhận vi phạm</span></Space>} 
+        onCancel={() => setIsViolationModalOpen(false)} 
+        onOk={handleReportViolation} 
+        width={400}
+      >
+        <div style={{ marginBottom: 16, textAlign: 'center' }}>
+          <Avatar size={64} src={violationUser?.avatar} icon={<UserOutlined />} />
+          <Title level={5} style={{ marginTop: 12, marginBottom: 4 }}>
+            {violationUser?.lastName || violationUser?.firstName
+              ? `${violationUser.lastName || ''} ${violationUser.firstName || ''}`.trim()
+              : violationUser?.name || violationUser?.username || 'Nhân sự'}
+          </Title>
+          <Text type="secondary">{violationUser?.email}</Text>
+        </div>
+
+        <Form.Item name="type" label="Loại lỗi" rules={[{ required: true }]}>
+          <Select placeholder="Chọn loại lỗi vi phạm">
+            <Select.Option value="Vắng mặt không phép">Vắng mặt không phép</Select.Option>
+            <Select.Option value="Đi muộn">Đi muộn</Select.Option>
+            <Select.Option value="Sai tác phong">Sai tác phong</Select.Option>
+            <Select.Option value="Khác">Khác (Ghi chú chi tiết)</Select.Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item name="coefficient" label="Hệ số lỗi" initialValue={1} rules={[{ required: true }]}>
+          <InputNumber min={0.1} max={5} step={0.5} style={{ width: '100%' }} />
+        </Form.Item>
+
+        <Form.Item name="note" label="Ghi chú chi tiết">
+          <Input.TextArea placeholder="Nhập chi tiết vi phạm..." rows={3} />
+        </Form.Item>
+      </FormModal>
     </FormModal>
   );
 };

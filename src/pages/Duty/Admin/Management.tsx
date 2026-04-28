@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Form, Space, message, Typography, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch, InputNumber } from 'antd';
+import { Card, Button, Modal, Form, Space, message, Typography, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch, InputNumber, Input } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   ScheduleOutlined, SettingOutlined,
@@ -11,7 +11,8 @@ import {
   CalendarOutlined,
   UnorderedListOutlined,
   StopOutlined, SyncOutlined,
-  UserOutlined
+  UserOutlined,
+  GlobalOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -1548,6 +1549,31 @@ const DutyManagement: React.FC = () => {
                   <Form.Item name="allowUnregisterWhenFull" valuePropName="checked" noStyle>
                     <Checkbox>Cho phép tự hủy đăng ký ngay cả khi kíp đã FULL</Checkbox>
                   </Form.Item>
+                </div>
+              </Col>
+            </Row>
+
+            <Row gutter={[32, 24]} style={{ marginTop: 24 }}>
+              <Col xs={24}>
+                <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 600, color: '#1e293b' }}>An ninh & Điểm danh (IP Văn phòng)</span>
+                    <Tooltip title="Nhập danh sách IP cho phép điểm danh, ngăn cách bởi dấu phẩy. Hỗ trợ dấu * (Ví dụ: 192.168.1.*)">
+                      <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
+                    </Tooltip>
+                  </div>
+                  <Form.Item name="allowedIpRanges" noStyle>
+                    <Input 
+                      placeholder="Ví dụ: 1.2.3.4, 192.168.1.*" 
+                      style={{ borderRadius: 8 }} 
+                      prefix={<GlobalOutlined style={{ color: '#94a3b8' }} />}
+                    />
+                  </Form.Item>
+                  <div style={{ marginTop: 8 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Thành viên chỉ có thể <b>Tự điểm danh</b> khi truy cập từ các địa chỉ mạng này.
+                    </Text>
+                  </div>
                 </div>
               </Col>
             </Row>
