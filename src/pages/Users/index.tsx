@@ -501,40 +501,6 @@ const UserPage = () => {
             render: (dept: string) => dept ? <Tag color="blue">{dept}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>
         },
         {
-            title: "Vai trò",
-            dataIndex: "role",
-            key: "role",
-            width: 180,
-            resizable: true,
-            render: (_: string, record: User) => {
-                const roles = (record as any).roles || [];
-                const isDt = record.position === 'dt';
-                
-                return (
-                    <Space size={[0, 4]} wrap>
-                        {isDt && (
-                            <Tag color="#8b1d1d" style={{ fontSize: '11px', borderRadius: '4px', fontWeight: 'bold' }}>
-                                ĐỘI TRƯỞNG (ADMIN)
-                            </Tag>
-                        )}
-                        {roles.filter((r: any) => !(isDt && (r.id === 1 || r.key === 'admin'))).map((r: any) => {
-                            const isAdmin = r.id === 1 || r.key === 'admin';
-                            return (
-                                <Tag 
-                                    key={r.id} 
-                                    color={isAdmin ? '#8b1d1d' : 'blue'} 
-                                    style={{ fontSize: '11px', borderRadius: '4px' }}
-                                >
-                                    {r.name.toUpperCase()}
-                                </Tag>
-                            );
-                        })}
-                        {!isDt && roles.length === 0 && <Tag color="default">GUEST</Tag>}
-                    </Space>
-                );
-            },
-        },
-        {
             title: "Trạng thái",
             key: "statusDisplay",
             width: 130,
@@ -578,50 +544,6 @@ const UserPage = () => {
             dataIndex: "password",
             required: true,
             hidden: true, // Only for import/export
-        },
-        {
-            title: "Quyền Admin",
-            key: "adminToggle",
-            width: 120,
-            fixed: 'right',
-            align: 'center',
-            render: (_: any, record: User) => {
-                const roles = (record as any).roles || [];
-                const isAdmin = roles.some((r: any) => r.id === 1 || r.key === 'admin') || record.position === 'dt';
-                const isSelf = record.id === currentUser?.id || record.position === 'dt';
-
-                return (
-                    <Tooltip title={isSelf ? "Không thể tự hạ quyền của chính mình" : (isAdmin ? "Tắt quyền Admin" : "Bật quyền Admin")}>
-                        <Switch
-                            checked={isAdmin}
-                            loading={loading && editingId === record.id}
-                            disabled={isSelf || !hasPermission('users:promote')}
-                            onChange={async (checked) => {
-                                setEditingId(record.id);
-                                try {
-                                    let currentRoleIds = roles.map((r: any) => r.id);
-                                    if (checked) {
-                                        if (!currentRoleIds.includes(1)) currentRoleIds.push(1);
-                                    } else {
-                                        currentRoleIds = currentRoleIds.filter((id: number) => id !== 1);
-                                    }
-                                    await update(record.id, { roleIds: currentRoleIds });
-                                    message.success(`Đã cập nhật quyền Admin cho ${record.name}`);
-                                    refreshData();
-                                } catch (error) {
-                                    message.error("Thao tác thất bại");
-                                } finally {
-                                    setEditingId(null);
-                                }
-                            }}
-                            style={{ 
-                                background: isAdmin ? '#8b1d1d' : undefined,
-                                borderColor: isAdmin ? '#8b1d1d' : undefined 
-                            }}
-                        />
-                    </Tooltip>
-                );
-            }
         },
         {
             title: "Thao tác",

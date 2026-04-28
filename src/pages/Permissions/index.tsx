@@ -14,8 +14,6 @@ import {
   Tag,
   Empty,
   Input,
-  Dropdown,
-  Menu,
   Tooltip
 } from 'antd';
 import { 
@@ -27,7 +25,7 @@ import {
   UserAddOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
-  DownOutlined
+  
 } from '@ant-design/icons';
 
 // Services
