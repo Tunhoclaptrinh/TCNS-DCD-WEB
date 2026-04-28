@@ -355,7 +355,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               />
             </Form.Item>
           </Col>
-          <Col span={6}>
+          <Col span={8}>
             <Form.Item label="Chỉ tiêu (người)" name="capacity" rules={[{ required: true }]} style={{ marginBottom: 0 }}>
               <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
@@ -371,6 +371,11 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 }
                 return null;
               }}
+            </Form.Item>
+          </Col>
+          <Col span={6}>
+            <Form.Item label="Hệ số kíp" name="coefficient" initialValue={1} rules={[{ required: true }]}>
+              <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col span={8}>

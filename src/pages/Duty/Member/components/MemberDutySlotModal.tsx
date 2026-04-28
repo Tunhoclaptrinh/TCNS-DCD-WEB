@@ -28,6 +28,7 @@ import {
   ScheduleOutlined,
   ClockCircleOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
@@ -278,6 +279,14 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                   </div>
                 </Col>
               </Row>
+
+              <div style={{ marginBottom: 16 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>SỐ KÍP ĐƯỢC TÍNH</Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <ThunderboltOutlined style={{ color: '#d97706' }} />
+                  <span style={{ fontWeight: 600, color: '#d97706' }}>{(slot as any)?.coefficient || 1} kíp</span>
+                </div>
+              </div>
 
               <div style={{ marginBottom: 16 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>TRẠNG THÁI</Text>

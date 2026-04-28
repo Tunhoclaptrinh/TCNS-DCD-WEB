@@ -252,6 +252,11 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                               }}>
                                 {slot.shiftLabel || 'Kíp trực'}
                               </span>
+                              {(slot as any).coefficient > 0 && (slot as any).coefficient !== 1 && (
+                                <Tag style={{ fontSize: '9px', margin: 0, padding: '0 4px', borderRadius: 4 }}>
+                                  {(slot as any).coefficient} kíp
+                                </Tag>
+                              )}
                             </div>
                           </div>
                           
