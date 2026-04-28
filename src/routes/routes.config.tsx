@@ -208,11 +208,11 @@ const routes: RouteObject[] = [
             path: "swaps",
             element: <SwapRequests />,
           },
-          {
-            path: "statistics",
-            element: <DutyStatistics />,
-          },
         ]
+      },
+      {
+        path: "statistics",
+        element: <DutyStatistics />,
       },
       {
         path: "system-config",

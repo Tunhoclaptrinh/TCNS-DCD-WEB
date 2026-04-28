@@ -71,14 +71,15 @@ export const adminMenu: IMenuItem[] = [
     },
     {
         key: 'reports',
+        path: '/admin/statistics',
         name: 'Báo cáo & Thống kê',
         icon: <LineChartOutlined />,
         accessFilter: ['duty:manage'],
         routes: [
             {
                 key: 'duty-statistics',
-                path: '/admin/duty/statistics',
-                name: 'Thống kê Trực ca',
+                path: '/admin/statistics',
+                name: 'Thống kê Lịch trực',
                 icon: <LineChartOutlined />,
             },
         ]
@@ -136,7 +137,7 @@ export const customerMenu: IMenuItem[] = [
     },
     {
         key: 'duty-statistics-member',
-        path: '/admin/duty/statistics',
+        path: '/admin/statistics',
         name: 'Báo cáo Đội',
         icon: <LineChartOutlined />,
         accessFilter: ['duty:manage'],

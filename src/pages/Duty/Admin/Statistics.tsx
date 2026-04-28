@@ -1,20 +1,27 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Table, Card, Row, Col, DatePicker, Select, 
+  Card, Row, Col, DatePicker, Select, 
   Space, Tag, Typography, message, 
   Tooltip, Empty, Divider, Modal, Input, List,
-  Avatar, Progress, Tabs
+  Avatar, Progress, Tabs, InputNumber, Button, Form
 } from 'antd';
 import { 
   FileExcelOutlined, 
-  BellOutlined, 
   WarningOutlined, 
   CheckCircleOutlined,
   CloseCircleOutlined,
-  CommentOutlined,
   UserOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  LeftOutlined,
+  RightOutlined,
+  EditOutlined,
+  CalendarOutlined,
+  SendOutlined,
+  CommentOutlined,
+  SettingOutlined,
+  PlusOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
 import { dutyService } from '@/services/duty.service';
 import { userService } from '@/services/user.service';
@@ -22,7 +29,7 @@ import { generationService } from '@/services/generation.service';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import isoWeek from 'dayjs/plugin/isoWeek';
-import { Button, StatisticsCard } from '@/components/common';
+import { StatisticsCard, DataTable } from '@/components/common';
 import UsersDetailModal from '@/pages/Users/components/Detail';
 import { 
   Tooltip as ChartTooltip, Legend, ResponsiveContainer,
@@ -42,18 +49,19 @@ const StatisticsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [departments, setDepartments] = useState<any[]>([]);
+  const [positions, setPositions] = useState<string[]>([]);
   const [generations, setGenerations] = useState<any[]>([]);
   const [filters, setFilters] = useState<{
     dateRange: [dayjs.Dayjs | null, dayjs.Dayjs | null];
     departmentId?: string;
     generationId?: number;
     viewType: 'range' | 'week';
-    week?: dayjs.Dayjs;
+    week: dayjs.Dayjs;
   }>({
     dateRange: [dayjs().startOf('month'), dayjs().endOf('month')],
     departmentId: undefined,
     generationId: undefined,
-    viewType: 'range',
+    viewType: 'week', // Default to week view as requested
     week: dayjs()
   });
 
@@ -71,6 +79,72 @@ const StatisticsPage: React.FC = () => {
     open: false,
     user: null
   });
+  const [adjustmentModal, setAdjustmentModal] = useState<{ open: boolean; user?: any; newQuota: number }>({
+    open: false,
+    user: null,
+    newQuota: 0
+  });
+  
+  const [tableParams, setTableParams] = useState<any>({
+    pagination: { current: 1, pageSize: 10 }
+  });
+  const [settingsModal, setSettingsModal] = useState({ open: false });
+  const [form] = Form.useForm();
+
+  const handleTableChange = (pagination: any, tableFilters: any, sorter: any) => {
+    setTableParams({
+      pagination,
+      filters: tableFilters,
+      sorter,
+    });
+  };
+
+  const handleOpenSettings = async () => {
+    try {
+      const res = await dutyService.getSettings();
+      if (res.success) {
+        setSettingsModal({ open: true });
+        const quotaRules = (res.data?.quotaRules || []).map((r: any) => ({
+          ...r,
+          dateRange: r.startDate && r.endDate ? [dayjs(r.startDate), dayjs(r.endDate)] : undefined
+        }));
+        form.setFieldsValue({
+          defaultQuota: res.data?.defaultQuota,
+          kipPrice: res.data?.kipPrice,
+          violationPenaltyRate: res.data?.violationPenaltyRate,
+          quotaRules,
+        });
+      }
+    } catch (err) {
+      message.error('Lỗi khi tải cấu hình');
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const values = await form.validateFields();
+      if (values.quotaRules) {
+        values.quotaRules = values.quotaRules.map((r: any) => {
+          const rule = { ...r };
+          if (r.dateRange && r.dateRange.length === 2) {
+            rule.startDate = r.dateRange[0].startOf('day').toISOString();
+            rule.endDate = r.dateRange[1].endOf('day').toISOString();
+          } else {
+            rule.startDate = null;
+            rule.endDate = null;
+          }
+          delete rule.dateRange;
+          return rule;
+        });
+      }
+      await dutyService.updateSettings(values);
+      message.success('Đã lưu cấu hình');
+      setSettingsModal({ open: false });
+      fetchData(); // Tải lại để áp dụng định mức mới
+    } catch (err) {
+      message.error('Vui lòng kiểm tra lại thông tin cấu hình');
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -83,7 +157,6 @@ const StatisticsPage: React.FC = () => {
         startDate = filters.dateRange[0].toISOString();
         endDate = filters.dateRange[1].toISOString();
       } else {
-        // Fallback or handle empty range
         startDate = dayjs().startOf('month').toISOString();
         endDate = dayjs().endOf('month').toISOString();
       }
@@ -108,12 +181,24 @@ const StatisticsPage: React.FC = () => {
   const loadMetadata = async () => {
     try {
       const [userRes, genRes] = await Promise.all([
-        userService.getAll({ _limit: 1000 }),
+        userService.getAll({ _limit: 1000 }), // Backend limit is 1000
         generationService.getAll()
       ]);
       const users = userRes.data || [];
-      const deptNames = Array.from(new Set(users.map((u: any) => u.department).filter(Boolean)));
+      const deptSet = new Set<string>();
+      const posSet = new Set<string>();
+      users.forEach((u: any) => {
+        if (u.department) {
+          const name = typeof u.department === 'object' ? (u.department.name || u.department._id) : u.department;
+          if (name) deptSet.add(String(name).trim());
+        }
+        if (u.position) {
+          posSet.add(String(u.position).trim());
+        }
+      });
+      const deptNames = Array.from(deptSet).sort();
       setDepartments(deptNames.map(name => ({ id: name, name })));
+      setPositions(Array.from(posSet).sort());
       setGenerations(genRes.data || []);
     } catch (err) {
       console.error('Metadata load error', err);
@@ -139,9 +224,41 @@ const StatisticsPage: React.FC = () => {
     }
   };
 
+  const handleNotifyAbsentees = async () => {
+    const absentees = stats.details.filter((s: any) => s.isWarning);
+    if (absentees.length === 0) {
+      message.info('Không có nhân sự thiếu kíp để thông báo');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await dutyService.notifyAbsentees(absentees);
+      message.success(`Đã gửi thông báo nhắc nhở tới ${absentees.length} nhân sự`);
+    } catch (err) {
+      message.error('Lỗi khi gửi thông báo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const handleShowFullProfile = async (u: any) => {
+    try {
+      const res = await userService.getById(u.userId);
+      if (res.success) {
+        setFullProfileModal({ open: true, user: res.data });
+      } else {
+        message.error('Không thể tải thông tin chi tiết thành viên');
+      }
+    } catch (err) {
+      message.error('Lỗi khi tải hồ sơ thành viên');
+    }
+  };
+
   const handleExport = () => {
     if (!stats || !stats.details) return;
-    const headers = ['MSV', 'Họ tên', 'Ban', 'Chức vụ', 'Tổng kíp', 'Số lỗi', 'HS Phạt', 'Kíp thiếu', 'Tổng nhận (VNĐ)'];
+    const headers = ['MSV', 'Họ tên', 'Ban', 'Chức vụ', 'Tổng kíp', 'Định mức', 'Thiếu', 'Số lỗi', 'HS Phạt', 'Tổng nhận (VNĐ)'];
     const csvRows = [
       headers.join(','),
       ...stats.details.map((s: any) => [
@@ -150,9 +267,10 @@ const StatisticsPage: React.FC = () => {
         s.department,
         s.position,
         s.totalKips,
+        s.userQuota,
+        s.deficiency,
         s.violationCount,
         s.penaltyCoefficient,
-        s.deficiency,
         s.finalAmount
       ].join(','))
     ];
@@ -167,81 +285,156 @@ const StatisticsPage: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const columns = [
+  const changeWeek = (direction: number) => {
+    setFilters(f => ({
+      ...f,
+      week: f.week.add(direction, 'week')
+    }));
+  };
+
+  const handleApplyAdjustment = () => {
+    if (!adjustmentModal.user) return;
+    
+    // Simulate updating local state for preview
+    // In a real app, this might save an override to the DB
+    const newDetails = stats.details.map((s: any) => {
+      if (s.userId === adjustmentModal.user.userId) {
+        const newQuota = adjustmentModal.newQuota;
+        const newDeficiency = Math.max(0, newQuota - s.totalKips);
+        return {
+          ...s,
+          userQuota: newQuota,
+          deficiency: newDeficiency,
+          isWarning: s.totalKips < newQuota
+        };
+      }
+      return s;
+    });
+
+    // Recalculate summary
+    const warningCount = newDetails.filter((s: any) => s.isWarning).length;
+    
+    setStats({
+      ...stats,
+      summary: { ...stats.summary, warningCount },
+      details: newDetails
+    });
+    setAdjustmentModal({ open: false, user: null, newQuota: 0 });
+    message.success('Đã cập nhật định mức tạm thời cho nhân sự');
+  };
+
+  const columns: any[] = [
     {
-      title: 'Nhân sự',
+      title: 'Tên thành viên',
       key: 'user',
       fixed: 'left' as const,
       width: 220,
+      searchable: true,
+      dataIndex: 'name', // Needed for DataTable search
       render: (_: any, record: any) => (
         <Space style={{ cursor: 'pointer' }} onClick={() => setDetailModal({ open: true, user: record })}>
           <Avatar icon={<UserOutlined />} src={record.avatar} />
           <Space direction="vertical" size={0}>
             <Text strong>{record.name}</Text>
-            <Text type="secondary" style={{ fontSize: 11 }}>{record.studentId} - {record.department}</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>{record.studentId}</Text>
           </Space>
         </Space>
       )
     },
     {
+      title: 'Ban chuyên môn',
+      dataIndex: 'department',
+      key: 'department',
+      width: 140,
+    },
+    {
+      title: 'Chức vụ',
+      dataIndex: 'position',
+      key: 'position',
+      width: 120,
+      render: (val: string) => {
+        const POSITION_MAP: Record<string, string> = {
+          'ctv': 'Cộng tác viên',
+          'tv': 'Thành viên',
+          'tvb': 'Thành viên ban',
+          'pb': 'Phó ban',
+          'tb': 'Trưởng ban',
+          'ctc': 'Cựu thành viên',
+          'dt': 'Đội trưởng'
+        };
+        return POSITION_MAP[val] || val || 'N/A';
+      }
+    },
+    {
       title: 'Tổng kíp',
       dataIndex: 'totalKips',
       key: 'totalKips',
-      align: 'center' as const,
+      width: 100,
+      align: 'center',
       sorter: (a: any, b: any) => a.totalKips - b.totalKips,
       render: (val: number, record: any) => (
-        <Tooltip title={`Định mức: ${record.userQuota} kíp`}>
-          <Text strong style={{ color: record.isWarning ? '#cf1322' : '#3f8600' }}>{val}</Text>
-        </Tooltip>
+        <Text strong style={{ color: record.isWarning ? '#cf1322' : '#3f8600' }}>{val}</Text>
       )
     },
     {
-      title: 'Thiếu',
-      dataIndex: 'deficiency',
-      key: 'deficiency',
-      align: 'center' as const,
-      render: (val: number) => val > 0 ? <Tag color="error">{val}</Tag> : <Tag color="success">Đủ</Tag>
-    },
-    {
-      title: 'Lỗi',
-      dataIndex: 'violationCount',
-      key: 'violationCount',
-      align: 'center' as const,
-      render: (val: number) => val > 0 ? <Text type="danger">{val}</Text> : <Text type="secondary">0</Text>
-    },
-    {
-      title: 'Tạm tính',
-      dataIndex: 'finalAmount',
-      key: 'finalAmount',
-      align: 'right' as const,
-      render: (val: number) => <Text strong>{val.toLocaleString()}đ</Text>
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      fixed: 'right' as const,
+      title: 'Định mức',
+      key: 'quota',
       width: 120,
+      align: 'center',
       render: (_: any, record: any) => (
         <Space>
-          <Tooltip title="Nhận xét & Nhắc nhở">
-            <Button 
-              variant="ghost" 
-              buttonSize="small" 
-              icon={<CommentOutlined />} 
-              onClick={() => setCommentModal({ open: true, user: record, comment: '' })}
-            />
-          </Tooltip>
-          <Tooltip title="Xem chi tiết">
-            <Button 
-              variant="ghost" 
-              buttonSize="small" 
-              icon={<InfoCircleOutlined />} 
-              onClick={() => setDetailModal({ open: true, user: record })}
+          <Text>{record.userQuota}</Text>
+          <Tooltip title="Sửa riêng">
+            <EditOutlined 
+              style={{ color: '#1890ff', cursor: 'pointer', fontSize: 12 }} 
+              onClick={(e) => {
+                e.stopPropagation();
+                setAdjustmentModal({ open: true, user: record, newQuota: record.userQuota });
+              }}
             />
           </Tooltip>
         </Space>
       )
-    }
+    },
+    {
+      title: 'Tình trạng',
+      dataIndex: 'deficiency',
+      key: 'deficiency',
+      width: 110,
+      align: 'center',
+      render: (val: number) => val > 0 ? <Tag color="error">Thiếu {val}</Tag> : <Tag color="success">Đủ</Tag>
+    },
+    {
+      title: 'Tiến độ',
+      key: 'progress',
+      width: 160,
+      render: (_: any, record: any) => (
+        <Progress 
+          percent={Math.min(100, Math.round((record.totalKips / record.userQuota) * 100))} 
+          size="small" 
+          status={record.isWarning ? "exception" : "success"}
+          strokeColor={record.isWarning ? '#cf1322' : '#52c41a'}
+        />
+      )
+    },
+    {
+      title: 'Số lỗi',
+      dataIndex: 'violationCount',
+      key: 'violationCount',
+      width: 80,
+      align: 'center',
+      sorter: (a: any, b: any) => a.violationCount - b.violationCount,
+      render: (count: number) => count > 0 ? <Tag color="red">{count}</Tag> : <Text type="secondary">0</Text>
+    },
+    {
+      title: 'Tạm tính (VNĐ)',
+      dataIndex: 'totalEarnings',
+      key: 'totalEarnings',
+      width: 130,
+      align: 'right',
+      sorter: (a: any, b: any) => a.totalEarnings - b.totalEarnings,
+      render: (val: number) => <Text strong>{val?.toLocaleString()} ₫</Text>
+    },
   ];
 
   const getChartData = () => {
@@ -261,73 +454,99 @@ const StatisticsPage: React.FC = () => {
         </Col>
         <Col>
           <Space>
-            <Button icon={<BellOutlined />} onClick={() => handleNotify()} variant="danger" disabled={!stats?.summary?.warningCount}>
-              Nhắc nhở toàn đội ({stats?.summary?.warningCount || 0})
+            <Button icon={<SettingOutlined />} onClick={handleOpenSettings}>
+              Cấu hình chung
             </Button>
-            <Button icon={<FileExcelOutlined />} variant="primary" onClick={handleExport}>
+            <Button icon={<FileExcelOutlined />} type="primary" onClick={handleExport}>
               Xuất dữ liệu
             </Button>
           </Space>
         </Col>
       </Row>
 
-      <Card style={{ marginBottom: 24, borderRadius: 12 }}>
-        <Space wrap size="large">
-          <Space direction="vertical" size={2}>
-            <Text type="secondary">Chế độ xem</Text>
-            <Select 
-              value={filters.viewType} 
-              onChange={(val) => setFilters(f => ({ ...f, viewType: val }))}
-              style={{ width: 120 }}
-              options={[
-                { label: 'Khoảng ngày', value: 'range' },
-                { label: 'Theo tuần', value: 'week' }
-              ]}
-            />
-          </Space>
+      <Card style={{ marginBottom: 24 }}>
+        <Row gutter={[24, 16]} align="bottom">
+          <Col>
+            <Space direction="vertical" size={4}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Chế độ xem</Text>
+              <Select 
+                value={filters.viewType} 
+                onChange={(val) => setFilters(f => ({ ...f, viewType: val }))}
+                style={{ width: 140 }}
+                options={[
+                  { label: 'Theo tuần', value: 'week' },
+                  { label: 'Khoảng ngày', value: 'range' }
+                ]}
+              />
+            </Space>
+          </Col>
 
-          {filters.viewType === 'range' ? (
-            <Space direction="vertical" size={2}>
-              <Text type="secondary">Khoảng thời gian</Text>
-              <RangePicker 
-                value={filters.dateRange} 
-                onChange={(val) => {
-                  if (val && val[0] && val[1]) setFilters(f => ({ ...f, dateRange: [val[0], val[1]] }));
-                }} 
-              />
-            </Space>
+          {filters.viewType === 'week' ? (
+            <Col>
+              <Space direction="vertical" size={4}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Chọn tuần trực</Text>
+                <Space>
+                  <Button type="default" size="small" icon={<LeftOutlined />} onClick={() => changeWeek(-1)} />
+                  <DatePicker 
+                    picker="week" 
+                    value={filters.week} 
+                    onChange={(val) => val && setFilters(f => ({ ...f, week: val }))}
+                    format="[Tuần] ww, YYYY"
+                    allowClear={false}
+                  />
+                  <Button type="default" size="small" icon={<RightOutlined />} onClick={() => changeWeek(1)} />
+                </Space>
+              </Space>
+            </Col>
           ) : (
-            <Space direction="vertical" size={2}>
-              <Text type="secondary">Chọn tuần</Text>
-              <DatePicker 
-                picker="week" 
-                value={filters.week} 
-                onChange={(val) => val && setFilters(f => ({ ...f, week: val }))}
-              />
-            </Space>
+            <Col>
+              <Space direction="vertical" size={4}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Khoảng thời gian</Text>
+                <RangePicker 
+                  value={filters.dateRange} 
+                  onChange={(val) => {
+                    if (val) setFilters(f => ({ ...f, dateRange: [val[0], val[1]] }));
+                  }} 
+                />
+              </Space>
+            </Col>
           )}
 
-          <Space direction="vertical" size={2}>
-            <Text type="secondary">Ban / Đơn vị</Text>
-            <Select 
-              style={{ width: 180 }} 
-              placeholder="Tất cả các ban"
-              allowClear
-              options={departments.map(d => ({ label: d.name, value: d.id }))}
-              onChange={(val) => setFilters(f => ({ ...f, departmentId: val }))}
-            />
-          </Space>
-          <Space direction="vertical" size={2}>
-            <Text type="secondary">Khóa / Thế hệ</Text>
-            <Select 
-              style={{ width: 120 }} 
-              placeholder="Tất cả"
-              allowClear
-              options={generations.map(g => ({ label: g.name, value: g.id }))}
-              onChange={(val) => setFilters(f => ({ ...f, generationId: val }))}
-            />
-          </Space>
-        </Space>
+          <Col>
+            <Space direction="vertical" size={4}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Ban chuyên môn</Text>
+              <Select 
+                style={{ width: 180 }} 
+                placeholder="Tất cả các ban"
+                allowClear
+                value={filters.departmentId}
+                options={departments.map(d => ({ label: d.name, value: d.id }))}
+                onChange={(val) => setFilters(f => ({ ...f, departmentId: val }))}
+              />
+            </Space>
+          </Col>
+          <Col>
+            <Space direction="vertical" size={4}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Khóa / Thế hệ</Text>
+              <Select 
+                style={{ width: 140 }} 
+                placeholder="Tất cả"
+                allowClear
+                value={filters.generationId}
+                options={generations.map(g => ({ label: g.name, value: g.id }))}
+                onChange={(val) => setFilters(f => ({ ...f, generationId: val }))}
+              />
+            </Space>
+          </Col>
+        </Row>
+        
+        {filters.viewType === 'week' && (
+          <div style={{ marginTop: 12 }}>
+            <Tag color="blue" icon={<CalendarOutlined />}>
+              Thời gian: {filters.week.startOf('isoWeek').format('DD/MM/YYYY')} - {filters.week.endOf('isoWeek').format('DD/MM/YYYY')}
+            </Tag>
+          </div>
+        )}
       </Card>
 
       <StatisticsCard
@@ -346,19 +565,57 @@ const StatisticsPage: React.FC = () => {
 
       <Row gutter={[16, 16]}>
         <Col span={17}>
-          <Card title="Danh sách hiệu suất" style={{ borderRadius: 12 }}>
-            <Table 
-              dataSource={stats?.details || []} 
-              columns={columns} 
-              loading={loading}
-              rowKey="userId"
-              pagination={{ pageSize: 10 }}
-              scroll={{ x: 800 }}
-            />
-          </Card>
+          <DataTable 
+            columns={columns} 
+            data={stats?.details || []} 
+            rowKey="userId"
+            loading={loading}
+            pagination={{
+              ...tableParams.pagination,
+              total: stats?.details?.length || 0
+            }}
+            onPaginationChange={handleTableChange}
+            onRefresh={fetchData}
+            searchable={true}
+            searchPlaceholder="Tìm tên hoặc mã sinh viên..."
+            exportable={true}
+            onExport={handleExport}
+            extra={
+              <Space>
+                <Button 
+                  type="primary" danger
+                  icon={<SendOutlined />} 
+                  onClick={handleNotifyAbsentees}
+                  disabled={stats?.summary?.warningCount === 0}
+                >
+                  Gửi nhắc nhở ({stats?.summary?.warningCount})
+                </Button>
+              </Space>
+            }
+            customActions={(record) => (
+              <Space>
+                <Tooltip title="Nhận xét & Nhắc nhở">
+                  <Button 
+                    type="text"
+                    size="small" 
+                    icon={<CommentOutlined />} 
+                    onClick={() => setCommentModal({ open: true, user: record, comment: '' })}
+                  />
+                </Tooltip>
+                <Tooltip title="Xem chi tiết">
+                  <Button 
+                    type="text"
+                    size="small" 
+                    icon={<InfoCircleOutlined />} 
+                    onClick={() => setDetailModal({ open: true, user: record })}
+                  />
+                </Tooltip>
+              </Space>
+            )}
+          />
         </Col>
         <Col span={7}>
-          <Card title="Phân bổ theo Ban" style={{ borderRadius: 12, height: '100%' }}>
+          <Card title="Phân bổ theo Ban" style={{ height: '100%' }}>
             <div style={{ height: 280 }}>
               {stats?.details?.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -384,6 +641,30 @@ const StatisticsPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Modal: Điều chỉnh định mức */}
+      <Modal
+        title={`Điều chỉnh định mức: ${adjustmentModal.user?.name}`}
+        open={adjustmentModal.open}
+        onCancel={() => setAdjustmentModal({ open: false, user: null, newQuota: 0 })}
+        onOk={handleApplyAdjustment}
+        okText="Áp dụng tạm thời"
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text type="secondary">Thay đổi này chỉ áp dụng cho thống kê hiện tại để bạn rà soát lỗi trước khi gửi thông báo.</Text>
+        </div>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text strong>Định mức mới (số kíp):</Text>
+          <InputNumber 
+            min={0} 
+            max={50} 
+            step={0.5} 
+            value={adjustmentModal.newQuota} 
+            onChange={(val) => setAdjustmentModal({ ...adjustmentModal, newQuota: val || 0 })}
+            style={{ width: '100%' }}
+          />
+        </Space>
+      </Modal>
 
       {/* Modal: Nhận xét & Thông báo */}
       <Modal
@@ -423,41 +704,52 @@ const StatisticsPage: React.FC = () => {
               </div>
             </div>
             
-            <Tabs defaultActiveKey="stats">
+            <Tabs defaultActiveKey="stats" className="stats-tabs">
               <Tabs.TabPane tab="Tổng quan" key="stats">
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Card size="small" title="Định mức">
-                      <Statistic title="Yêu cầu" value={detailModal.user.userQuota} suffix="kíp" />
-                    </Card>
-                  </Col>
-                  <Col span={8}>
-                    <Card size="small" title="Thực tế">
-                      <Statistic title="Đã trực" value={detailModal.user.totalKips} suffix="kíp" />
-                    </Card>
-                  </Col>
-                  <Col span={8}>
-                    <Card size="small" title="Vi phạm">
-                      <Statistic title="Số lỗi" value={detailModal.user.violationCount} valueStyle={{ color: '#cf1322' }} />
-                    </Card>
-                  </Col>
-                </Row>
-                <div style={{ marginTop: 24 }}>
-                  <Text strong>Tình trạng hoàn thành</Text>
+                <StatisticsCard 
+                  hideCard
+                  rowGutter={12}
+                  colSpan={{ xs: 24, sm: 8, md: 8 }}
+                  containerStyle={{ marginBottom: 20 }}
+                  data={[
+                    { 
+                      title: "Yêu cầu", 
+                      value: `${detailModal.user.userQuota} kíp`, 
+                      icon: <InfoCircleOutlined />,
+                      valueColor: '#1890ff'
+                    },
+                    { 
+                      title: "Đã trực", 
+                      value: `${detailModal.user.totalKips} kíp`, 
+                      icon: <CheckCircleOutlined />,
+                      valueColor: detailModal.user.isWarning ? '#cf1322' : '#52c41a'
+                    },
+                    { 
+                      title: "Số lỗi", 
+                      value: detailModal.user.violationCount, 
+                      icon: <WarningOutlined />,
+                      valueColor: '#cf1322'
+                    }
+                  ]}
+                />
+                <div style={{ marginTop: 8, padding: '0 8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text strong>Tỷ lệ hoàn thành định mức</Text>
+                    <Text type="secondary">{Math.min(100, Math.round((detailModal.user.totalKips / detailModal.user.userQuota) * 100))}%</Text>
+                  </div>
                   <Progress 
                     percent={Math.min(100, Math.round((detailModal.user.totalKips / detailModal.user.userQuota) * 100))} 
                     status={detailModal.user.isWarning ? "exception" : "success"}
                     strokeColor={detailModal.user.isWarning ? '#cf1322' : '#52c41a'}
+                    strokeWidth={10}
                   />
                 </div>
                 <Divider />
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ textAlign: 'center', marginBottom: 8 }}>
                   <Button 
-                    variant="primary" 
+                    type="primary" 
                     icon={<UserOutlined />} 
-                    onClick={() => {
-                      setFullProfileModal({ open: true, user: detailModal.user });
-                    }}
+                    onClick={() => handleShowFullProfile(detailModal.user)}
                   >
                     Xem hồ sơ đầy đủ
                   </Button>
@@ -484,6 +776,132 @@ const StatisticsPage: React.FC = () => {
       </Modal>
 
       {/* Modal: Hồ sơ thành viên đầy đủ */}
+
+      {/* Modal: Cấu hình chung */}
+      <Modal
+        title="Cấu hình hệ thống trực ca"
+        open={settingsModal.open}
+        onCancel={() => setSettingsModal({ open: false })}
+        onOk={handleSaveSettings}
+        width={700}
+      >
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="Định mức chung (Kíp)" name="defaultQuota">
+                <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Giá 1 kíp (VNĐ)" name="kipPrice">
+                <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Phạt vi phạm (VNĐ)" name="violationPenaltyRate">
+                <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Divider>Định mức theo chức vụ / người dùng</Divider>
+          <Form.List name="quotaRules">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline" wrap>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'type']}
+                      rules={[{ required: true, message: 'Chọn loại' }]}
+                    >
+                      <Select style={{ width: 120 }}>
+                        <Select.Option value="position">Chức vụ</Select.Option>
+                        <Select.Option value="user">Theo MSV/ID</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prevValues, currentValues) =>
+                        prevValues.quotaRules?.[name]?.type !== currentValues.quotaRules?.[name]?.type
+                      }
+                    >
+                      {({ getFieldValue }) => {
+                        const type = getFieldValue(['quotaRules', name, 'type']);
+                        return type === 'position' ? (
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'target']}
+                            rules={[{ required: true, message: 'Chọn chức vụ' }]}
+                          >
+                            <Select style={{ width: 160 }} placeholder="Chọn chức vụ">
+                              {positions.map(p => {
+                                const POSITION_MAP: Record<string, string> = {
+                                  'ctv': 'Cộng tác viên',
+                                  'tv': 'Thành viên',
+                                  'tvb': 'Thành viên ban',
+                                  'pb': 'Phó ban',
+                                  'tb': 'Trưởng ban',
+                                  'ctc': 'Cựu thành viên',
+                                  'dt': 'Đội trưởng'
+                                };
+                                return <Select.Option key={p} value={p}>{POSITION_MAP[p] || p}</Select.Option>;
+                              })}
+                            </Select>
+                          </Form.Item>
+                        ) : (
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'target']}
+                            rules={[{ required: true, message: 'Nhập mã' }]}
+                          >
+                            <Input placeholder="VD: B21DCCN..." style={{ width: 160 }} />
+                          </Form.Item>
+                        );
+                      }}
+                    </Form.Item>
+
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'cycle']}
+                      rules={[{ required: true, message: 'Chu kỳ' }]}
+                      initialValue="week"
+                    >
+                      <Select style={{ width: 90 }}>
+                        <Select.Option value="week">Tuần</Select.Option>
+                        <Select.Option value="month">Tháng</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'dateRange']}
+                    >
+                      <RangePicker placeholder={['Từ ngày', 'Đến ngày']} style={{ width: 220 }} />
+                    </Form.Item>
+
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'quota']}
+                      rules={[{ required: true, message: 'Nhập kíp' }]}
+                    >
+                      <InputNumber placeholder="Số kíp" step={0.5} min={0} style={{ width: 80 }} />
+                    </Form.Item>
+                    
+                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} />
+                  </Space>
+                ))}
+                <Form.Item>
+                  <Button type="dashed" onClick={() => add({ type: 'position', target: '', cycle: 'week', quota: 2.5 })} block icon={<PlusOutlined />}>
+                    Thêm ngoại lệ định mức
+                  </Button>
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
+        </Form>
+      </Modal>
+
       <UsersDetailModal 
         open={fullProfileModal.open}
         user={fullProfileModal.user}
@@ -496,12 +914,5 @@ const StatisticsPage: React.FC = () => {
     </div>
   );
 };
-
-const Statistic: React.FC<{ title: string; value: any; suffix?: string; valueStyle?: any }> = ({ title, value, suffix, valueStyle }) => (
-  <div>
-    <div style={{ fontSize: 12, color: '#8c8c8c' }}>{title}</div>
-    <div style={{ fontSize: 20, fontWeight: 600, ...valueStyle }}>{value} <span style={{ fontSize: 12 }}>{suffix}</span></div>
-  </div>
-);
 
 export default StatisticsPage;

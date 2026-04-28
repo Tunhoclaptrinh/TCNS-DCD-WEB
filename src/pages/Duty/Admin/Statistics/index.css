@@ -1,0 +1,106 @@
+.statistics-page {
+  padding: 24px;
+}
+
+.page-title {
+  margin: 0;
+  background: linear-gradient(45deg, #2563eb, #7c3aed);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07) !important;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.12) !important;
+}
+
+.glass-card .ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+  font-weight: 600 !important;
+}
+
+/* Gradient Icon */
+.gradient-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.gradient-icon.blue-purple {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+}
+
+.gradient-icon.orange-red {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+
+.gradient-icon.red-dark {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.gradient-icon.green-emerald {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+/* Status Tags */
+.status-tag {
+  border-radius: 20px;
+  padding: 2px 12px;
+  font-weight: 500;
+  border: none;
+}
+
+.status-tag.success {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+}
+
+.status-tag.warning {
+  background: rgba(250, 173, 20, 0.1);
+  color: #faad14;
+}
+
+.status-tag.error {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+
+/* Data Table Row Highlighting */
+.warning-row {
+  background-color: rgba(255, 77, 79, 0.02);
+}
+
+.ant-table-row:hover .warning-row {
+  background-color: rgba(255, 77, 79, 0.05) !important;
+}
+
+/* Modal Styling */
+.modal-profile-header {
+  padding: 32px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-avatar {
+  border: 4px solid white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}

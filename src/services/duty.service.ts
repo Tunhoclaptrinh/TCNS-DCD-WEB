@@ -419,6 +419,10 @@ class DutyService {
     const response = await apiClient.post(`/duty/stats/notify-absentees`, { stats });
     return response;
   }
+  async exportStats(params: any = {}): Promise<BaseApiResponse<{ url: string, fileName: string }>> {
+    const response = await apiClient.get<BaseApiResponse<{ url: string, fileName: string }>>(`/duty/stats/export`, { params });
+    return response;
+  }
   async getPersonalStats() {
     const response = await apiClient.get(`/users/me/stats`);
     return response;
