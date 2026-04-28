@@ -379,17 +379,44 @@ class DutyService {
     return response;
   }
 
-  async getSettings(): Promise<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean, currentGeneration: string, generations: string[] }>> {
-    const response = await apiClient.get<BaseApiResponse<{ id: any; weeklyKipLimit: number, allowUnregisterWhenFull: boolean, currentGeneration: string, generations: string[] }>>("/duty/settings");
+  async getSettings(): Promise<BaseApiResponse<{ 
+    id: any; 
+    weeklyKipLimit: number, 
+    allowUnregisterWhenFull: boolean, 
+    currentGeneration: string, 
+    generations: string[],
+    defaultQuota: number,
+    kipPrice: number,
+    violationPenaltyRate: number,
+    quotaRules: any[]
+  }>> {
+    const response = await apiClient.get<BaseApiResponse<any>>("/duty/settings");
     return response;
   }
 
-  async updateSettings(data: { weeklyKipLimit: number, allowUnregisterWhenFull: boolean, currentGeneration?: string, generations?: string[] }): Promise<BaseApiResponse<any>> {
+  async updateSettings(data: { 
+    weeklyKipLimit: number, 
+    allowUnregisterWhenFull: boolean, 
+    currentGeneration?: string, 
+    generations?: string[],
+    defaultQuota?: number,
+    kipPrice?: number,
+    violationPenaltyRate?: number,
+    quotaRules?: any[]
+  }): Promise<BaseApiResponse<any>> {
     const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
     return response;
   }
   async getStats() {
     const response = await apiClient.get(`/duty/stats/summary`);
+    return response;
+  }
+  async getComprehensiveStats(params: any = {}): Promise<BaseApiResponse<{ summary: any, details: any[] }>> {
+    const response = await apiClient.get<BaseApiResponse<{ summary: any, details: any[] }>>(`/duty/stats/comprehensive`, { params });
+    return response;
+  }
+  async notifyAbsentees(stats: any[]) {
+    const response = await apiClient.post(`/duty/stats/notify-absentees`, { stats });
     return response;
   }
   async getPersonalStats() {

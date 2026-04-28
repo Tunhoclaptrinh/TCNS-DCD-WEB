@@ -7,6 +7,7 @@ import {
     SafetyOutlined,
     SettingOutlined,
     TeamOutlined,
+    LineChartOutlined,
 } from '@ant-design/icons';
 
 export interface IMenuItem {
@@ -69,6 +70,20 @@ export const adminMenu: IMenuItem[] = [
         ]
     },
     {
+        key: 'reports',
+        name: 'Báo cáo & Thống kê',
+        icon: <LineChartOutlined />,
+        accessFilter: ['duty:manage'],
+        routes: [
+            {
+                key: 'duty-statistics',
+                path: '/admin/duty/statistics',
+                name: 'Thống kê Trực ca',
+                icon: <LineChartOutlined />,
+            },
+        ]
+    },
+    {
         key: 'system-config',
         path: '/admin/system-config',
         name: 'Cấu hình hệ thống',
@@ -118,6 +133,13 @@ export const customerMenu: IMenuItem[] = [
         path: '/duty/requests',
         name: 'Đơn của tôi',
         icon: <SwapOutlined />,
+    },
+    {
+        key: 'duty-statistics-member',
+        path: '/admin/duty/statistics',
+        name: 'Báo cáo Đội',
+        icon: <LineChartOutlined />,
+        accessFilter: ['duty:manage'],
     },
     {
         key: 'admin-switch',

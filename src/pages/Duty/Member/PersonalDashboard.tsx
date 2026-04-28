@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Typography, Space, Tag, Empty, Progress, Divider, Calendar, Alert, Avatar } from 'antd';
 import { 
-  HistoryOutlined, 
   ClockCircleOutlined,
   CheckCircleOutlined,
-  TrophyOutlined,
   NotificationOutlined,
   ThunderboltOutlined,
   ScheduleOutlined,
   LeftOutlined,
   RightOutlined,
   TeamOutlined,
-  BellOutlined
+  BellOutlined,
+  WarningOutlined,
+  CloseCircleOutlined
 } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -137,10 +137,30 @@ const PersonalDashboard: React.FC = () => {
                 containerStyle={{ marginBottom: 24 }}
                 colSpan={{ xs: 24, sm: 12, lg: 6 }}
                 data={[
-                    { title: "SỐ GIỜ TRỰC", value: `${stats.totalHours} h`, valueColor: "#8b1d1d", icon: <HistoryOutlined /> },
-                    { title: "KÍP HOÀN THÀNH", value: stats.attendedCount, valueColor: "#10b981", icon: <CheckCircleOutlined /> },
-                    { title: "ĐIỂM THƯỞNG", value: stats.points, valueColor: "#f59e0b", icon: <TrophyOutlined /> },
-                    { title: "YÊU CẦU MỚI", value: stats.pendingRequests, valueColor: "#3b82f6", icon: <NotificationOutlined /> }
+                    { 
+                        title: "TỔNG KÍP", 
+                        value: `${stats.totalKips || 0}`, 
+                        valueColor: stats.isWarning ? "#cf1322" : "#3f8600", 
+                        icon: <CheckCircleOutlined /> 
+                    },
+                    { 
+                        title: "ĐỊNH MỨC THIẾU", 
+                        value: stats.deficiency || 0, 
+                        valueColor: stats.isWarning ? "#faad14" : "#10b981", 
+                        icon: <WarningOutlined /> 
+                    },
+                    { 
+                        title: "VI PHẠM", 
+                        value: stats.violationCount || 0, 
+                        valueColor: (stats.violationCount || 0) > 0 ? "#cf1322" : "#8c8c8c", 
+                        icon: <CloseCircleOutlined /> 
+                    },
+                    { 
+                        title: "YÊU CẦU MỚI", 
+                        value: stats.pendingRequests, 
+                        valueColor: "#3b82f6", 
+                        icon: <NotificationOutlined /> 
+                    }
                 ]}
             />
 
