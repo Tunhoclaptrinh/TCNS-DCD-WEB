@@ -63,6 +63,7 @@ export interface DutySlot {
   status: 'open' | 'locked';
   capacity?: number;
   attendedUserIds?: number[];
+  attendedUsers?: any[];
   tempLeaderId?: number | null;
   attendanceData?: Record<number, { time: string, ip: string, method: string, markedBy?: number }>;
   isSpecialEvent?: boolean;

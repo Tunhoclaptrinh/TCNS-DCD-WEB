@@ -567,13 +567,14 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   renderItem={(id: number) => {
                     const isAssigned = assignedIds.includes(id);
                     const isAttended = attendedIds.includes(id);
-                    const existingViolation = slot?.violations?.find(v => String(v.userId) === String(id));
-                    const leaveReq = slot?.leaveRequests?.find(r => String(r.userId) === String(id));
-                    const swapReq = slot?.swapRequests?.find(r => String(r.userId) === String(id));
+                    const existingViolation = slot?.violations?.find((v: any) => String(v.userId) === String(id));
+                    const leaveReq = slot?.leaveRequests?.find((r: any) => String(r.userId) === String(id));
+                    const swapReq = slot?.swapRequests?.find((r: any) => String(r.userId) === String(id));
                     
                     const userDetail =
-                      (slot?.assignedUsers || []).find(u => u && u.id === id) ||
-                      selectedUsersCache.find(u => u && u.id === id);
+                      (slot?.assignedUsers || []).find((u: any) => u && String(u.id) === String(id)) ||
+                      (slot?.attendedUsers || []).find((u: any) => u && String(u.id) === String(id)) ||
+                      selectedUsersCache.find((u: any) => u && String(u.id) === String(id));
 
                     return (
                       <List.Item
@@ -639,8 +640,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                                   ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim()
                                   : userDetail?.name || userDetail?.username || `#${id}`}
                               </Text>
-                              {isAssigned && (slot?.assignedUserIds || []).indexOf(id) === 0 && (
-                                <div color="#8b1d1d" >
+                              {(slot?.assignedUserIds || []).indexOf(id) === 0 && (
+                                <div style={{ color: '#8b1d1d', fontSize: '11px', fontWeight: 600 }}>
                                   - Quản lý kíp
                                 </div>
                               )}

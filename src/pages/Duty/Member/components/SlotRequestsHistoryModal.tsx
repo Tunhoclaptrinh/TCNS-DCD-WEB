@@ -101,6 +101,12 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
       }
     },
     {
+      title: 'Lý do',
+      dataIndex: 'reason',
+      key: 'reason',
+      ellipsis: true,
+    },
+    {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',

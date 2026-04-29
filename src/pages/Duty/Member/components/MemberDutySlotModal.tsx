@@ -415,12 +415,16 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                       <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                         <List
                           size="small"
-                          dataSource={slot?.assignedUsers || []}
+                          dataSource={[
+                            ...(slot?.assignedUsers || []),
+                            ...(slot?.attendedUsers || []).filter((au: any) => !(slot?.assignedUsers || []).some((as: any) => String(as.id) === String(au.id)))
+                          ]}
                           locale={{ emptyText: 'Chưa có người đăng ký' }}
                           renderItem={(u: any, index: number) => {
+                            const isAssigned = (slot?.assignedUsers || []).some((as: any) => String(as.id) === String(u.id));
                             const isVisible = checkVisibility(u);
                             const isMe = String(u.id) === String(currentUserId);
-                            const existingViolation = slot?.violations?.find(v => String(v.userId) === String(u.id));
+                            const existingViolation = slot?.violations?.find((v: any) => String(v.userId) === String(u.id));
                             const displayName = isVisible ? (u.name || u.fullName || u.username || u.email) : "Nhân sự trực (Bảo mật)";
                             const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
                             const posInfo = getPositionInfo(u.position);
@@ -435,11 +439,12 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                     <Space size={8} style={{ width: '100%' , justifyContent: 'space-between' }}>
                                       <span style={{ fontWeight: 600 }}>{displayName}</span>
                                       {isMe && <Tag color="magenta" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Bạn</Tag>}
-                                      {isVisible && (
+                                       {isVisible && (
                                         <Tag color={posInfo.color} style={{ fontSize: '10px', borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
                                           {posInfo.name}
                                         </Tag>
                                       )}
+                                      {!isAssigned && <Tag color="orange" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Ngoài kíp</Tag>}
                                       {(index === 0 && !isMe) && <Tag color="gold" style={{ fontSize: 9, borderRadius: 4 }}>Quản lý kíp</Tag>}
                                       {existingViolation && <Tag color="error" style={{ fontSize: 9, borderRadius: 4 }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
                                     </Space>
