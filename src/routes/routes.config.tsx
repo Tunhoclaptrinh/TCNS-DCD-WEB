@@ -33,6 +33,7 @@ const DutyStatistics = lazy(() => import("@/pages/Duty/Admin/Statistics/index"))
 const SystemConfig = lazy(() => import("@/pages/SystemConfig"));
 const Permissions = lazy(() => import("@/pages/Permissions"));
 const Roles = lazy(() => import("@/pages/Roles"));
+const RewardPenalties = lazy(() => import("@/pages/RewardPenalties"));
 
 // ... (rest of the lazy loads)
 
@@ -213,6 +214,10 @@ const routes: RouteObject[] = [
       {
         path: "statistics",
         element: <DutyStatistics />,
+      },
+      {
+        path: "reward-penalties",
+        element: <RewardPenalties />,
       },
       {
         path: "system-config",

@@ -8,6 +8,7 @@ import {
     SettingOutlined,
     TeamOutlined,
     LineChartOutlined,
+    TrophyOutlined,
 } from '@ant-design/icons';
 
 export interface IMenuItem {
@@ -81,6 +82,13 @@ export const adminMenu: IMenuItem[] = [
                 path: '/admin/statistics',
                 name: 'Thống kê Lịch trực',
                 icon: <LineChartOutlined />,
+            },
+            {
+                key: 'reward-penalties',
+                path: '/admin/reward-penalties',
+                name: 'Thưởng & Phạt',
+                icon: <TrophyOutlined />,
+                accessFilter: ['reward_penalty:view'],
             },
         ]
     },
