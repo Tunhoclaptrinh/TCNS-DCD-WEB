@@ -281,12 +281,12 @@ const PersonalDashboard: React.FC = () => {
                                 <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-around' }}>
                                     <Space direction="vertical" size={0}>
                                         <Text type="secondary">Đã trực</Text>
-                                        <Text strong>{stats.attendedCount} ca</Text>
+                                        <Text strong>{stats.attendedCount} kíp</Text>
                                     </Space>
                                     <Divider type="vertical" style={{ height: 32 }} />
                                     <Space direction="vertical" size={0}>
                                         <Text type="secondary">Sắp tới</Text>
-                                        <Text strong>{upcomingSlots.length} ca</Text>
+                                        <Text strong>{upcomingSlots.length} kíp</Text>
                                     </Space>
                                 </div>
                             </div>

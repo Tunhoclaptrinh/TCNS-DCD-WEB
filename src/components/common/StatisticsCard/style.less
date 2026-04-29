@@ -33,6 +33,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 
 		.anticon {
 			font-size: 16px;
@@ -44,6 +47,7 @@
 		font-weight: 700;
 		font-size: 1.75rem;
 		line-height: 1;
+		white-space: nowrap;
 
 		@media (max-width: @screen-xs) {
 			font-size: 1.25rem;
