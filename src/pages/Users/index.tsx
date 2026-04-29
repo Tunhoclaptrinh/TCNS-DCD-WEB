@@ -622,9 +622,10 @@ const UserPage = () => {
             key: "department",
             label: "Tên Ban",
             type: "select" as const,
-            operators: ['eq', 'like', 'in'],
+            operators: ['eq', 'like', 'in'] as any,
             options: DEPARTMENT_OPTIONS.map(d => ({ label: d, value: d })),
         },
+
         {
             key: "status",
             label: "Trạng thái thành viên",
@@ -939,8 +940,14 @@ const UserPage = () => {
                 onSearch={search}
                 filters={filters}
                 filterValues={filterValues}
-                onFilterChange={(key, value) => updateFilters({ [key]: value })}
-                onClearFilters={clearFilters}
+                onFilterChange={(key, value) => {
+                    if (key === 'generationId') setSelectedGenerationId(value);
+                    updateFilters({ [key]: value });
+                }}
+                onClearFilters={() => {
+                    setSelectedGenerationId(ACTIVE_ONLY);
+                    clearFilters();
+                }}
                 // Batch Operations
                 batchOperations={hasPermission('users:delete')}
                 selectedRowKeys={selectedIds}

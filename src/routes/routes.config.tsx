@@ -29,7 +29,7 @@ const DutyCalendar = lazy(() => import("@/pages/Duty/Admin/AdminDutyCalendar"));
 const DutyManagement = lazy(() => import("@/pages/Duty/Admin/Management"));
 const LeaveRequests = lazy(() => import("@/pages/Duty/Admin/LeaveRequests"));
 const SwapRequests = lazy(() => import("@/pages/Duty/Admin/SwapRequests"));
-const DutyStatistics = lazy(() => import("@/pages/Duty/Admin/Statistics"));
+const DutyStatistics = lazy(() => import("@/pages/Duty/Admin/Statistics/index"));
 const SystemConfig = lazy(() => import("@/pages/SystemConfig"));
 const Permissions = lazy(() => import("@/pages/Permissions"));
 const Roles = lazy(() => import("@/pages/Roles"));

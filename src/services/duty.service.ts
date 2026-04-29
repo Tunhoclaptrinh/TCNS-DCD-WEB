@@ -411,7 +411,7 @@ class DutyService {
     const response = await apiClient.get(`/duty/stats/summary`);
     return response;
   }
-  async getComprehensiveStats(params: any = {}): Promise<BaseApiResponse<{ summary: any, details: any[] }>> {
+  async getComprehensiveStats(params: any = {}): Promise<BaseApiResponse<{ summary: any, details: any[], meta?: any }>> {
     const response = await apiClient.get<BaseApiResponse<{ summary: any, details: any[] }>>(`/duty/stats/comprehensive`, { params });
     return response;
   }

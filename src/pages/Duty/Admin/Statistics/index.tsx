@@ -1,23 +1,28 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { 
   Card, Row, Col, DatePicker, Select, 
-  Space, Typography, message, 
-  Tooltip, Empty, Modal, Input,
-  Avatar, Progress, InputNumber, Alert, Badge, Statistic
+  Space, Tag, Typography, message, 
+  Tooltip, Empty, Divider, Modal, Input, List,
+  Avatar, Progress, Tabs, InputNumber, Button, Form
 } from 'antd';
 import { 
   FileExcelOutlined, 
-  BellOutlined, 
   WarningOutlined, 
   CheckCircleOutlined,
   CloseCircleOutlined,
+  UserOutlined,
+  InfoCircleOutlined,
+  LeftOutlined,
+  RightOutlined,
+  EditOutlined,
   CalendarOutlined,
+  SendOutlined,
+  CommentOutlined,
   SettingOutlined,
-  SearchOutlined,
-  TeamOutlined,
-  DollarOutlined,
-  FilterOutlined,
-  UserOutlined
+  PlusOutlined,
+  DeleteOutlined,
+  TableOutlined
 } from '@ant-design/icons';
 import { dutyService } from '@/services/duty.service';
 import { userService } from '@/services/user.service';
@@ -25,78 +30,180 @@ import { generationService } from '@/services/generation.service';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import isoWeek from 'dayjs/plugin/isoWeek';
-import { Button, DataTable } from '@/components/common';
+import { StatisticsCard, DataTable } from '@/components/common';
+import UsersDetailModal from '@/pages/Users/components/Detail';
+import MatrixViewModal from './components/MatrixViewModal';
 import { 
   Tooltip as ChartTooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid
+  PieChart, Pie, Cell
 } from 'recharts';
-import { motion } from 'framer-motion';
-import UserDetailModal from './components/UserDetailModal';
-import './index.css';
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
+const { TextArea } = Input;
 
-const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
 
 const StatisticsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [searchText, setSearchText] = useState('');
-  
+  const [positions, setPositions] = useState<string[]>([]);
+  const [generations, setGenerations] = useState<any[]>([]);
+  const [matrixModalOpen, setMatrixModalOpen] = useState(false);
   const [filters, setFilters] = useState<{
     dateRange: [dayjs.Dayjs | null, dayjs.Dayjs | null];
-    departmentId?: string;
-    generationId?: number;
-    viewType: 'range' | 'week' | 'month';
+    departmentId?: any;
+    generationId?: any;
+    viewType: 'range' | 'week';
     week: dayjs.Dayjs;
-    month: dayjs.Dayjs;
   }>({
     dateRange: [dayjs().startOf('month'), dayjs().endOf('month')],
     departmentId: undefined,
     generationId: undefined,
-    viewType: 'week',
-    week: dayjs(),
-    month: dayjs()
+    viewType: 'week', // Default to week view as requested
+    week: dayjs()
   });
 
+  // Modal states
+  const [commentModal, setCommentModal] = useState<{ open: boolean; user?: any; comment: string }>({
+    open: false,
+    user: null,
+    comment: ''
+  });
   const [detailModal, setDetailModal] = useState<{ open: boolean; user?: any }>({
     open: false,
     user: null
   });
+  const [fullProfileModal, setFullProfileModal] = useState<{ open: boolean; user?: any }>({
+    open: false,
+    user: null
+  });
+  const [adjustmentModal, setAdjustmentModal] = useState<{ open: boolean; user?: any; newQuota: number }>({
+    open: false,
+    user: null,
+    newQuota: 0
+  });
+  
+  const [tableParams, setTableParams] = useState<any>({
+    pagination: { current: 1, pageSize: 10 }
+  });
+  const [settingsModal, setSettingsModal] = useState({ open: false });
+  const [form] = Form.useForm();
 
-  const [globalQuotaModal, setGlobalQuotaModal] = useState({ open: false, quota: 2.5 });
-  const [isNotifying, setIsNotifying] = useState(false);
+  const handleTableChange = (pagination: any, tableFilters: any, sorter: any) => {
+    setTableParams({
+      pagination,
+      filters: tableFilters,
+      sorter,
+    });
+  };
 
-  // --- Data Fetching ---
+  const handleOpenSettings = async () => {
+    try {
+      const res = await dutyService.getSettings();
+      if (res.success) {
+        setSettingsModal({ open: true });
+        const quotaRules = (res.data?.quotaRules || []).map((r: any) => ({
+          ...r,
+          dateRange: r.startDate && r.endDate ? [dayjs(r.startDate), dayjs(r.endDate)] : undefined
+        }));
+        form.setFieldsValue({
+          defaultQuota: res.data?.defaultQuota,
+          kipPrice: res.data?.kipPrice,
+          violationPenaltyRate: res.data?.violationPenaltyRate,
+          quotaRules,
+        });
+      }
+    } catch (err) {
+      message.error('Lỗi khi tải cấu hình');
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const values = await form.validateFields();
+      if (values.quotaRules) {
+        values.quotaRules = values.quotaRules.map((r: any) => {
+          const rule = { ...r };
+          if (r.dateRange && r.dateRange.length === 2) {
+            rule.startDate = r.dateRange[0].startOf('day').toISOString();
+            rule.endDate = r.dateRange[1].endOf('day').toISOString();
+          } else {
+            rule.startDate = null;
+            rule.endDate = null;
+          }
+          delete rule.dateRange;
+          return rule;
+        });
+      }
+      await dutyService.updateSettings(values);
+      message.success('Đã lưu cấu hình');
+      setSettingsModal({ open: false });
+      fetchData(); // Tải lại để áp dụng định mức mới
+    } catch (err) {
+      message.error('Vui lòng kiểm tra lại thông tin cấu hình');
+    }
+  };
+
+  const loadMetadata = async () => {
+    try {
+      const genRes = await generationService.getAll();
+      if (genRes.success) {
+        setGenerations(genRes.data || []);
+      }
+      
+      // Standard departments as used in User Management
+      const DEPARTMENT_OPTIONS = ['Nhân sự', 'Tài chính', 'Truyền thông', 'Sự kiện'];
+      setDepartments(DEPARTMENT_OPTIONS.map(d => ({ id: d, name: d })));
+    } catch (err) {
+      console.error('Metadata load error', err);
+    }
+  };
+
+  useEffect(() => { loadMetadata(); }, []);
+
   const fetchData = async () => {
     setLoading(true);
     try {
       let startDate, endDate;
-      if (filters.viewType === 'week') {
+      if (filters.viewType === 'week' && filters.week) {
         startDate = filters.week.startOf('isoWeek').toISOString();
         endDate = filters.week.endOf('isoWeek').toISOString();
-      } else if (filters.viewType === 'month') {
-        startDate = filters.month.startOf('month').toISOString();
-        endDate = filters.month.endOf('month').toISOString();
+      } else if (filters.dateRange[0] && filters.dateRange[1]) {
+        startDate = filters.dateRange[0].toISOString();
+        endDate = filters.dateRange[1].toISOString();
       } else {
-        startDate = filters.dateRange[0]?.toISOString();
-        endDate = filters.dateRange[1]?.toISOString();
+        startDate = dayjs().startOf('month').toISOString();
+        endDate = dayjs().endOf('month').toISOString();
       }
 
-      const res = await dutyService.getComprehensiveStats({
+      const params = {
         startDate,
         endDate,
         departmentId: filters.departmentId,
         generationId: filters.generationId
-      });
-
-      if (res.success) {
+      };
+      console.log('[Statistics] Fetching with params:', params);
+      const res = await dutyService.getComprehensiveStats(params);
+      if (res.success && res.data) {
         setStats(res.data);
+        // Sync metadata from response if available
+        const meta = res.data.meta;
+        if (meta) {
+          if (meta.departments) {
+            setDepartments(meta.departments.map((d: string) => ({ id: d, name: d })));
+          }
+          if (meta.generations) {
+            setGenerations(meta.generations);
+          }
+          if (meta.positions) {
+            setPositions(meta.positions);
+          }
+        }
       }
     } catch (err) {
       message.error('Lỗi khi tải dữ liệu thống kê');
@@ -105,129 +212,149 @@ const StatisticsPage: React.FC = () => {
     }
   };
 
-  const loadMetadata = async () => {
-    try {
-      // Just to trigger metadata or similar, no longer keeping userRes/genRes state here if not used
-      await Promise.all([
-        userService.getAll({ _limit: 1 }), 
-        generationService.getAll()
-      ]);
-      // Note: departments usually come from existing users or a separate service
+  useEffect(() => { 
+    console.log('[Statistics] Filters changed:', filters);
+    fetchData(); 
+  }, [filters]);
 
-    } catch (err) {
-      console.error('Metadata load error', err);
-    }
-  };
-
-  useEffect(() => { loadMetadata(); }, []);
-  useEffect(() => { fetchData(); }, [filters]);
-
-  // --- Computed Data ---
-  const filteredDetails = useMemo(() => {
-    if (!stats?.details) return [];
-    
-    // Extract unique departments from stats
-    const depts = Array.from(new Set(stats.details.map((s: any) => s.department).filter(Boolean))) as string[];
-    if (departments.length === 0 && depts.length > 0) {
-      setDepartments(depts.map(d => ({ id: d, name: d })));
-    }
-
-    return stats.details.filter((item: any) => {
-      const search = searchText.toLowerCase().trim();
-      const matchSearch = !search || 
-        item.name.toLowerCase().includes(search) ||
-        (item.studentId && item.studentId.toLowerCase().includes(search));
-      
-      return matchSearch;
-    });
-  }, [stats, searchText]);
-
-  const deptChartData = useMemo(() => {
-    if (!stats?.details) return [];
-    const groups: any = {};
-    stats.details.forEach((s: any) => {
-      const dept = s.department || 'Khác';
-      if (!groups[dept]) groups[dept] = { name: dept, kips: 0, members: 0 };
-      groups[dept].kips += s.totalKips;
-      groups[dept].members += 1;
-    });
-    return Object.values(groups).sort((a: any, b: any) => b.kips - a.kips);
-  }, [stats]);
-
-  const violationPieData = useMemo(() => {
-    if (!stats?.summary?.violationTypes) return [];
-    return Object.entries(stats.summary.violationTypes).map(([name, value]) => ({ name, value }));
-  }, [stats]);
-
-  // --- Handlers ---
-  const handleExport = () => {
-    message.loading('Đang chuẩn bị file Excel...');
-    // Real implementation would call a backend endpoint
-    dutyService.exportStats({
-      ...filters,
-      startDate: filters.viewType === 'week' ? filters.week.startOf('isoWeek').toISOString() : 
-                 filters.viewType === 'month' ? filters.month.startOf('month').toISOString() :
-                 filters.dateRange[0]?.toISOString(),
-      endDate: filters.viewType === 'week' ? filters.week.endOf('isoWeek').toISOString() :
-               filters.viewType === 'month' ? filters.month.endOf('month').toISOString() :
-               filters.dateRange[1]?.toISOString(),
-    }).then((res: any) => {
-      if (res.success && res.data && res.data.url) {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-        const serverUrl = baseUrl.replace('/api', '');
-        window.open(serverUrl + res.data.url);
-      } else if (res.url) { // fallback
-        window.open(res.url);
-      } else {
-        message.error('Không thể xuất file');
-      }
-    }).catch(() => {
-      message.error('Lỗi khi xuất file Excel');
-    });
-  };
-
-  const handleNotifyAll = async () => {
-    const warningUsers = stats.details.filter((s: any) => s.isWarning);
-    if (warningUsers.length === 0) {
-      message.info('Không có ai thiếu kíp để nhắc nhở.');
+  const handleNotify = async (targetUser?: any) => {
+    const usersToNotify = targetUser ? [targetUser] : stats.details.filter((s: any) => s.isWarning);
+    if (usersToNotify.length === 0) {
+      message.info('Không có thành viên nào cần thông báo.');
       return;
     }
-
-    setIsNotifying(true);
+    
     try {
-      await dutyService.notifyAbsentees(warningUsers);
-      message.success(`Đã gửi thông báo cho ${warningUsers.length} thành viên.`);
+      await dutyService.notifyAbsentees(usersToNotify);
+      message.success(`Đã gửi thông báo cho ${usersToNotify.length} thành viên.`);
+      if (commentModal.open) setCommentModal({ ...commentModal, open: false });
     } catch (err) {
-      message.error('Gửi thông báo thất bại');
-    } finally {
-      setIsNotifying(false);
+      message.error('Lỗi khi gửi thông báo');
     }
   };
 
-  // --- Table Columns ---
+  const handleNotifyAbsentees = async () => {
+    const absentees = stats.details.filter((s: any) => s.isWarning);
+    if (absentees.length === 0) {
+      message.info('Không có nhân sự thiếu kíp để thông báo');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await dutyService.notifyAbsentees(absentees);
+      message.success(`Đã gửi thông báo nhắc nhở tới ${absentees.length} nhân sự`);
+    } catch (err) {
+      message.error('Lỗi khi gửi thông báo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const handleShowFullProfile = async (u: any) => {
+    try {
+      const res = await userService.getById(u.userId);
+      if (res.success) {
+        setFullProfileModal({ open: true, user: res.data });
+      } else {
+        message.error('Không thể tải thông tin chi tiết thành viên');
+      }
+    } catch (err) {
+      message.error('Lỗi khi tải hồ sơ thành viên');
+    }
+  };
+
+  const handleExport = () => {
+    if (!stats || !stats.details) return;
+    const headers = ['MSV', 'Họ tên', 'Ban', 'Chức vụ', 'Tổng kíp', 'Định mức', 'Thiếu', 'Số lỗi', 'HS Phạt', 'Tổng nhận (VNĐ)'];
+    const csvRows = [
+      headers.join(','),
+      ...stats.details.map((s: any) => [
+        s.studentId,
+        `"${s.name}"`,
+        s.department,
+        s.position,
+        s.totalKips,
+        s.userQuota,
+        s.deficiency,
+        s.violationCount,
+        s.penaltyCoefficient,
+        s.finalAmount
+      ].join(','))
+    ];
+    const csvContent = "\uFEFF" + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `ThongKeTrực_${dayjs().format('YYYYMMDD')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const changeWeek = (direction: number) => {
+    setFilters(f => ({
+      ...f,
+      week: f.week.add(direction, 'week')
+    }));
+  };
+
+  const handleApplyAdjustment = () => {
+    if (!adjustmentModal.user) return;
+    
+    // Simulate updating local state for preview
+    // In a real app, this might save an override to the DB
+    const newDetails = stats.details.map((s: any) => {
+      if (s.userId === adjustmentModal.user.userId) {
+        const newQuota = adjustmentModal.newQuota;
+        const newDeficiency = Math.max(0, newQuota - s.totalKips);
+        return {
+          ...s,
+          userQuota: newQuota,
+          deficiency: newDeficiency,
+          isWarning: s.totalKips < newQuota
+        };
+      }
+      return s;
+    });
+
+    // Recalculate summary
+    const warningCount = newDetails.filter((s: any) => s.isWarning).length;
+    
+    setStats({
+      ...stats,
+      summary: { ...stats.summary, warningCount },
+      details: newDetails
+    });
+    setAdjustmentModal({ open: false, user: null, newQuota: 0 });
+    message.success('Đã cập nhật định mức tạm thời cho nhân sự');
+  };
+
   const columns: any[] = [
     {
-      title: 'Thành viên',
+      title: 'Tên thành viên',
       key: 'user',
-      fixed: 'left',
-      width: 250,
+      fixed: 'left' as const,
+      width: 220,
+      searchable: true,
+      dataIndex: 'name', // Needed for DataTable search
       render: (_: any, record: any) => (
-        <Space size={12} style={{ cursor: 'pointer' }} onClick={() => setDetailModal({ open: true, user: record })}>
-          <Badge dot={record.isWarning} status="error" offset={[-2, 32]}>
-            <Avatar size={40} src={record.avatar} icon={<UserOutlined />} style={{ border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
-          </Badge>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <Text strong style={{ display: 'block', marginBottom: -4 }}>{record.name}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>{record.studentId}</Text>
-          </div>
+        <Space style={{ cursor: 'pointer' }} onClick={() => setDetailModal({ open: true, user: record })}>
+          <Avatar icon={<UserOutlined />} src={record.avatar} />
+          <Space direction="vertical" size={0}>
+            <Text strong>{record.name}</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>{record.studentId}</Text>
+          </Space>
         </Space>
       )
     },
     {
-      title: 'Ban chuyên môn',
+      title: 'Đơn vị',
       dataIndex: 'department',
       key: 'department',
-      width: 150,
+      width: 140,
     },
     {
       title: 'Chức vụ',
@@ -248,126 +375,136 @@ const StatisticsPage: React.FC = () => {
       }
     },
     {
-      title: 'Số kíp',
+      title: 'Tổng kíp',
+      dataIndex: 'totalKips',
       key: 'totalKips',
-      align: 'center',
       width: 100,
+      align: 'center',
       sorter: (a: any, b: any) => a.totalKips - b.totalKips,
-      render: (record: any) => (
-        <div style={{ textAlign: 'center' }}>
-          <Text strong style={{ fontSize: 16, color: record.isWarning ? '#ff4d4f' : '#52c41a' }}>{record.totalKips}</Text>
-          <div style={{ fontSize: 10, color: '#8c8c8c' }}>/{record.deficiency + record.totalKips}</div>
-        </div>
+      render: (val: number, record: any) => (
+        <Text strong style={{ color: record.isWarning ? '#cf1322' : '#3f8600' }}>{val}</Text>
       )
     },
     {
-      title: 'Vi phạm',
-      key: 'violations',
+      title: 'Định mức',
+      key: 'quota',
+      width: 120,
       align: 'center',
-      width: 100,
-      render: (record: any) => (
-        <Space direction="vertical" size={0}>
-          <Text strong style={{ color: record.violationCount > 0 ? '#ff4d4f' : '#8c8c8c' }}>{record.violationCount}</Text>
-          {record.penaltyCoefficient > 0 && <Text type="danger" style={{ fontSize: 10 }}>(-{record.penaltyCoefficient})</Text>}
+      render: (_: any, record: any) => (
+        <Space>
+          <Text>{record.userQuota}</Text>
+          <Tooltip title="Sửa riêng">
+            <EditOutlined 
+              style={{ color: '#1890ff', cursor: 'pointer', fontSize: 12 }} 
+              onClick={(e) => {
+                e.stopPropagation();
+                setAdjustmentModal({ open: true, user: record, newQuota: record.userQuota });
+              }}
+            />
+          </Tooltip>
         </Space>
       )
     },
     {
-      title: 'Cần bổ sung',
+      title: 'Tình trạng',
+      dataIndex: 'deficiency',
       key: 'deficiency',
-      width: 120,
+      width: 110,
       align: 'center',
-      render: (record: any) => (
-        record.isWarning ? (
-          <span className="status-tag error">Thiếu {record.deficiency.toFixed(1)}</span>
-        ) : (
-          <span className="status-tag success">Đã đạt</span>
-        )
+      render: (val: number) => val > 0 ? <Tag color="error">Thiếu {val}</Tag> : <Tag color="success">Đủ</Tag>
+    },
+    {
+      title: 'Tiến độ',
+      key: 'progress',
+      width: 160,
+      render: (_: any, record: any) => (
+        <Progress 
+          percent={Math.min(100, Math.round((record.totalKips / record.userQuota) * 100))} 
+          size="small" 
+          status={record.isWarning ? "exception" : "success"}
+          strokeColor={record.isWarning ? '#cf1322' : '#52c41a'}
+        />
       )
     },
     {
-      title: 'Tạm tính',
-      key: 'finalAmount',
-      align: 'right',
-      width: 150,
-      sorter: (a: any, b: any) => a.finalAmount - b.finalAmount,
-      render: (val: number) => (
-        <Text strong style={{ color: '#10b981' }}>{val.toLocaleString()}₫</Text>
-      )
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
+      title: 'Số lỗi',
+      dataIndex: 'violationCount',
+      key: 'violationCount',
       width: 80,
       align: 'center',
-      render: (record: any) => (
-        <Tooltip title="Nhắc nhở riêng">
-          <Button 
-            variant="ghost" 
-            icon={<BellOutlined style={{ color: record.isWarning ? '#ff4d4f' : '#1890ff' }} />} 
-            onClick={(e) => { e.stopPropagation(); dutyService.notifyAbsentees([record]); }}
-            buttonSize="small"
-          />
-        </Tooltip>
-      )
-    }
+      sorter: (a: any, b: any) => a.violationCount - b.violationCount,
+      render: (count: number) => count > 0 ? <Tag color="red">{count}</Tag> : <Text type="secondary">0</Text>
+    },
+    {
+      title: 'Tạm tính (VNĐ)',
+      dataIndex: 'totalEarnings',
+      key: 'totalEarnings',
+      width: 130,
+      align: 'right',
+      sorter: (a: any, b: any) => a.totalEarnings - b.totalEarnings,
+      render: (val: number) => <Text strong>{val?.toLocaleString()} ₫</Text>
+    },
   ];
 
+  const getChartData = () => {
+    if (!stats) return [];
+    const groups: any = {};
+    stats.details.forEach((s: any) => {
+      const dept = s.department || 'Chưa xếp đơn vị';
+      groups[dept] = (groups[dept] || 0) + s.totalKips;
+    });
+    return Object.entries(groups).map(([name, value]) => ({ name, value }));
+  };
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      style={{ padding: '24px' }}
-    >
-      {/* --- Header Section --- */}
-      <Row gutter={[24, 24]} align="middle" style={{ marginBottom: 32 }}>
+    <div style={{ padding: '0px' }}>
+      <Row gutter={[16, 16]} align="middle" style={{ marginBottom: 24 }}>
         <Col flex="auto">
-          <Space direction="vertical" size={0}>
-            <Title level={2} className="page-title">
-              Trung tâm Thống kê & Báo cáo
-            </Title>
-            <Text type="secondary">Phân tích hiệu suất, quản lý định mức và tối ưu hóa nhân sự trực ca</Text>
+          <Space size={16} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Title level={3} style={{ margin: 0 }}>Báo cáo & Thống kê Trực ca</Title>
+            <Select 
+                style={{ width: 240 }} 
+                placeholder="Lọc theo Khóa / Thế hệ"
+                allowClear
+                value={filters.generationId}
+                options={[
+                  { label: 'Các khóa đang hoạt động', value: 'active' },
+                  ...generations.map(g => ({ label: g.name, value: g.id }))
+                ]}
+                onChange={(val) => setFilters(f => ({ ...f, generationId: val }))}
+              />
           </Space>
         </Col>
         <Col>
-          <Space size={12}>
-            <Button 
-              icon={<BellOutlined />} 
-              variant="danger" 
-              onClick={handleNotifyAll}
-              loading={isNotifying}
-              disabled={!stats?.summary?.warningCount}
-            >
-              Nhắc nhở ({stats?.summary?.warningCount || 0})
+          <Space>
+            <Button icon={<SettingOutlined />} onClick={handleOpenSettings}>
+              Cấu hình chung
             </Button>
-            <Button 
-              icon={<FileExcelOutlined />} 
-              variant="primary" 
-              onClick={handleExport}
-              disabled={loading || !stats}
-            >
-              Xuất Báo cáo Excel
+            <Button icon={<TableOutlined />} onClick={() => {
+              console.log('[Statistics] Opening Matrix View with stats:', stats);
+              setMatrixModalOpen(true);
+            }}>
+              Dạng bảng Excel
+            </Button>
+            <Button icon={<FileExcelOutlined />} type="primary" onClick={handleExport}>
+              Xuất dữ liệu
             </Button>
           </Space>
         </Col>
       </Row>
 
-      {/* --- Filter Bar --- */}
-      <Card className="glass-card" style={{ marginBottom: 24 }} bodyStyle={{ padding: '16px 24px' }}>
-        <Row gutter={[24, 16]} align="middle">
+      <Card style={{ marginBottom: 24 }}>
+        <Row gutter={[24, 16]} align="bottom">
           <Col>
             <Space direction="vertical" size={4}>
-              <Text type="secondary" style={{ fontSize: 12 }}><FilterOutlined /> Chế độ</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>Chế độ xem</Text>
               <Select 
                 value={filters.viewType} 
                 onChange={(val) => setFilters(f => ({ ...f, viewType: val }))}
-                style={{ width: 120 }}
-                variant="borderless"
+                style={{ width: 140 }}
                 options={[
-                  { label: 'Tuần trực', value: 'week' },
-                  { label: 'Tháng này', value: 'month' },
-                  { label: 'Tự chọn', value: 'range' }
+                  { label: 'Theo tuần', value: 'week' },
+                  { label: 'Khoảng ngày', value: 'range' }
                 ]}
               />
             </Space>
@@ -376,39 +513,29 @@ const StatisticsPage: React.FC = () => {
           {filters.viewType === 'week' ? (
             <Col>
               <Space direction="vertical" size={4}>
-                <Text type="secondary" style={{ fontSize: 12 }}><CalendarOutlined /> Chọn Tuần</Text>
-                <DatePicker 
-                  picker="week" 
-                  value={filters.week} 
-                  onChange={(val) => val && setFilters(f => ({ ...f, week: val }))}
-                  format="[Tuần] ww, YYYY"
-                  allowClear={false}
-                  variant="borderless"
-                />
-              </Space>
-            </Col>
-          ) : filters.viewType === 'month' ? (
-            <Col>
-              <Space direction="vertical" size={4}>
-                <Text type="secondary" style={{ fontSize: 12 }}><CalendarOutlined /> Chọn Tháng</Text>
-                <DatePicker 
-                  picker="month" 
-                  value={filters.month} 
-                  onChange={(val) => val && setFilters(f => ({ ...f, month: val }))}
-                  format="MM/YYYY"
-                  allowClear={false}
-                  variant="borderless"
-                />
+                <Text type="secondary" style={{ fontSize: 12 }}>Chọn tuần trực</Text>
+                <Space>
+                  <Button type="default" size="small" icon={<LeftOutlined />} onClick={() => changeWeek(-1)} />
+                  <DatePicker 
+                    picker="week" 
+                    value={filters.week} 
+                    onChange={(val) => val && setFilters(f => ({ ...f, week: val }))}
+                    format="[Tuần] ww, YYYY"
+                    allowClear={false}
+                  />
+                  <Button type="default" size="small" icon={<RightOutlined />} onClick={() => changeWeek(1)} />
+                </Space>
               </Space>
             </Col>
           ) : (
             <Col>
               <Space direction="vertical" size={4}>
-                <Text type="secondary" style={{ fontSize: 12 }}><CalendarOutlined /> Khoảng ngày</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>Khoảng thời gian</Text>
                 <RangePicker 
                   value={filters.dateRange} 
-                  onChange={(val) => val && setFilters(f => ({ ...f, dateRange: [val[0], val[1]] }))} 
-                  variant="borderless"
+                  onChange={(val) => {
+                    if (val) setFilters(f => ({ ...f, dateRange: [val[0], val[1]] }));
+                  }} 
                 />
               </Space>
             </Col>
@@ -416,12 +543,11 @@ const StatisticsPage: React.FC = () => {
 
           <Col>
             <Space direction="vertical" size={4}>
-              <Text type="secondary" style={{ fontSize: 12 }}><TeamOutlined /> Ban chuyên môn</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>Ban / Đơn vị</Text>
               <Select 
                 style={{ width: 180 }} 
-                placeholder="Tất cả các ban"
+                placeholder="Tất cả các Ban"
                 allowClear
-                variant="borderless"
                 value={filters.departmentId}
                 options={departments.map(d => ({ label: d.name, value: d.id }))}
                 onChange={(val) => setFilters(f => ({ ...f, departmentId: val }))}
@@ -429,213 +555,412 @@ const StatisticsPage: React.FC = () => {
             </Space>
           </Col>
 
-          <Col>
-            <Space direction="vertical" size={4}>
-              <Text type="secondary" style={{ fontSize: 12 }}><SearchOutlined /> Tìm kiếm</Text>
-              <Input 
-                placeholder="Tên, MSV..." 
-                value={searchText} 
-                onChange={e => setSearchText(e.target.value)}
-                variant="borderless"
-                style={{ width: 180 }}
-                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-              />
-            </Space>
-          </Col>
-          
-          <Col flex="auto" />
-          
-          <Col>
-            <Button 
-              icon={<SettingOutlined />} 
-              variant="outline" 
-              onClick={() => setGlobalQuotaModal({ ...globalQuotaModal, open: true })}
-            >
-              Định mức
-            </Button>
-          </Col>
         </Row>
+        
+        {filters.viewType === 'week' && (
+          <div style={{ marginTop: 12 }}>
+            <Tag color="blue" icon={<CalendarOutlined />}>
+              Thời gian: {filters.week.startOf('isoWeek').format('DD/MM/YYYY')} - {filters.week.endOf('isoWeek').format('DD/MM/YYYY')}
+            </Tag>
+          </div>
+        )}
       </Card>
 
-      {/* --- Summary Cards --- */}
-      <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card" bodyStyle={{ padding: 24 }}>
-            <div className="gradient-icon blue-purple">
-              <CheckCircleOutlined />
-            </div>
-            <Statistic 
-              title="Tổng số kíp trực"
-              value={stats?.summary?.totalKips || 0}
-              suffix="Kíp"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card" bodyStyle={{ padding: 24 }}>
-            <div className="gradient-icon orange-red">
-              <WarningOutlined />
-            </div>
-            <Statistic 
-              title="Thiếu định mức"
-              value={stats?.summary?.warningCount || 0}
-              suffix="Người"
-              valueStyle={{ color: '#ef4444' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card" bodyStyle={{ padding: 24 }}>
-            <div className="gradient-icon red-dark">
-              <CloseCircleOutlined />
-            </div>
-            <Statistic 
-              title="Tổng lỗi vi phạm"
-              value={stats?.summary?.totalViolations || 0}
-              suffix="Lỗi"
-              valueStyle={{ color: '#ef4444' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card" bodyStyle={{ padding: 24 }}>
-            <div className="gradient-icon green-emerald">
-              <DollarOutlined />
-            </div>
-            <Statistic 
-              title="Tạm tính quỹ"
-              value={(stats?.summary?.totalPayout || 0).toLocaleString()}
-              suffix="₫"
-              valueStyle={{ color: '#10b981' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <StatisticsCard
+        hideCard
+        rowGutter={16}
+        containerStyle={{ marginBottom: 24 }}
+        colSpan={{ xs: 24, sm: 12, lg: 6 }}
+        loading={loading}
+        data={[
+          { title: "Tổng kíp", value: stats?.summary?.totalKips || 0, valueColor: "#52c41a", icon: <CheckCircleOutlined /> },
+          { title: "Thiếu định mức", value: stats?.summary?.warningCount || 0, valueColor: "#cf1322", icon: <WarningOutlined /> },
+          { title: "Lỗi ghi nhận", value: stats?.summary?.totalViolations || 0, valueColor: "#faad14", icon: <CloseCircleOutlined /> },
+          { title: "Tạm tính quỹ", value: `${(stats?.summary?.totalPayout || 0).toLocaleString()}đ`, valueColor: "#1890ff", icon: <FileExcelOutlined /> }
+        ]}
+      />
 
-      {/* --- Charts & Data Table Section --- */}
-      <Row gutter={[24, 24]}>
-        <Col xs={24} lg={16}>
-          <Card className="glass-card" title="Danh sách hiệu suất thành viên" bodyStyle={{ padding: 0 }}>
-            <DataTable 
-              columns={columns} 
-              data={filteredDetails} 
-              loading={loading}
-              rowKey="userId"
-              pagination={{ pageSize: 10 }}
-              hideCard
-              rowClassName={(record: any) => record.isWarning ? 'warning-row' : ''}
-              style={{ padding: '12px' }}
-            />
-          </Card>
-        </Col>
-        
-        <Col xs={24} lg={8}>
-          <Space direction="vertical" size={24} style={{ width: '100%' }}>
-            <Card className="glass-card" title="Tỷ lệ đạt định mức">
-              <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                <Progress 
-                  type="dashboard" 
-                  percent={stats ? Math.round(((stats.details.length - stats.summary.warningCount) / stats.details.length) * 100) : 0} 
-                  strokeColor={{ '0%': '#6366f1', '100%': '#10b981' }}
-                  strokeWidth={10}
-                  size={180}
-                />
-                <div style={{ marginTop: 16 }}>
-                  <Text strong style={{ fontSize: 24 }}>{stats ? stats.details.length - stats.summary.warningCount : 0}</Text>
-                  <Text type="secondary"> / {stats?.details?.length || 0} thành viên đã đạt</Text>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="glass-card" title="Phân bổ Kíp theo Ban">
-              <div style={{ height: 280, marginTop: 12 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={deptChartData.slice(0, 5)} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.05)" />
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" width={80} style={{ fontSize: 12 }} />
-                    <ChartTooltip 
-                      cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                    />
-                    <Bar dataKey="kips" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            <Card className="glass-card" title="Phân loại Vi phạm">
-              <div style={{ height: 280 }}>
-                {violationPieData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie 
-                        data={violationPieData} 
-                        cx="50%" cy="50%" 
-                        innerRadius={60} 
-                        outerRadius={80} 
-                        paddingAngle={5} 
-                        dataKey="value"
-                      >
-                        {violationPieData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                      </Pie>
-                      <ChartTooltip />
-                      <Legend verticalAlign="bottom" height={36}/>
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có vi phạm" />}
-              </div>
-            </Card>
-          </Space>
-        </Col>
-      </Row>
-
-      {/* --- Modals --- */}
-      <Modal
-        title="Cấu hình Định mức trực ca"
-        open={globalQuotaModal.open}
-        onCancel={() => setGlobalQuotaModal({ ...globalQuotaModal, open: false })}
-        footer={null}
-        width={400}
-        centered
-      >
-        <Space direction="vertical" style={{ width: '100%' }} size={24}>
-          <Alert 
-            message="Thiết lập này sẽ được dùng để tính toán cảnh báo thiếu kíp." 
-            type="info" 
-            showIcon 
-          />
-          <div>
-            <div style={{ marginBottom: 12 }}><Text strong>Định mức mặc định (Kíp/Tuần):</Text></div>
-            <InputNumber 
-              min={0} 
-              step={0.5} 
-              value={globalQuotaModal.quota} 
-              onChange={(val) => setGlobalQuotaModal({ ...globalQuotaModal, quota: val || 0 })}
-              style={{ width: '100%' }}
-              size="large"
-            />
-          </div>
-          <Button 
-            variant="primary" 
-            block 
-            onClick={() => {
-              // In reality, this would call settings update
-              message.success('Đã cập nhật cấu hình định mức');
-              setGlobalQuotaModal({ ...globalQuotaModal, open: false });
+      <Row gutter={[16, 16]}>
+        <Col span={17}>
+          <DataTable 
+            columns={columns} 
+            data={stats?.details || []} 
+            rowKey="userId"
+            loading={loading}
+            pagination={{
+              ...tableParams.pagination,
+              total: stats?.details?.length || 0
             }}
-          >
-            Lưu thay đổi
-          </Button>
+            onPaginationChange={handleTableChange}
+            onRefresh={fetchData}
+            searchable={true}
+            searchPlaceholder="Tìm tên hoặc mã sinh viên..."
+            filters={[
+              {
+                key: 'department',
+                label: 'Ban',
+                type: 'select',
+                options: departments.map(d => ({ label: d.name, value: d.id }))
+              }
+            ]}
+            filterValues={{
+              department: filters.departmentId,
+              generationId: filters.generationId
+            }}
+            onFilterChange={(key, val) => {
+              if (key === 'department') setFilters(f => ({ ...f, departmentId: val }));
+              if (key === 'generationId') setFilters(f => ({ ...f, generationId: val }));
+            }}
+            onClearFilters={() => setFilters(f => ({ ...f, departmentId: undefined, generationId: undefined }))}
+            exportable={true}
+            onExport={handleExport}
+            extra={
+              <Space>
+                <Button 
+                  type="primary" danger
+                  icon={<SendOutlined />} 
+                  onClick={handleNotifyAbsentees}
+                  disabled={stats?.summary?.warningCount === 0}
+                >
+                  Gửi nhắc nhở ({stats?.summary?.warningCount})
+                </Button>
+              </Space>
+            }
+            customActions={(record) => (
+              <Space>
+                <Tooltip title="Nhận xét & Nhắc nhở">
+                  <Button 
+                    type="text"
+                    size="small" 
+                    icon={<CommentOutlined />} 
+                    onClick={() => setCommentModal({ open: true, user: record, comment: '' })}
+                  />
+                </Tooltip>
+                <Tooltip title="Xem chi tiết">
+                  <Button 
+                    type="text"
+                    size="small" 
+                    icon={<InfoCircleOutlined />} 
+                    onClick={() => setDetailModal({ open: true, user: record })}
+                  />
+                </Tooltip>
+              </Space>
+            )}
+          />
+        </Col>
+        <Col span={7}>
+          <Card title="Phân bổ theo Đơn vị" style={{ height: '100%' }}>
+            <div style={{ height: 280 }}>
+              {stats?.details?.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={getChartData()} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                      {getChartData().map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                    </Pie>
+                    <ChartTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <Empty />}
+            </div>
+            <Divider>Tỷ lệ hoàn thành</Divider>
+            <div style={{ textAlign: 'center' }}>
+              <Progress 
+                type="dashboard" 
+                percent={stats?.details?.length > 0 ? Math.round(((stats.details.length - stats.summary.warningCount) / stats.details.length) * 100) : 0} 
+                strokeColor={{ '0%': '#108ee9', '100%': '#87d068' }}
+              />
+              <div style={{ marginTop: 8 }}><Text type="secondary">Thành viên đạt định mức</Text></div>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Modal: Điều chỉnh định mức */}
+      <Modal
+        title={`Điều chỉnh định mức: ${adjustmentModal.user?.name}`}
+        open={adjustmentModal.open}
+        onCancel={() => setAdjustmentModal({ open: false, user: null, newQuota: 0 })}
+        onOk={handleApplyAdjustment}
+        okText="Áp dụng tạm thời"
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text type="secondary">Thay đổi này chỉ áp dụng cho thống kê hiện tại để bạn rà soát lỗi trước khi gửi thông báo.</Text>
+        </div>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text strong>Định mức mới (số kíp):</Text>
+          <InputNumber 
+            min={0} 
+            max={50} 
+            step={0.5} 
+            value={adjustmentModal.newQuota} 
+            onChange={(val) => setAdjustmentModal({ ...adjustmentModal, newQuota: val || 0 })}
+            style={{ width: '100%' }}
+          />
         </Space>
       </Modal>
 
-      <UserDetailModal 
+      {/* Modal: Nhận xét & Thông báo */}
+      <Modal
+        title={`Gửi nhận xét & Nhắc nhở: ${commentModal.user?.name}`}
+        open={commentModal.open}
+        onCancel={() => setCommentModal({ ...commentModal, open: false })}
+        onOk={() => handleNotify(commentModal.user)}
+        okText="Gửi thông báo"
+        cancelText="Hủy"
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Text type="secondary">Nội dung nhắc nhở sẽ được gửi qua hệ thống thông báo cho thành viên này.</Text>
+        </div>
+        <TextArea 
+          rows={4} 
+          placeholder="Nhập nhận xét hoặc nội dung nhắc nhở..." 
+          value={commentModal.comment}
+          onChange={(e) => setCommentModal({ ...commentModal, comment: e.target.value })}
+        />
+      </Modal>
+
+      {/* Modal: Chi tiết thành viên */}
+      <Modal
+        title="Chi tiết hiệu suất cá nhân"
         open={detailModal.open}
-        user={detailModal.user}
         onCancel={() => setDetailModal({ open: false, user: null })}
+        footer={null}
+        width={700}
+      >
+        {detailModal.user && (
+          <div style={{ paddingTop: 10 }}>
+            <div style={{ display: 'flex', gap: 20, marginBottom: 24, alignItems: 'center' }}>
+              <Avatar size={64} src={detailModal.user.avatar} icon={<UserOutlined />} />
+              <div>
+                <Title level={4} style={{ margin: 0 }}>{detailModal.user.name}</Title>
+                <Text type="secondary">{detailModal.user.studentId} | {detailModal.user.department} | {detailModal.user.position}</Text>
+              </div>
+            </div>
+            
+            <Tabs defaultActiveKey="stats" className="stats-tabs">
+              <Tabs.TabPane tab="Tổng quan" key="stats">
+                <StatisticsCard 
+                  hideCard
+                  rowGutter={12}
+                  colSpan={{ xs: 24, sm: 8, md: 8 }}
+                  containerStyle={{ marginBottom: 20 }}
+                  data={[
+                    { 
+                      title: "Yêu cầu", 
+                      value: `${detailModal.user.userQuota} kíp`, 
+                      icon: <InfoCircleOutlined />,
+                      valueColor: '#1890ff'
+                    },
+                    { 
+                      title: "Đã trực", 
+                      value: `${detailModal.user.totalKips} kíp`, 
+                      icon: <CheckCircleOutlined />,
+                      valueColor: detailModal.user.isWarning ? '#cf1322' : '#52c41a'
+                    },
+                    { 
+                      title: "Số lỗi", 
+                      value: detailModal.user.violationCount, 
+                      icon: <WarningOutlined />,
+                      valueColor: '#cf1322'
+                    }
+                  ]}
+                />
+                <div style={{ marginTop: 8, padding: '0 8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text strong>Tỷ lệ hoàn thành định mức</Text>
+                    <Text type="secondary">{Math.min(100, Math.round((detailModal.user.totalKips / detailModal.user.userQuota) * 100))}%</Text>
+                  </div>
+                  <Progress 
+                    percent={Math.min(100, Math.round((detailModal.user.totalKips / detailModal.user.userQuota) * 100))} 
+                    status={detailModal.user.isWarning ? "exception" : "success"}
+                    strokeColor={detailModal.user.isWarning ? '#cf1322' : '#52c41a'}
+                    strokeWidth={10}
+                  />
+                </div>
+                <Divider />
+                <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                  <Button 
+                    type="primary" 
+                    icon={<UserOutlined />} 
+                    onClick={() => handleShowFullProfile(detailModal.user)}
+                  >
+                    Xem hồ sơ đầy đủ
+                  </Button>
+                </div>
+              </Tabs.TabPane>
+              <Tabs.TabPane tab="Đơn từ & Vi phạm" key="history">
+                <List
+                  size="small"
+                  dataSource={[
+                    { label: 'Số đơn xin nghỉ', value: detailModal.user.leaveCount, color: 'orange' },
+                    { label: 'Số đơn đổi kíp', value: detailModal.user.swapCount, color: 'blue' },
+                    { label: 'Hệ số phạt vi phạm', value: detailModal.user.penaltyCoefficient, color: 'red' }
+                  ]}
+                  renderItem={item => (
+                    <List.Item extra={<Tag color={item.color}>{item.value}</Tag>}>
+                      {item.label}
+                    </List.Item>
+                  )}
+                />
+              </Tabs.TabPane>
+            </Tabs>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal: Hồ sơ thành viên đầy đủ */}
+
+      {/* Modal: Cấu hình chung */}
+      <Modal
+        title="Cấu hình hệ thống trực ca"
+        open={settingsModal.open}
+        onCancel={() => setSettingsModal({ open: false })}
+        onOk={handleSaveSettings}
+        width={700}
+      >
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="Định mức chung (Kíp)" name="defaultQuota">
+                <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Giá 1 kíp (VNĐ)" name="kipPrice">
+                <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Phạt vi phạm (VNĐ)" name="violationPenaltyRate">
+                <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Divider>Định mức theo chức vụ / người dùng</Divider>
+          <Form.List name="quotaRules">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline" wrap>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'type']}
+                      rules={[{ required: true, message: 'Chọn loại' }]}
+                    >
+                      <Select style={{ width: 120 }}>
+                        <Select.Option value="position">Chức vụ</Select.Option>
+                        <Select.Option value="user">Theo MSV/ID</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prevValues, currentValues) =>
+                        prevValues.quotaRules?.[name]?.type !== currentValues.quotaRules?.[name]?.type
+                      }
+                    >
+                      {({ getFieldValue }) => {
+                        const type = getFieldValue(['quotaRules', name, 'type']);
+                        return type === 'position' ? (
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'target']}
+                            rules={[{ required: true, message: 'Chọn chức vụ' }]}
+                          >
+                            <Select style={{ width: 160 }} placeholder="Chọn chức vụ">
+                              {positions.map(p => {
+                                const POSITION_MAP: Record<string, string> = {
+                                  'ctv': 'Cộng tác viên',
+                                  'tv': 'Thành viên',
+                                  'tvb': 'Thành viên ban',
+                                  'pb': 'Phó ban',
+                                  'tb': 'Trưởng ban',
+                                  'ctc': 'Cựu thành viên',
+                                  'dt': 'Đội trưởng'
+                                };
+                                return <Select.Option key={p} value={p}>{POSITION_MAP[p] || p}</Select.Option>;
+                              })}
+                            </Select>
+                          </Form.Item>
+                        ) : (
+                          <Form.Item
+                            {...restField}
+                            name={[name, 'target']}
+                            rules={[{ required: true, message: 'Nhập mã' }]}
+                          >
+                            <Input placeholder="VD: B21DCCN..." style={{ width: 160 }} />
+                          </Form.Item>
+                        );
+                      }}
+                    </Form.Item>
+
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'cycle']}
+                      rules={[{ required: true, message: 'Chu kỳ' }]}
+                      initialValue="week"
+                    >
+                      <Select style={{ width: 90 }}>
+                        <Select.Option value="week">Tuần</Select.Option>
+                        <Select.Option value="month">Tháng</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'dateRange']}
+                    >
+                      <RangePicker placeholder={['Từ ngày', 'Đến ngày']} style={{ width: 220 }} />
+                    </Form.Item>
+
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'quota']}
+                      rules={[{ required: true, message: 'Nhập kíp' }]}
+                    >
+                      <InputNumber placeholder="Số kíp" step={0.5} min={0} style={{ width: 80 }} />
+                    </Form.Item>
+                    
+                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} />
+                  </Space>
+                ))}
+                <Form.Item>
+                  <Button type="dashed" onClick={() => add({ type: 'position', target: '', cycle: 'week', quota: 2.5 })} block icon={<PlusOutlined />}>
+                    Thêm ngoại lệ định mức
+                  </Button>
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
+        </Form>
+      </Modal>
+
+      <UsersDetailModal 
+        open={fullProfileModal.open}
+        user={fullProfileModal.user}
+        onCancel={() => setFullProfileModal({ open: false, user: null })}
+        avatarFallback={`data:image/svg+xml;utf8,${encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#f0f0f0"/><circle cx="20" cy="15" r="6" fill="#bfbfbf"/><path d="M8 33c2.5-5 7-8 12-8s9.5 3 12 8" fill="#bfbfbf"/></svg>'
+        )}`}
+        formatDateTime={(val) => val ? dayjs(val).format('DD/MM/YYYY HH:mm') : '--'}
       />
-    </motion.div>
+
+      <MatrixViewModal 
+        open={matrixModalOpen}
+        onCancel={() => setMatrixModalOpen(false)}
+        stats={stats}
+        filters={filters}
+        onFilterChange={setFilters}
+        dateRangeText={
+          filters.viewType === 'week' 
+            ? `Tuần ${filters.week.isoWeek()}, ${filters.week.year()} (${filters.week.startOf('isoWeek').format('DD/MM')} - ${filters.week.endOf('isoWeek').format('DD/MM')})`
+            : filters.dateRange[0] && filters.dateRange[1]
+              ? `${filters.dateRange[0].format('MM/YYYY')} (${filters.dateRange[0].format('DD/MM')} - ${filters.dateRange[1].format('DD/MM')})`
+              : 'Tháng hiện tại'
+        }
+      />
+    </div>
   );
 };
 
