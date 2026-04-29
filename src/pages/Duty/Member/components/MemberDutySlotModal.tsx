@@ -720,6 +720,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
         onCancel={() => setIsLeaveModalVisible(false)}
         onSubmit={handleLeaveRequest}
         loading={loading}
+        initialSlotLabel={slot ? `${dayjs(slot.shiftDate).format('DD/MM')} • ${slot.shiftLabel}` : ''}
       />
 
       <SwapRequestModal 

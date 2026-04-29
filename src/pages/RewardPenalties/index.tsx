@@ -32,6 +32,7 @@ const RewardPenaltiesPage = () => {
     searchTerm,
   } = useCRUD(rewardPenaltyService, {
     autoFetch: true,
+    initialFilters: { expand: 'user' },
   });
 
   const [modalOpen, setModalOpen] = useState(false);

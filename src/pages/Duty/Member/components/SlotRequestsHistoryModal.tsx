@@ -81,10 +81,29 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
     {
       title: 'Người yêu cầu',
       key: 'requester',
+      render: (_: any, record: any) => {
+        const u = record.requester || record.user;
+        return (
+          <Space>
+            <Avatar size="small" src={u?.avatar} />
+            <Text>{u?.name || 'N/A'}</Text>
+          </Space>
+        );
+      }
+    },
+    {
+      title: 'Người đổi cùng',
+      key: 'targetUser',
       render: (_: any, record: any) => (
         <Space>
-          <Avatar size="small" src={record.user?.avatar} />
-          <Text>{record.user?.name || 'N/A'}</Text>
+          {record.targetUser ? (
+            <>
+              <Avatar size="small" src={record.targetUser.avatar} />
+              <Text>{record.targetUser.name}</Text>
+            </>
+          ) : (
+            <Tag color="cyan">CÔNG KHAI</Tag>
+          )}
         </Space>
       )
     },

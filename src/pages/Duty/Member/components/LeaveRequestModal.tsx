@@ -15,6 +15,7 @@ interface LeaveRequestModalProps {
   onSubmit: (values: { reason: string, slotId?: number }) => Promise<void>;
   globalMode?: boolean;
   loading?: boolean;
+  initialSlotLabel?: string;
 }
 
 const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
@@ -23,6 +24,7 @@ const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
   onSubmit,
   globalMode = false,
   loading = false,
+  initialSlotLabel,
 }) => {
   const [form] = Form.useForm();
   const { user } = useSelector((state: RootState) => state.auth);
@@ -141,6 +143,16 @@ const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
           <StopOutlined style={{ color: '#ef4444' }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin vắng mặt</span>
         </Divider>
+
+        {!globalMode && initialSlotLabel && (
+          <div style={{ marginBottom: 20, padding: '12px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: 8 }}>
+            <div style={{ fontSize: 12, color: '#ef4444', marginBottom: 4, fontWeight: 500 }}>KÍP TRỰC ĐANG CHỌN</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#991b1b' }}>
+              <CalendarOutlined style={{ marginRight: 8 }} />
+              {initialSlotLabel}
+            </div>
+          </div>
+        )}
 
         {globalMode && (
           <Form.Item 

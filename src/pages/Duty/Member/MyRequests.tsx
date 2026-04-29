@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Space, message, Typography, Tag, Tabs, Avatar as AntdAvatar, Tooltip, Popconfirm, Card } from 'antd';
+import { Space, message, Typography, Tag, Tabs, Tooltip, Popconfirm, Card } from 'antd';
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
@@ -137,7 +137,7 @@ const MyRequests: React.FC = () => {
       key: 'slot',
       render: (slot: any) => (
         <Space direction="vertical" size={0}>
-          <Text strong>{slot?.shiftLabel || 'N/A'}</Text>
+          <Text strong>{slot?.shiftLabel || (slot?.id ? `Kíp #${slot.id}` : 'N/A')}</Text>
           <Text type="secondary" style={{ fontSize: '12px' }}>
             {slot ? dayjs(slot.shiftDate).format('DD/MM/YYYY') : ''} ({slot?.startTime} - {slot?.endTime})
           </Text>
@@ -199,18 +199,10 @@ const MyRequests: React.FC = () => {
       }
     },
     {
-      title: 'Đối tác',
-      key: 'partner',
-      render: (_: any, record: any) => {
-        const isRequester = String(record.requesterId) === String(currentUserId);
-        const partner = isRequester ? record.targetUser : record.requester;
-        return (
-          <Space>
-            <AntdAvatar size="small" src={partner?.avatar} />
-            <Text>{partner?.name || 'N/A'}</Text>
-          </Space>
-        );
-      }
+      title: 'Lý do',
+      dataIndex: 'reason',
+      key: 'reason',
+      ellipsis: true,
     },
     {
       title: 'Nội dung đổi',
@@ -219,12 +211,12 @@ const MyRequests: React.FC = () => {
         <Space size="middle">
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '11px', color: '#8c8c8c' }}>Ca của tôi</div>
-            <Tag color="volcano">{record.fromSlot?.shiftLabel || 'N/A'}</Tag>
+            <Tag color="volcano">{record.fromSlot?.shiftLabel || `Kíp #${record.fromSlotId}`}</Tag>
           </div>
           <SwapOutlined style={{ color: '#1890ff' }} />
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '11px', color: '#8c8c8c' }}>Ca mục tiêu</div>
-            <Tag color="cyan">{record.toSlot?.shiftLabel || 'N/A'}</Tag>
+            <Tag color="cyan">{record.toSlot?.shiftLabel || `Kíp #${record.toSlotId}`}</Tag>
           </div>
         </Space>
       )
@@ -258,6 +250,7 @@ const MyRequests: React.FC = () => {
             key="leave"
           >
             <DataTable
+              onRefresh={fetchLeaveRequests}
               columns={leaveColumns}
               dataSource={leaveRequests}
               loading={loading}
@@ -272,6 +265,7 @@ const MyRequests: React.FC = () => {
             key="swap"
           >
             <DataTable
+              onRefresh={fetchSwapRequests}
               columns={swapColumns}
               dataSource={swapRequests}
               loading={loading}
