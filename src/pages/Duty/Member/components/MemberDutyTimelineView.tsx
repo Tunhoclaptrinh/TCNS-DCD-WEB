@@ -1,6 +1,6 @@
 import React from 'react';
 import { Space, Tooltip, Avatar, Tag } from 'antd';
-import { ClockCircleOutlined, LockOutlined, SyncOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, LockOutlined, SyncOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DutySlot, DutyShift } from '@/services/duty.service';
@@ -14,7 +14,9 @@ interface MemberDutyTimelineViewProps {
   getEffectiveTemplatesForDay: (day: dayjs.Dayjs) => { shifts: any[], activeGroupId: any };
   showDefaultBoundaries: boolean;
   currentUserId: number | undefined;
-  openSlotDetail: (slot: DutySlot) => void;
+  openSlotDetail: (slot: DutySlot, onSuccess: () => void) => void;
+  openAttendanceModal: (slot: DutySlot) => void;
+  onSelfCheckIn: (slotId: number) => Promise<void>;
   eventFocusMode: 'off' | 'overlap' | 'all';
 }
 
@@ -47,6 +49,8 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
   showDefaultBoundaries,
   currentUserId,
   openSlotDetail,
+  openAttendanceModal,
+  onSelfCheckIn,
   eventFocusMode
 }) => {
 
@@ -218,7 +222,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                           flexDirection: 'column',
                           overflow: 'hidden'
                         }}
-                        onClick={() => openSlotDetail(slot)}
+                        onClick={() => openSlotDetail(slot, () => {})}
                       >
                         <div className="slot-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                           <div className="title-area" style={{ flex: 1, minWidth: 0 }}>
@@ -278,6 +282,95 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                            <ClockCircleOutlined style={{ fontSize: 10 }} />
                            {slot.startTime} - {slot.endTime}
                         </div>
+
+                        {/* Dual Action Buttons: Self Check-in vs Management */}
+                        {(() => {
+                          const uid = currentUserId || 0;
+                          const isAssigned = slot.assignedUserIds?.includes(uid);
+                          const isAttended = slot.attendedUserIds?.includes(uid);
+                          
+                          const startTime = dayjs(`${dateStr} ${slot.startTime}`);
+                          const endTime = dayjs(`${dateStr} ${slot.endTime}`);
+                          const now = dayjs();
+                          
+                          const isCheckInWindow = Math.abs(now.diff(startTime, 'minute')) <= 2;
+                          const isDuringShift = now.isAfter(startTime) && now.isBefore(endTime);
+                          const isActingLeader = (slot.assignedUserIds?.[0] === uid && isAttended) || ((slot as any).tempLeaderId === uid);
+
+                          // 1. Self Check-in button (For any assigned member in window)
+                          if (isAssigned && !isAttended && isCheckInWindow) {
+                            return (
+                              <div style={{ marginTop: 4, marginBottom: 8 }}>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelfCheckIn(slot.id);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '4px 0',
+                                    background: '#10b981', // Green for check-in
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    fontSize: '10px',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 4,
+                                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.background = '#059669'}
+                                  onMouseOut={(e) => e.currentTarget.style.background = '#10b981'}
+                                >
+                                  <SyncOutlined style={{ fontSize: 11 }} />
+                                  TỰ ĐIỂM DANH
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          // 2. Management button (For Acting Leader during shift)
+                          if (isActingLeader && isDuringShift) {
+                            return (
+                              <div style={{ marginTop: 4, marginBottom: 8 }}>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openAttendanceModal(slot);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '4px 0',
+                                    background: '#fbbf24', // Gold for management
+                                    color: '#78350f',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    fontSize: '10px',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 4,
+                                    boxShadow: '0 2px 4px rgba(251, 191, 36, 0.3)',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.background = '#f59e0b'}
+                                  onMouseOut={(e) => e.currentTarget.style.background = '#fbbf24'}
+                                >
+                                  <CheckCircleOutlined style={{ fontSize: 11 }} />
+                                  QUẢN LÝ KÍP
+                                </button>
+                              </div>
+                            );
+                          }
+                          
+                          return null;
+                        })()}
 
                         <div className="slot-users" style={{ display: 'flex', alignItems: 'center', marginTop: 'auto' }}>
                           <Avatar.Group maxCount={3} size="small" maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf', fontSize: 10 }}>

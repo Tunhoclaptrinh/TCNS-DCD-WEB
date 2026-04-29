@@ -26,6 +26,7 @@ import '../DutyCalendar.less';
 import MemberDutySlotModal from './components/MemberDutySlotModal';
 import MemberDutyTableView from './components/MemberDutyTableView';
 import MemberDutyTimelineView from './components/MemberDutyTimelineView';
+import ShiftLeaderAttendanceModal from './components/ShiftLeaderAttendanceModal';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -53,6 +54,8 @@ const MemberCalendar: React.FC = () => {
   const [isSlotDetailOpen, setIsSlotDetailOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<DutySlot | null>(null);
   const [viewMode, setViewMode] = useState<'calendar' | 'table'>('calendar');
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [selectedAttendanceSlot, setSelectedAttendanceSlot] = useState<DutySlot | null>(null);
   const [now, setNow] = useState(dayjs());
 
   const currentGeneration = dutySettings?.currentGeneration;
@@ -203,6 +206,23 @@ const MemberCalendar: React.FC = () => {
     setIsSlotDetailOpen(true);
   };
 
+  const openAttendanceModal = (slot: DutySlot) => {
+    setSelectedAttendanceSlot(slot);
+    setIsAttendanceModalOpen(true);
+  };
+
+  const handleSelfCheckIn = async (slotId: number) => {
+    try {
+      const res = await dutyService.selfCheckIn(slotId);
+      if (res.success) {
+        message.success('Điểm danh thành công!');
+        fetchSchedule();
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi điểm danh');
+    }
+  };
+
   const slotsByDay = useMemo(() =>
     slots.reduce((acc: Record<string, DutySlot[]>, slot) => {
       const date = dayjs(slot.shiftDate).format('YYYY-MM-DD');
@@ -229,9 +249,9 @@ const MemberCalendar: React.FC = () => {
                 width: 600,
                 content: (
                   <div style={{ marginTop: 16 }}>
-                    <Paragraph><strong>1. Đăng ký kíp:</strong> Nhấn vào các ô trống trong bảng hoặc nhấn "Đăng ký" trong giao diện lịch để tham gia kíp trực.</Paragraph>
+                    <Paragraph><strong>1. Đăng ký kíp:</strong> Nhấn vào các ô trống trong bảng hoặc nhấn &quot;Đăng ký&quot; trong giao diện lịch để tham gia kíp trực.</Paragraph>
                     <Paragraph><strong>2. Hủy kíp:</strong> Bạn có thể tự hủy đăng ký nếu kíp chưa đầy hoặc chưa bị khóa. Nếu không, hãy gửi đơn xin nghỉ.</Paragraph>
-                    <Paragraph><strong>3. Đổi ca:</strong> Sử dụng tính năng "Đổi ca" để gửi yêu cầu cho thành viên khác hoặc chuyển ca cho Admin duyệt.</Paragraph>
+                    <Paragraph><strong>3. Đổi ca:</strong> Sử dụng tính năng &quot;Đổi ca&quot; để gửi yêu cầu cho thành viên khác hoặc chuyển ca cho Admin duyệt.</Paragraph>
                     <Paragraph><strong>4. Quy định:</strong> Tuân thủ giới hạn số kíp tối đa trong tuần theo cấu hình của Đội.</Paragraph>
                   </div>
                 ),
@@ -342,6 +362,8 @@ const MemberCalendar: React.FC = () => {
               showDefaultBoundaries={showDefaultBoundaries}
               currentUserId={currentUserId}
               openSlotDetail={openSlotDetail}
+              openAttendanceModal={openAttendanceModal}
+              onSelfCheckIn={handleSelfCheckIn}
               eventFocusMode={eventFocusMode}
             />
           )}
@@ -357,6 +379,15 @@ const MemberCalendar: React.FC = () => {
         allSlots={slots}
         isOldGeneration={isOldGeneration}
         settings={dutySettings}
+        onSelfCheckIn={handleSelfCheckIn}
+        openAttendanceModal={openAttendanceModal}
+      />
+
+      <ShiftLeaderAttendanceModal 
+        open={isAttendanceModalOpen}
+        onCancel={() => setIsAttendanceModalOpen(false)}
+        onSuccess={fetchSchedule}
+        slot={selectedAttendanceSlot}
       />
     </div>
   );

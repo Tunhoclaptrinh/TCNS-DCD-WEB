@@ -325,9 +325,9 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & {
             setTempSelectedIds(keys);
             if (rows) {
               setTempSelectedRows(prev => {
-                const map = new Map(prev.map(r => [r.id, r]));
-                rows.forEach(r => map.set(r.id, r));
-                return Array.from(map.values()).filter(r => keys.includes(r.id));
+                const map = new Map((prev || []).filter(r => r && r.id).map(r => [r.id, r]));
+                (rows || []).filter(r => r && r.id).forEach(r => map.set(r.id, r));
+                return Array.from(map.values()).filter(r => r && r.id && keys.includes(r.id));
               });
             }
           }} 

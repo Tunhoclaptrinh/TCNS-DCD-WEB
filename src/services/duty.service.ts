@@ -126,9 +126,34 @@ class DutyService {
     return response;
   }
 
-  // Attendance & Leave
-  async markAttendance(slotId: number, attendedUserIds: number[]) {
-    const response = await apiClient.post(`/duty/slots/${slotId}/attendance`, { ids: attendedUserIds });
+  async markAttendance(slotId: number, attendedUserIds: number[], userId?: number, isIncremental?: boolean) {
+    const response = await apiClient.post(`/duty/slots/${slotId}/attendance`, { 
+      ids: attendedUserIds, 
+      userId,
+      isIncremental
+    });
+    return response;
+  }
+
+  /**
+   * Shift Leader marks/unmarks attendance for a specific user (Toggle)
+   */
+  async leaderMarkAttendance(slotId: number, targetUserId: number) {
+    const response = await apiClient.post(`/duty/slots/${slotId}/attendance`, { userId: targetUserId });
+    return response;
+  }
+
+  /**
+   * Report a violation for a user in a slot
+   */
+  async reportViolation(data: { slotId: number; userId: number; type: string; coefficient: number; note?: string }) {
+    const { slotId, ...payload } = data;
+    const response = await apiClient.post(`/duty/slots/${slotId}/violation`, payload);
+    return response;
+  }
+
+  async selfCheckIn(slotId: number) {
+    const response = await apiClient.post(`/duty/slots/${slotId}/self-checkin`);
     return response;
   }
 
@@ -428,22 +453,7 @@ class DutyService {
     return response;
   }
 
-  // V2 Attendance Methods
-  async selfCheckIn(slotId: number): Promise<BaseApiResponse<DutySlot>> {
-    const response = await apiClient.post<BaseApiResponse<DutySlot>>(`/duty/slots/${slotId}/self-checkin`);
-    return response;
-  }
-
-  async leaderMarkAttendance(slotId: number, targetUserId: number): Promise<BaseApiResponse<DutySlot>> {
-    const response = await apiClient.post<BaseApiResponse<DutySlot>>(`/duty/slots/${slotId}/leader-mark`, { targetUserId });
-    return response;
-  }
-
-  async reportViolation(data: { slotId: number, userId: number, type: string, coefficient: number, note?: string }): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.post<BaseApiResponse<any>>(`/duty/slots/${data.slotId}/violation`, data);
-    return response;
-  }
-
+  // History & Logs
   async getUserRemarks(userId: number) {
     const response = await apiClient.get<BaseApiResponse<any[]>>(`/duty/remarks/user/${userId}`);
     return response;

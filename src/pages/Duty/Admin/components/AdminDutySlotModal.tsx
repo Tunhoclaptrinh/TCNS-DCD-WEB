@@ -79,8 +79,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
   const updateCache = (rows: any[]) => {
     setSelectedUsersCache(prev => {
-      const map = new Map(prev.map(r => [r.id, r]));
-      rows.forEach(r => map.set(r.id, r));
+      const map = new Map(prev.filter(r => r && r.id).map(r => [r.id, r]));
+      (rows || []).filter(r => r && r.id).forEach(r => map.set(r.id, r));
       return Array.from(map.values());
     });
   };
@@ -100,8 +100,20 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         attendedUserIds: slot.attendedUserIds || [],
         slotStructure: slot.slotStructure || (slot as any).kip?.slotStructure || (slot as any).shift?.slotStructure || [],
       });
+      if (slot.assignedUsers) updateCache(slot.assignedUsers);
     }
   }, [open, slot, form]);
+
+  // Auto-increase capacity when assignedUserIds change
+  const assignedIds = Form.useWatch('assignedUserIds', form);
+  useEffect(() => {
+    if (assignedIds && Array.isArray(assignedIds) && assignedIds.length > 0) {
+      const currentCapacity = form.getFieldValue('capacity') || 0;
+      if (assignedIds.length > currentCapacity) {
+        form.setFieldsValue({ capacity: assignedIds.length });
+      }
+    }
+  }, [assignedIds, form]);
 
   const handleSubmit = async (values: any) => {
     if (!slot) return;
@@ -489,13 +501,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 <DutyPersonnelPicker
                   variant="primary"
                   label="Phân công"
-                  onChange={(ids, rows) => {
-                    form.setFieldsValue({ assignedUserIds: ids });
-                    // Auto-increase capacity if assigned users exceed it
-                    const currentCapacity = form.getFieldValue('capacity') || 0;
-                    if (ids.length > currentCapacity) {
-                      form.setFieldsValue({ capacity: ids.length });
-                    }
+                  onChange={(_, rows) => {
                     if (rows) updateCache(rows);
                   }}
                 />
@@ -507,8 +513,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   label="ĐD bổ sung"
                   icon={<UsergroupAddOutlined />}
                   hideBadge
-                  onChange={(ids, rows) => {
-                    form.setFieldsValue({ attendedUserIds: ids });
+                  onChange={(_, rows) => {
                     if (rows) updateCache(rows);
                   }}
                 />
@@ -567,8 +572,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     const swapReq = slot?.swapRequests?.find(r => String(r.userId) === String(id));
                     
                     const userDetail =
-                      (slot?.assignedUsers || []).find(u => u.id === id) ||
-                      selectedUsersCache.find(u => u.id === id);
+                      (slot?.assignedUsers || []).find(u => u && u.id === id) ||
+                      selectedUsersCache.find(u => u && u.id === id);
 
                     return (
                       <List.Item

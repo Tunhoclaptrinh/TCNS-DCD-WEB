@@ -10,6 +10,8 @@ interface MemberDutyTableViewProps {
   slots: DutySlot[];
   currentUserId: number | undefined;
   openSlotDetail: (slot: DutySlot) => void;
+  openAttendanceModal?: (slot: DutySlot) => void;
+  onSelfCheckIn?: (slotId: number) => Promise<void>;
   collapsedGroups: string[];
   setCollapsedGroups: (groups: string[]) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
@@ -22,6 +24,8 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
   slots,
   currentUserId,
   openSlotDetail,
+  openAttendanceModal,
+  onSelfCheckIn,
   collapsedGroups,
   setCollapsedGroups,
   eventFocusMode,

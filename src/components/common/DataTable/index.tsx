@@ -416,6 +416,7 @@ const DataTable: React.FC<DataTableProps> = ({
     ? customRowSelection || {
         selectedRowKeys: activeSelectedRowKeys,
         onChange: onSelectChange,
+        preserveSelectedRowKeys: true, // Preserve selections across pages/searches
         selections: batchOperations ? [
           Table.SELECTION_ALL,
           Table.SELECTION_INVERT,
@@ -718,7 +719,7 @@ const DataTable: React.FC<DataTableProps> = ({
           )}
           {onRefresh && (
             <Tooltip title="Làm mới">
-              <Button variant="outline" onClick={onRefresh} loading={loading} icon={<ReloadOutlined />} buttonSize="small">Làm mới</Button>
+              <Button variant="outline" onClick={() => onRefresh?.()} loading={loading} icon={<ReloadOutlined />} buttonSize="small">Làm mới</Button>
             </Tooltip>
           )}
           <div className="total-count-badge">Tổng số: <span>{(pagination && typeof pagination !== 'boolean' && pagination.total) || 0}</span></div>

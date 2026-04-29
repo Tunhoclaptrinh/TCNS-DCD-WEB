@@ -13,11 +13,6 @@ import {
   message,
   Form,
   Button as AntButton,
-  Tooltip,
-  Input,
-  Select,
-  InputNumber,
-  Alert,
   Tabs,
   Timeline,
 } from 'antd';
@@ -35,16 +30,13 @@ import {
   ScheduleOutlined,
   ClockCircleOutlined,
   TeamOutlined,
-  ThunderboltOutlined,
-  WarningOutlined,
   HistoryOutlined,
-  UsergroupAddOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
 import Button from '@/components/common/Button';
 import dutyService, { DutySlot } from '@/services/duty.service';
-import userService from '@/services/user.service';
 import { useAccess } from '@/hooks';
 import LeaveRequestModal from './LeaveRequestModal';
 import SwapRequestModal from './SwapRequestModal';
@@ -61,6 +53,8 @@ interface MemberDutySlotModalProps {
   externalLoading?: boolean;
   isOldGeneration?: boolean;
   settings?: any;
+  onSelfCheckIn?: (slotId: number) => Promise<void>;
+  openAttendanceModal?: (slot: DutySlot) => void;
 }
 
 /**
@@ -76,6 +70,8 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   externalLoading = false,
   isOldGeneration = false,
   settings,
+  onSelfCheckIn,
+  openAttendanceModal,
 }) => {
   const [form] = Form.useForm();
   const [showWarning, setShowWarning] = useState(true);
@@ -143,44 +139,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
   const [isSwapModalVisible, setIsSwapModalVisible] = useState(false);
 
-  // Violation Management
-  const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
-  const [violationUser, setViolationUser] = useState<any>(null);
-  const [violationForm] = Form.useForm();
-  
   // History Logs
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
 
-  // Supplementary Attendance State
-  const [searching, setSearching] = useState(false);
-  const [userOptions, setUserOptions] = useState<any[]>([]);
-  const [selectedSupplementaryUser, setSelectedSupplementaryUser] = useState<number | null>(null);
-
-  const handleSearchUser = async (value: string) => {
-    if (!value || value.length < 2) {
-      setUserOptions([]);
-      return;
-    }
-    setSearching(true);
-    try {
-      const res = await userService.publicSearch(value, { limit: 10 });
-      if (res.success && res.data) {
-        // Map users to Select options
-        const options = res.data.map((u: any) => ({
-          label: `${u.name || u.fullName} (${u.username || u.email})`,
-          value: u.id,
-          user: u
-        }));
-        setUserOptions(options);
-      }
-    } catch (err) {
-      console.error('Search user error:', err);
-    } finally {
-      setSearching(false);
-    }
-  };
 
   const fetchLogs = async () => {
     if (!slot) return;
@@ -290,49 +253,6 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
       setLoading(false);
     }
   };
-
-  const handleReportViolation = async (values: any) => {
-    if (!slot || !violationUser) return;
-    setLoading(true);
-    try {
-      const res = await dutyService.reportViolation({
-        slotId: slot.id,
-        userId: violationUser.id,
-        ...values
-      });
-      if (res.success) {
-        message.success(`Đã ghi nhận lỗi cho ${violationUser.name || violationUser.fullName}`);
-        setIsViolationModalOpen(false);
-        violationForm.resetFields();
-        onSuccess();
-      }
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Lỗi khi ghi nhận vi phạm');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLeaderMarkAttendance = async (targetUserId: number) => {
-    if (!slot) return;
-    setLoading(true);
-    try {
-      const res = await dutyService.leaderMarkAttendance(slot.id, targetUserId);
-      if (res.success) {
-        message.success('Đã điểm danh thành công');
-        onSuccess();
-      }
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Lỗi khi điểm danh');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isAttended = Array.isArray(slot?.attendedUserIds) && slot?.attendedUserIds.includes(currentUserId);
-  const isActingLeader = (String(currentUserId) === String(slot?.assignedUserIds?.[0]) && isAttended) || 
-                         (String(currentUserId) === String(slot?.tempLeaderId));
-  const canManageSlot = isGlobalAdmin || isStaff || isActingLeader;
 
   const isUserRegistered = Array.isArray(slot?.assignedUserIds) 
     ? slot?.assignedUserIds.some(id => String(id) === String(currentUserId)) 
@@ -487,52 +407,6 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         </div>
                       )}
 
-                      {/* Supplementary Attendance Section for Leader */}
-                      {canManageSlot && (
-                        <div style={{ 
-                          marginBottom: 24, 
-                          padding: '16px', 
-                          background: '#f0fdf4', 
-                          borderRadius: 12, 
-                          border: '1px solid #dcfce7' 
-                        }}>
-                          <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <UsergroupAddOutlined style={{ color: '#16a34a' }} />
-                            <Text strong style={{ color: '#16a34a' }}>Điểm danh bổ sung</Text>
-                            <Tooltip title="Dùng khi có thành viên đi trực thay hoặc trực thêm nhưng chưa đăng ký trước trên hệ thống.">
-                              <InfoCircleOutlined style={{ fontSize: 12, color: '#16a34a', cursor: 'help' }} />
-                            </Tooltip>
-                          </div>
-                          <Space.Compact style={{ width: '100%' }}>
-                            <Select
-                              showSearch
-                              placeholder="Tìm tên hoặc mã nhân sự..."
-                              filterOption={false}
-                              onSearch={handleSearchUser}
-                              onChange={setSelectedSupplementaryUser}
-                              loading={searching}
-                              style={{ flex: 1 }}
-                              options={userOptions}
-                              value={selectedSupplementaryUser}
-                              allowClear
-                            />
-                            <AntButton 
-                              type="primary" 
-                              style={{ background: '#10b981', borderColor: '#10b981' }}
-                              disabled={!selectedSupplementaryUser || loading}
-                              onClick={() => {
-                                if (selectedSupplementaryUser) {
-                                  handleLeaderMarkAttendance(selectedSupplementaryUser);
-                                  setSelectedSupplementaryUser(null);
-                                  setUserOptions([]);
-                                }
-                              }}
-                            >
-                              Điểm danh
-                            </AntButton>
-                          </Space.Compact>
-                        </div>
-                      )}
 
                       <Divider orientation="left" style={{ marginTop: 24 }}>
                         <TeamOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách đăng ký ({registeredCount})</span>
@@ -551,47 +425,9 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
                             const posInfo = getPositionInfo(u.position);
 
-                            const hasAttended = Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.includes(u.id);
-
                             return (
                               <List.Item
-                                actions={isVisible && canManageSlot && !isMe ? [
-                                  !hasAttended ? (
-                                    <Tooltip title="Điểm danh" key="attend">
-                                      <AntButton 
-                                        size="small" 
-                                        shape="circle" 
-                                        type="primary"
-                                        style={{ background: '#10b981', borderColor: '#10b981' }}
-                                        icon={<CheckCircleOutlined />} 
-                                        onClick={() => handleLeaderMarkAttendance(u.id)} 
-                                      />
-                                    </Tooltip>
-                                  ) : null,
-                                  <Tooltip title={existingViolation ? "Sửa lỗi vi phạm" : "Ghi lỗi vi phạm"} key="violation">
-                                    <AntButton 
-                                      size="small" 
-                                      shape="circle" 
-                                      danger={!existingViolation}
-                                      style={existingViolation ? { background: '#f59e0b', borderColor: '#f59e0b', color: 'white' } : {}}
-                                      icon={<WarningOutlined />} 
-                                      onClick={() => {
-                                        setViolationUser(u);
-                                        if (existingViolation) {
-                                          violationForm.setFieldsValue({
-                                            type: existingViolation.type,
-                                            coefficient: existingViolation.coefficient,
-                                            note: existingViolation.note
-                                          });
-                                        } else {
-                                          violationForm.resetFields();
-                                          violationForm.setFieldsValue({ coefficient: 1 });
-                                        }
-                                        setIsViolationModalOpen(true);
-                                      }} 
-                                    />
-                                  </Tooltip>
-                                ].filter(Boolean) : []}
+                                actions={[]}
                               >
                                 <List.Item.Meta
                                   avatar={<Avatar src={isVisible ? u.avatar : undefined} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
@@ -735,16 +571,49 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                               const isActive = now.isAfter(slotStart.subtract(15, 'minute')) && now.isBefore(slotEnd);
                               const isAttended = Array.isArray(slot.attendedUserIds) && slot.attendedUserIds.includes(currentUserId);
                               const isPast = now.isAfter(slotEnd);
+                              const isCheckInWindow = Math.abs(now.diff(slotStart, 'minute')) <= 2;
+                              const isDuringShift = now.isAfter(slotStart) && now.isBefore(slotEnd);
                               
                               const isActingLeader = (String(currentUserId) === String(slot.assignedUserIds?.[0]) && isAttended) || 
                                                      (String(currentUserId) === String(slot.tempLeaderId));
 
                               if (isAttended) return (
-                                <Space direction="vertical" size={4}>
-                                  <Tag color="green" icon={<CheckCircleOutlined />}>Đã điểm danh</Tag>
-                                  {isActingLeader && <Tag color="gold" icon={<ThunderboltOutlined />}>Đang giữ quyền Quản lý kíp</Tag>}
+                                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                  <Tag color="green" icon={<CheckCircleOutlined />} style={{ margin: 0 }}>Đã điểm danh</Tag>
+                                  {isActingLeader && (
+                                    <div style={{ marginTop: 8 }}>
+                                      <Tag color="gold" icon={<ThunderboltOutlined />} style={{ margin: 0, marginBottom: 8 }}>Quản lý kíp</Tag>
+                                      {isDuringShift && openAttendanceModal && (
+                                        <Button 
+                                          variant="primary" 
+                                          fullWidth 
+                                          onClick={() => {
+                                            onCancel();
+                                            openAttendanceModal(slot);
+                                          }}
+                                          style={{ background: '#fbbf24', borderColor: '#fbbf24', color: '#78350f' }}
+                                          icon={<CheckCircleOutlined />}
+                                        >
+                                          QUẢN LÝ KÍP
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
                                 </Space>
                               );
+                              
+                              if (isCheckInWindow && onSelfCheckIn) return (
+                                <Button 
+                                  variant="primary" 
+                                  fullWidth 
+                                  onClick={() => onSelfCheckIn(slot.id)}
+                                  style={{ background: '#10b981', borderColor: '#10b981' }}
+                                  icon={<SyncOutlined />}
+                                >
+                                  TỰ ĐIỂM DANH
+                                </Button>
+                              );
+
                               if (isActive) return <Tag color="processing" icon={<SyncOutlined spin />}>Đang diễn ra</Tag>;
                               if (isPast) return <Tag color="default" icon={<CloseCircleOutlined />}>Vắng mặt / Chưa điểm danh</Tag>;
                               return null;
@@ -754,22 +623,6 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
 
                     {!isOldGeneration && (
                       <>
-                        {(() => {
-                          if (isActingLeader) {
-                            return (
-                              <div style={{ marginBottom: 12 }}>
-                                <Alert 
-                                  message="Bạn là Quản lý kíp" 
-                                  description="Bạn có quyền điểm danh và báo lỗi cho các thành viên khác trong danh sách bên trái." 
-                                  type="warning" 
-                                  showIcon 
-                                  style={{ borderRadius: 10, fontSize: 12 }}
-                                />
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
                         {(() => {
                           const canSelfCancel = !isAssigned && (settings?.allowUnregisterWhenFull || !isFull) && canCancel;
                           const isAdminBypass = isGlobalAdmin || isStaff;
@@ -873,39 +726,6 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
         currentSlotId={slot?.id}
       />
 
-      {/* Violation Modal */}
-      <FormModal 
-        open={isViolationModalOpen} 
-        form={violationForm} 
-        title={<Space><WarningOutlined style={{ color: '#ef4444' }} /> <span>Ghi nhận vi phạm</span></Space>} 
-        onCancel={() => setIsViolationModalOpen(false)} 
-        onOk={handleReportViolation} 
-        width={400}
-      >
-        <div style={{ marginBottom: 16, textAlign: 'center' }}>
-          <Avatar size={64} src={violationUser?.avatar} icon={<UserOutlined />} />
-          <Title level={5} style={{ marginTop: 12, marginBottom: 4 }}>
-            {violationUser?.lastName || violationUser?.firstName
-              ? `${violationUser.lastName || ''} ${violationUser.firstName || ''}`.trim()
-              : violationUser?.name || violationUser?.fullName || 'Nhân sự'}
-          </Title>
-          <Text type="secondary">{violationUser?.email}</Text>
-        </div>
-        <Form.Item name="type" label="Loại lỗi" rules={[{ required: true }]}>
-          <Select placeholder="Chọn loại lỗi vi phạm">
-            <Select.Option value="Vắng mặt không phép">Vắng mặt không phép</Select.Option>
-            <Select.Option value="Đi muộn">Đi muộn</Select.Option>
-            <Select.Option value="Sai tác phong">Sai tác phong</Select.Option>
-            <Select.Option value="Khác">Khác (Ghi chú)</Select.Option>
-          </Select>
-        </Form.Item>
-        <Form.Item name="coefficient" label="Hệ số lỗi" initialValue={1} rules={[{ required: true }]}>
-          <InputNumber min={0.1} max={5} step={0.5} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="note" label="Ghi chú chi tiết">
-          <Input.TextArea placeholder="Nhập chi tiết..." rows={3} />
-        </Form.Item>
-      </FormModal>
     </FormModal>
   );
 };
