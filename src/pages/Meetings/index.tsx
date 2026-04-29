@@ -13,8 +13,7 @@ import {
     UserOutlined,
     TeamOutlined,
     CheckOutlined,
-    CloseOutlined,
-    FormOutlined
+    CloseOutlined
 } from '@ant-design/icons';
 import { useCRUD } from '@/hooks/useCRUD';
 import DataTable from '@/components/common/DataTable';

@@ -29,12 +29,25 @@ class MeetingService extends BaseService<Meeting> {
     super('meetings');
   }
 
+  /**
+   * Phản hồi lời mời họp (RSVP)
+   */
   async rsvp(id: number, payload: { status: 'accepted' | 'declined'; reason?: string }) {
-    return this.postRequest(`${this.endpoint}/${id}/rsvp`, payload);
+    return this.post(`/${id}/rsvp`, payload);
   }
 
+  /**
+   * Điểm danh cuộc họp
+   */
+  async markAttendance(data: { meetingId: number; userId: number; status: string; reason?: string }) {
+    return this.post(`/attendance`, data);
+  }
+
+  /**
+   * Cập nhật trạng thái cuộc họp
+   */
   async setStatus(id: number, status: 'scheduled' | 'completed' | 'cancelled') {
-    return this.patchRequest(`${this.endpoint}/${id}`, { status });
+    return this.patch(id, { status });
   }
 }
 

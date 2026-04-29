@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, DatePicker, Select, Space, Typography } from 'antd';
-import { CalendarOutlined, EnvironmentOutlined, TeamOutlined, ProfileOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Form, Input, DatePicker, Select, Space } from 'antd';
+import { CalendarOutlined, EnvironmentOutlined, ProfileOutlined } from '@ant-design/icons';
 import FormModal from '@/components/common/FormModal';
 import userService from '@/services/user.service';
-
-const { Text } = Typography;
 
 interface MeetingFormProps {
   open: boolean;
