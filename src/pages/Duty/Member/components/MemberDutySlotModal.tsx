@@ -432,15 +432,15 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                 <List.Item.Meta
                                   avatar={<Avatar src={isVisible ? u.avatar : undefined} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
                                   title={
-                                    <Space size={8}>
+                                    <Space size={8} style={{ width: '100%' , justifyContent: 'space-between' }}>
                                       <span style={{ fontWeight: 600 }}>{displayName}</span>
+                                      {isMe && <Tag color="magenta" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Bạn</Tag>}
                                       {isVisible && (
                                         <Tag color={posInfo.color} style={{ fontSize: '10px', borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
                                           {posInfo.name}
                                         </Tag>
                                       )}
-                                      {isMe && <Tag color="magenta" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Bạn</Tag>}
-                                      {index === 0 && <Tag color="gold" style={{ fontSize: 9, borderRadius: 4 }}>Quản lý kíp</Tag>}
+                                      {(index === 0 && !isMe) && <Tag color="gold" style={{ fontSize: 9, borderRadius: 4 }}>Quản lý kíp</Tag>}
                                       {existingViolation && <Tag color="error" style={{ fontSize: 9, borderRadius: 4 }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
                                     </Space>
                                   }
