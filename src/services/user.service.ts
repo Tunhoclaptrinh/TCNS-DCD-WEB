@@ -221,7 +221,23 @@ class UserService extends BaseService<User, UserCreateDTO, UserUpdateDTO> {
   }
 
   /**
-   * Search users by name or email
+   * Search users by name or email (Public - no admin permission required)
+   */
+  async publicSearch(query: string, params: QueryParams = {}): Promise<BaseApiResponse<User[]>> {
+    try {
+      const response = await apiClient.get<BaseApiResponse<User[]>>(
+        `${this.endpoint}/public-search`,
+        { params: { q: query, ...params } }
+      );
+      return response;
+    } catch (error) {
+      logger.error('[User] publicSearch error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search users by name or email (Admin required)
    */
   async searchUsers(query: string, params: QueryParams = {}): Promise<BaseApiResponse<User[]>> {
     return this.search(query, params);

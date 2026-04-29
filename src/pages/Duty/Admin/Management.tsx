@@ -1578,6 +1578,72 @@ const DutyManagement: React.FC = () => {
               </Col>
             </Row>
 
+            <Row gutter={[32, 24]} style={{ marginTop: 24 }}>
+              <Col xs={24}>
+                <div style={{ background: '#fff1f0', padding: '16px 20px', borderRadius: 8, border: '1px solid #ffa39e' }}>
+                  <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 600, color: '#cf1322', fontSize: 15 }}>Quy định Phạt (Tự động)</span>
+                    <Tooltip title="Hệ thống sẽ tự động tạo phiếu phạt tương ứng khi Quản lý báo lỗi hoặc Điểm danh vắng.">
+                      <QuestionCircleOutlined style={{ color: '#cf1322', cursor: 'pointer' }} />
+                    </Tooltip>
+                  </div>
+                  <Row gutter={16}>
+                    <Col xs={24} md={8}>
+                      <Form.Item 
+                        name="penaltyAbsentNoPermission" 
+                        label={<span style={{ fontWeight: 500 }}>Vắng không phép</span>}
+                        rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
+                      >
+                        <InputNumber 
+                          min={0} 
+                          step={5000}
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
+                          style={{ width: '100%' }} 
+                          addonAfter="VNĐ"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item 
+                        name="penaltyAbsentWithPermissionLate" 
+                        label={<span style={{ fontWeight: 500 }}>Vắng báo muộn</span>}
+                        rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
+                      >
+                        <InputNumber 
+                          min={0} 
+                          step={5000}
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
+                          style={{ width: '100%' }} 
+                          addonAfter="VNĐ"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item 
+                        name="penaltyLate" 
+                        label={<span style={{ fontWeight: 500 }}>Đi muộn</span>}
+                        rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
+                      >
+                        <InputNumber 
+                          min={0} 
+                          step={5000}
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
+                          style={{ width: '100%' }} 
+                          addonAfter="VNĐ"
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Text type="secondary" style={{ fontSize: 12, color: '#cf1322' }}>
+                    * Lưu ý: Khi báo lỗi trên hệ thống, quản lý có thể nhập hệ số (ví dụ: 1.5). Số tiền thực phạt = Mức cài đặt × Hệ số.
+                  </Text>
+                </div>
+              </Col>
+            </Row>
+
             <Divider style={{ margin: '32px 0' }} />
 
             <Alert

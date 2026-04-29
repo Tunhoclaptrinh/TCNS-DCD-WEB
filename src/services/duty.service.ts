@@ -440,7 +440,7 @@ class DutyService {
   }
 
   async reportViolation(data: { slotId: number, userId: number, type: string, coefficient: number, note?: string }): Promise<BaseApiResponse<any>> {
-    const response = await apiClient.post<BaseApiResponse<any>>(`/duty/violation`, data);
+    const response = await apiClient.post<BaseApiResponse<any>>(`/duty/slots/${data.slotId}/violation`, data);
     return response;
   }
 

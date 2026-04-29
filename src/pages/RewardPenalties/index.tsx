@@ -10,9 +10,12 @@ import { DataTable, StatisticsCard } from '@/components/common';
 import { DataTableColumn, FilterConfig } from '@/components/common/DataTable/types';
 import rewardPenaltyService, { RewardPenaltyEntry, FinancialStats } from '@/services/reward-penalty.service';
 import RewardPenaltyModal from './RewardPenaltyModal';
+import PenaltySettingsModal from './PenaltySettingsModal';
 import dayjs from 'dayjs';
+import { Button } from 'antd';
+import { SettingOutlined } from '@ant-design/icons';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const RewardPenaltiesPage = () => {
   const {
@@ -35,6 +38,9 @@ const RewardPenaltiesPage = () => {
   const [editingItem, setEditingItem] = useState<RewardPenaltyEntry | null>(null);
   const [stats, setStats] = useState<FinancialStats | null>(null);
   const [fetchingStats, setFetchingStats] = useState(false);
+
+  // Settings Modal
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   const fetchStats = async () => {
     setFetchingStats(true);
@@ -222,6 +228,15 @@ const RewardPenaltiesPage = () => {
         onClearFilters={clearFilters}
         rowKey="id"
         headerContent={headerContent}
+        extra={
+          <Button 
+            icon={<SettingOutlined />} 
+            onClick={() => setSettingsModalOpen(true)}
+            style={{ borderRadius: 8, fontWeight: 500, color: '#cf1322', borderColor: '#ffa39e', background: '#fff1f0', height: 32 }}
+          >
+            Cấu hình Phạt Tự động
+          </Button>
+        }
       />
 
       <RewardPenaltyModal
@@ -232,6 +247,11 @@ const RewardPenaltiesPage = () => {
           fetchStats();
         }}
         initialValues={editingItem}
+      />
+
+      <PenaltySettingsModal 
+        open={settingsModalOpen} 
+        onCancel={() => setSettingsModalOpen(false)} 
       />
     </div>
   );

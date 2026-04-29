@@ -38,11 +38,13 @@ import {
   ThunderboltOutlined,
   WarningOutlined,
   HistoryOutlined,
+  UsergroupAddOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
 import Button from '@/components/common/Button';
 import dutyService, { DutySlot } from '@/services/duty.service';
+import userService from '@/services/user.service';
 import { useAccess } from '@/hooks';
 import LeaveRequestModal from './LeaveRequestModal';
 import SwapRequestModal from './SwapRequestModal';
@@ -150,6 +152,35 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
+
+  // Supplementary Attendance State
+  const [searching, setSearching] = useState(false);
+  const [userOptions, setUserOptions] = useState<any[]>([]);
+  const [selectedSupplementaryUser, setSelectedSupplementaryUser] = useState<number | null>(null);
+
+  const handleSearchUser = async (value: string) => {
+    if (!value || value.length < 2) {
+      setUserOptions([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await userService.publicSearch(value, { limit: 10 });
+      if (res.success && res.data) {
+        // Map users to Select options
+        const options = res.data.map((u: any) => ({
+          label: `${u.name || u.fullName} (${u.username || u.email})`,
+          value: u.id,
+          user: u
+        }));
+        setUserOptions(options);
+      }
+    } catch (err) {
+      console.error('Search user error:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const fetchLogs = async () => {
     if (!slot) return;
@@ -282,9 +313,31 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
     }
   };
 
+  const handleLeaderMarkAttendance = async (targetUserId: number) => {
+    if (!slot) return;
+    setLoading(true);
+    try {
+      const res = await dutyService.leaderMarkAttendance(slot.id, targetUserId);
+      if (res.success) {
+        message.success('Đã điểm danh thành công');
+        onSuccess();
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi điểm danh');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isAttended = Array.isArray(slot?.attendedUserIds) && slot?.attendedUserIds.includes(currentUserId);
+  const isActingLeader = (String(currentUserId) === String(slot?.assignedUserIds?.[0]) && isAttended) || 
+                         (String(currentUserId) === String(slot?.tempLeaderId));
+  const canManageSlot = isGlobalAdmin || isStaff || isActingLeader;
+
   const isUserRegistered = Array.isArray(slot?.assignedUserIds) 
     ? slot?.assignedUserIds.some(id => String(id) === String(currentUserId)) 
     : false;
+
     
   const registeredCount = Array.isArray(slot?.assignedUserIds) ? slot?.assignedUserIds.length : 0;
   const capacity = slot?.capacity || slot?.kip?.capacity || 0;
@@ -434,6 +487,53 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         </div>
                       )}
 
+                      {/* Supplementary Attendance Section for Leader */}
+                      {canManageSlot && (
+                        <div style={{ 
+                          marginBottom: 24, 
+                          padding: '16px', 
+                          background: '#f0fdf4', 
+                          borderRadius: 12, 
+                          border: '1px solid #dcfce7' 
+                        }}>
+                          <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <UsergroupAddOutlined style={{ color: '#16a34a' }} />
+                            <Text strong style={{ color: '#16a34a' }}>Điểm danh bổ sung</Text>
+                            <Tooltip title="Dùng khi có thành viên đi trực thay hoặc trực thêm nhưng chưa đăng ký trước trên hệ thống.">
+                              <InfoCircleOutlined style={{ fontSize: 12, color: '#16a34a', cursor: 'help' }} />
+                            </Tooltip>
+                          </div>
+                          <Space.Compact style={{ width: '100%' }}>
+                            <Select
+                              showSearch
+                              placeholder="Tìm tên hoặc mã nhân sự..."
+                              filterOption={false}
+                              onSearch={handleSearchUser}
+                              onChange={setSelectedSupplementaryUser}
+                              loading={searching}
+                              style={{ flex: 1 }}
+                              options={userOptions}
+                              value={selectedSupplementaryUser}
+                              allowClear
+                            />
+                            <AntButton 
+                              type="primary" 
+                              style={{ background: '#10b981', borderColor: '#10b981' }}
+                              disabled={!selectedSupplementaryUser || loading}
+                              onClick={() => {
+                                if (selectedSupplementaryUser) {
+                                  handleLeaderMarkAttendance(selectedSupplementaryUser);
+                                  setSelectedSupplementaryUser(null);
+                                  setUserOptions([]);
+                                }
+                              }}
+                            >
+                              Điểm danh
+                            </AntButton>
+                          </Space.Compact>
+                        </div>
+                      )}
+
                       <Divider orientation="left" style={{ marginTop: 24 }}>
                         <TeamOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách đăng ký ({registeredCount})</span>
                       </Divider>
@@ -451,9 +551,23 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
                             const posInfo = getPositionInfo(u.position);
 
+                            const hasAttended = Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.includes(u.id);
+
                             return (
                               <List.Item
-                                actions={isVisible && (isGlobalAdmin || isStaff) && !isMe ? [
+                                actions={isVisible && canManageSlot && !isMe ? [
+                                  !hasAttended ? (
+                                    <Tooltip title="Điểm danh" key="attend">
+                                      <AntButton 
+                                        size="small" 
+                                        shape="circle" 
+                                        type="primary"
+                                        style={{ background: '#10b981', borderColor: '#10b981' }}
+                                        icon={<CheckCircleOutlined />} 
+                                        onClick={() => handleLeaderMarkAttendance(u.id)} 
+                                      />
+                                    </Tooltip>
+                                  ) : null,
                                   <Tooltip title={existingViolation ? "Sửa lỗi vi phạm" : "Ghi lỗi vi phạm"} key="violation">
                                     <AntButton 
                                       size="small" 
@@ -477,7 +591,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                       }} 
                                     />
                                   </Tooltip>
-                                ] : []}
+                                ].filter(Boolean) : []}
                               >
                                 <List.Item.Meta
                                   avatar={<Avatar src={isVisible ? u.avatar : undefined} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
@@ -641,16 +755,12 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                     {!isOldGeneration && (
                       <>
                         {(() => {
-                          const isAttended = Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.includes(currentUserId);
-                          const isActingLeader = (String(currentUserId) === String(slot?.assignedUserIds?.[0]) && isAttended) || 
-                                                 (String(currentUserId) === String(slot?.tempLeaderId));
-
                           if (isActingLeader) {
                             return (
                               <div style={{ marginBottom: 12 }}>
                                 <Alert 
                                   message="Bạn là Quản lý kíp" 
-                                  description="Bạn có quyền điểm danh cho các thành viên khác trong danh sách bên trái." 
+                                  description="Bạn có quyền điểm danh và báo lỗi cho các thành viên khác trong danh sách bên trái." 
                                   type="warning" 
                                   showIcon 
                                   style={{ borderRadius: 10, fontSize: 12 }}
