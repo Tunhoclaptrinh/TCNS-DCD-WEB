@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Form, Tag, Space, Tooltip, message, Modal, Typography } from 'antd';
 import { StarOutlined, StarFilled, EditOutlined, DeleteOutlined, EyeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import { useCRUD } from '../../hooks/useCRUD';
-import DataTable from '../../components/common/DataTable';
-import { DataTableColumn, FilterConfig } from '../../components/common/DataTable/types';
-import generationService, { Generation } from '../../services/generation.service';
+import { useCRUD } from '@/hooks/useCRUD';
+import DataTable from '@/components/common/DataTable';
+import { DataTableColumn, FilterConfig } from '@/components/common/DataTable/types';
+import generationService, { Generation } from '@/services/generation.service';
 import GenerationForm from './components/Form';
 import { Button } from '@/components/common';
+
 const { Text } = Typography;
 
-const GenerationPage = () => {
+const GenerationsPage = () => {
     const {
         data,
         loading,
@@ -59,7 +60,7 @@ const GenerationPage = () => {
             key: "name",
             width: 250,
             searchable: true,
-            render: (name: string, record) => (
+            render: (name: string, record: Generation) => (
                 <Space>
                     <span style={{ fontWeight: 600 }}>{name}</span>
                     {record.isCurrent && <Tag color="gold" icon={<StarFilled />}>Hiện tại</Tag>}
@@ -235,7 +236,7 @@ const GenerationPage = () => {
                 onPaginationChange={handleTableChange}
                 onAdd={openCreate}
                 onRefresh={() => fetchAll()}
-                onView={(record) => {
+                onView={(record: Generation) => {
                     setViewingRecord(record);
                     setIsDetailVisible(true);
                 }}
@@ -244,7 +245,7 @@ const GenerationPage = () => {
                 onSearch={search}
                 filters={filters}
                 filterValues={filterValues}
-                onFilterChange={(key, value) => updateFilters({ [key]: value })}
+                onFilterChange={(key: string, value: any) => updateFilters({ [key]: value })}
                 onClearFilters={clearFilters}
                 extra={
                     <Button 
@@ -343,4 +344,4 @@ const GenerationPage = () => {
     );
 };
 
-export default GenerationPage;
+export default GenerationsPage;

@@ -106,6 +106,13 @@ export const adminMenu: IMenuItem[] = [
                 accessFilter: ['system:manage:gen'],
             },
             {
+                key: 'semesters',
+                path: '/admin/system-config/semesters',
+                name: 'Học kỳ',
+                icon: <CalendarOutlined />,
+                accessFilter: ['system:manage:gen'],
+            },
+            {
                 key: 'permissions',
                 path: '/admin/system-config/permissions',
                 name: 'Ma trận Phân quyền',
