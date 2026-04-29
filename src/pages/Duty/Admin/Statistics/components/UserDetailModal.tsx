@@ -58,7 +58,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ open, user, onCancel 
                 </Col>
                 <Col span={8}>
                   <Card bodyStyle={{ padding: 16 }} className="glass-card">
-                    <Statistic title="Tạm tính" value={user.finalAmount.toLocaleString()} suffix="₫" valueStyle={{ color: '#10b981' }} />
+                    <Statistic title="Tạm tính" value={(user.finalAmount / 1000).toLocaleString()} suffix="k" valueStyle={{ color: '#10b981' }} />
                   </Card>
                 </Col>
 

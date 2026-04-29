@@ -59,7 +59,7 @@ const MyRequests: React.FC = () => {
     setLoading(true);
     try {
       // Fetching all and filtering or using specialized query if available
-      const res = await dutyService.getSwapRequests();
+      const res = await dutyService.getSwapRequests({ expand: 'fromSlot,toSlot,requester,targetUser' });
       const rawData = res.data || res;
       const all = Array.isArray(rawData) ? rawData : (rawData?.data || []);
       
@@ -117,7 +117,8 @@ const MyRequests: React.FC = () => {
     try {
       const res = await dutyService.requestSwap({
         fromSlotId: values.fromSlotId,
-        toSlotId: values.toSlotId
+        toSlotId: values.toSlotId,
+        reason: ''
       });
       if (res.success) {
         message.success('Gửi yêu cầu đổi ca thành công');
@@ -218,12 +219,12 @@ const MyRequests: React.FC = () => {
         <Space size="middle">
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '11px', color: '#8c8c8c' }}>Ca của tôi</div>
-            <Tag color="volcano">{record.sourceSlot?.shiftLabel || 'N/A'}</Tag>
+            <Tag color="volcano">{record.fromSlot?.shiftLabel || 'N/A'}</Tag>
           </div>
           <SwapOutlined style={{ color: '#1890ff' }} />
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '11px', color: '#8c8c8c' }}>Ca mục tiêu</div>
-            <Tag color="cyan">{record.targetSlot?.shiftLabel || 'N/A'}</Tag>
+            <Tag color="cyan">{record.toSlot?.shiftLabel || 'N/A'}</Tag>
           </div>
         </Space>
       )

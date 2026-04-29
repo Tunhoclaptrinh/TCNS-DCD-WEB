@@ -11,11 +11,14 @@ class NotificationService extends BaseService {
     const params = { page, limit, ...filter };
     const response = await this.get<any>('/', params);
 
-    // response is the backend body: { success, data, unreadCount, pagination: { total, ... } }
+    // Backend returns: { success: true, data: { items: [], total: 0, unreadCount: 0 } }
+    // Or sometimes: { success: true, data: [], pagination: { total: 0 } }
+    const data = response.data || {};
+    
     return {
-      items: response.data || [],
-      total: response.pagination?.total || response.data?.length || 0,
-      unread_count: response.unreadCount || 0
+      items: Array.isArray(data) ? data : (data.items || []),
+      total: data.total ?? response.pagination?.total ?? (Array.isArray(data) ? data.length : 0),
+      unread_count: data.unreadCount ?? response.unreadCount ?? 0
     };
   }
 

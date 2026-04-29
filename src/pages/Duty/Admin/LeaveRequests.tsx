@@ -264,15 +264,28 @@ const LeaveRequestsPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 120,
-      render: (status: string) => {
+      width: 150,
+      render: (status: string, r: any) => {
         const config: any = {
           pending: { color: 'orange', text: 'Chờ duyệt' },
           approved: { color: 'green', text: 'Đã duyệt' },
           rejected: { color: 'red', text: 'Từ chối' },
         };
         const { color, text } = config[status] || { color: 'default', text: status };
-        return <Tag color={color}>{text.toUpperCase()}</Tag>;
+        
+        return (
+          <Space direction="vertical" size={4}>
+            <Tag color={color} style={{ margin: 0 }}>{text.toUpperCase()}</Tag>
+            {r.approver && (
+              <Tooltip title={`Xử lý bởi: ${r.approver.name} lúc ${dayjs(r.updatedAt).format('HH:mm DD/MM')}`}>
+                <Space size={4}>
+                  <AntdAvatar size={16} src={r.approver.avatar} icon={<UserOutlined />} />
+                  <Text type="secondary" style={{ fontSize: 10 }}>{r.approver.name}</Text>
+                </Space>
+              </Tooltip>
+            )}
+          </Space>
+        );
       }
     },
     {

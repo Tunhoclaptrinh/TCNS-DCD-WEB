@@ -43,6 +43,7 @@ import FormModal from '@/components/common/FormModal';
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import DutyPersonnelPicker from '../../components/DutyPersonnelTable';
 import SlotStructureEditor from './SlotStructureEditor';
+import SlotRequestsHistoryModal from '@/pages/Duty/Member/components/SlotRequestsHistoryModal';
 
 const { Text, Title } = Typography;
 
@@ -74,6 +75,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
   const [violationUser, setViolationUser] = useState<any>(null);
   const [violationForm] = Form.useForm();
+  const [isRequestsModalVisible, setIsRequestsModalVisible] = useState(false);
 
   const updateCache = (rows: any[]) => {
     setSelectedUsersCache(prev => {
@@ -240,6 +242,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   };
 
   return (
+    <>
     <FormModal
       open={open}
       form={form}
@@ -501,7 +504,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               <Form.Item name="attendedUserIds" noStyle>
                 <DutyPersonnelPicker
                   variant="outline"
-                  label="Thêm ĐĐ bổ sung"
+                  label="ĐD bổ sung"
                   icon={<UsergroupAddOutlined />}
                   hideBadge
                   onChange={(ids, rows) => {
@@ -511,27 +514,37 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 />
               </Form.Item>
 
-              <Button
-                variant="outline"
-                buttonSize="small"
-                onClick={() => {
-                  const assigned = form.getFieldValue('assignedUserIds') || [];
-                  form.setFieldsValue({ attendedUserIds: assigned });
-                }}
-                icon={<CheckCircleOutlined />}
-                style={{ fontWeight: 600 }}
-              >
-                Tất cả có mặt
-              </Button>
-              <Button
-                variant="danger"
-                buttonSize="small"
-                onClick={handleScanAbsentees}
-                icon={<WarningOutlined />}
-                style={{ fontWeight: 600 }}
-              >
-                Quét vắng mặt
-              </Button>
+              <Tooltip title="Tất cả có mặt">
+                <Button
+                  variant="outline"
+                  buttonSize="small"
+                  onClick={() => {
+                    const assigned = form.getFieldValue('assignedUserIds') || [];
+                    form.setFieldsValue({ attendedUserIds: assigned });
+                  }}
+                  icon={<CheckCircleOutlined />}
+                />
+              </Tooltip>
+
+              <Tooltip title="Quét vắng mặt">
+                <Button
+                  variant="danger"
+                  buttonSize="small"
+                  onClick={handleScanAbsentees}
+                  icon={<WarningOutlined />}
+                />
+              </Tooltip>
+
+              <Tooltip title="Xem lịch sử đổi kíp & xin nghỉ">
+                <Button
+                  variant="outline"
+                  buttonSize="small"
+                  shape="circle"
+                  onClick={() => setIsRequestsModalVisible(true)}
+                  icon={<ClockCircleOutlined style={{ fontSize: 14 }} />}
+                  style={{ color: '#6366f1', borderColor: '#6366f1' }}
+                />
+              </Tooltip>
             </Space>
           </div>
 
@@ -696,7 +709,15 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         </Form.Item>
       </FormModal>
     </FormModal>
-  );
+
+    <SlotRequestsHistoryModal
+      open={isRequestsModalVisible}
+      onCancel={() => setIsRequestsModalVisible(false)}
+      slotId={slot?.id || 0}
+      slotLabel={slot?.shiftLabel}
+    />
+  </>
+);
 };
 
 export default AdminDutySlotModal;

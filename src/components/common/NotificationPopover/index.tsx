@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Badge, Button, List, Popover, Typography, Empty, Spin, Avatar, Tabs, Tooltip, Tag, theme } from 'antd';
+import { Badge, Button, List, Popover, Typography, Empty, Spin, Avatar, Tabs, Tooltip, Tag, theme, message as antMessage } from 'antd';
 import {
     BellOutlined,
     CheckCircleOutlined,
@@ -14,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { notificationService } from '@/services/notification.service';
 import type { Notification } from '@/types/notification.types';
 import { formatRelativeTime } from '@/utils/formatters';
+import { useSocket } from '@/contexts/SocketContext';
+import { useAuth } from '@/hooks/useAuth';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -30,6 +31,9 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
+
+    const { socket, connected } = useSocket();
+    const { user } = useAuth();
 
     const fetchUnreadCount = async () => {
         try {
@@ -55,6 +59,44 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
         }
     };
 
+    // Socket Integration
+    useEffect(() => {
+        if (socket && connected && user) {
+            // Join user-specific room
+            socket.emit('joinRoom', `user_${user.id}`);
+            console.log(`[Socket] Joining room user_${user.id}`);
+
+            // Listen for new notifications
+            const handleNewNotification = (notif: Notification) => {
+                console.log('[Socket] New notification received:', notif);
+                
+                // Add to list if not already there
+                setNotifications(prev => {
+                    const exists = prev.some(n => n.id === notif.id);
+                    if (exists) return prev;
+                    return [notif, ...prev].slice(0, 15); // Keep top 15
+                });
+                
+                // Increment unread count
+                setUnreadCount(prev => prev + 1);
+                
+                // Show toast
+                antMessage.info({
+                    content: `Thông báo mới: ${notif.title}`,
+                    icon: <BellOutlined style={{ color: '#1890ff' }} />,
+                    duration: 4,
+                });
+            };
+
+            socket.on('notification', handleNewNotification);
+
+            return () => {
+                socket.off('notification', handleNewNotification);
+                socket.emit('leaveRoom', `user_${user.id}`);
+            };
+        }
+    }, [socket, connected, user]);
+
     useEffect(() => {
         if (visible) {
             fetchNotifications();
@@ -75,7 +117,8 @@ const NotificationPopover: React.FC<Props> = ({ isMobile }) => {
             }
         };
 
-        const interval = setInterval(fetchUnreadCount, 15000);
+        // Increase interval to 30s since we have sockets now
+        const interval = setInterval(fetchUnreadCount, 30000);
         window.addEventListener('focus', handleFocus);
         document.addEventListener('visibilitychange', handleVisibilityChange);
 

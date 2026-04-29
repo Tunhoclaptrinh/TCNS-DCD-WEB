@@ -163,7 +163,7 @@ class DutyService {
   }
 
   // Swap/Transfer Requests
-  async requestSwap(data: { slotId?: number, toSlotId?: number, fromSlotId?: number, targetUserId?: number }) {
+  async requestSwap(data: { slotId?: number, toSlotId?: number, fromSlotId?: number, targetUserId?: number, reason: string }) {
     const response = await apiClient.post(`/duty/swaps`, data);
     return response;
   }
@@ -415,8 +415,8 @@ class DutyService {
     const response = await apiClient.get<BaseApiResponse<{ summary: any, details: any[] }>>(`/duty/stats/comprehensive`, { params });
     return response;
   }
-  async notifyAbsentees(stats: any[]) {
-    const response = await apiClient.post(`/duty/stats/notify-absentees`, { stats });
+  async notifyAbsentees(stats: any[], message?: string) {
+    const response = await apiClient.post(`/duty/stats/notify-absentees`, { stats, message });
     return response;
   }
   async exportStats(params: any = {}): Promise<BaseApiResponse<{ url: string, fileName: string }>> {
@@ -441,6 +441,21 @@ class DutyService {
 
   async reportViolation(data: { slotId: number, userId: number, type: string, coefficient: number, note?: string }): Promise<BaseApiResponse<any>> {
     const response = await apiClient.post<BaseApiResponse<any>>(`/duty/violation`, data);
+    return response;
+  }
+
+  async getUserRemarks(userId: number) {
+    const response = await apiClient.get<BaseApiResponse<any[]>>(`/duty/remarks/user/${userId}`);
+    return response;
+  }
+
+  async getSlotLogs(slotId: number) {
+    const response = await apiClient.get<BaseApiResponse<any[]>>(`/duty/slots/${slotId}/logs`);
+    return response;
+  }
+
+  async getSlotRequests(slotId: number) {
+    const response = await apiClient.get<BaseApiResponse<{ leaveRequests: any[], swapRequests: any[] }>>(`/duty/slots/${slotId}/requests`);
     return response;
   }
 }

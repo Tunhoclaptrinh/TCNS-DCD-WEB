@@ -110,7 +110,7 @@ const SwapRequestsPage: React.FC = () => {
   const handleDecide = async (id: number, decision: 'approved' | 'rejected') => {
     if (decision === 'approved') {
       const req = requests.find(r => r.id === id);
-      const targetSlot = slots.find(s => s.id === req?.dutySlotId);
+      const targetSlot = slots.find(s => s.id === req?.toSlotId);
       
       if (targetSlot) {
         const currentCount = targetSlot.assignedUserIds?.length || 0;
@@ -185,7 +185,8 @@ const SwapRequestsPage: React.FC = () => {
     form.setFieldsValue({
       requesterId: record.requesterId,
       targetUserId: record.targetUserId,
-      dutySlotId: record.dutySlotId,
+      fromSlotId: record.fromSlotId,
+      toSlotId: record.toSlotId,
       reason: record.reason,
       status: record.status
     });
@@ -240,13 +241,33 @@ const SwapRequestsPage: React.FC = () => {
             </Space>
             
             <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9f9f9', padding: '6px 16px', borderRadius: 8, border: '1px solid #f0f0f0', flex: 1, justifyContent: 'space-between' }}>
-              <div style={{ minWidth: 110 }}>{renderSlot(r.sourceSlot, false)}</div>
+              <div style={{ minWidth: 110 }}>{renderSlot(r.fromSlot, false)}</div>
               <ArrowRightOutlined style={{ color: 'var(--primary-color)', margin: '0 12px', fontSize: 14 }} />
-              <div style={{ minWidth: 110 }}>{renderSlot(r.slot, true)}</div>
+              <div style={{ minWidth: 110 }}>{renderSlot(r.toSlot, true)}</div>
             </div>
           </div>
         );
       }
+    },
+    {
+      title: 'Lý do',
+      dataIndex: 'reason',
+      key: 'reason',
+      width: 250,
+      render: (reason: string) => (
+        <Tooltip title={reason}>
+          <div style={{ 
+            maxWidth: 240, 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap',
+            fontSize: 12,
+            color: '#64748b'
+          }}>
+            {reason || <Text type="secondary" italic>Không có lý do</Text>}
+          </div>
+        </Tooltip>
+      )
     },
     {
       title: 'Ngày trực',
@@ -254,7 +275,7 @@ const SwapRequestsPage: React.FC = () => {
       width: 150,
       render: (_: any, r: any) => (
         <Text type="secondary" style={{ fontSize: 12 }}>
-          {dayjs(r.slot?.shiftDate).format('DD/MM/YYYY')}
+          {dayjs(r.toSlot?.shiftDate).format('DD/MM/YYYY')}
         </Text>
       )
     },
@@ -262,15 +283,28 @@ const SwapRequestsPage: React.FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 120,
-      render: (status: string) => {
+      width: 180,
+      render: (status: string, r: any) => {
         const config: any = {
           pending: { color: 'orange', text: 'Chờ duyệt' },
           approved: { color: 'green', text: 'Đã duyệt' },
           rejected: { color: 'red', text: 'Từ chối' },
         };
         const s = config[status] || { color: 'default', text: status };
-        return <Tag color={s.color}>{s.text.toUpperCase()}</Tag>;
+        
+        return (
+          <Space direction="vertical" size={4}>
+            <Tag color={s.color} style={{ margin: 0 }}>{s.text.toUpperCase()}</Tag>
+            {r.approver && (
+              <Tooltip title={`Xử lý bởi: ${r.approver.name} lúc ${dayjs(r.updatedAt).format('HH:mm DD/MM')}`}>
+                <Space size={4}>
+                  <Avatar size={16} src={r.approver.avatar} icon={<UserOutlined />} />
+                  <Text type="secondary" style={{ fontSize: 10 }}>{r.approver.name}</Text>
+                </Space>
+              </Tooltip>
+            )}
+          </Space>
+        );
       }
     },
     {
@@ -548,7 +582,7 @@ const SwapRequestsPage: React.FC = () => {
             <ArrowRightOutlined style={{ marginTop: 10, color: '#bfbfbf' }} />
 
             <Form.Item
-              name="dutySlotId"
+              name="toSlotId"
               label="Kíp trực đích (Chuyển đến)"
               rules={[{ required: true, message: 'Vui lòng chọn kíp đích' }]}
               style={{ flex: 1, minWidth: 250 }}

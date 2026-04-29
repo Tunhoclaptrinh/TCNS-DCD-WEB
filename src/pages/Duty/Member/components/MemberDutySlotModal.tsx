@@ -18,6 +18,8 @@ import {
   Select,
   InputNumber,
   Alert,
+  Tabs,
+  Timeline,
 } from 'antd';
 import { 
   SyncOutlined,
@@ -35,6 +37,7 @@ import {
   TeamOutlined,
   ThunderboltOutlined,
   WarningOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
@@ -142,6 +145,32 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
   const [violationUser, setViolationUser] = useState<any>(null);
   const [violationForm] = Form.useForm();
+  
+  // History Logs
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [activeTab, setActiveTab] = useState('info');
+
+  const fetchLogs = async () => {
+    if (!slot) return;
+    setLoadingLogs(true);
+    try {
+      const res = await dutyService.getSlotLogs(slot.id);
+      if (res.success) {
+        setLogs(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch slot logs', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && slot && activeTab === 'history') {
+      fetchLogs();
+    }
+  }, [open, slot, activeTab]);
 
   // Sync slot data to form
   useEffect(() => {
@@ -191,13 +220,14 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
     }
   };
 
-  const handleSwapRequest = async (values: { toSlotId: number, fromSlotId?: number }) => {
+  const handleSwapRequest = async (values: { toSlotId: number, fromSlotId?: number, reason: string }) => {
     if (!slot) return;
     setLoading(true);
     try {
       const res = await dutyService.requestSwap({
         fromSlotId: slot.id,
-        toSlotId: values.toSlotId
+        toSlotId: values.toSlotId,
+        reason: values.reason
       });
       if (res.success) {
         message.success('Gửi yêu cầu đổi ca thành công');
@@ -273,10 +303,10 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
       open={open}
       form={form}
       title={
-        <Space>
+        <>
           <ScheduleOutlined style={{ color: themeColor }} />
           <span>Chi tiết {isSpecialEvent ? 'Sự kiện' : 'ca trực'}</span>
-        </Space>
+        </>
       }
       onCancel={onCancel}
       footer={null}
@@ -286,194 +316,257 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
         <Row gutter={[24, 24]}>
           {/* Left Column: Info */}
           <Col span={14}>
-            <Divider orientation="left" style={{ marginTop: 0 }}>
-              <InfoCircleOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin {isSpecialEvent ? 'Sự kiện' : 'ca trực'}</span>
-            </Divider>
-            
-            <div style={{ paddingLeft: 8 }}>
-              <div style={{ marginBottom: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>{isSpecialEvent ? 'TÊN SỰ KIỆN' : 'TÊN CA TRỰC'}</Text>
-                <div style={{ fontSize: 16, fontWeight: 600, color: isSpecialEvent ? themeColor : undefined }}>{slot?.shiftLabel}</div>
-              </div>
+            <Tabs 
+              activeKey={activeTab} 
+              onChange={setActiveTab}
+              items={[
+                {
+                  key: 'info',
+                  label: (
+                    <Space>
+                      <InfoCircleOutlined />
+                      Thông tin
+                    </Space>
+                  ),
+                  children: (
+                    <div style={{ padding: '4px 8px', maxHeight: 450, overflowY: 'auto' }}>
+                      <div style={{ marginBottom: 16 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{isSpecialEvent ? 'TÊN SỰ KIỆN' : 'TÊN CA TRỰC'}</Text>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: isSpecialEvent ? themeColor : undefined }}>{slot?.shiftLabel}</div>
+                      </div>
 
-              <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col span={12}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>NGÀY TRỰC</Text>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <CalendarOutlined style={{ color: themeColor }} />
-                    <span style={{ fontWeight: 500 }}>{slot?.shiftDate ? dayjs(slot.shiftDate).format('dddd, DD/MM/YYYY') : '-'}</span>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>THỜI GIAN</Text>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <ClockCircleOutlined style={{ color: themeColor }} />
-                    <span style={{ fontWeight: 500 }}>{slot?.startTime} - {slot?.endTime}</span>
-                  </div>
-                </Col>
-              </Row>
+                      <Row gutter={16} style={{ marginBottom: 16 }}>
+                        <Col span={12}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>NGÀY TRỰC</Text>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                            <CalendarOutlined style={{ color: themeColor }} />
+                            <span style={{ fontWeight: 500 }}>{slot?.shiftDate ? dayjs(slot.shiftDate).format('dddd, DD/MM/YYYY') : '-'}</span>
+                          </div>
+                        </Col>
+                        <Col span={12}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>THỜI GIAN</Text>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                            <ClockCircleOutlined style={{ color: themeColor }} />
+                            <span style={{ fontWeight: 500 }}>{slot?.startTime} - {slot?.endTime}</span>
+                          </div>
+                        </Col>
+                      </Row>
 
-              <div style={{ marginBottom: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>SỐ KÍP ĐƯỢC TÍNH</Text>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <ThunderboltOutlined style={{ color: '#d97706' }} />
-                  <span style={{ fontWeight: 600, color: '#d97706' }}>{(slot as any)?.coefficient || 1} kíp</span>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>TRẠNG THÁI</Text>
-                <div style={{ marginTop: 4 }}>
-                  {slot?.status === 'locked' ? (
-                    <Tag color="error" icon={<LockOutlined />}>Đã khóa</Tag>
-                  ) : (
-                    <Tag color="success">Đang mở</Tag>
-                  )}
-                  {isFull && <Tag color="warning">Đã đầy ({registeredCount}/{capacity})</Tag>}
-                  {!isFull && <Tag color="blue">Còn chỗ ({registeredCount}/{capacity})</Tag>}
-                </div>
-              </div>
-
-              {/* Personnel Structure Requirements */}
-              <div style={{ marginBottom: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>CƠ CẤU NHÂN SỰ YÊU CẦU</Text>
-                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {(() => {
-                    // Backend uses slotStructure in the slot, kip or shift
-                    const structure = (slot as any)?.slotStructure || slot?.kip?.slotStructure || (slot as any)?.shift?.slotStructure || [];
-                    if (!Array.isArray(structure) || structure.length === 0) return <Text type="secondary" italic style={{ fontSize: 13 }}>Không có yêu cầu cơ cấu đặc biệt</Text>;
-                    
-                    return structure.map((item: any, idx: number) => {
-                      const label = item.label || item.positions?.map((p: string) => getPositionInfo(p).name).join('/');
-                      const requiredSlots = item.slots || item.count || 0;
-                      
-                      // Count assigned users matching any of the positions in this requirement
-                      const currentCount = slot?.assignedUsers?.filter(u => {
-                        const uPos = (u.position || '').toLowerCase();
-                        const uPosName = getPositionInfo(uPos).name.toLowerCase();
-                        
-                        if (Array.isArray(item.positions)) {
-                          return item.positions.some((p: string) => {
-                            const pLower = p.toLowerCase();
-                            return pLower === uPos || pLower === uPosName;
-                          });
-                        }
-                        
-                        const itemPos = (item.position || '').toLowerCase();
-                        return uPos === itemPos || uPosName === itemPos;
-                      }).length || 0;
-                      
-                      const isMet = currentCount >= requiredSlots;
-                      
-                      return (
-                        <div key={idx} style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          padding: '6px 10px',
-                          background: isMet ? '#f0fdf4' : '#f8fafc',
-                          borderRadius: 8,
-                          border: `1px solid ${isMet ? '#dcfce7' : '#e2e8f0'}`
-                        }}>
-                          <Space>
-                            <Tag color={isMet ? 'green' : 'blue'} style={{ margin: 0, borderRadius: 4 }}>
-                              {label}
-                            </Tag>
-                            <Text type={isMet ? 'success' : 'secondary'} style={{ fontSize: 12 }}>
-                              {isMet ? 'Đã đủ' : `Còn thiếu ${requiredSlots - currentCount}`}
-                            </Text>
-                          </Space>
-                          <Text strong style={{ color: isMet ? '#16a34a' : '#64748b' }}>
-                            {currentCount} / {requiredSlots}
-                          </Text>
+                      <div style={{ marginBottom: 16 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>SỐ KÍP ĐƯỢC TÍNH</Text>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                          <ThunderboltOutlined style={{ color: '#d97706' }} />
+                          <span style={{ fontWeight: 600, color: '#d97706' }}>{(slot as any)?.coefficient || 1} kíp</span>
                         </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
+                      </div>
 
-              {slot?.note && slot.note !== 'INSTANCE' && (
-                <div style={{ marginBottom: 16 }}>
-                  <Text type="secondary" style={{ fontSize: 12 }}>GHI CHÚ</Text>
-                  <div style={{ marginTop: 4, padding: '10px 14px', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                    {slot.note}
-                  </div>
+                      <div style={{ marginBottom: 16 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>TRẠNG THÁI</Text>
+                        <div style={{ marginTop: 4 }}>
+                          {slot?.status === 'locked' ? (
+                            <Tag color="error" icon={<LockOutlined />}>Đã khóa</Tag>
+                          ) : (
+                            <Tag color="success">Đang mở</Tag>
+                          )}
+                          {isFull && <Tag color="warning">Đã đầy ({registeredCount}/{capacity})</Tag>}
+                          {!isFull && <Tag color="blue">Còn chỗ ({registeredCount}/{capacity})</Tag>}
+                        </div>
+                      </div>
+
+                      {/* Personnel Structure Requirements */}
+                      <div style={{ marginBottom: 16 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>CƠ CẤU NHÂN SỰ YÊU CẦU</Text>
+                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {(() => {
+                            const structure = (slot as any)?.slotStructure || slot?.kip?.slotStructure || (slot as any)?.shift?.slotStructure || [];
+                            if (!Array.isArray(structure) || structure.length === 0) return <Text type="secondary" italic style={{ fontSize: 13 }}>Không có yêu cầu cơ cấu đặc biệt</Text>;
+                            
+                            return structure.map((item: any, idx: number) => {
+                              const label = item.label || item.positions?.map((p: string) => getPositionInfo(p).name).join('/');
+                              const requiredSlots = item.slots || item.count || 0;
+                              const currentCount = slot?.assignedUsers?.filter(u => {
+                                const uPos = (u.position || '').toLowerCase();
+                                const uPosName = getPositionInfo(uPos).name.toLowerCase();
+                                if (Array.isArray(item.positions)) {
+                                  return item.positions.some((p: string) => {
+                                    const pLower = p.toLowerCase();
+                                    return pLower === uPos || pLower === uPosName;
+                                  });
+                                }
+                                const itemPos = (item.position || '').toLowerCase();
+                                return uPos === itemPos || uPosName === itemPos;
+                              }).length || 0;
+                              const isMet = currentCount >= requiredSlots;
+                              return (
+                                <div key={idx} style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'space-between',
+                                  padding: '6px 10px',
+                                  background: isMet ? '#f0fdf4' : '#f8fafc',
+                                  borderRadius: 8,
+                                  border: `1px solid ${isMet ? '#dcfce7' : '#e2e8f0'}`
+                                }}>
+                                  <Space>
+                                    <Tag color={isMet ? 'green' : 'blue'} style={{ margin: 0, borderRadius: 4 }}>
+                                      {label}
+                                    </Tag>
+                                    <Text type={isMet ? 'success' : 'secondary'} style={{ fontSize: 12 }}>
+                                      {isMet ? 'Đã đủ' : `Còn thiếu ${requiredSlots - currentCount}`}
+                                    </Text>
+                                  </Space>
+                                  <Text strong style={{ color: isMet ? '#16a34a' : '#64748b' }}>
+                                    {currentCount} / {requiredSlots}
+                                  </Text>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+
+                      {slot?.note && slot.note !== 'INSTANCE' && (
+                        <div style={{ marginBottom: 16 }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>GHI CHÚ</Text>
+                          <div style={{ marginTop: 4, padding: '10px 14px', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                            {slot.note}
+                          </div>
+                        </div>
+                      )}
+
+                      <Divider orientation="left" style={{ marginTop: 24 }}>
+                        <TeamOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách đăng ký ({registeredCount})</span>
+                      </Divider>
+                      
+                      <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                        <List
+                          size="small"
+                          dataSource={slot?.assignedUsers || []}
+                          locale={{ emptyText: 'Chưa có người đăng ký' }}
+                          renderItem={(u: any, index: number) => {
+                            const isVisible = checkVisibility(u);
+                            const isMe = String(u.id) === String(currentUserId);
+                            const existingViolation = slot?.violations?.find(v => String(v.userId) === String(u.id));
+                            const displayName = isVisible ? (u.name || u.fullName || u.username || u.email) : "Nhân sự trực (Bảo mật)";
+                            const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
+                            const posInfo = getPositionInfo(u.position);
+
+                            return (
+                              <List.Item
+                                actions={isVisible && (isGlobalAdmin || isStaff) && !isMe ? [
+                                  <Tooltip title={existingViolation ? "Sửa lỗi vi phạm" : "Ghi lỗi vi phạm"} key="violation">
+                                    <AntButton 
+                                      size="small" 
+                                      shape="circle" 
+                                      danger={!existingViolation}
+                                      style={existingViolation ? { background: '#f59e0b', borderColor: '#f59e0b', color: 'white' } : {}}
+                                      icon={<WarningOutlined />} 
+                                      onClick={() => {
+                                        setViolationUser(u);
+                                        if (existingViolation) {
+                                          violationForm.setFieldsValue({
+                                            type: existingViolation.type,
+                                            coefficient: existingViolation.coefficient,
+                                            note: existingViolation.note
+                                          });
+                                        } else {
+                                          violationForm.resetFields();
+                                          violationForm.setFieldsValue({ coefficient: 1 });
+                                        }
+                                        setIsViolationModalOpen(true);
+                                      }} 
+                                    />
+                                  </Tooltip>
+                                ] : []}
+                              >
+                                <List.Item.Meta
+                                  avatar={<Avatar src={isVisible ? u.avatar : undefined} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
+                                  title={
+                                    <Space size={8}>
+                                      <span style={{ fontWeight: 600 }}>{displayName}</span>
+                                      {isVisible && (
+                                        <Tag color={posInfo.color} style={{ fontSize: '10px', borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
+                                          {posInfo.name}
+                                        </Tag>
+                                      )}
+                                      {isMe && <Tag color="magenta" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Bạn</Tag>}
+                                      {index === 0 && <Tag color="gold" style={{ fontSize: 9, borderRadius: 4 }}>Quản lý kíp</Tag>}
+                                      {existingViolation && <Tag color="error" style={{ fontSize: 9, borderRadius: 4 }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
+                                    </Space>
+                                  }
+                                  description={displaySub}
+                                />
+                              </List.Item>
+                            );
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+        },
+        {
+          key: 'history',
+          label: (
+            <Space>
+              <HistoryOutlined />
+              Lịch sử
+            </Space>
+          ),
+          children: (
+            <div style={{ padding: '16px 8px', maxHeight: 450, overflowY: 'auto' }}>
+              {loadingLogs ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <SyncOutlined spin style={{ fontSize: 20, color: themeColor }} />
+                  <div style={{ marginTop: 8, color: '#64748b' }}>Đang tải lịch sử...</div>
                 </div>
+              ) : logs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                  Chưa có hoạt động nào được ghi lại
+                </div>
+              ) : (
+                <Timeline mode="left">
+                  {logs.map((log, idx) => {
+                    const isTransfer = log.action === 'transfer' || log.action === 'swap';
+                    const isRegister = log.action === 'register';
+                    const isCancel = log.action === 'cancel';
+                    const isLeave = log.action === 'leave';
+                    const isAttendance = log.action === 'attendance';
+                    
+                    let color = 'blue';
+                    let icon = <InfoCircleOutlined />;
+                    
+                    if (isTransfer) { color = 'purple'; icon = <SwapOutlined />; }
+                    if (isRegister) { color = 'green'; icon = <CheckCircleOutlined />; }
+                    if (isCancel || isLeave) { color = 'red'; icon = <LogoutOutlined />; }
+                    if (isAttendance) { color = 'gold'; icon = <CheckCircleOutlined />; }
+
+                    return (
+                      <Timeline.Item key={idx} color={color} dot={icon}>
+                        <div style={{ fontSize: 12 }}>
+                          <div style={{ fontWeight: 600 }}>{log.description}</div>
+                          <div style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>
+                            {dayjs(log.createdAt).format('HH:mm - DD/MM/YYYY')}
+                          </div>
+                          <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Avatar size={16} src={log.performer?.avatar} icon={<UserOutlined />} />
+                            <span style={{ fontSize: 11, color: '#475569' }}>
+                              {log.performer?.name || 'Hệ thống'}
+                            </span>
+                          </div>
+                        </div>
+                      </Timeline.Item>
+                    );
+                  })}
+                </Timeline>
               )}
             </div>
+          )
+        }
+      ]}
+    />
+  </Col>
 
-            <Divider orientation="left" style={{ marginTop: 24 }}>
-              <TeamOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách đăng ký ({registeredCount})</span>
-            </Divider>
-            
-            <div style={{ paddingLeft: 8, maxHeight: 180, overflowY: 'auto' }}>
-              <List
-                size="small"
-                dataSource={slot?.assignedUsers || []}
-                locale={{ emptyText: 'Chưa có người đăng ký' }}
-                renderItem={(u: any, index: number) => {
-                  const isVisible = checkVisibility(u);
-                  const isMe = String(u.id) === String(currentUserId);
-                  const existingViolation = slot?.violations?.find(v => String(v.userId) === String(u.id));
-                  
-                  const displayName = isVisible ? (u.name || u.fullName || u.username || u.email) : "Nhân sự trực (Bảo mật)";
-                  const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
-                  const posInfo = getPositionInfo(u.position);
-
-                  return (
-                    <List.Item
-                      actions={isVisible && (isGlobalAdmin || isStaff) && !isMe ? [
-                        <Tooltip title={existingViolation ? "Sửa lỗi vi phạm" : "Ghi lỗi vi phạm"} key="violation">
-                          <AntButton 
-                            size="small" 
-                            shape="circle" 
-                            danger={!existingViolation}
-                            style={existingViolation ? { background: '#f59e0b', borderColor: '#f59e0b', color: 'white' } : {}}
-                            icon={<WarningOutlined />} 
-                            onClick={() => {
-                              setViolationUser(u);
-                              if (existingViolation) {
-                                violationForm.setFieldsValue({
-                                  type: existingViolation.type,
-                                  coefficient: existingViolation.coefficient,
-                                  note: existingViolation.note
-                                });
-                              } else {
-                                violationForm.resetFields();
-                                violationForm.setFieldsValue({ coefficient: 1 });
-                              }
-                              setIsViolationModalOpen(true);
-                            }} 
-                          />
-                        </Tooltip>
-                      ] : []}
-                    >
-                      <List.Item.Meta
-                        avatar={<Avatar src={isVisible ? u.avatar : undefined} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
-                        title={
-                          <Space size={8}>
-                            <span style={{ fontWeight: 600 }}>{displayName}</span>
-                            {isVisible && (
-                              <Tag color={posInfo.color} style={{ fontSize: '10px', borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
-                                {posInfo.name}
-                              </Tag>
-                            )}
-                            {isMe && <Tag color="magenta" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Bạn</Tag>}
-                            {index === 0 && <Tag color="gold" style={{ fontSize: 9, borderRadius: 4 }}>Quản lý kíp</Tag>}
-                            {existingViolation && <Tag color="error" style={{ fontSize: 9, borderRadius: 4 }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
-                          </Space>
-                        }
-                        description={displaySub}
-                      />
-                    </List.Item>
-                  );
-                }}
-              />
-            </div>
-          </Col>
-
-          {/* Right Column: Actions */}
+  {/* Right Column: Actions */}
           <Col span={10}>
             <div style={{ 
               background: themeBg, 

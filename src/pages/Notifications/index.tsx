@@ -15,6 +15,8 @@ import {
 import { notificationService } from '@/services/notification.service';
 import type { Notification } from '@/types/notification.types';
 import { formatRelativeTime } from '@/utils/formatters';
+import { useSocket } from '@/contexts/SocketContext';
+import { useAuth } from '@/hooks/useAuth';
 import './styles.less';
 
 const { Title, Text, Paragraph } = Typography;
@@ -28,6 +30,9 @@ const NotificationsPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState('all');
     // Global unread count from the API (total, not just current page)
     const [unreadTotal, setUnreadTotal] = useState(0);
+
+    const { socket, connected } = useSocket();
+    const { user } = useAuth();
 
     const fetchNotifications = async () => {
         setLoading(true);
@@ -44,6 +49,35 @@ const NotificationsPage: React.FC = () => {
             setLoading(false);
         }
     };
+
+    // Socket Integration
+    useEffect(() => {
+        if (socket && connected && user) {
+            socket.emit('joinRoom', `user_${user.id}`);
+
+            const handleNewNotification = (notif: Notification) => {
+                // If we are on first page and either 'all' or 'unread' tab, prepend
+                if (page === 1) {
+                    if (activeTab === 'all' || (activeTab === 'unread' && !notif.is_read)) {
+                        setNotifications(prev => {
+                            const exists = prev.some(n => n.id === notif.id);
+                            if (exists) return prev;
+                            return [notif, ...prev].slice(0, limit);
+                        });
+                        setTotal(prev => prev + 1);
+                    }
+                }
+                setUnreadTotal(prev => prev + 1);
+            };
+
+            socket.on('notification', handleNewNotification);
+
+            return () => {
+                socket.off('notification', handleNewNotification);
+                socket.emit('leaveRoom', `user_${user.id}`);
+            };
+        }
+    }, [socket, connected, user, page, activeTab]);
 
     useEffect(() => {
         fetchNotifications();

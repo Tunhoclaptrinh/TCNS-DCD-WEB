@@ -5,7 +5,7 @@ import {
   Space, Typography, message, 
   Tooltip, Empty, Divider, Modal, Input,
   Avatar, Progress, InputNumber, Button,
-  Tag
+  Tag, Spin, List
 } from 'antd';
 import { 
   FileExcelOutlined, 
@@ -21,7 +21,7 @@ import {
   CommentOutlined,
   SettingOutlined,
   TableOutlined,
-  FilterOutlined,
+  SyncOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons';
 import { dutyService } from '@/services/duty.service';
@@ -42,7 +42,7 @@ import {
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
@@ -104,6 +104,30 @@ const StatisticsPage: React.FC = () => {
     open: false,
     user: null
   });
+  const [userRemarks, setUserRemarks] = useState<any[]>([]);
+  const [loadingRemarks, setLoadingRemarks] = useState(false);
+
+  useEffect(() => {
+    if (detailModal.open && detailModal.user) {
+      fetchUserRemarks(detailModal.user.userId);
+    } else {
+      setUserRemarks([]);
+    }
+  }, [detailModal.open, detailModal.user]);
+
+  const fetchUserRemarks = async (userId: number) => {
+    setLoadingRemarks(true);
+    try {
+      const res = await dutyService.getUserRemarks(userId);
+      if (res.success) {
+        setUserRemarks(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch remarks', err);
+    } finally {
+      setLoadingRemarks(false);
+    }
+  };
   const [fullProfileModal, setFullProfileModal] = useState<{ open: boolean; user?: any }>({
     open: false,
     user: null
@@ -228,9 +252,9 @@ const StatisticsPage: React.FC = () => {
       return;
     }
     try {
-      await dutyService.notifyAbsentees(usersToNotify);
+      await dutyService.notifyAbsentees(usersToNotify, commentModal.comment);
       message.success(`Đã gửi thông báo cho ${usersToNotify.length} thành viên.`);
-      if (commentModal.open) setCommentModal({ ...commentModal, open: false });
+      setCommentModal({ open: false, user: null, comment: '' });
     } catch (err) {
       message.error('Lỗi khi gửi thông báo');
     }
@@ -382,12 +406,12 @@ const StatisticsPage: React.FC = () => {
       render: (count: number) => count > 0 ? <Tag color="red">{count}</Tag> : <Text type="secondary">0</Text>
     },
     {
-      title: 'Tạm tính (VNĐ)',
+      title: 'Tạm tính',
       dataIndex: 'totalEarnings',
       key: 'totalEarnings',
       width: 130,
       align: 'right',
-      render: (val: number) => <Text strong>{val?.toLocaleString()} ₫</Text>
+      render: (val: number) => <Text strong>{(val / 1000).toLocaleString()}k</Text>
     },
   ];
 
@@ -437,79 +461,80 @@ const StatisticsPage: React.FC = () => {
         </Row>
 
       {/* 2. Filter & Toolbar Bar */}
-      <Card bodyStyle={{ padding: '12px 24px' }} style={{ marginBottom: 20, borderRadius: 8 }}>
-        <Row gutter={[24, 12]} align="middle">
+      <Row gutter={[16, 16]} align="middle" style={{marginBottom: 16}}>
+        <Col>
+          <Select 
+            value={filters.viewType} 
+            onChange={(val) => setFilters(f => ({ ...f, viewType: val }))}
+            style={{ width: 130 }}
+            options={[{ label: 'Theo tuần', value: 'week' }, { label: 'Khoảng ngày', value: 'range' }]}
+          />
+        </Col>
+
+        {filters.viewType === 'week' ? (
           <Col>
-             <Space>
-               <FilterOutlined style={{ color: '#8c8c8c' }} />
-               <Text strong>Bộ lọc:</Text>
-             </Space>
+            <Space>
+              <Button type="text" size="small" icon={<LeftOutlined />} onClick={() => changeWeek(-1)} />
+              <DatePicker 
+            picker="week" 
+            value={filters.week} 
+            onChange={(val) => val && setFilters(f => ({ ...f, week: val }))}
+            format="[Tuần] ww, YYYY"
+            allowClear={false}
+            style={{ width: 160 }}
+          />
+              <Button type="text" size="small" icon={<RightOutlined />} onClick={() => changeWeek(1)} />
+            </Space>
           </Col>
-          
+        ) : (
           <Col>
-            <Select 
-              value={filters.viewType} 
-              onChange={(val) => setFilters(f => ({ ...f, viewType: val }))}
-              style={{ width: 130 }}
-              options={[{ label: 'Theo tuần', value: 'week' }, { label: 'Khoảng ngày', value: 'range' }]}
+            <RangePicker 
+              value={filters.dateRange} 
+              onChange={(val) => val && setFilters(f => ({ ...f, dateRange: [val[0], val[1]] }))} 
             />
           </Col>
+        )}
 
-          {filters.viewType === 'week' ? (
-            <Col>
-              <Space>
-                <Button type="text" size="small" icon={<LeftOutlined />} onClick={() => changeWeek(-1)} />
-                <DatePicker 
-                  picker="week" 
-                  value={filters.week} 
-                  onChange={(val) => val && setFilters(f => ({ ...f, week: val }))}
-                  format="[Tuần] ww, YYYY"
-                  allowClear={false}
-                  style={{ width: 160 }}
-                />
-                <Button type="text" size="small" icon={<RightOutlined />} onClick={() => changeWeek(1)} />
-              </Space>
-            </Col>
-          ) : (
-            <Col>
-              <RangePicker 
-                value={filters.dateRange} 
-                onChange={(val) => val && setFilters(f => ({ ...f, dateRange: [val[0], val[1]] }))} 
-              />
-            </Col>
-          )}
+        <Col>
+          <Select 
+            style={{ width: 160 }} 
+            placeholder="Ban / Đơn vị"
+            allowClear
+            value={filters.departmentId}
+            options={departments.map(d => ({ label: d.name, value: d.id }))}
+            onChange={(val) => setFilters(f => ({ ...f, departmentId: val }))}
+          />
+        </Col>
 
-          <Col>
-            <Select 
-              style={{ width: 180 }} 
-              placeholder="Chọn Ban / Đơn vị"
-              allowClear
-              value={filters.departmentId}
-              options={departments.map(d => ({ label: d.name, value: d.id }))}
-              onChange={(val) => setFilters(f => ({ ...f, departmentId: val }))}
-            />
-          </Col>
+        <Col>
+          <Select 
+            style={{ width: 180 }} 
+            placeholder="Khóa / Thế hệ"
+            allowClear
+            value={filters.generationId}
+            options={[{ label: 'Các khóa đang hoạt động', value: 'active' }, ...generations.map(g => ({ label: g.name, value: g.id }))]}
+            onChange={(val) => setFilters(f => ({ ...f, generationId: val }))}
+          />
+        </Col>
 
-          <Col>
-            <Select 
-              style={{ width: 220 }} 
-              placeholder="Lọc theo Khóa / Thế hệ"
-              allowClear
-              value={filters.generationId}
-              options={[{ label: 'Các khóa đang hoạt động', value: 'active' }, ...generations.map(g => ({ label: g.name, value: g.id }))]}
-              onChange={(val) => setFilters(f => ({ ...f, generationId: val }))}
-            />
-          </Col>
-
-          <Col flex="auto" style={{ textAlign: 'right' }}>
-            <Button icon={<SettingOutlined />} onClick={handleOpenSettings} type="link">
+        <Col flex="auto">
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button 
+              danger 
+              type="primary"
+              icon={<SendOutlined />} 
+              onClick={handleNotifyAbsentees}
+              disabled={stats?.summary?.warningCount === 0}
+              style={{ borderRadius: 6 }}
+            >
+              Nhắc nhở thiếu kíp ({stats?.summary?.warningCount || 0})
+            </Button>
+            <Button icon={<SettingOutlined />} onClick={handleOpenSettings} type="default">
               Cấu hình định mức
             </Button>
-          </Col>
-        </Row>
-      </Card>
-
-
+          </Space>
+        </Col>
+      </Row>
 
       <Row gutter={[16, 16]}>
         <Col span={17}>
@@ -535,16 +560,7 @@ const StatisticsPage: React.FC = () => {
                 searchable={true}
                 onSearch={setSearchText}
                 searchPlaceholder="Tìm tên hoặc MSV..."
-                extra={
-                  <Button 
-                    type="primary" danger ghost
-                    icon={<SendOutlined />} 
-                    onClick={handleNotifyAbsentees}
-                    disabled={stats?.summary?.warningCount === 0}
-                  >
-                    Nhắc nhở thiếu kíp ({stats?.summary?.warningCount})
-                  </Button>
-                }
+                extra={null} // Moving button to a better place
                 customActions={(record) => (
                   <Space>
                     <Tooltip title="Nhận xét & Nhắc nhở">
@@ -569,7 +585,7 @@ const StatisticsPage: React.FC = () => {
               { title: "Tổng kíp", value: stats?.summary?.totalKips || 0, valueColor: "#52c41a", icon: <CheckCircleOutlined /> },
               { title: "Thiếu kíp", value: stats?.summary?.warningCount || 0, valueColor: "#ff4d4f", icon: <WarningOutlined /> },
               { title: "Số lỗi", value: stats?.summary?.totalViolations || 0, valueColor: "#faad14", icon: <CloseCircleOutlined /> },
-              { title: "Tạm tính", value: `${(stats?.summary?.totalPayout || 0).toLocaleString()}đ`, valueColor: "#1890ff", icon: <FileExcelOutlined /> }
+              { title: "Tạm tính", value: `${(stats?.summary?.totalPayout / 1000).toLocaleString()}k`, valueColor: "#1890ff", icon: <FileExcelOutlined /> }
             ]}
           />
 
@@ -712,10 +728,76 @@ const StatisticsPage: React.FC = () => {
                 },
                 { title: "Đã trực", value: detailModal.user.totalKips + ' kíp', icon: <CheckCircleOutlined />, valueColor: detailModal.user.isWarning ? '#cf1322' : '#52c41a' },
                 { title: "Số lỗi", value: detailModal.user.violationCount + ' lỗi', icon: <WarningOutlined />, valueColor: '#ff4d4f' },
-                { title: "Tạm tính", value: `${(detailModal.user.totalEarnings || 0).toLocaleString()}đ`, icon: <FileExcelOutlined />, valueColor: '#1890ff' }
+                { title: "Tạm tính", value: `${(detailModal.user.totalEarnings / 1000).toLocaleString()}k`, icon: <FileExcelOutlined />, valueColor: '#1890ff' }
               ]}
             />
             <Divider />
+            
+            <div style={{ marginBottom: 16 }}>
+              <Title level={5} style={{ fontSize: 14, marginBottom: 12 }}>Lịch sử nhắc nhở & Nhận xét</Title>
+              {loadingRemarks ? (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}><Spin size="small" /></div>
+              ) : userRemarks.length > 0 ? (
+                <List
+                  size="small"
+                  dataSource={userRemarks}
+                  renderItem={(item: any) => {
+                    const isWarning = item.type === 'warning' || item.category === 'violation';
+                    const isSwap = item.type === 'swap' || item.category === 'swap';
+                    const isApproval = item.category === 'approval' || item.category === 'duty';
+                    
+                    let icon = <SendOutlined />;
+                    let color = '#1890ff';
+                    let bgColor = '#e6f7ff';
+
+                    if (isWarning) {
+                      icon = <WarningOutlined />;
+                      color = '#f5222d';
+                      bgColor = '#fff1f0';
+                    } else if (isSwap) {
+                      icon = <SyncOutlined />;
+                      color = '#722ed1';
+                      bgColor = '#f9f0ff';
+                    } else if (isApproval) {
+                      icon = <CheckCircleOutlined />;
+                      color = '#52c41a';
+                      bgColor = '#f6ffed';
+                    }
+
+                    return (
+                      <List.Item style={{ padding: '8px 0' }}>
+                        <List.Item.Meta
+                          avatar={<Avatar size="small" icon={icon} style={{ backgroundColor: bgColor, color: color }} />}
+                          title={
+                            <Space>
+                              <Text strong style={{ fontSize: 12 }}>{item.title || (isWarning ? 'Cảnh báo' : 'Thông báo')}</Text>
+                              <Text type="secondary" style={{ fontSize: 11 }}>{dayjs(item.createdAt).format('DD/MM/YYYY HH:mm')}</Text>
+                            </Space>
+                          }
+                          description={
+                            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                              <Paragraph style={{ margin: 0, fontSize: 12, color: '#595959' }}>{item.message || item.content}</Paragraph>
+                              {item.performer && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                  <Text type="secondary" style={{ fontSize: 10 }}>Thực hiện bởi:</Text>
+                                  <Avatar size={14} src={item.performer.avatar} icon={<UserOutlined />} />
+                                  <Text strong style={{ fontSize: 10, color: '#8c8c8c' }}>{item.performer.name}</Text>
+                                </div>
+                              )}
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    );
+                  }}
+                  style={{ maxHeight: 350, overflowY: 'auto', paddingRight: 8 }}
+                />
+              ) : (
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<Text type="secondary" style={{ fontSize: 12 }}>Chưa có lịch sử nhắc nhở</Text>} />
+              )}
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
             <div style={{ textAlign: 'center' }}>
               <Button type="primary" icon={<UserOutlined />} onClick={() => handleShowFullProfile(detailModal.user)}>Xem hồ sơ đầy đủ</Button>
             </div>

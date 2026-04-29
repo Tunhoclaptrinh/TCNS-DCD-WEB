@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Select, Divider, Space, Alert, message } from 'antd';
+import { Form, Select, Divider, Space, Alert, message, Input } from 'antd';
 import { ClockCircleOutlined, SwapOutlined, CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -12,7 +12,7 @@ import dutyService from '@/services/duty.service';
 interface ShiftTransferModalProps {
   open: boolean;
   onCancel: () => void;
-  onSubmit: (values: { toSlotId: number, fromSlotId?: number }) => Promise<void>;
+  onSubmit: (values: { toSlotId: number, fromSlotId?: number, reason: string }) => Promise<void>;
   globalMode?: boolean;
   availableSlots?: any[];
   currentSlotId?: number;
@@ -215,19 +215,41 @@ const ShiftTransferModal: React.FC<ShiftTransferModalProps> = ({
         <Form.Item 
           name="toSlotId" 
           label="Kíp trực đích" 
-          rules={[{ required: true, message: 'Vui lòng chọn kíp muốn chuyển đến' }]}
+          rules={[
+            { required: true, message: 'Vui lòng chọn kíp muốn chuyển đến' },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                const fromId = globalMode ? getFieldValue('fromSlotId') : currentSlotId;
+                if (!value || String(value) !== String(fromId)) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(new Error('Kíp trực đích phải khác kíp trực hiện tại'));
+              },
+            }),
+          ]}
         >
           <Select
             showSearch
             loading={fetching}
             disabled={fetching}
             style={{ width: '100%' }}
-            placeholder={fetching ? "Đang tải dữ liệu..." : "Tìm kiếm theo kíp..."}
+            placeholder={fetching ? "Đang tải dữ liệu..." : "Tìm kiếm kíp trực đích..."}
             optionFilterProp="label"
             options={targetSlots}
           />
         </Form.Item>
         
+        <Form.Item 
+          name="reason" 
+          label="Lý do chuyển kíp" 
+          rules={[{ required: true, message: 'Vui lòng nhập lý do chuyển kíp' }]}
+        >
+          <Input.TextArea 
+            rows={3} 
+            placeholder="Giải thích lý do bạn muốn chuyển sang kíp khác..." 
+          />
+        </Form.Item>
+
         <div style={{ fontSize: 12, color: 'rgba(0, 0, 0, 0.45)', marginTop: 8 }}>
           Lưu ý: Sau khi chuyển thành công, vị trí cũ của bạn sẽ được giải phóng để người khác đăng ký.
         </div>
