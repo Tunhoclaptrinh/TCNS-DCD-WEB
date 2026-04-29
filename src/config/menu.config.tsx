@@ -71,6 +71,13 @@ export const adminMenu: IMenuItem[] = [
         ]
     },
     {
+        key: 'meetings',
+        path: '/admin/meetings',
+        name: 'Lịch họp',
+        icon: <CalendarOutlined />,
+        accessFilter: ['meeting:view', 'meeting:create:all', 'meeting:create:dept'],
+    },
+    {
         key: 'reports',
         path: '/admin/statistics',
         name: 'Báo cáo & Thống kê',
@@ -110,7 +117,7 @@ export const adminMenu: IMenuItem[] = [
                 path: '/admin/system-config/semesters',
                 name: 'Học kỳ',
                 icon: <CalendarOutlined />,
-                accessFilter: ['system:manage:gen'],
+                accessFilter: ['system:manage', 'settings:view'],
             },
             {
                 key: 'permissions',
@@ -149,6 +156,13 @@ export const customerMenu: IMenuItem[] = [
         path: '/duty/requests',
         name: 'Đơn của tôi',
         icon: <SwapOutlined />,
+    },
+    {
+        key: 'meetings-member',
+        path: '/admin/meetings',
+        name: 'Lịch họp',
+        icon: <CalendarOutlined />,
+        accessFilter: ['meeting:view'],
     },
     {
         key: 'duty-statistics-member',

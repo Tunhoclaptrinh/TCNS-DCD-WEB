@@ -29,7 +29,8 @@ class PermissionService extends BaseService<Permission> {
       'meeting': 'Họp hành',
       'feedback': 'Góp ý',
       'system': 'Hệ thống',
-      'file': 'Tài liệu'
+      'file': 'Tài liệu',
+      'bonus-campaigns': 'Đợt cộng điểm'
     };
 
     res.data.forEach((p: Permission) => {

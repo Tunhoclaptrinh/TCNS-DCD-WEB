@@ -35,6 +35,7 @@ const Permissions = lazy(() => import("@/pages/Permissions"));
 const Roles = lazy(() => import("@/pages/Roles"));
 const RewardPenalties = lazy(() => import("@/pages/RewardPenalties"));
 const Semesters = lazy(() => import("@/pages/Semesters"));
+const Meetings = lazy(() => import("@/pages/Meetings"));
 
 // ... (rest of the lazy loads)
 
@@ -244,6 +245,10 @@ const routes: RouteObject[] = [
             element: <Semesters />,
           },
         ]
+      },
+      {
+        path: "meetings",
+        element: <Meetings />,
       },
     ],
   },
