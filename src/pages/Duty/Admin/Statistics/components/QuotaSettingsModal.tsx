@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import { 
   SettingOutlined, DeleteOutlined, PlusOutlined, 
-  InfoCircleOutlined, WarningOutlined, GroupOutlined,
+  InfoCircleOutlined, GroupOutlined,
   UserOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
