@@ -165,6 +165,10 @@ const routes: RouteObject[] = [
         path: "requests",
         element: <MemberRequests />,
       },
+      {
+        path: "meetings",
+        element: <Meetings />,
+      },
     ],
   },
 

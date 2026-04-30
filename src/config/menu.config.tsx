@@ -159,7 +159,7 @@ export const customerMenu: IMenuItem[] = [
     },
     {
         key: 'meetings-member',
-        path: '/admin/meetings',
+        path: '/duty/meetings',
         name: 'Lịch họp',
         icon: <CalendarOutlined />,
         accessFilter: ['meeting:view'],
