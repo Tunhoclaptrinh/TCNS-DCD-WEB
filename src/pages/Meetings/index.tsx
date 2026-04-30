@@ -87,9 +87,9 @@ const MeetingsPage = () => {
         const upcoming = data.filter(m => m.status === 'scheduled' && dayjs(m.meetingAt).isAfter(now) && dayjs(m.meetingAt).isBefore(now.add(24, 'hour'))).length;
         const pendingRsvp = data.filter((m: Meeting) => {
             const myConfirm = m.confirmations?.find((c: any) => String(c.userId) === String(currentUser?.id));
-            const status = String(myConfirm?.status || 'pending').toLowerCase();
+            const rsvpStatus = String(myConfirm?.rsvpStatus || 'pending').toLowerCase();
             const isInvited = m.isAllParticipants || m.participantIds?.some(id => String(id) === String(currentUser?.id));
-            return m.status === 'scheduled' && status === 'pending' && isInvited;
+            return m.status === 'scheduled' && rsvpStatus === 'pending' && isInvited;
         }).length;
         const totalMonth = data.filter((m: Meeting) => dayjs(m.meetingAt).isSame(now, 'month')).length;
 
@@ -233,8 +233,8 @@ const MeetingsPage = () => {
     const openDetail = (record: Meeting) => {
         setViewingRecord(record);
         const myConfirm = record.confirmations?.find((c: any) => String(c.userId) === String(currentUser?.id));
-        if (myConfirm && (String(myConfirm.status).toLowerCase() === 'accepted' || String(myConfirm.status).toLowerCase() === 'declined')) {
-            setRsvpStatus(String(myConfirm.status).toLowerCase() as any);
+        if (myConfirm && (String(myConfirm.rsvpStatus).toLowerCase() === 'accepted' || String(myConfirm.rsvpStatus).toLowerCase() === 'declined')) {
+            setRsvpStatus(String(myConfirm.rsvpStatus).toLowerCase() as any);
             setRsvpReason(myConfirm.reason || '');
         } else {
             setRsvpStatus('accepted');
@@ -260,7 +260,7 @@ const MeetingsPage = () => {
         setIsSubmittingRsvp(true);
         try {
             const res = await meetingService.rsvp(viewingRecord.id, {
-                status,
+                rsvpStatus: status,
                 reason: rsvpReason
             });
             if (res.success) {
@@ -365,7 +365,7 @@ const MeetingsPage = () => {
     );
 
     return (
-        <div className="meetings-page-container" style={{ padding: '0 8px' }}>
+        <div className="meetings-page-container">
             <DataTable
                 title={PageHeaderTitle}
                 extra={

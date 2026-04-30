@@ -57,10 +57,12 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
     useEffect(() => {
         if (open && record) {
             const currentPresentIds = record.confirmations
-                ?.filter(c => ['present', 'late', 'accepted'].includes(String(c.status || '').toLowerCase()))
+                ?.filter(c => c.attendanceStatus === 'present' || c.attendanceStatus === 'late')
                 ?.map(c => Number(c.userId)) || [];
             
-            const currentAbsentIds = (record.participantIds || []).filter(id => !currentPresentIds.includes(Number(id))).map(id => Number(id));
+            const currentAbsentIds = record.confirmations
+                ?.filter(c => c.attendanceStatus === 'absent')
+                ?.map(c => Number(c.userId)) || [];
 
             setPresentIds(currentPresentIds);
             setAbsentIds(currentAbsentIds);
@@ -108,6 +110,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
 
     const renderMemberItem = useCallback((userId: number) => {
         const user = users.find(u => String(u.id) === String(userId));
+        const attendanceInfo = record?.confirmations?.find(c => String(c.userId) === String(userId));
         return (
             <List.Item style={{ padding: '6px 12px', borderBottom: '1px solid #f8f9fa' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -124,16 +127,14 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
                                 {user.department}
                             </Tag>
                         )}
-                        {user?.position && (
-                            <Tag color="cyan" style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '16px', border: 'none' }}>
-                                {user.position.toUpperCase()}
-                            </Tag>
+                        {attendanceInfo && attendanceInfo.attendanceStatus === 'late' && (
+                            <Tag color="warning" style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '16px', border: 'none' }}>MUỘN</Tag>
                         )}
                     </Space>
                 </div>
             </List.Item>
         );
-    }, [users]);
+    }, [users, record]);
 
     const statusConfig = {
         none: { color: 'default', text: 'Chưa khởi tạo' },

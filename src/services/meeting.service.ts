@@ -3,7 +3,8 @@ import BaseService from './base.service';
 
 export interface MeetingConfirmation {
   userId: number;
-  status: 'pending' | 'accepted' | 'declined' | 'present' | 'late' | 'absent';
+  rsvpStatus: 'pending' | 'accepted' | 'declined';
+  attendanceStatus: 'none' | 'present' | 'late' | 'absent';
   reason?: string;
   respondedAt?: string;
 }
@@ -30,9 +31,12 @@ export interface Meeting {
   opinions?: string;
   proposals?: string;
   minutesStatus?: 'none' | 'draft' | 'submitted';
-  attendanceUpdates?: Record<number, string>; // Temporary field for batch attendance sync
-  presentIds?: number[]; // For minutes sync
-  absentIds?: number[]; // For minutes sync
+  
+  // Sync fields
+  attendanceUpdates?: Record<number, string>;
+  presentIds?: number[];
+  absentIds?: number[];
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -45,14 +49,14 @@ class MeetingService extends BaseService<Meeting> {
   /**
    * Phản hồi lời mời họp (RSVP)
    */
-  async rsvp(id: number, payload: { status: 'accepted' | 'declined'; reason?: string }) {
+  async rsvp(id: number, payload: { rsvpStatus: 'accepted' | 'declined'; reason?: string }) {
     return this.post(`/${id}/rsvp`, payload);
   }
 
   /**
    * Điểm danh cuộc họp
    */
-  async markAttendance(data: { meetingId: number; userId: number; status: string; reason?: string }) {
+  async markAttendance(data: { meetingId: number; userId: number; attendanceStatus: string; reason?: string }) {
     return this.post(`/attendance`, data);
   }
 

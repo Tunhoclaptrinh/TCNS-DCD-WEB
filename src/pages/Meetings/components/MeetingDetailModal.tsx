@@ -49,7 +49,13 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     canCreate,
     onOpenMinutes
 }) => {
+    const [viewMode, setViewMode] = React.useState<'rsvp' | 'attendance'>('rsvp');
     const [filter, setFilter] = React.useState<string>('all');
+
+    // Reset filter when changing viewMode
+    React.useEffect(() => {
+        setFilter('all');
+    }, [viewMode]);
 
     if (!record) return null;
 
@@ -134,7 +140,6 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                 </div>
             }
             width={600}
-            centered
         >
             <div style={{ padding: '4px 0' }}>
                 <Title level={4} style={{ marginBottom: 12, fontSize: 18 }}>{record.title}</Title>
@@ -179,26 +184,38 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                     </div>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Text strong style={{ fontSize: 13 }}>
-                        ĐÃ PHẢN HỒI ({
-                            record.confirmations?.filter((c: any) => 
-                                ['accepted', 'declined', 'present', 'late', 'absent'].includes(String(c.status || '').toLowerCase())
-                            ).length || 0
-                        }/{record.participantIds?.length || 0})
-                    </Text>
-                </div>
-                
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text strong style={{ fontSize: 13, color: 'var(--primary-color)' }}>
+                            {viewMode === 'rsvp' ? 'TRẠNG THÁI XÁC NHẬN (RSVP)' : 'TRẠNG THÁI ĐIỂM DANH (ATTENDANCE)'}
+                        </Text>
+                        <Segmented
+                            size="small"
+                            value={viewMode}
+                            onChange={(v) => setViewMode(v as any)}
+                            options={[
+                                { label: 'Xác nhận', value: 'rsvp' },
+                                { label: 'Điểm danh', value: 'attendance' },
+                            ]}
+                            style={{ borderRadius: 6 }}
+                        />
+                    </div>
+
                     <Segmented
                         block
                         value={filter}
                         onChange={(value) => setFilter(value as string)}
-                        options={[
+                        options={viewMode === 'rsvp' ? [
                             { label: 'Tất cả', value: 'all' },
-                            { label: `Tham gia (${record.confirmations?.filter((c: any) => ['accepted', 'present', 'late'].includes(String(c.status || '').toLowerCase())).length || 0})`, value: 'accepted' },
-                            { label: `Từ chối (${record.confirmations?.filter((c: any) => String(c.status || '').toLowerCase() === 'declined').length || 0})`, value: 'declined' },
-                            { label: `Chờ (${(record.participantIds?.length || 0) - (record.confirmations?.filter((c: any) => ['accepted', 'declined', 'present', 'late', 'absent'].includes(String(c.status || '').toLowerCase())).length || 0)})`, value: 'pending' },
+                            { label: `Tham gia (${record.confirmations?.filter((c: any) => String(c.rsvpStatus || '').toLowerCase() === 'accepted').length || 0})`, value: 'accepted' },
+                            { label: `Từ chối (${record.confirmations?.filter((c: any) => String(c.rsvpStatus || '').toLowerCase() === 'declined').length || 0})`, value: 'declined' },
+                            { label: `Chờ (${(record.participantIds?.length || 0) - (record.confirmations?.filter((c: any) => ['accepted', 'declined'].includes(String(c.rsvpStatus || '').toLowerCase())).length || 0)})`, value: 'pending' },
+                        ] : [
+                            { label: 'Tất cả', value: 'all' },
+                            { label: `Có mặt (${record.confirmations?.filter((c: any) => String(c.attendanceStatus || '').toLowerCase() === 'present').length || 0})`, value: 'present' },
+                            { label: `Muộn (${record.confirmations?.filter((c: any) => String(c.attendanceStatus || '').toLowerCase() === 'late').length || 0})`, value: 'late' },
+                            { label: `Vắng (${record.confirmations?.filter((c: any) => String(c.attendanceStatus || '').toLowerCase() === 'absent').length || 0})`, value: 'absent' },
+                            { label: `Chưa (${(record.participantIds?.length || 0) - (record.confirmations?.filter((c: any) => ['present', 'late', 'absent'].includes(String(c.attendanceStatus || '').toLowerCase())).length || 0)})`, value: 'none' },
                         ]}
                         style={{ borderRadius: 8, fontSize: 13 }}
                     />
@@ -210,28 +227,45 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                         dataSource={(record.participantIds || []).filter(userId => {
                             if (filter === 'all') return true;
                             const myConfirm = record.confirmations?.find((c: any) => String(c.userId) === String(userId));
-                            const status = String(myConfirm?.status || 'pending').toLowerCase();
                             
-                            if (filter === 'accepted') return ['accepted', 'present', 'late'].includes(status);
-                            if (filter === 'declined') return status === 'declined';
-                            if (filter === 'pending') return status === 'pending';
+                            if (viewMode === 'rsvp') {
+                                const status = String(myConfirm?.rsvpStatus || 'pending').toLowerCase();
+                                if (filter === 'accepted') return status === 'accepted';
+                                if (filter === 'declined') return status === 'declined';
+                                if (filter === 'pending') return status === 'pending';
+                            } else {
+                                const status = String(myConfirm?.attendanceStatus || 'none').toLowerCase();
+                                if (filter === 'present') return status === 'present';
+                                if (filter === 'late') return status === 'late';
+                                if (filter === 'absent') return status === 'absent';
+                                if (filter === 'none') return status === 'none';
+                            }
                             return true;
                         })}
                         renderItem={(userId: number) => {
                             const myConfirm = record.confirmations?.find((c: any) => String(c.userId) === String(userId));
-                            const status = String(myConfirm?.status || 'pending').toLowerCase();
+                            const rsvpStatus = String(myConfirm?.rsvpStatus || 'pending').toLowerCase();
+                            const attendanceStatus = String(myConfirm?.attendanceStatus || 'none').toLowerCase();
+                            
                             const user = users.find((u: User) => String(u.id) === String(userId)) || 
                                          record.participants?.find((u: User) => String(u.id) === String(userId));
                             
-                            const statusConfig: any = {
-                                accepted: { color: 'green', label: 'Tham gia' },
-                                present: { color: 'green', label: 'Có mặt' },
-                                late: { color: 'orange', label: 'Muộn' },
+                            const rsvpConfig: any = {
+                                accepted: { color: 'blue', label: 'Tham gia' },
                                 declined: { color: 'red', label: 'Từ chối' },
-                                absent: { color: 'red', label: 'Vắng mặt' },
-                                pending: { color: 'default', label: 'Chưa phản hồi' }
+                                pending: { color: 'default', label: 'Chờ phản hồi' }
                             };
-                            const config = statusConfig[status] || statusConfig.pending;
+
+                            const attendanceConfig: any = {
+                                present: { color: 'green', label: 'Có mặt' },
+                                late: { color: 'orange', label: 'Đi muộn' },
+                                absent: { color: 'red', label: 'Vắng mặt' },
+                                none: { color: 'default', label: 'Chưa điểm danh' }
+                            };
+
+                            const config = viewMode === 'rsvp' 
+                                ? (rsvpConfig[rsvpStatus] || rsvpConfig.pending)
+                                : (attendanceConfig[attendanceStatus] || attendanceConfig.none);
 
                             return (
                                 <List.Item style={{ padding: '6px 12px' }}>

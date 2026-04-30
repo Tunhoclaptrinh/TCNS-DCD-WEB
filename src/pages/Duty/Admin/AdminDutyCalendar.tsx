@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, Space, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Descriptions, Tag, Divider, List, Avatar } from 'antd';
-import { Button } from '@/components/common';
+import { Card, Modal, Space, Button, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Descriptions, Tag, Divider, List, Avatar } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -73,6 +72,8 @@ const AdminDutyCalendar: React.FC = () => {
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
   const [isMeetingDetailVisible, setIsMeetingDetailVisible] = useState(false);
+  const [meetingViewMode, setMeetingViewMode] = useState<'rsvp' | 'attendance'>('rsvp');
+  const [meetingStatusFilter, setMeetingStatusFilter] = useState<string>('all');
   const [users, setUsers] = useState<User[]>([]);
 
   // Chuyển từ modal Kíp → modal Ca cha
@@ -404,8 +405,8 @@ const AdminDutyCalendar: React.FC = () => {
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực tuần</Title>
         <Space>
           <Button 
-            variant="ghost"
-            buttonSize="small"
+            type="text"
+            size="small"
             icon={<QuestionCircleOutlined />} 
             onClick={() => setIsGuideModalOpen(true)}
             style={{ 
@@ -424,9 +425,9 @@ const AdminDutyCalendar: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
-                <Button icon={<LeftOutlined />} variant="ghost" buttonSize="small" onClick={handlePrevWeek} />
-                <Button variant="ghost" buttonSize="small" onClick={handleToday} style={{ fontSize: '11px', fontWeight: 600 }}>H.tại</Button>
-                <Button icon={<RightOutlined />} variant="ghost" buttonSize="small" onClick={handleNextWeek} />
+                <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
+                <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '11px', fontWeight: 600 }}>H.tại</Button>
+                <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px', whiteSpace: 'nowrap' }}>
@@ -503,7 +504,7 @@ const AdminDutyCalendar: React.FC = () => {
                 </Tooltip>
                 
                 <Dropdown overlay={adminMenu} placement="bottomRight">
-                  <Button variant="primary" className="hifi-button">
+                  <Button type="primary" className="hifi-button">
                     Quản trị <DownOutlined />
                   </Button>
                 </Dropdown>
@@ -620,7 +621,7 @@ const AdminDutyCalendar: React.FC = () => {
         open={isGuideModalOpen}
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
-          <Button key="close" variant="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+          <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
         ]}
         width={600}
         className="premium-modal"
@@ -677,7 +678,7 @@ const AdminDutyCalendar: React.FC = () => {
         open={isMeetingDetailVisible}
         onCancel={() => setIsMeetingDetailVisible(false)}
         footer={[
-          <Button key="close" variant="outline" buttonSize="small" onClick={() => setIsMeetingDetailVisible(false)} style={{ minWidth: 100 }}>
+          <Button key="close" variant="outlined" size="small" onClick={() => setIsMeetingDetailVisible(false)} style={{ minWidth: 100 }}>
             Đóng
           </Button>
         ]}
@@ -732,29 +733,87 @@ const AdminDutyCalendar: React.FC = () => {
             )}
 
             <Divider orientation="left" style={{ margin: '20px 0 12px' }}>
-              <Text strong style={{ fontSize: '13px', color: '#64748b' }}>THÀNH VIÊN ({selectedMeeting.participantIds?.length || 0})</Text>
+              <Text strong style={{ fontSize: '13px', color: '#64748b' }}>DANH SÁCH THÀNH VIÊN</Text>
             </Divider>
+            <div style={{ marginBottom: 16 }}>
+              <Segmented
+                block
+                value={meetingViewMode}
+                onChange={(v) => {
+                  setMeetingViewMode(v as any);
+                  setMeetingStatusFilter('all');
+                }}
+                options={[
+                  { label: 'Xác nhận (RSVP)', value: 'rsvp' },
+                  { label: 'Điểm danh', value: 'attendance' }
+                ]}
+                style={{ marginBottom: 12, borderRadius: 8 }}
+              />
+
+              <Segmented
+                block
+                size="small"
+                value={meetingStatusFilter}
+                onChange={(v) => setMeetingStatusFilter(v as string)}
+                options={meetingViewMode === 'rsvp' ? [
+                  { label: `Tất cả (${selectedMeeting.participantIds?.length || 0})`, value: 'all' },
+                  { label: `Tham gia (${selectedMeeting.confirmations?.filter((c: any) => c.rsvpStatus === 'accepted').length || 0})`, value: 'accepted' },
+                  { label: `Từ chối (${selectedMeeting.confirmations?.filter((c: any) => c.rsvpStatus === 'declined').length || 0})`, value: 'declined' },
+                  { label: `Chờ (${(selectedMeeting.participantIds?.length || 0) - (selectedMeeting.confirmations?.filter((c: any) => c.rsvpStatus === 'accepted' || c.rsvpStatus === 'declined').length || 0)})`, value: 'pending' },
+                ] : [
+                  { label: `Tất cả (${selectedMeeting.participantIds?.length || 0})`, value: 'all' },
+                  { label: `Có mặt (${selectedMeeting.confirmations?.filter((c: any) => c.attendanceStatus === 'present').length || 0})`, value: 'present' },
+                  { label: `Muộn (${selectedMeeting.confirmations?.filter((c: any) => c.attendanceStatus === 'late').length || 0})`, value: 'late' },
+                  { label: `Vắng (${selectedMeeting.confirmations?.filter((c: any) => c.attendanceStatus === 'absent').length || 0})`, value: 'absent' },
+                ]}
+                style={{ borderRadius: 6, fontSize: 11 }}
+              />
+            </div>
             
-            <div style={{ maxHeight: 200, overflowY: 'auto', padding: '4px' }}>
+            <div style={{ maxHeight: 300, overflowY: 'auto', padding: '4px', border: '1px solid #f1f5f9', borderRadius: 8 }}>
               <List
                 size="small"
-                dataSource={selectedMeeting.confirmations || []}
-                renderItem={(item: any) => {
-                  const targetUser = users.find(u => String(u.id) === String(item.userId));
+                dataSource={(selectedMeeting.participantIds || []).filter((userId: number) => {
+                  if (meetingStatusFilter === 'all') return true;
+                  const conf = selectedMeeting.confirmations?.find((c: any) => String(c.userId) === String(userId));
+                  
+                  if (meetingViewMode === 'rsvp') {
+                    if (meetingStatusFilter === 'pending') return !conf || (conf.rsvpStatus !== 'accepted' && conf.rsvpStatus !== 'declined');
+                    return conf?.rsvpStatus === meetingStatusFilter;
+                  } else {
+                    return conf?.attendanceStatus === meetingStatusFilter;
+                  }
+                })}
+                renderItem={(userId: number) => {
+                  const targetUser = users.find(u => String(u.id) === String(userId)) || 
+                                     selectedMeeting.participants?.find((u: any) => String(u.id) === String(userId));
+                  const conf = selectedMeeting.confirmations?.find((c: any) => String(c.userId) === String(userId));
                   
                   return (
-                    <List.Item>
+                    <List.Item style={{ padding: '8px 12px' }}>
                       <List.Item.Meta
                         avatar={<Avatar src={targetUser?.avatar} icon={<UserOutlined />} />}
                         title={
-                          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                            <Text strong>{targetUser?.name || `ID: ${item.userId}`}</Text>
-                            <Tag color={item.status === 'accepted' ? 'green' : item.status === 'declined' ? 'red' : 'gold'}>
-                                {item.status === 'accepted' ? 'Tham gia' : item.status === 'declined' ? 'Vắng mặt' : 'Chưa phản hồi'}
-                            </Tag>
-                          </Space>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text strong style={{ fontSize: 13 }}>{targetUser?.name || `ID: ${userId}`}</Text>
+                            {meetingViewMode === 'rsvp' ? (
+                              <Tag color={conf?.rsvpStatus === 'accepted' ? 'blue' : conf?.rsvpStatus === 'declined' ? 'red' : 'default'} style={{ margin: 0, fontSize: 10 }}>
+                                {conf?.rsvpStatus === 'accepted' ? 'Tham gia' : conf?.rsvpStatus === 'declined' ? 'Từ chối' : 'Chờ phản hồi'}
+                              </Tag>
+                            ) : (
+                              <Tag color={
+                                conf?.attendanceStatus === 'present' ? 'green' : 
+                                conf?.attendanceStatus === 'late' ? 'orange' : 
+                                conf?.attendanceStatus === 'absent' ? 'red' : 'default'
+                              } style={{ margin: 0, fontSize: 10 }}>
+                                {conf?.attendanceStatus === 'present' ? 'Có mặt' : 
+                                 conf?.attendanceStatus === 'late' ? 'Đi muộn' : 
+                                 conf?.attendanceStatus === 'absent' ? 'Vắng mặt' : 'Chưa điểm danh'}
+                              </Tag>
+                            )}
+                          </div>
                         }
-                        description={item.reason && <Text type="secondary" italic>Lý do: {item.reason}</Text>}
+                        description={conf?.reason && meetingViewMode === 'rsvp' && <Text type="secondary" style={{ fontSize: 11 }} italic>Lý do: {conf.reason}</Text>}
                       />
                     </List.Item>
                   );

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, Space, message, Typography, Tooltip, Spin, Dropdown, Menu } from 'antd';
-import { Button } from '@/components/common';
+import { Card,Button, Modal, Space, message, Typography, Tooltip, Spin, Dropdown, Menu } from 'antd';
 import {
   LeftOutlined,
   RightOutlined,
@@ -216,10 +215,9 @@ const AdminDutyCalendar: React.FC = () => {
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực tuần</Title>
         <Space>
           <Button 
-            variant="ghost"
-            buttonSize="small"
             icon={<QuestionCircleOutlined />} 
             onClick={() => setIsGuideModalOpen(true)}
+            size="small"
             style={{ 
               color: '#595959', 
               border: '1px solid #d9d9d9',
@@ -235,9 +233,9 @@ const AdminDutyCalendar: React.FC = () => {
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
-              <Button icon={<LeftOutlined />} variant="ghost" buttonSize="small" onClick={handlePrevWeek} />
-              <Button variant="ghost" buttonSize="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600 }}>H.tại</Button>
-              <Button icon={<RightOutlined />} variant="ghost" buttonSize="small" onClick={handleNextWeek} />
+              <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
+              <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600 }}>H.tại</Button>
+              <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
             </div>
             <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '16px' }}>
               Tuần {currentWeek.format('ww')} <span style={{ fontWeight: 400, color: '#64748b', fontSize: '14px' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</span>
@@ -248,14 +246,14 @@ const AdminDutyCalendar: React.FC = () => {
           <Space size="middle">
             <Space size={8}>
               <Tooltip title="Tải lại dữ liệu">
-                <Button icon={<SyncOutlined />} onClick={fetchSchedule} loading={loading} />
+                <Button icon={<SyncOutlined />} onClick={fetchSchedule} loading={loading} size="small" />
               </Tooltip>
               <Tooltip title="Xuất dữ liệu Excel">
-                <Button icon={<CloudDownloadOutlined />} />
+                <Button icon={<CloudDownloadOutlined />} size="small" />
               </Tooltip>
               
               <Dropdown overlay={adminMenu} placement="bottomRight">
-                <Button variant="primary" className="hifi-button">
+                <Button type="primary" size="small">
                   Quản trị <DownOutlined />
                 </Button>
               </Dropdown>
@@ -441,7 +439,7 @@ const AdminDutyCalendar: React.FC = () => {
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
           <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button key="close" variant="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
           </div>
         ]}
         width={600}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Typography, Space, List, Avatar, Tag, Select, message, Divider } from 'antd';
+import { Modal, Typography, Space, List, Avatar, Tag, Select, message, Divider, Segmented } from 'antd';
 import { 
     TeamOutlined, UserOutlined, CheckCircleOutlined, 
     ClockCircleOutlined, CloseCircleOutlined, 
@@ -29,6 +29,7 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
     isSaving = false
 }) => {
     const [localAttendance, setLocalAttendance] = useState<Record<number, string>>({});
+    const [attendanceFilter, setAttendanceFilter] = useState<string>('all');
 
     useEffect(() => {
         if (open && record) {
@@ -36,8 +37,8 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
             record.participantIds.forEach(id => {
                 const conf = record.confirmations?.find(c => String(c.userId) === String(id));
                 // Only take attendance statuses, or default to empty
-                if (conf && ['present', 'late', 'absent'].includes(conf.status)) {
-                    initial[id] = conf.status;
+                if (conf && ['present', 'late', 'absent'].includes(conf.attendanceStatus)) {
+                    initial[id] = conf.attendanceStatus;
                 }
             });
             setLocalAttendance(initial);
@@ -61,10 +62,10 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
         
         record.participantIds.forEach(userId => {
             const conf = record.confirmations?.find(c => String(c.userId) === String(userId));
-            if (conf?.status === 'accepted') {
+            if (conf?.rsvpStatus === 'accepted') {
                 newAttendance[userId] = 'present';
                 count++;
-            } else if (conf?.status === 'declined') {
+            } else if (conf?.rsvpStatus === 'declined') {
                 newAttendance[userId] = 'absent';
                 count++;
             }
@@ -151,7 +152,6 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
                 </Button>
             ]}
             width={700}
-            centered
         >
             <div style={{ padding: '4px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -180,14 +180,43 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
                         </Button>
                     </Space>
                 </div>
+                <div style={{ marginBottom: 12 }}>
+                    <Segmented
+                        block
+                        size="small"
+                        value={attendanceFilter}
+                        onChange={(v) => setAttendanceFilter(v as string)}
+                        options={[
+                            { label: `Tất cả (${record.participantIds?.length || 0})`, value: 'all' },
+                            { label: `Chưa đd (${(record.participantIds?.length || 0) - Object.keys(localAttendance).length})`, value: 'pending' },
+                            { label: `Có mặt (${Object.values(localAttendance).filter(v => v === 'present').length})`, value: 'present' },
+                            { label: `Muộn (${Object.values(localAttendance).filter(v => v === 'late').length})`, value: 'late' },
+                            { label: `Vắng (${Object.values(localAttendance).filter(v => v === 'absent').length})`, value: 'absent' },
+                            { label: `RSVP (${record.confirmations?.filter(c => c.rsvpStatus === 'accepted').length || 0})`, value: 'rsvp' },
+                        ]}
+                        style={{ borderRadius: 8, fontSize: 12 }}
+                    />
+                </div>
                 
-                <div style={{ maxHeight: 450, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
+                <div style={{ maxHeight: 420, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 8, background: '#fafafa' }}>
                     <List
                         size="small"
-                        dataSource={record.participantIds || []}
+                        dataSource={(record.participantIds || []).filter(userId => {
+                            if (attendanceFilter === 'all') return true;
+                            const conf = record.confirmations?.find(c => String(c.userId) === String(userId));
+                            const currentStatus = localAttendance[userId];
+                            const isMarked = !!currentStatus;
+
+                            if (attendanceFilter === 'rsvp') return conf?.rsvpStatus === 'accepted';
+                            if (attendanceFilter === 'pending') return !isMarked;
+                            if (attendanceFilter === 'present') return currentStatus === 'present';
+                            if (attendanceFilter === 'late') return currentStatus === 'late';
+                            if (attendanceFilter === 'absent') return currentStatus === 'absent';
+                            return true;
+                        })}
                         renderItem={(userId: number) => {
                             const conf = record.confirmations?.find(c => String(c.userId) === String(userId));
-                            const rsvpStatus = conf?.status || 'pending';
+                            const rsvpStatus = conf?.rsvpStatus || 'pending';
                             const user = users.find((u: User) => String(u.id) === String(userId)) || 
                                          record.participants?.find((u: User) => String(u.id) === String(userId));
                             
@@ -228,7 +257,7 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
                                             
                                             <Space size={8} style={{ lineHeight: 1 }}>
                                                 {rsvpStatus === 'accepted' && <Tag color="blue" style={{ fontSize: 9, margin: 0, padding: '0 4px', borderRadius: 4, height: 16, lineHeight: '14px', border: 'none' }}>Đã RSVP</Tag>}
-                                                {rsvpStatus === 'declined' && <Tag color="error" style={{ fontSize: 9, margin: 0, padding: '0 4px', borderRadius: 4, height: 16, lineHeight: '14px', border: 'none' }}>Từ chối</Tag>}
+                                                {rsvpStatus === 'declined' && <Tag color="error" style={{ fontSize: 9, margin: 0, padding: '0 4px', borderRadius: 4, height: 16, lineHeight: '14px', border: 'none' }}>Từ chối RSVP</Tag>}
                                                 
                                                 {currentStatus === 'present' && <Text type="success" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircleOutlined /> Có mặt</Text>}
                                                 {currentStatus === 'late' && <Text type="warning" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}><ClockCircleOutlined /> Muộn</Text>}
