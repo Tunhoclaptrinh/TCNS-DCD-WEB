@@ -31,6 +31,7 @@ import MemberDutyTableView from './components/MemberDutyTableView';
 import MemberDutyTimelineView from './components/MemberDutyTimelineView';
 import ShiftLeaderAttendanceModal from './components/ShiftLeaderAttendanceModal';
 import MeetingDetailModal from '@/pages/Meetings/components/MeetingDetailModal';
+import MeetingMinutesViewModal from '@/pages/Meetings/components/MeetingMinutesViewModal';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -49,6 +50,7 @@ const MemberCalendar: React.FC = () => {
   const [dutySettings, setDutySettings] = useState<any>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
   const [isMeetingDetailVisible, setIsMeetingDetailVisible] = useState(false);
+  const [isMinutesViewVisible, setIsMinutesViewVisible] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [showDefaultBoundaries] = useState(false);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
@@ -475,6 +477,17 @@ const MemberCalendar: React.FC = () => {
         onRsvp={handleRsvp}
         canCreate={false}
         onOpenMinutes={() => {}}
+        onViewMinutes={() => {
+          setIsMeetingDetailVisible(false);
+          setIsMinutesViewVisible(true);
+        }}
+      />
+
+      <MeetingMinutesViewModal
+        open={isMinutesViewVisible}
+        onCancel={() => setIsMinutesViewVisible(false)}
+        record={selectedMeeting}
+        users={users}
       />
     </div>
   );

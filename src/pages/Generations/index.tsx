@@ -256,7 +256,6 @@ const GenerationsPage = () => {
                         style={{ 
                             color: '#595959', 
                             border: '1px solid #d9d9d9',
-                            height: 32 
                         }}
                     >
                         Hướng dẫn
@@ -284,18 +283,16 @@ const GenerationsPage = () => {
                 open={isDetailVisible}
                 onCancel={() => setIsDetailVisible(false)}
                 footer={
-                    <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
                         <Button 
                             variant="outline" 
+                            buttonSize="small" 
                             onClick={() => setIsDetailVisible(false)}
                             style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
                         >
                             Đóng
                         </Button>
-                    </div>
                 }
                 width={500}
-                centered
                 destroyOnClose
             >
                 {viewingRecord && (
@@ -319,11 +316,8 @@ const GenerationsPage = () => {
                 open={isGuideModalVisible}
                 onCancel={() => setIsGuideModalVisible(false)}
                 footer={[
-                    <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                        <Button key="close" variant="primary" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 100 }}>Đã hiểu</Button>
-                    </div>
+                    <Button key="close" buttonSize="small" variant="primary" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 100 }}>Đã hiểu</Button>
                 ]}
-                centered
             >
                 <div style={{ padding: '8px 0' }}>
                     <p>Trang này giúp bạn quản lý các Khóa/Thế hệ của tổ chức:</p>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Form, Input, Checkbox, Typography, Space, Alert, Tag, Avatar, List } from 'antd';
+import { Modal, Form, Input, Checkbox, Typography, Space, Alert, Tag } from 'antd';
 import {
     StopOutlined,
     WarningOutlined,

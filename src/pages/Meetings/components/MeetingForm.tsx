@@ -122,7 +122,7 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
             
             return (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                   <Form.Item name="isAllParticipants" valuePropName="checked" style={{ marginBottom: 0 }}>
                     <Checkbox style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: 13 }}>
                       Mời toàn bộ đội tham gia

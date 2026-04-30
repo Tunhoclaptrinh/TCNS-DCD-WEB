@@ -7,12 +7,14 @@ const { Text } = Typography;
 
 interface UserSelectProps {
     users: User[];
-    value?: number;
-    onChange?: (value: number) => void;
+    value?: number | number[];
+    onChange?: (value: any) => void;
     placeholder?: string;
     style?: React.CSSProperties;
     allowClear?: boolean;
     disabled?: boolean;
+    mode?: 'multiple' | 'tags';
+    maxTagCount?: number | 'responsive';
 }
 
 const UserSelect: React.FC<UserSelectProps> = ({ 
@@ -22,11 +24,15 @@ const UserSelect: React.FC<UserSelectProps> = ({
     placeholder = "Chọn thành viên...", 
     style, 
     allowClear = true,
-    disabled
+    disabled,
+    mode,
+    maxTagCount
 }) => {
     return (
         <Select
             showSearch
+            mode={mode}
+            maxTagCount={maxTagCount}
             value={value}
             onChange={onChange}
             placeholder={placeholder}

@@ -2,13 +2,12 @@ import React from 'react';
 import { Modal, Typography, Space, Tag, Input, List, Avatar, Popover, Segmented } from 'antd';
 import {
     CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined,
-    UserOutlined, MessageOutlined, FileTextOutlined, EditOutlined
+    UserOutlined, MessageOutlined, FileTextOutlined, EditOutlined,
 } from '@ant-design/icons';
 import { Button } from '@/components/common';
 import { Meeting } from '@/services/meeting.service';
 import { User } from '@/types';
 import dayjs from 'dayjs';
-import MeetingMinutesViewModal from './MeetingMinutesViewModal';
 
 const { Text, Title } = Typography;
 
@@ -33,7 +32,9 @@ interface MeetingDetailModalProps {
     isSubmitting: boolean;
     onRsvp: (status: 'accepted' | 'declined') => void;
     canCreate: boolean;
-    onOpenMinutes: () => void;
+    onOpenMinutes?: () => void;
+    onViewMinutes?: () => void;
+    canEditSubmitted?: boolean;
 }
 
 const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
@@ -48,11 +49,12 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     isSubmitting,
     onRsvp,
     canCreate,
-    onOpenMinutes
+    onOpenMinutes,
+    onViewMinutes,
+    canEditSubmitted
 }) => {
     const [viewMode, setViewMode] = React.useState<'rsvp' | 'attendance'>('rsvp');
     const [filter, setFilter] = React.useState<string>('all');
-    const [isMinutesViewOpen, setIsMinutesViewOpen] = React.useState(false);
 
     // Reset filter when changing viewMode
     React.useEffect(() => {
@@ -62,99 +64,131 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     if (!record) return null;
 
     const isParticipant = record.isAllParticipants || record.participantIds?.some(id => String(id) === String(currentUser?.id));
+    const myConfirmation = record.confirmations?.find((c: any) => String(c.userId) === String(currentUser?.id));
+    const currentRsvp = String(myConfirmation?.rsvpStatus || '').toLowerCase();
+    const hasResponded = currentRsvp === 'accepted' || currentRsvp === 'declined';
+    const meetingClosed = record.status !== 'scheduled' || dayjs().isAfter(dayjs(record.meetingAt));
+    const canRespond = isParticipant && !meetingClosed;
+
+    const confirmRsvpChange = (nextStatus: 'accepted' | 'declined') => {
+        if (!canRespond) return;
+
+        const shouldConfirm = hasResponded && currentRsvp !== nextStatus;
+
+        if (!shouldConfirm) {
+            onRsvp(nextStatus);
+            return;
+        }
+
+        Modal.confirm({
+            title: nextStatus === 'accepted' ? 'Xác nhận đổi sang tham gia' : 'Xác nhận đổi sang từ chối',
+            content: (
+                <div style={{ lineHeight: 1.6 }}>
+                    <div>Bạn đã phản hồi trước đó. Nếu tiếp tục, trạng thái mới sẽ được cập nhật.</div>
+                    <div style={{ marginTop: 8, color: '#8c8c8c' }}>Lý do hiện tại có thể được chỉnh sửa trước khi gửi.</div>
+                </div>
+            ),
+            okText: 'Tiếp tục',
+            cancelText: 'Hủy',
+            centered: true,
+            onOk: () => onRsvp(nextStatus),
+        });
+    };
+
 
     return (
-        <>
         <Modal
             title={
                 <Space>
                     <CalendarOutlined style={{ color: 'var(--primary-color)' }} />
-                    <Text strong>{canCreate ? 'Quản lý cuộc họp' : 'Chi tiết cuộc họp'}</Text>
+                    <Text strong>{canCreate ? 'Quản lý thông tin cuộc họp' : 'Thông tin cuộc họp chi tiết'}</Text>
                 </Space>
             }
+            zIndex={1000}
             open={open}
             onCancel={onCancel}
             footer={
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '4px 0' }}>
-                    <Space size={12}>
-                        <Button 
-                            variant="ghost" 
-                            buttonSize="small" 
-                            onClick={onCancel} 
-                            style={{ 
-                                minWidth: 80, 
-                                borderRadius: 8, 
-                                color: '#595959',
-                                border: '1px solid #d9d9d9'
-                            }}
-                        >
-                            Đóng
-                        </Button>
-                        {canCreate && (
-                            <Button 
-                                variant="outline" 
-                                buttonSize="small" 
-                                icon={record.minutesStatus === 'submitted' ? <FileTextOutlined /> : <EditOutlined />} 
-                                onClick={onOpenMinutes}
-                                style={{ 
-                                    borderRadius: 8,
-                                    borderColor: record.minutesStatus === 'submitted' ? '#52c41a' : '#faad14',
-                                    color: record.minutesStatus === 'submitted' ? '#52c41a' : '#faad14',
-                                    fontWeight: 500
-                                }}
-                            >
-                                {record.minutesStatus === 'submitted' ? 'Xem biên bản' : 'Ghi biên bản'}
-                            </Button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
+                    <Button 
+                        variant="outline" 
+                        buttonSize="small" 
+                        onClick={onCancel} 
+                        style={{ 
+                            borderRadius: 8, 
+                            color: '#64748b',
+                            borderColor: '#e2e8f0',
+                            background: '#fff'
+                        }}
+                    >
+                        Đóng
+                    </Button>
+
+                    <Space size={12} align="center">
+                        {/* Nhóm biên bản */}
+                        {record && (
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                {record?.minutesStatus === 'submitted' && (
+                                    <Button 
+                                        variant="success" 
+                                        buttonSize="small" 
+                                        icon={<FileTextOutlined />}
+                                        onClick={() => onViewMinutes?.()}
+                                        style={{ borderRadius: 8, minWidth: 90 }}
+                                    >
+                                        {canCreate ? 'Xem BB' : 'Xem biên bản'}
+                                    </Button>
+                                )}
+                                
+                                {canCreate && (record?.minutesStatus !== 'submitted' || canEditSubmitted) && (
+                                    <Button 
+                                        variant="outline" 
+                                        buttonSize="small" 
+                                        icon={<EditOutlined />}
+                                        onClick={() => onOpenMinutes?.()}
+                                        style={{ 
+                                            borderRadius: 8,
+                                            borderColor: '#f59e0b',
+                                            color: '#f59e0b'
+                                        }}
+                                    >
+                                        {record?.minutesStatus === 'submitted' ? 'Sửa BB' : 'Ghi biên bản'}
+                                    </Button>
+                                )}
+                            </div>
                         )}
-                        {/* Member: view completed minutes */}
-                        {!canCreate && record.minutesStatus === 'submitted' && (
-                            <Button
-                                variant="outline"
-                                buttonSize="small"
-                                icon={<FileTextOutlined />}
-                                onClick={() => setIsMinutesViewOpen(true)}
-                                style={{
-                                    borderRadius: 8,
-                                    borderColor: '#52c41a',
-                                    color: '#52c41a',
-                                    fontWeight: 500
-                                }}
-                            >
-                                Xem biên bản
-                            </Button>
-                        )}
-                    </Space>
-                    <Space size={12}>
-                        {isParticipant && record.status === 'scheduled' && (
-                            <>
+
+                        {/* Nhóm RSVP */}
+                        {isParticipant && (
+                            <Space size={12}>
                                 <Button 
                                     variant="outline" 
                                     buttonSize="small" 
-                                    onClick={() => onRsvp('declined')}
+                                    disabled={!canRespond}
+                                    onClick={() => confirmRsvpChange('declined')}
                                     loading={isSubmitting && rsvpStatus === 'declined'}
                                     style={{ 
-                                        minWidth: 100, 
                                         borderRadius: 8,
                                         borderColor: '#ff4d4f',
-                                        color: '#ff4d4f'
+                                        color: '#ff4d4f',
+                                        ...(currentRsvp === 'declined' && { background: '#fff1f0' })
                                     }}
                                 >
-                                    Từ chối
+                                    {currentRsvp === 'declined' ? 'Đã từ chối' : 'Từ chối'}
                                 </Button>
                                 <Button 
-                                    variant="primary" 
+                                    variant={currentRsvp === 'accepted' ? 'success' : 'primary'}
                                     buttonSize="small" 
-                                    onClick={() => onRsvp('accepted')}
+                                    disabled={!canRespond}
+                                    onClick={() => confirmRsvpChange('accepted')}
                                     loading={isSubmitting && rsvpStatus === 'accepted'}
                                     style={{ 
-                                        minWidth: 140, 
                                         borderRadius: 8,
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                        boxShadow: currentRsvp === 'accepted' ? '0 2px 4px rgba(34, 197, 94, 0.2)' : '0 2px 4px rgba(0,0,0,0.1)'
                                     }}
                                 >
-                                    Xác nhận tham gia
+                                    {currentRsvp === 'accepted' ? 'Đã xác nhận' : 'XN tham gia'}
                                 </Button>
-                            </>
+                            </Space>
                         )}
                     </Space>
                 </div>
@@ -175,12 +209,6 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                     </div>
                 </div>
 
-                <div style={{ marginBottom: 20 }}>
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>NỘI DUNG CUỘC HỌP</Text>
-                    <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #f1f5f9' }}>
-                        <Text style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{record.agenda || 'Chưa có nội dung chi tiết.'}</Text>
-                    </div>
-                </div>
 
                 {record.status === 'scheduled' && isParticipant && (
                     <div style={{ marginBottom: 24, padding: '12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
@@ -199,7 +227,13 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                                 value={rsvpReason}
                                 onChange={(e) => setRsvpReason(e.target.value)}
                                 style={{ borderRadius: 6, fontSize: 13 }}
+                                disabled={!canRespond}
                             />
+                            {!canRespond && (
+                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+                                    Cuộc họp đã kết thúc hoặc bị hủy nên không thể cập nhật phản hồi nữa.
+                                </Text>
+                            )}
                         </div>
                     </div>
                 )}
@@ -327,15 +361,7 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                     />
                 </div>
             </div>
-            </Modal>
-
-            <MeetingMinutesViewModal
-                open={isMinutesViewOpen}
-                onCancel={() => setIsMinutesViewOpen(false)}
-                record={record}
-                users={users}
-            />
-        </>
+        </Modal>
     );
 };
 

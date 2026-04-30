@@ -16,7 +16,8 @@ import {
     CheckCircleOutlined, 
     AppstoreOutlined, CopyOutlined, PlusOutlined,
     MessageOutlined, ClockCircleOutlined,
-    MenuOutlined, FileDoneOutlined, StopOutlined
+    MenuOutlined, FileDoneOutlined, StopOutlined,
+    FileTextOutlined
 } from '@ant-design/icons';
 import { useCRUD } from '@/hooks/useCRUD';
 import { Button, DataTable, StatisticsCard, Access } from '@/components/common';
@@ -28,6 +29,7 @@ import MeetingForm from './components/MeetingForm';
 import MeetingDetailModal from './components/MeetingDetailModal';
 import MeetingAttendanceModal from './components/MeetingAttendanceModal';
 import MeetingMinutesModal from './components/MeetingMinutesModal';
+import MeetingMinutesViewModal from './components/MeetingMinutesViewModal';
 import CancelMeetingModal from './components/CancelMeetingModal';
 import notificationService from '@/services/notification.service';
 import dayjs from 'dayjs';
@@ -47,6 +49,7 @@ const MeetingsPage = () => {
     const canCreate = useMemo(() => hasPermission('meeting:create:all') || hasPermission('meeting:create:dept'), [hasPermission]);
     const canManageAll = useMemo(() => hasPermission('meeting:create:all') || currentUser?.role === 'admin', [hasPermission, currentUser]);
     const canAttendance = useMemo(() => hasPermission('meeting:attendance') || canManageAll, [hasPermission, canManageAll]);
+    const canEditSubmitted = useMemo(() => hasPermission('meeting:minutes:edit_submitted') || canManageAll, [hasPermission, canManageAll]);
 
     const {
         data,
@@ -67,6 +70,7 @@ const MeetingsPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isCalendarModalVisible, setIsCalendarModalVisible] = useState(false);
     const [isMinutesModalVisible, setIsMinutesModalVisible] = useState(false);
+    const [isMinutesViewModalVisible, setIsMinutesViewModalVisible] = useState(false);
     const [calendarValue, setCalendarValue] = useState(dayjs());
     const [isDetailVisible, setIsDetailVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -197,16 +201,44 @@ const MeetingsPage = () => {
                                 Điểm danh
                             </Menu.Item>
                         )}
+                        
+                        {/* Hiện Ghi/Xem biên bản trong Menu */}
                         {canEdit && (
+                            <>
+                                <Menu.Item
+                                    key="minutes"
+                                    icon={<FileDoneOutlined />}
+                                    onClick={() => {
+                                        setViewingRecord(record);
+                                        setIsMinutesModalVisible(true);
+                                    }}
+                                    style={{ color: '#faad14' }}
+                                >
+                                    {record.minutesStatus === 'submitted' ? 'Sửa biên bản' : 'Ghi biên bản'}
+                                </Menu.Item>
+                                {record.minutesStatus === 'submitted' && (
+                                    <Menu.Item
+                                        key="view-minutes-admin"
+                                        icon={<FileTextOutlined />}
+                                        onClick={() => openMinutesView(record)}
+                                        style={{ color: '#52c41a' }}
+                                    >
+                                        Xem biên bản
+                                    </Menu.Item>
+                                )}
+                            </>
+                        )}
+                        {!canEdit && record.minutesStatus === 'submitted' && (
                             <Menu.Item
-                                key="minutes"
-                                icon={<FileDoneOutlined />}
-                                onClick={() => { setViewingRecord(record); setIsMinutesModalVisible(true); }}
-                                style={{ color: record.minutesStatus === 'submitted' ? '#52c41a' : '#faad14' }}
+                                key="view-minutes"
+                                icon={<FileTextOutlined />}
+                                onClick={() => openMinutesView(record)}
+                                style={{ color: '#52c41a' }}
                             >
-                                {record.minutesStatus === 'submitted' ? 'Xem biên bản' : 'Ghi biên bản'}
+                                Xem biên bản
                             </Menu.Item>
                         )}
+
                         <Menu.Item key="copy" icon={<CopyOutlined />} onClick={() => copyMeetingInfo(record)}>
                             Sao chép thông tin
                         </Menu.Item>
@@ -277,6 +309,16 @@ const MeetingsPage = () => {
             setRsvpReason('');
         }
         setIsDetailVisible(true);
+    };
+
+    const openMinutesView = (record: Meeting) => {
+        if (record.minutesStatus !== 'submitted') {
+            message.info('Cuộc họp này chưa có biên bản hoàn tất');
+            return;
+        }
+
+        setViewingRecord(record);
+        setIsMinutesViewModalVisible(true);
     };
 
     const handleDelete = async (id: number) => {
@@ -491,6 +533,7 @@ const MeetingsPage = () => {
                     </Button>
                 ]}
                 width={1000}
+                zIndex={102}
                 centered
                 className="calendar-modal"
             >
@@ -562,9 +605,16 @@ const MeetingsPage = () => {
                 isSubmitting={isSubmittingRsvp}
                 onRsvp={handleRsvp}
                 canCreate={canCreate}
+                canEditSubmitted={canEditSubmitted}
                 onOpenMinutes={() => {
                     setIsDetailVisible(false);
                     setIsMinutesModalVisible(true);
+                }}
+                onViewMinutes={() => {
+                    setIsDetailVisible(false);
+                    if (viewingRecord) {
+                        openMinutesView(viewingRecord);
+                    }
                 }}
             />
 
@@ -576,6 +626,13 @@ const MeetingsPage = () => {
                 currentUser={currentUser}
                 onSave={handleSaveMinutes}
                 isSubmitting={isSubmittingRsvp}
+            />
+
+            <MeetingMinutesViewModal
+                open={isMinutesViewModalVisible}
+                onCancel={() => setIsMinutesViewModalVisible(false)}
+                record={viewingRecord}
+                users={users}
             />
 
             <MeetingAttendanceModal

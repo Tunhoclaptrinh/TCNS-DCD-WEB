@@ -1,0 +1,65 @@
+.meeting-minutes-modal {
+  .ant-modal-content {
+    border-radius: 16px !important;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .attendance-display-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 0 4px;
+    min-height: 20px;
+    align-items: center;
+    transition: all 0.3s ease;
+
+    &.collapsed {
+      max-height: 52px; /* Approx 2 lines of inline items */
+      overflow: hidden;
+    }
+
+    .attendance-item {
+      display: inline-flex;
+      align-items: center;
+      
+      .comma {
+        color: #9ca3af;
+        margin-left: 4px;
+      }
+    }
+  }
+
+  .single-display-box {
+    padding: 0 4px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    
+    .empty-text {
+      color: #bfbfbf;
+      font-style: italic;
+      font-size: 13px;
+    }
+  }
+
+  .show-more-btn {
+    margin: 8px 0 0 4px;
+    font-size: 12px;
+    display: inline-block;
+    font-weight: 500;
+  }
+
+  .other-present-container {
+    margin-bottom: 24px;
+    background: #f8fafc;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #f1f5f9;
+  }
+}

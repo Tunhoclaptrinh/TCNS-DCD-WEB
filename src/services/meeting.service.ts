@@ -26,11 +26,26 @@ export interface Meeting {
   updatedBy?: number;
   // Minutes fields
   minutesContent?: string;
+  chairpersonIds?: number[];
+  otherChairpersons?: string[];
+  secretaryIds?: number[];
+  otherSecretaries?: string[];
+  // Legacy fields for backward compatibility
   chairpersonId?: number;
+  otherChairperson?: string;
   secretaryId?: number;
+  otherSecretary?: string;
+  otherPresent?: string[];
+  otherAbsent?: string[];
   opinions?: string;
   proposals?: string;
   minutesStatus?: 'none' | 'draft' | 'submitted';
+  minutesHistory?: {
+    userId: number;
+    action: string;
+    timestamp: string;
+    note?: string;
+  }[];
   
   // Sync fields
   attendanceUpdates?: Record<number, string>;
