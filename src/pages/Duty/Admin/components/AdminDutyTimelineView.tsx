@@ -19,6 +19,7 @@ interface AdminDutyTimelineViewProps {
   openQuickCreate: (day: dayjs.Dayjs, yOffset: number, shiftArg?: any, kipArg?: any, viewMode?: 'shift' | 'kip') => void;
   handleRemoveShiftFromDay: (date: string, shiftId: number) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
+  meetings?: any[];
 }
 
 const START_HOUR = 5;
@@ -53,7 +54,8 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
   openSlotDetail,
   openQuickCreate,
   handleRemoveShiftFromDay,
-  eventFocusMode
+  eventFocusMode,
+  meetings
 }) => {
 
 
@@ -340,6 +342,46 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                         <div className="slot-time">{kStart} - {kEnd} (Mẫu)</div>
                       </div>
                     );
+                })}
+
+                {/* Render Meetings on Timeline */}
+                {meetings && meetings.filter(m => dayjs(m.meetingAt).isSame(day, 'day')).map(meeting => {
+                  const mStart = dayjs(meeting.meetingAt).format('HH:mm');
+                  const mEnd = dayjs(meeting.meetingAt).add(1, 'hour').format('HH:mm'); // Default 1h if no endAt
+                  const displayEnd = meeting.endAt ? dayjs(meeting.endAt).format('HH:mm') : mEnd;
+                  
+                  return (
+                    <Tooltip key={`meeting-${meeting.id}`} title={`Họp: ${meeting.title} (${mStart} - ${displayEnd}) tại ${meeting.location || 'Chưa rõ'}`}>
+                      <div
+                        className="calendar-slot-box meeting-event"
+                        style={{
+                          top: `${getTimeTop(mStart)}px`,
+                          height: `${getTimeHeight(mStart, displayEnd)}px`,
+                          position: 'absolute',
+                          width: '94%',
+                          left: '3%',
+                          zIndex: 10,
+                          backgroundColor: '#f5f3ff',
+                          border: '1px solid #c4b5fd',
+                          borderLeft: '4px solid #8b5cf6',
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 4px rgba(139, 92, 246, 0.1)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#5b21b6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          📅 {meeting.title}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#7c3aed', opacity: 0.8 }}>
+                          {mStart} - {displayEnd}
+                        </div>
+                      </div>
+                    </Tooltip>
+                  );
                 })}
               </div>
             );

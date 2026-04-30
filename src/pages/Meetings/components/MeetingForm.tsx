@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Form, Input, DatePicker, Select, Space } from 'antd';
-import { CalendarOutlined, EnvironmentOutlined, ProfileOutlined } from '@ant-design/icons';
+import { 
+  CalendarOutlined, EnvironmentOutlined, ProfileOutlined 
+} from '@ant-design/icons';
 import FormModal from '@/components/common/FormModal';
-import userService from '@/services/user.service';
+import MeetingMemberPicker from './MeetingMemberPicker';
 
 interface MeetingFormProps {
   open: boolean;
@@ -19,28 +21,7 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
   onOk,
   onCancel,
 }) => {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      fetchUsers();
-    }
-  }, [open]);
-
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const res = await userService.getAll({ limit: 1000, sort: 'name', order: 'asc' });
-      if (res.success && res.data) {
-        setUsers(res.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users for selection:', error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
+  // Logic fetching users was moved inside MeetingMemberPicker to be more encapsulated and use useCRUD standard
 
   return (
     <FormModal
@@ -61,7 +42,7 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
         label="Tiêu đề cuộc họp"
         rules={[{ required: true, message: 'Vui lòng nhập tiêu đề cuộc họp' }]}
       >
-        <Input placeholder="VD: Họp giao ban tuần, Sinh hoạt Đội tháng 4..." prefix={<ProfileOutlined style={{ color: '#bfbfbf' }} />} />
+        <Input placeholder="VD: Họp giao ban tuần..." prefix={<ProfileOutlined style={{ color: '#bfbfbf' }} />} />
       </Form.Item>
 
       <Form.Item
@@ -69,77 +50,62 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
         label="Địa điểm"
         rules={[{ required: true, message: 'Vui lòng nhập địa điểm' }]}
       >
-        <Input placeholder="VD: Phòng P302, Google Meet, Zoom..." prefix={<EnvironmentOutlined style={{ color: '#bfbfbf' }} />} />
+        <Input placeholder="VD: Phòng P302, Zoom..." prefix={<EnvironmentOutlined style={{ color: '#bfbfbf' }} />} />
       </Form.Item>
 
-      <div style={{ display: 'flex', gap: '20px' }}>
+      <div style={{ display: 'flex', gap: '16px' }}>
         <Form.Item
           name="meetingAt"
           label="Thời gian bắt đầu"
           rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu' }]}
           style={{ flex: 1 }}
         >
-          <DatePicker 
-            showTime 
-            style={{ width: '100%' }} 
-            format="DD/MM/YYYY HH:mm" 
-            placeholder="Chọn ngày giờ" 
-          />
+          <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm" />
         </Form.Item>
 
         <Form.Item
           name="endAt"
-          label="Thời gian kết thúc (Dự kiến)"
+          label="Kết thúc (Dự kiến)"
           style={{ flex: 1 }}
         >
-          <DatePicker 
-            showTime 
-            style={{ width: '100%' }} 
-            format="DD/MM/YYYY HH:mm" 
-            placeholder="Chọn ngày giờ" 
-          />
+          <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm" />
         </Form.Item>
       </div>
 
-      <Form.Item
-        name="participantIds"
-        label="Thành viên tham gia"
-        rules={[{ required: true, message: 'Vui lòng chọn ít nhất một thành viên' }]}
-      >
-        <Select
-          mode="multiple"
-          placeholder="Tìm và chọn thành viên..."
-          loading={loadingUsers}
-          style={{ width: '100%' }}
-          optionFilterProp="children"
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
-          options={users.map(u => ({
-            label: `${u.name} (${u.studentId || u.email})`,
-            value: u.id,
-          }))}
-        />
+      {/* Member Selection Section - Encapsulated with useCRUD internally */}
+      <div style={{ 
+          background: '#f8fafc', 
+          padding: '16px', 
+          borderRadius: 12, 
+          border: '1px solid #e2e8f0', 
+          marginTop: 8,
+          marginBottom: 24 
+      }}>
+        <Form.Item 
+            name="participantIds" 
+            noStyle 
+            rules={[{ required: true, message: 'Vui lòng chọn thành viên' }]}
+        >
+            <MeetingMemberPicker />
+        </Form.Item>
+      </div>
+
+      <Form.Item name="agenda" label="Nội dung cuộc họp">
+        <Input.TextArea placeholder="Các đầu mục nội dung chính..." rows={3} />
       </Form.Item>
 
-      <Form.Item name="agenda" label="Nội dung / Chương trình họp">
-        <Input.TextArea 
-            placeholder="Nhập các đầu mục nội dung cuộc họp..." 
-            rows={4} 
-        />
-      </Form.Item>
-
-      <Form.Item name="note" label="Ghi chú thêm">
-        <Input.TextArea placeholder="Ghi chú cho các thành viên (nếu có)..." rows={2} />
-      </Form.Item>
-      
-      <Form.Item name="status" label="Trạng thái" initialValue="scheduled">
-        <Select options={[
+      <div style={{ display: 'flex', gap: '16px' }}>
+        <Form.Item name="status" label="Trạng thái" initialValue="scheduled" style={{ flex: 1 }}>
+          <Select options={[
             { label: 'Đã lên lịch', value: 'scheduled' },
             { label: 'Đã hoàn thành', value: 'completed' },
             { label: 'Đã hủy', value: 'cancelled' },
-        ]} />
-      </Form.Item>
+          ]} />
+        </Form.Item>
+        <Form.Item name="note" label="Ghi chú" style={{ flex: 1 }}>
+          <Input placeholder="Ghi chú thêm (nếu có)..." />
+        </Form.Item>
+      </div>
     </FormModal>
   );
 };

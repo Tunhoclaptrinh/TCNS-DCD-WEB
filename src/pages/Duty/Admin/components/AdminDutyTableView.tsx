@@ -18,6 +18,7 @@ interface AdminDutyTableViewProps {
   setCollapsedGroups: (groups: string[]) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
   showDefaultBoundaries: boolean;
+  meetings?: any[];
 }
 
 const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
@@ -31,7 +32,8 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
   collapsedGroups,
   setCollapsedGroups,
   eventFocusMode,
-  showDefaultBoundaries
+  showDefaultBoundaries,
+  meetings
 }) => {
 
 
@@ -376,8 +378,56 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                   </tr>
                 );
               })}
-            </React.Fragment>
-          ))}
+              </React.Fragment>
+            ))}
+
+          {/* Meeting Row */}
+          {meetings && meetings.length > 0 && (
+            <>
+              <tr style={{ background: '#f5f3ff' }}>
+                <td colSpan={weekDays.length + 1} style={{ border: '1px solid #000', borderLeft: '6px solid #8b5cf6', padding: '10px 12px', textAlign: 'left', fontWeight: 'bold', color: '#5b21b6' }}>
+                   <Space size={12}>
+                     <Tag color="purple" style={{ borderRadius: 4, fontWeight: 'bold' }}>LỊCH HỌP</Tag>
+                     <span>Danh sách các cuộc họp trong tuần</span>
+                   </Space>
+                </td>
+              </tr>
+              <tr>
+                <td className="sticky-col row-header" style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'middle', fontWeight: 600, textAlign: 'left', background: '#fdfcfe' }}>
+                  <div style={{ fontSize: '14px', color: '#5b21b6' }}>Cuộc họp</div>
+                  <div style={{ fontSize: '11px', color: '#7c3aed', fontWeight: 'normal' }}>Sự kiện phối hợp</div>
+                </td>
+                {weekDays.map((day, dIdx) => {
+                  const dayMeetings = meetings.filter(m => dayjs(m.meetingAt).isSame(day, 'day'));
+                  return (
+                    <td key={dIdx} style={{ border: '1px solid #000', padding: '4px', verticalAlign: 'top', background: '#fdfcfe' }}>
+                      {dayMeetings.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {dayMeetings.map(m => (
+                            <Tooltip key={m.id} title={`Họp: ${m.title} tại ${m.location || 'Chưa rõ'}`}>
+                              <div style={{ 
+                                padding: '4px 6px', 
+                                background: '#ede9fe', 
+                                borderRadius: 4, 
+                                fontSize: '11px', 
+                                borderLeft: '3px solid #8b5cf6',
+                                textAlign: 'left',
+                                color: '#5b21b6'
+                              }}>
+                                <b>{dayjs(m.meetingAt).format('HH:mm')}</b>: {m.title}
+                              </div>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ color: '#cbd5e1', fontSize: '12px', fontStyle: 'italic', padding: '8px 0' }}>Không có họp</div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            </>
+          )}
         </tbody>
       </table>
     </div>

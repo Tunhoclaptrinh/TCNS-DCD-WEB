@@ -25,6 +25,7 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
+import meetingService from '@/services/meeting.service';
 import '../DutyCalendar.less';
 
 // Child Components
@@ -49,6 +50,7 @@ const AdminDutyCalendar: React.FC = () => {
 
   const [templates, setTemplates] = useState<DutyShift[]>([]);
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
+  const [meetings, setMeetings] = useState<any[]>([]);
 
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }).map((_, i) => currentWeek.add(i, 'day')),
@@ -101,9 +103,6 @@ const AdminDutyCalendar: React.FC = () => {
     }
   };
 
-
-
-
   const fetchSchedule = async () => {
     setLoading(true);
     try {
@@ -113,7 +112,6 @@ const AdminDutyCalendar: React.FC = () => {
         setSlots(res.data.slots || []);
         setAssignments(res.data.assignments || []);
 
-        
         // Merge "Snapshot" templates into the local pool to ensure historical rendering
         if (res.data?.templates) {
           setTemplates(prev => {
@@ -122,7 +120,6 @@ const AdminDutyCalendar: React.FC = () => {
             // Get everything from current response
             const currentResponseTemplates = res.data?.templates || [];
 
-            
             // Build a new map to avoid duplicates, prioritizing current response
             const templateMap = new Map();
             
@@ -138,8 +135,22 @@ const AdminDutyCalendar: React.FC = () => {
             return Array.from(templateMap.values());
           });
         }
-
       }
+
+      // TÍCH HỢP LỊCH HỌP - CHỈ THÊM ĐOẠN NÀY
+      const mRes = await meetingService.getAll({
+        limit: 100,
+        filters: JSON.stringify({
+          meetingAt: {
+            $gte: currentWeek.startOf('isoWeek' as any).toISOString(),
+            $lte: currentWeek.endOf('isoWeek' as any).toISOString(),
+          }
+        })
+      });
+      if (mRes.success && mRes.data) {
+        setMeetings(mRes.data);
+      }
+
     } catch (err) {
       message.error('Không thể tải lịch trực');
     } finally {
@@ -160,9 +171,7 @@ const AdminDutyCalendar: React.FC = () => {
     const targetStr = day.format('YYYY-MM-DD');
     const dIdx = (day.day() + 6) % 7; // 0=Mon, ..., 6=Sun
 
-    
     // Determine the "Authorized" template group for this day (Assigned or Global Default)
-    
     const assignment = assignments.find(a => {
       const startStr = dayjs(a.startDate).format('YYYY-MM-DD');
       const endStr = dayjs(a.endDate).format('YYYY-MM-DD');
@@ -199,7 +208,6 @@ const AdminDutyCalendar: React.FC = () => {
       });
     }
 
-    
     // 3. Include Special Events ONLY IF Focus Mode is ON
     if (eventFocusMode !== 'off') {
       const specialEventShifts = templates.filter(t => 
@@ -243,8 +251,6 @@ const AdminDutyCalendar: React.FC = () => {
   const handlePrevWeek = () => setCurrentWeek(prev => prev.subtract(1, 'week'));
   const handleNextWeek = () => setCurrentWeek(next => next.add(1, 'week'));
   const handleToday = () => setCurrentWeek(dayjs().startOf('isoWeek' as any));
-
-
 
   const handleStampShift = async (day: dayjs.Dayjs, shiftId: number) => {
     try {
@@ -514,6 +520,7 @@ const AdminDutyCalendar: React.FC = () => {
               setCollapsedGroups={setCollapsedGroups}
               eventFocusMode={eventFocusMode}
               showDefaultBoundaries={showDefaultBoundaries}
+              meetings={meetings}
             />
           ) : (
             <AdminDutyTimelineView 
@@ -525,12 +532,13 @@ const AdminDutyCalendar: React.FC = () => {
               templates={relevantTemplates}
               getEffectiveTemplatesForDay={getEffectiveTemplatesForDay}
               showDefaultBoundaries={showDefaultBoundaries}
-              eventFocusMode={eventFocusMode}
               isAdmin={isAdmin}
               currentUserId={currentUserId}
               openSlotDetail={openSlotDetail}
               openQuickCreate={openQuickCreate}
               handleRemoveShiftFromDay={handleRemoveShiftFromDay}
+              eventFocusMode={eventFocusMode}
+              meetings={meetings}
             />
           )}
         </Spin>

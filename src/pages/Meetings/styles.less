@@ -8,10 +8,43 @@
     .ant-picker-calendar-date-value {
       color: #fff !important;
     }
+    
+    // Fix meeting text color when selected
+    .events li {
+      .ant-badge {
+        color: #fff !important;
+        .ant-badge-status-text {
+          color: #fff !important;
+        }
+      }
+    }
   }
 
   .ant-picker-calendar-header {
     padding: 12px 0 !important;
+  }
+
+  .events {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    
+    li {
+      margin-bottom: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.2s;
+      cursor: pointer;
+      
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+      
+      .ant-badge-status-text {
+        font-size: 11px;
+        font-weight: 500;
+      }
+    }
   }
 }
 
@@ -22,4 +55,20 @@
       margin-bottom: 0 !important;
     }
   }
+  
+  .data-table-toolbar {
+    padding: 12px 24px !important;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+  }
+}
+
+// Member picker section styling
+.meeting-member-picker-section {
+    .ant-list-item {
+        &:hover {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+    }
 }

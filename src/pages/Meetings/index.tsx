@@ -206,6 +206,37 @@ const MeetingsPage = () => {
                                 <CopyOutlined />
                             </Button>
                         </Tooltip>
+                        
+                        {/* Quick RSVP Actions */}
+                        {record.status === 'scheduled' && record.participantIds?.includes(currentUser?.id || 0) && (
+                            <>
+                                {record.confirmations?.find(c => c.userId === currentUser?.id)?.status !== 'accepted' && (
+                                    <Tooltip title="Xác nhận tham gia nhanh">
+                                        <Button 
+                                            variant="ghost" 
+                                            buttonSize="small" 
+                                            style={{ color: '#52c41a' }} 
+                                            onClick={() => handleQuickRsvp(record.id, 'accepted')}
+                                        >
+                                            <CheckOutlined />
+                                        </Button>
+                                    </Tooltip>
+                                )}
+                                {record.confirmations?.find(c => c.userId === currentUser?.id)?.status !== 'declined' && (
+                                    <Tooltip title="Từ chối tham gia nhanh">
+                                        <Button 
+                                            variant="ghost" 
+                                            buttonSize="small" 
+                                            style={{ color: '#f5222d' }} 
+                                            onClick={() => handleQuickRsvp(record.id, 'declined')}
+                                        >
+                                            <CloseOutlined />
+                                        </Button>
+                                    </Tooltip>
+                                )}
+                            </>
+                        )}
+
                         <Tooltip title="Chi tiết & Phản hồi">
                             <Button 
                                 variant="ghost" 
@@ -316,6 +347,22 @@ const MeetingsPage = () => {
             message.error('Gửi phản hồi thất bại');
         } finally {
             setIsSubmittingRsvp(false);
+        }
+    };
+
+    const handleQuickRsvp = async (meetingId: number, status: 'accepted' | 'declined') => {
+        try {
+            const res = await meetingService.rsvp(meetingId, {
+                status,
+                reason: status === 'accepted' ? 'Xác nhận nhanh qua danh sách' : 'Từ chối nhanh qua danh sách'
+            });
+            if (res.success) {
+                message.success(status === 'accepted' ? 'Đã xác nhận tham gia' : 'Đã từ chối tham gia');
+                fetchAll();
+            }
+        } catch (error) {
+            console.error("Quick RSVP failed:", error);
+            message.error('Thao tác thất bại');
         }
     };
 
