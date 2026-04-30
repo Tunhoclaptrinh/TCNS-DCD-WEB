@@ -64,7 +64,7 @@ class MeetingService extends BaseService<Meeting> {
    * Cập nhật trạng thái cuộc họp
    */
   async setStatus(id: number, status: 'scheduled' | 'completed' | 'cancelled') {
-    return this.patch(id, { status });
+    return this.update(id, { status } as any);
   }
 }
 

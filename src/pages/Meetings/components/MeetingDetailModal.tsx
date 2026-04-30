@@ -8,6 +8,7 @@ import { Button } from '@/components/common';
 import { Meeting } from '@/services/meeting.service';
 import { User } from '@/types';
 import dayjs from 'dayjs';
+import MeetingMinutesViewModal from './MeetingMinutesViewModal';
 
 const { Text, Title } = Typography;
 
@@ -51,6 +52,7 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
 }) => {
     const [viewMode, setViewMode] = React.useState<'rsvp' | 'attendance'>('rsvp');
     const [filter, setFilter] = React.useState<string>('all');
+    const [isMinutesViewOpen, setIsMinutesViewOpen] = React.useState(false);
 
     // Reset filter when changing viewMode
     React.useEffect(() => {
@@ -62,6 +64,7 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
     const isParticipant = record.isAllParticipants || record.participantIds?.some(id => String(id) === String(currentUser?.id));
 
     return (
+        <>
         <Modal
             title={
                 <Space>
@@ -101,6 +104,23 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                                 }}
                             >
                                 {record.minutesStatus === 'submitted' ? 'Xem biên bản' : 'Ghi biên bản'}
+                            </Button>
+                        )}
+                        {/* Member: view completed minutes */}
+                        {!canCreate && record.minutesStatus === 'submitted' && (
+                            <Button
+                                variant="outline"
+                                buttonSize="small"
+                                icon={<FileTextOutlined />}
+                                onClick={() => setIsMinutesViewOpen(true)}
+                                style={{
+                                    borderRadius: 8,
+                                    borderColor: '#52c41a',
+                                    color: '#52c41a',
+                                    fontWeight: 500
+                                }}
+                            >
+                                Xem biên bản
                             </Button>
                         )}
                     </Space>
@@ -307,7 +327,15 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                     />
                 </div>
             </div>
-        </Modal>
+            </Modal>
+
+            <MeetingMinutesViewModal
+                open={isMinutesViewOpen}
+                onCancel={() => setIsMinutesViewOpen(false)}
+                record={record}
+                users={users}
+            />
+        </>
     );
 };
 

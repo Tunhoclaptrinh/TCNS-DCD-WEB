@@ -137,7 +137,13 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
             open={open}
             onCancel={onCancel}
             footer={[
-                <Button key="close" variant="ghost" buttonSize="small" onClick={onCancel} style={{ borderRadius: 6 }}>
+                <Button
+                    key="close"
+                    variant="ghost"
+                    buttonSize="small"
+                    onClick={onCancel}
+                    style={{ borderRadius: 6, border: '1px solid #d9d9d9', color: '#595959', minWidth: 80 }}
+                >
                     Đóng
                 </Button>,
                 <Button 

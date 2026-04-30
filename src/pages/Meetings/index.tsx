@@ -6,14 +6,17 @@ import {
     Tag,
     Calendar,
     Spin,
-    ConfigProvider
+    ConfigProvider,
+    Dropdown,
+    Menu
 } from 'antd';
 import { 
     CalendarOutlined, EditOutlined, DeleteOutlined, 
     EyeOutlined, QuestionCircleOutlined,
     CheckCircleOutlined, 
     AppstoreOutlined, CopyOutlined, PlusOutlined,
-    MessageOutlined, ClockCircleOutlined
+    MessageOutlined, ClockCircleOutlined,
+    MenuOutlined, FileDoneOutlined, StopOutlined
 } from '@ant-design/icons';
 import { useCRUD } from '@/hooks/useCRUD';
 import { Button, DataTable, StatisticsCard, Access } from '@/components/common';
@@ -25,6 +28,8 @@ import MeetingForm from './components/MeetingForm';
 import MeetingDetailModal from './components/MeetingDetailModal';
 import MeetingAttendanceModal from './components/MeetingAttendanceModal';
 import MeetingMinutesModal from './components/MeetingMinutesModal';
+import CancelMeetingModal from './components/CancelMeetingModal';
+import notificationService from '@/services/notification.service';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import vi_VN from 'antd/es/locale/vi_VN';
@@ -75,6 +80,8 @@ const MeetingsPage = () => {
     const [rsvpReason, setRsvpReason] = useState('');
     const [isSubmittingRsvp, setIsSubmittingRsvp] = useState(false);
     const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
+    const [cancelRecord, setCancelRecord] = useState<Meeting | null>(null);
+    const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
     
     const { data: users } = useCRUD(userService, {
         autoFetch: true,
@@ -162,51 +169,80 @@ const MeetingsPage = () => {
         {
             title: "Thao tác",
             key: "actions",
-            width: 220,
+            width: 100,
             fixed: 'right',
             align: 'center',
             render: (_: any, record: Meeting) => {
                 const isCreator = record.createdBy === currentUser?.id;
                 const canEdit = canManageAll || (canCreate && isCreator);
                 
-                return (
-                    <Space size="small">
-                        <Tooltip title="Xem chi tiết">
-                            <Button variant="ghost" buttonSize="small" style={{ color: '#1890ff' }} onClick={() => openDetail(record)}>
-                                <EyeOutlined />
-                            </Button>
-                        </Tooltip>
-                        <Tooltip title="Xem trên lịch">
-                            <Button variant="ghost" buttonSize="small" style={{ color: '#8b5cf6' }} onClick={() => openCalendarAt(record.meetingAt)}>
-                                <AppstoreOutlined />
-                            </Button>
-                        </Tooltip>
+                const menuItems = (
+                    <Menu>
+                        <Menu.Item key="calendar" icon={<AppstoreOutlined />} onClick={() => openCalendarAt(record.meetingAt)}>
+                            Xem trên lịch
+                        </Menu.Item>
+                        <Menu.Divider />
                         {canEdit && (
-                            <Tooltip title="Sửa">
-                                <Button variant="ghost" buttonSize="small" style={{ color: 'var(--primary-color)' }} onClick={() => openEdit(record)}>
-                                    <EditOutlined />
-                                </Button>
-                            </Tooltip>
+                            <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                                Chỉnh sửa
+                            </Menu.Item>
                         )}
                         {canAttendance && record.status === 'scheduled' && (
-                             <Tooltip title="Điểm danh">
-                                <Button variant="ghost" buttonSize="small" style={{ color: '#faad14' }} onClick={() => setAttendanceRecord(record)}>
-                                    <CheckCircleOutlined />
-                                </Button>
-                            </Tooltip>
+                            <Menu.Item
+                                key="attendance"
+                                icon={<CheckCircleOutlined />}
+                                onClick={() => setAttendanceRecord(record)}
+                                style={{ color: '#faad14' }}
+                            >
+                                Điểm danh
+                            </Menu.Item>
                         )}
-                        <Tooltip title="Sao chép">
-                            <Button variant="ghost" buttonSize="small" style={{ color: '#8c8c8c' }} onClick={() => copyMeetingInfo(record)}>
-                                <CopyOutlined />
+                        {canEdit && (
+                            <Menu.Item
+                                key="minutes"
+                                icon={<FileDoneOutlined />}
+                                onClick={() => { setViewingRecord(record); setIsMinutesModalVisible(true); }}
+                                style={{ color: record.minutesStatus === 'submitted' ? '#52c41a' : '#faad14' }}
+                            >
+                                {record.minutesStatus === 'submitted' ? 'Xem biên bản' : 'Ghi biên bản'}
+                            </Menu.Item>
+                        )}
+                        <Menu.Item key="copy" icon={<CopyOutlined />} onClick={() => copyMeetingInfo(record)}>
+                            Sao chép thông tin
+                        </Menu.Item>
+                        {canManageAll && record.status === 'scheduled' && (
+                            <>
+                                <Menu.Divider />
+                                <Menu.Item
+                                    key="cancel"
+                                    icon={<StopOutlined />}
+                                    onClick={() => setCancelRecord(record)}
+                                    danger
+                                >
+                                    Hủy cuộc họp
+                                </Menu.Item>
+                            </>
+                        )}
+                        {canManageAll && (
+                            <Menu.Item key="delete" icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} danger>
+                                Xóa vĩnh viễn
+                            </Menu.Item>
+                        )}
+                    </Menu>
+                );
+
+                return (
+                    <Space size={4}>
+                        <Tooltip title="Xem chi tiết">
+                            <Button variant="ghost" buttonSize="small" style={{ color: 'var(--primary-color)', padding: '4px' }} onClick={() => openDetail(record)}>
+                                <EyeOutlined style={{ fontSize: 16 }} />
                             </Button>
                         </Tooltip>
-                        {canManageAll && (
-                            <Tooltip title="Xóa">
-                                <Button variant="ghost" buttonSize="small" danger onClick={() => handleDelete(record.id)}>
-                                    <DeleteOutlined />
-                                </Button>
-                            </Tooltip>
-                        )}
+                        <Dropdown overlay={menuItems} trigger={['click']} placement="bottomRight">
+                            <Button variant="ghost" buttonSize="small" style={{ padding: '4px' }}>
+                                <MenuOutlined style={{ fontSize: 16 }} />
+                            </Button>
+                        </Dropdown>
                     </Space>
                 );
             }
@@ -254,6 +290,48 @@ const MeetingsPage = () => {
         });
     };
 
+    const handleCancelMeeting = async (reason: string, sendNotify: boolean) => {
+        if (!cancelRecord) return;
+        setIsCancelSubmitting(true);
+        try {
+            const res = await meetingService.update(cancelRecord.id, {
+                status: 'cancelled' as any,
+                note: `[HỦY HỌ P - ${dayjs().format('DD/MM/YYYY HH:mm')}]: ${reason}`,
+            });
+            if (res.success) {
+                message.warning('Dạ hủy cuộc họp thành công');
+                // Send broadcast notification if requested
+                if (sendNotify) {
+                    const participantIds = cancelRecord.isAllParticipants
+                        ? users.map(u => Number(u.id))
+                        : (cancelRecord.participantIds || []).map(Number);
+                    if (participantIds.length > 0) {
+                        try {
+                            await notificationService.broadcast({
+                                userIds: participantIds,
+                                title: '❌ Cuộc họp bị hủy',
+                                message: `Cuộc họp "${cancelRecord.title}" (${dayjs(cancelRecord.meetingAt).format('HH:mm DD/MM/YYYY')}) đã bị hủy.\nLý do: ${reason}`,
+                                type: 'meeting_cancelled',
+                                relatedId: cancelRecord.id,
+                                relatedType: 'meeting',
+                            });
+                            message.success(`Đã gửi thông báo đến ${participantIds.length} thành viên`);
+                        } catch {
+                            message.warning('Hủy thành công nhưng gửi thông báo thất bại');
+                        }
+                    }
+                }
+                setCancelRecord(null);
+                fetchAll();
+            }
+        } catch (error) {
+            console.error('Cancel meeting failed:', error);
+            message.error('Hủy cuộc họp thất bại');
+        } finally {
+            setIsCancelSubmitting(false);
+        }
+    };
+
     const handleRsvp = async (status: 'accepted' | 'declined') => {
         if (!viewingRecord) return;
         setRsvpStatus(status);
@@ -281,11 +359,8 @@ const MeetingsPage = () => {
         try {
             const res = await meetingService.update(id, minutesData);
             if (res.success) {
-                // If submitted, we might want to close the detail modal too
                 if (minutesData.minutesStatus === 'submitted') {
                     setIsDetailVisible(false);
-                    // Also update status to completed if not already
-                    await meetingService.setStatus(id, 'completed');
                 }
                 fetchAll();
             }
@@ -510,6 +585,15 @@ const MeetingsPage = () => {
                 users={users}
                 onSaveAttendance={handleSaveAttendanceBatch}
                 isSaving={isSubmittingAttendance}
+            />
+
+            <CancelMeetingModal
+                open={!!cancelRecord}
+                onCancel={() => setCancelRecord(null)}
+                record={cancelRecord}
+                users={users}
+                onConfirm={handleCancelMeeting}
+                isSubmitting={isCancelSubmitting}
             />
 
             <Modal

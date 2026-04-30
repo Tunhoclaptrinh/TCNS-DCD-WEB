@@ -68,7 +68,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
             setAbsentIds(currentAbsentIds);
 
             form.setFieldsValue({
-                meetingAt: dayjs(record.meetingAt).format('HH:mm DD/MM/YYYY'),
+                meetingAtDisplay: dayjs(record.meetingAt).format('HH:mm DD/MM/YYYY'),
                 location: record.location,
                 chairpersonId: record.chairpersonId || record.createdBy || currentUser?.id,
                 secretaryId: record.secretaryId || currentUser?.id,
@@ -84,11 +84,16 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
         try {
             const values = await form.validateFields();
             if (record) {
+                // Exclude meetingAtDisplay — it's display-only, not a valid API field
+                const { meetingAtDisplay: _ignored, ...submitValues } = values;
+                // When submitting final minutes, also mark meeting as completed
+                const meetingStatus = status === 'submitted' ? 'completed' : undefined;
                 await onSave(record.id, {
-                    ...values,
+                    ...submitValues,
                     presentIds,
                     absentIds,
-                    minutesStatus: status
+                    minutesStatus: status,
+                    ...(meetingStatus ? { status: meetingStatus } : {}),
                 });
                 message.success(status === 'submitted' ? 'Đã kết thúc cuộc họp và lưu biên bản' : 'Đã lưu nháp biên bản');
                 if (status === 'submitted') onCancel();
@@ -218,7 +223,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
             >
                 <Row gutter={20}>
                     <Col span={6}>
-                        <Form.Item label={<Space><CalendarOutlined /><span>Thời gian</span></Space>} name="meetingAt">
+                        <Form.Item label={<Space><CalendarOutlined /><span>Thời gian</span></Space>} name="meetingAtDisplay">
                             <Input disabled variant="filled" style={{ borderRadius: 8, background: '#f8f9fa' }} />
                         </Form.Item>
                     </Col>

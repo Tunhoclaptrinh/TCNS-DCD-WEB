@@ -51,6 +51,21 @@ class NotificationService extends BaseService {
     const response = await this.put('/preferences', data);
     return response.data;
   }
+
+  /**
+   * Gửi thông báo đến danh sách người dùng
+   */
+  async broadcast(payload: {
+    userIds: number[];
+    title: string;
+    message: string;
+    type?: string;
+    relatedId?: number;
+    relatedType?: string;
+  }): Promise<boolean> {
+    const response = await this.post('/broadcast', payload);
+    return response.success ?? true;
+  }
 }
 
 export const notificationService = new NotificationService();
