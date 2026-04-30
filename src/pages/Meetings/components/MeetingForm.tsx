@@ -1,5 +1,6 @@
 import React from 'react';
 import { Form, Input, DatePicker, Select, Space, Checkbox, Typography } from 'antd';
+import type { FormInstance } from 'antd';
 import { 
   CalendarOutlined, EnvironmentOutlined, ProfileOutlined, UsergroupAddOutlined 
 } from '@ant-design/icons';
@@ -12,7 +13,7 @@ import { User } from '@/types';
 interface MeetingFormProps {
   open: boolean;
   editingId: number | null;
-  form: any;
+  form: FormInstance;
   onOk: () => void;
   onCancel: () => void;
   users?: User[];

@@ -267,7 +267,7 @@ const MemberCalendar: React.FC = () => {
     setIsRsvpSubmitting(true);
     try {
       const res = await meetingService.rsvp(selectedMeeting.id, {
-        status,
+        rsvpStatus: status,
         reason: rsvpReason,
       });
       if (res.success) {
