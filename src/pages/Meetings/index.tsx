@@ -74,6 +74,7 @@ const MeetingsPage = () => {
     const [rsvpStatus, setRsvpStatus] = useState<'accepted' | 'declined'>('accepted');
     const [rsvpReason, setRsvpReason] = useState('');
     const [isSubmittingRsvp, setIsSubmittingRsvp] = useState(false);
+    const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
     
     const { data: users } = useCRUD(userService, {
         autoFetch: true,
@@ -296,31 +297,23 @@ const MeetingsPage = () => {
         }
     };
 
-    const handleMarkAttendance = async (userId: number, status: string) => {
+    const handleSaveAttendanceBatch = async (attendanceUpdates: Record<number, string>) => {
         if (!attendanceRecord) return;
+        setIsSubmittingAttendance(true);
         try {
-            const res = await meetingService.markAttendance({
-                meetingId: attendanceRecord.id,
-                userId,
-                status
+            const res = await meetingService.update(attendanceRecord.id, {
+                attendanceUpdates
             });
             if (res.success) {
-                message.success('Cập nhật điểm danh thành công');
+                message.success('Đã lưu kết quả điểm danh');
+                setAttendanceRecord(null);
                 fetchAll();
-                // Update local state for immediate feedback
-                if (attendanceRecord) {
-                    const newConfirmations = attendanceRecord.confirmations.map(c => 
-                        String(c.userId) === String(userId) ? { ...c, status: status as any } : c
-                    );
-                    if (!newConfirmations.find(c => String(c.userId) === String(userId))) {
-                        newConfirmations.push({ userId, status: status as any, respondedAt: new Date().toISOString() });
-                    }
-                    setAttendanceRecord({ ...attendanceRecord, confirmations: newConfirmations });
-                }
             }
         } catch (error) {
-            console.error("Attendance failed:", error);
-            message.error('Cập nhật điểm danh thất bại');
+            console.error("Save attendance batch failed:", error);
+            message.error('Lưu điểm danh thất bại');
+        } finally {
+            setIsSubmittingAttendance(false);
         }
     };
 
@@ -515,7 +508,8 @@ const MeetingsPage = () => {
                 onCancel={() => setAttendanceRecord(null)}
                 record={attendanceRecord}
                 users={users}
-                onMarkAttendance={handleMarkAttendance}
+                onSaveAttendance={handleSaveAttendanceBatch}
+                isSaving={isSubmittingAttendance}
             />
 
             <Modal

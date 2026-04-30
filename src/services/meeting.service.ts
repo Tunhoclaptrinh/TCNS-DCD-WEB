@@ -30,6 +30,9 @@ export interface Meeting {
   opinions?: string;
   proposals?: string;
   minutesStatus?: 'none' | 'draft' | 'submitted';
+  attendanceUpdates?: Record<number, string>; // Temporary field for batch attendance sync
+  presentIds?: number[]; // For minutes sync
+  absentIds?: number[]; // For minutes sync
   createdAt: string;
   updatedAt: string;
 }
