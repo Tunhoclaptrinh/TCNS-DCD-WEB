@@ -431,8 +431,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                 {/* Render Meetings on Timeline */}
                 {meetings && meetings.filter(m => dayjs(m.meetingAt).isSame(day, 'day')).map(meeting => {
                   const mStart = dayjs(meeting.meetingAt).format('HH:mm');
-                  const mEnd = dayjs(meeting.meetingAt).add(1, 'hour').format('HH:mm');
-                  const displayEnd = meeting.endAt ? dayjs(meeting.endAt).format('HH:mm') : mEnd;
+                  const displayEnd = meeting.endAt ? dayjs(meeting.endAt).format('HH:mm') : dayjs(meeting.meetingAt).add(1, 'hour').format('HH:mm');
                   
                   return (
                     <Tooltip key={`meeting-${meeting.id}`} title={`Họp: ${meeting.title} (${mStart} - ${displayEnd}) tại ${meeting.location || 'Chưa rõ'}`}>

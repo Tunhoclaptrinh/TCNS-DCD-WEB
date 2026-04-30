@@ -84,7 +84,16 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
           rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu' }]}
           style={{ flex: 1 }}
         >
-          <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm" />
+          <DatePicker 
+            showTime 
+            style={{ width: '100%' }} 
+            format="DD/MM/YYYY HH:mm" 
+            onChange={(val) => {
+              if (val && !form.getFieldValue('endAt')) {
+                form.setFieldsValue({ endAt: val.add(1, 'hour') });
+              }
+            }}
+          />
         </Form.Item>
 
         <Form.Item

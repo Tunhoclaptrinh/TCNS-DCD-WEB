@@ -424,7 +424,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                   onViewMeeting?.(m);
                                 }}
                               >
-                                <b>{dayjs(m.meetingAt).format('HH:mm')}</b>: {m.title}
+                                <b>{dayjs(m.meetingAt).format('HH:mm')}{m.endAt ? `-${dayjs(m.endAt).format('HH:mm')}` : ''}</b>: {m.title}
                               </div>
                             </Tooltip>
                           ))}

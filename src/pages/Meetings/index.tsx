@@ -452,7 +452,7 @@ const MeetingsPage = () => {
                                                             openDetail(m);
                                                         }}
                                                     >
-                                                        {dayjs(m.meetingAt).format('HH:mm')} {m.title}
+                                                        {dayjs(m.meetingAt).format('HH:mm')}{m.endAt ? `-${dayjs(m.endAt).format('HH:mm')}` : ''} {m.title}
                                                     </Tag>
                                                 </li>
                                             ))}
