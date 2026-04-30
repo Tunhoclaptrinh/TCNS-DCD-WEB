@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { 
     Form, Space, Typography, message, 
     Modal,
@@ -68,7 +68,6 @@ const MeetingsPage = () => {
     const [attendanceRecord, setAttendanceRecord] = useState<Meeting | null>(null);
     const [viewingRecord, setViewingRecord] = useState<Meeting | null>(null);
     const [isGuideModalVisible, setIsGuideModalVisible] = useState(false);
-    const [users, setUsers] = useState<User[]>([]);
     const [initialParticipants, setInitialParticipants] = useState<User[]>([]);
     
     // RSVP State
@@ -76,18 +75,10 @@ const MeetingsPage = () => {
     const [rsvpReason, setRsvpReason] = useState('');
     const [isSubmittingRsvp, setIsSubmittingRsvp] = useState(false);
     
-    // Fetch users for display
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const res = await userService.getAll({ pageSize: 1000 });
-                if (res.success) setUsers(res.data || []);
-            } catch (error) {
-                console.error("Fetch users failed:", error);
-            }
-        };
-        fetchUsers();
-    }, []);
+    const { data: users } = useCRUD(userService, {
+        autoFetch: true,
+        pageSize: 1000,
+    });
 
     // Statistics logic
     const stats = useMemo(() => {
@@ -514,6 +505,7 @@ const MeetingsPage = () => {
                 onCancel={() => setIsMinutesModalVisible(false)}
                 record={viewingRecord}
                 users={users}
+                currentUser={currentUser}
                 onSave={handleSaveMinutes}
                 isSubmitting={isSubmittingRsvp}
             />
