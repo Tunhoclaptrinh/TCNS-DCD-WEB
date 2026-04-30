@@ -1,3 +1,4 @@
+import { User } from '@/types';
 import BaseService from './base.service';
 
 export interface MeetingConfirmation {
@@ -16,10 +17,19 @@ export interface Meeting {
   agenda?: string;
   status: 'scheduled' | 'completed' | 'cancelled';
   participantIds: number[];
+  participants?: User[];
+  isAllParticipants?: boolean;
   confirmations: MeetingConfirmation[];
   note?: string;
   createdBy: number;
   updatedBy?: number;
+  // Minutes fields
+  minutesContent?: string;
+  chairpersonId?: number;
+  secretaryId?: number;
+  opinions?: string;
+  proposals?: string;
+  minutesStatus?: 'none' | 'draft' | 'submitted';
   createdAt: string;
   updatedAt: string;
 }

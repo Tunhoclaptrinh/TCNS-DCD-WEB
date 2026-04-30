@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Space, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented } from 'antd';
+import { Card, Modal, Space, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Descriptions, Tag, Divider, List, Avatar } from 'antd';
+import { Button } from '@/components/common';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -13,6 +14,9 @@ import {
   DownOutlined,
   QuestionCircleOutlined,
   UnorderedListOutlined,
+  UserOutlined,
+  EnvironmentOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -26,6 +30,8 @@ dayjs.extend(isSameOrBefore);
 
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import meetingService from '@/services/meeting.service';
+import userService from '@/services/user.service';
+import { User } from '@/types';
 import '../DutyCalendar.less';
 
 // Child Components
@@ -65,6 +71,9 @@ const AdminDutyCalendar: React.FC = () => {
   const [quickCreateContext, setQuickCreateContext] = useState<any>(null);
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
+  const [isMeetingDetailVisible, setIsMeetingDetailVisible] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
 
   // Chuyển từ modal Kíp → modal Ca cha
   const handleOpenCaFromSlot = (slot: DutySlot) => {
@@ -137,15 +146,10 @@ const AdminDutyCalendar: React.FC = () => {
         }
       }
 
-      // TÍCH HỢP LỊCH HỌP - CHỈ THÊM ĐOẠN NÀY
       const mRes = await meetingService.getAll({
         limit: 100,
-        filters: JSON.stringify({
-          meetingAt: {
-            $gte: currentWeek.startOf('isoWeek' as any).toISOString(),
-            $lte: currentWeek.endOf('isoWeek' as any).toISOString(),
-          }
-        })
+        meetingAt_gte: currentWeek.startOf('isoWeek' as any).toISOString(),
+        meetingAt_lte: currentWeek.endOf('isoWeek' as any).toISOString(),
       });
       if (mRes.success && mRes.data) {
         setMeetings(mRes.data);
@@ -160,6 +164,21 @@ const AdminDutyCalendar: React.FC = () => {
 
   useEffect(() => {
     fetchTemplates();
+  }, []);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await userService.getAll({ _limit: 1000 });
+        if (res.success && res.data) {
+          const userData = Array.isArray(res.data) ? res.data : (res.data as any)?.data || [];
+          setUsers(userData);
+        }
+      } catch (err) {
+        console.error('Lỗi tải danh sách nhân sự');
+      }
+    };
+    fetchUsers();
   }, []);
 
   useEffect(() => {
@@ -385,8 +404,8 @@ const AdminDutyCalendar: React.FC = () => {
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực tuần</Title>
         <Space>
           <Button 
-            ghost
-            size="small"
+            variant="ghost"
+            buttonSize="small"
             icon={<QuestionCircleOutlined />} 
             onClick={() => setIsGuideModalOpen(true)}
             style={{ 
@@ -405,9 +424,9 @@ const AdminDutyCalendar: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
-                <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
-                <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '11px', fontWeight: 600 }}>H.tại</Button>
-                <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
+                <Button icon={<LeftOutlined />} variant="ghost" buttonSize="small" onClick={handlePrevWeek} />
+                <Button variant="ghost" buttonSize="small" onClick={handleToday} style={{ fontSize: '11px', fontWeight: 600 }}>H.tại</Button>
+                <Button icon={<RightOutlined />} variant="ghost" buttonSize="small" onClick={handleNextWeek} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px', whiteSpace: 'nowrap' }}>
@@ -484,7 +503,7 @@ const AdminDutyCalendar: React.FC = () => {
                 </Tooltip>
                 
                 <Dropdown overlay={adminMenu} placement="bottomRight">
-                  <Button type="primary" className="hifi-button">
+                  <Button variant="primary" className="hifi-button">
                     Quản trị <DownOutlined />
                   </Button>
                 </Dropdown>
@@ -521,6 +540,10 @@ const AdminDutyCalendar: React.FC = () => {
               eventFocusMode={eventFocusMode}
               showDefaultBoundaries={showDefaultBoundaries}
               meetings={meetings}
+              onViewMeeting={(m) => {
+                setSelectedMeeting(m);
+                setIsMeetingDetailVisible(true);
+              }}
             />
           ) : (
             <AdminDutyTimelineView 
@@ -539,6 +562,10 @@ const AdminDutyCalendar: React.FC = () => {
               handleRemoveShiftFromDay={handleRemoveShiftFromDay}
               eventFocusMode={eventFocusMode}
               meetings={meetings}
+              onViewMeeting={(m) => {
+                setSelectedMeeting(m);
+                setIsMeetingDetailVisible(true);
+              }}
             />
           )}
         </Spin>
@@ -593,9 +620,7 @@ const AdminDutyCalendar: React.FC = () => {
         open={isGuideModalOpen}
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
-          <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
-          </div>
+          <Button key="close" variant="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
         ]}
         width={600}
         className="premium-modal"
@@ -639,6 +664,105 @@ const AdminDutyCalendar: React.FC = () => {
             style={{ marginTop: 16, borderRadius: 12 }}
           />
         </div>
+      </Modal>
+
+      {/* Meeting Detail Modal */}
+      <Modal
+        title={
+          <Space>
+            <CalendarOutlined style={{ color: '#8b5cf6' }} />
+            <span style={{ fontWeight: 700 }}>Chi tiết cuộc họp</span>
+          </Space>
+        }
+        open={isMeetingDetailVisible}
+        onCancel={() => setIsMeetingDetailVisible(false)}
+        footer={[
+          <Button key="close" variant="outline" buttonSize="small" onClick={() => setIsMeetingDetailVisible(false)} style={{ minWidth: 100 }}>
+            Đóng
+          </Button>
+        ]}
+        width={650}
+        className="premium-modal"
+      >
+        {selectedMeeting && (
+          <div style={{ padding: '8px 4px' }}>
+            <Title level={4} style={{ color: '#5b21b6', marginBottom: 16 }}>{selectedMeeting.title}</Title>
+            
+            <Descriptions bordered column={1} size="small">
+              <Descriptions.Item label="Thời gian">
+                <Space>
+                  <ClockCircleOutlined style={{ color: '#8b5cf6' }} />
+                  {dayjs(selectedMeeting.meetingAt).format('HH:mm DD/MM/YYYY')} 
+                  {selectedMeeting.endAt && ` - ${dayjs(selectedMeeting.endAt).format('HH:mm')}`}
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa điểm">
+                <Space>
+                  <EnvironmentOutlined style={{ color: '#ef4444' }} />
+                  {selectedMeeting.location || 'Chưa xác định'}
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color={
+                  selectedMeeting.status === 'completed' ? 'green' : 
+                  selectedMeeting.status === 'cancelled' ? 'red' : 'blue'
+                }>
+                  {selectedMeeting.status === 'scheduled' ? 'Sắp diễn ra' : 
+                   selectedMeeting.status === 'completed' ? 'Đã kết thúc' : 'Đã hủy'}
+                </Tag>
+              </Descriptions.Item>
+            </Descriptions>
+
+            {selectedMeeting.agenda && (
+              <>
+                <Divider orientation="left" style={{ margin: '20px 0 12px' }}>
+                  <Text strong style={{ fontSize: '13px', color: '#64748b' }}>NỘI DUNG / GHI CHÚ</Text>
+                </Divider>
+                <div style={{ 
+                  padding: '12px', 
+                  background: '#f8fafc', 
+                  borderRadius: 8, 
+                  border: '1px solid #e2e8f0',
+                  color: '#334155',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {selectedMeeting.agenda}
+                </div>
+              </>
+            )}
+
+            <Divider orientation="left" style={{ margin: '20px 0 12px' }}>
+              <Text strong style={{ fontSize: '13px', color: '#64748b' }}>THÀNH VIÊN ({selectedMeeting.participantIds?.length || 0})</Text>
+            </Divider>
+            
+            <div style={{ maxHeight: 200, overflowY: 'auto', padding: '4px' }}>
+              <List
+                size="small"
+                dataSource={selectedMeeting.confirmations || []}
+                renderItem={(item: any) => {
+                  const targetUser = users.find(u => String(u.id) === String(item.userId));
+                  
+                  return (
+                    <List.Item>
+                      <List.Item.Meta
+                        avatar={<Avatar src={targetUser?.avatar} icon={<UserOutlined />} />}
+                        title={
+                          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                            <Text strong>{targetUser?.name || `ID: ${item.userId}`}</Text>
+                            <Tag color={item.status === 'accepted' ? 'green' : item.status === 'declined' ? 'red' : 'gold'}>
+                                {item.status === 'accepted' ? 'Tham gia' : item.status === 'declined' ? 'Vắng mặt' : 'Chưa phản hồi'}
+                            </Tag>
+                          </Space>
+                        }
+                        description={item.reason && <Text type="secondary" italic>Lý do: {item.reason}</Text>}
+                      />
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

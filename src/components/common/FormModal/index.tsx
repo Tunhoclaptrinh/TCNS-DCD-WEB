@@ -55,28 +55,28 @@ const FormModal: React.FC<FormModalProps> = ({
     }
   };
 
-  const defaultFooter = (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
-      <Button
-        variant="outline"
-        buttonSize="small"
-        onClick={handleCancel}
-        disabled={loading}
-        style={{ minWidth: 88 }}
-      >
-        {cancelText}
-      </Button>
-      <Button
-        variant="primary"
-        buttonSize="small"
-        onClick={handleOk}
-        loading={loading}
-        style={{ minWidth: 88 }}
-      >
-        {okText}
-      </Button>
-    </div>
-  );
+  const defaultFooter = [
+    <Button
+      key="cancel"
+      variant="outline"
+      buttonSize="small"
+      onClick={handleCancel}
+      disabled={loading}
+      style={{ minWidth: 88 }}
+    >
+      {cancelText}
+    </Button>,
+    <Button
+      key="ok"
+      variant="primary"
+      buttonSize="small"
+      onClick={handleOk}
+      loading={loading}
+      style={{ minWidth: 88 }}
+    >
+      {okText}
+    </Button>
+  ];
 
   return (
     <Modal

@@ -3,6 +3,7 @@ import { Modal, Table, Tag, Space, Typography, Avatar, Empty, Spin, Tabs } from 
 import { ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, SwapOutlined, LogoutOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
+import { Button } from '@/components/common';
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -149,7 +150,11 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
       }
       open={open}
       onCancel={onCancel}
-      footer={null}
+      footer={[
+        <Button key="close" variant="outline" buttonSize="small" onClick={onCancel} style={{ minWidth: 100 }}>
+          Đóng
+        </Button>
+      ]}
       width={800}
       zIndex={1100}
       bodyStyle={{ padding: '12px 24px 24px' }}

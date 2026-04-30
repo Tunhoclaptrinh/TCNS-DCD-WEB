@@ -10,7 +10,7 @@ import { User } from '@/types';
 import { DataTableColumn } from '@/components/common/DataTable/types';
 import { useCRUD } from '@/hooks/useCRUD';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 export const POSITION_LABELS: Record<string, string> = {
   ctc: 'CTV',
@@ -24,10 +24,11 @@ export const POSITION_LABELS: Record<string, string> = {
 interface MeetingMemberPickerProps {
   value?: number[];
   onChange?: (value: number[]) => void;
+  users?: User[];
 }
 
 /**
- * Pure Table Component for user selection - Mirroring DutyPersonnelTable pattern
+ * Pure Table Component for user selection
  */
 export const MeetingMemberTable: React.FC<{
   value?: number[];
@@ -105,25 +106,29 @@ export const MeetingMemberTable: React.FC<{
 };
 
 /**
- * Picker component with a Button and List - Mirroring AdminDutySlotModal members section
+ * Picker component with a Button and List
  */
 const MeetingMemberPicker: React.FC<MeetingMemberPickerProps> = ({
   value = [],
   onChange,
+  users = [],
 }) => {
   const [open, setOpen] = useState(false);
   const [tempSelectedIds, setTempSelectedIds] = useState<number[]>([]);
   const [selectedUsersCache, setSelectedUsersCache] = useState<User[]>([]);
 
-  // Update local cache when new users are seen in the table selection
-  const updateCache = (rows: User[]) => {
-    if (!rows) return;
+  const updateCache = React.useCallback((rows: User[]) => {
+    if (!rows || rows.length === 0) return;
     setSelectedUsersCache(prev => {
       const map = new Map(prev.filter(r => r && r.id).map(r => [r.id, r]));
       rows.filter(r => r && r.id).forEach(r => map.set(r.id, r));
       return Array.from(map.values());
     });
-  };
+  }, []);
+
+  React.useEffect(() => {
+    if (users && users.length > 0) updateCache(users);
+  }, [users, updateCache]);
 
   const handleOpen = () => {
     setTempSelectedIds(value);
@@ -142,55 +147,26 @@ const MeetingMemberPicker: React.FC<MeetingMemberPickerProps> = ({
 
   return (
     <div className="meeting-member-picker-section">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <Title level={5} style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
-            Thành viên tham gia
-          </Title>
-          <Text type="secondary" style={{ fontSize: 12 }}>Xác nhận những nhân sự tham gia cuộc họp.</Text>
-        </div>
-        <Space size={12}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text strong style={{ fontSize: '14px' }}>
+          Thành viên ({value.length})
+        </Text>
+        <Space>
           <Button 
             variant="outline" 
             buttonSize="small" 
             icon={<UsergroupAddOutlined />}
             onClick={handleOpen}
-            style={{ 
-              borderRadius: 8, 
-              fontWeight: 600, 
-              fontSize: '13px',
-              borderColor: 'var(--primary-color)',
-              color: 'var(--primary-color)',
-              background: '#fff'
-            }}
+            style={{ fontSize: '12px', height: 28 }}
           >
             Chọn thành viên
-            {value.length > 0 && (
-              <div style={{ 
-                backgroundColor: 'var(--primary-color)',
-                color: '#fff',
-                borderRadius: 6,
-                padding: '0 6px',
-                height: 18,
-                minWidth: 18,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 10,
-                fontWeight: 800,
-                marginLeft: 4,
-              }}>
-                {value.length}
-              </div>
-            )}
           </Button>
           {value.length > 0 && (
               <Button
-                variant="outline"
+                variant="ghost"
                 buttonSize="small"
                 onClick={() => onChange?.([])}
-                icon={<CloseOutlined />}
-                style={{ fontSize: 11 }}
+                style={{ fontSize: 11, color: '#94a3b8' }}
               >
                 Xóa hết
               </Button>
@@ -198,77 +174,65 @@ const MeetingMemberPicker: React.FC<MeetingMemberPickerProps> = ({
         </Space>
       </div>
 
-      <div style={{ maxHeight: 250, overflowY: 'auto', paddingRight: 4 }}>
+      <div style={{ 
+          maxHeight: 250, 
+          overflowY: 'auto', 
+          border: '1px solid #f0f0f0',
+          borderRadius: 4
+      }}>
         <List
+          size="small"
           dataSource={value}
           renderItem={(id: number) => {
-            const userDetail = selectedUsersCache.find((u: any) => u && String(u.id) === String(id));
+            const userDetail = users.find((u: any) => u && String(u.id) === String(id)) || 
+                             selectedUsersCache.find((u: any) => u && String(u.id) === String(id));
             
             return (
               <List.Item
-                style={{
-                  padding: '10px 16px',
-                  background: '#fff',
-                  borderRadius: 10,
-                  marginBottom: 8,
-                  border: '1px solid #f1f5f9',
-                  transition: 'all 0.2s',
-                }}
+                style={{ padding: '4px 12px' }}
                 actions={[
                   <Button 
                     key="remove"
                     variant="ghost" 
                     buttonSize="small" 
                     danger 
-                    icon={<CloseOutlined style={{ fontSize: 12 }} />} 
+                    icon={<CloseOutlined style={{ fontSize: 10 }} />} 
                     onClick={() => handleRemove(id)}
+                    style={{ width: 22, height: 22 }}
                   />
                 ]}
               >
-                <List.Item.Meta
-                  avatar={<Avatar icon={<UserOutlined />} src={userDetail?.avatar} />}
-                  title={<Text strong>{userDetail?.name || `Thành viên #${id}`}</Text>}
-                  description={
-                    <Space split={<Divider style={{ margin: 0 }} type="vertical" />} style={{ fontSize: 11 }}>
-                      <Text type="secondary">{userDetail?.studentId || 'Chưa rõ MSV'}</Text>
-                      {userDetail?.department && <Tag color="blue" style={{ fontSize: '0.6rem' }}>{userDetail.department}</Tag>}
-                      {userDetail?.position && <Tag color="cyan" style={{ fontSize: '0.6rem' }}>{POSITION_LABELS[userDetail.position] || userDetail.position}</Tag>}
-                    </Space>
-                  }
-                />
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 8 }}>
+                  <Avatar size={24} icon={<UserOutlined />} src={userDetail?.avatar} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text strong style={{ fontSize: 13 }}>{userDetail?.name || `Thành viên #${id}`}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {userDetail?.studentId ? `(${userDetail.studentId})` : ''}
+                    </Text>
+                    {userDetail?.department && (
+                        <Tag style={{ margin: 0, fontSize: 10, padding: '0 4px', lineHeight: '16px' }}>
+                            {userDetail.department}
+                        </Tag>
+                    )}
+                  </div>
+                </div>
               </List.Item>
             );
           }}
-          locale={{ emptyText: <div style={{ padding: '20px 0', textAlign: 'center', color: '#94a3b8' }}>Chưa có thành viên nào được chọn</div> }}
+          locale={{ emptyText: <div style={{ padding: '16px 0', fontSize: 12, color: '#bfbfbf' }}>Chưa chọn thành viên</div> }}
         />
       </div>
 
       <Modal
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '95%' }}>
-            <Space>
-              <UserOutlined />
-              <span>Chọn thành viên tham gia họp</span>
-            </Space>
-            <Tag color="processing" style={{ borderRadius: 6, margin: 0 }}>
-              Đang chọn: {tempSelectedIds.length} nhân sự
-            </Tag>
-          </div>
-        }
+        title="Chọn thành viên"
         open={open}
         onCancel={() => setOpen(false)}
         onOk={handleOk}
-        width={850}
-        destroyOnClose
-        okText="Hoàn tất"
-        cancelText="Hủy bỏ"
+        width={750}
+        okText="Xác nhận"
+        cancelText="Hủy"
         centered
       >
-        <div style={{ marginBottom: 16 }}>
-          <Text type="secondary">
-            Sử dụng bảng dưới đây để tìm kiếm và chọn nhân sự. Thay đổi chỉ được áp dụng sau khi nhấn <b>Hoàn tất</b>.
-          </Text>
-        </div>
         <MeetingMemberTable 
           value={tempSelectedIds} 
           onChange={(keys, rows) => {
@@ -280,18 +244,5 @@ const MeetingMemberPicker: React.FC<MeetingMemberPickerProps> = ({
     </div>
   );
 };
-
-// Help with divider in case it was used
-const Divider = ({ type = 'horizontal', style = {} }: { type?: 'horizontal' | 'vertical', style?: any }) => (
-    <span style={{ 
-        display: type === 'vertical' ? 'inline-block' : 'block',
-        width: type === 'vertical' ? 1 : '100%',
-        height: type === 'vertical' ? '0.9em' : 1,
-        backgroundColor: '#e2e8f0',
-        margin: type === 'vertical' ? '0 8px' : '16px 0',
-        verticalAlign: 'middle',
-        ...style 
-    }} />
-);
 
 export default MeetingMemberPicker;

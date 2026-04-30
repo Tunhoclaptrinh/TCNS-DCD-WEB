@@ -1,29 +1,39 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-    Form, Tag, Space, Tooltip, Modal, Typography, 
-    List, Avatar, Divider, Radio, Input, message, 
-    Select, Tabs, Card, Badge, Calendar 
+    Form, Space, Typography, message, 
+    Modal,
+    Tooltip,
+    Tag,
+    Calendar,
+    Spin,
+    ConfigProvider
 } from 'antd';
 import { 
     CalendarOutlined, EditOutlined, DeleteOutlined, 
-    EyeOutlined, QuestionCircleOutlined, EnvironmentOutlined,
-    CheckCircleOutlined, ClockCircleOutlined,
-    UserOutlined, TeamOutlined, CheckOutlined, CloseOutlined,
-    AppstoreOutlined, BarsOutlined, CopyOutlined, PlusOutlined,
-    MessageOutlined
+    EyeOutlined, QuestionCircleOutlined,
+    CheckCircleOutlined, 
+    AppstoreOutlined, CopyOutlined, PlusOutlined,
+    MessageOutlined, ClockCircleOutlined
 } from '@ant-design/icons';
 import { useCRUD } from '@/hooks/useCRUD';
-import { Button, DataTable, StatisticsCard, Access, TabSwitcher } from '@/components/common';
+import { Button, DataTable, StatisticsCard, Access } from '@/components/common';
 import { DataTableColumn } from '@/components/common/DataTable/types';
 import meetingService, { Meeting } from '@/services/meeting.service';
 import userService from '@/services/user.service';
 import { User } from '@/types';
 import MeetingForm from './components/MeetingForm';
+import MeetingDetailModal from './components/MeetingDetailModal';
+import MeetingAttendanceModal from './components/MeetingAttendanceModal';
+import MeetingMinutesModal from './components/MeetingMinutesModal';
 import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
+import vi_VN from 'antd/es/locale/vi_VN';
 import { useAccess } from '@/hooks';
 import './styles.less';
 
-const { Text, Title } = Typography;
+dayjs.locale('vi');
+
+const { Text } = Typography;
 
 const MeetingsPage = () => {
     const { hasPermission, user: currentUser } = useAccess();
@@ -50,21 +60,22 @@ const MeetingsPage = () => {
 
     const [form] = Form.useForm();
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isCalendarModalVisible, setIsCalendarModalVisible] = useState(false);
+    const [isMinutesModalVisible, setIsMinutesModalVisible] = useState(false);
+    const [calendarValue, setCalendarValue] = useState(dayjs());
     const [isDetailVisible, setIsDetailVisible] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [attendanceRecord, setAttendanceRecord] = useState<Meeting | null>(null);
     const [viewingRecord, setViewingRecord] = useState<Meeting | null>(null);
     const [isGuideModalVisible, setIsGuideModalVisible] = useState(false);
     const [users, setUsers] = useState<User[]>([]);
+    const [initialParticipants, setInitialParticipants] = useState<User[]>([]);
     
     // RSVP State
     const [rsvpStatus, setRsvpStatus] = useState<'accepted' | 'declined'>('accepted');
     const [rsvpReason, setRsvpReason] = useState('');
     const [isSubmittingRsvp, setIsSubmittingRsvp] = useState(false);
     
-    // View State
-    const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-
     // Fetch users for display
     useEffect(() => {
         const fetchUsers = async () => {
@@ -83,8 +94,10 @@ const MeetingsPage = () => {
         const now = dayjs();
         const upcoming = data.filter(m => m.status === 'scheduled' && dayjs(m.meetingAt).isAfter(now) && dayjs(m.meetingAt).isBefore(now.add(24, 'hour'))).length;
         const pendingRsvp = data.filter((m: Meeting) => {
-            const myConfirm = m.confirmations?.find((c: any) => c.userId === currentUser?.id);
-            return m.status === 'scheduled' && (!myConfirm || (!myConfirm.status || myConfirm.status === 'pending')) && m.participantIds?.includes(currentUser?.id || 0);
+            const myConfirm = m.confirmations?.find((c: any) => String(c.userId) === String(currentUser?.id));
+            const status = String(myConfirm?.status || 'pending').toLowerCase();
+            const isInvited = m.isAllParticipants || m.participantIds?.some(id => String(id) === String(currentUser?.id));
+            return m.status === 'scheduled' && status === 'pending' && isInvited;
         }).length;
         const totalMonth = data.filter((m: Meeting) => dayjs(m.meetingAt).isSame(now, 'month')).length;
 
@@ -109,14 +122,13 @@ const MeetingsPage = () => {
             label: 'Thời gian họp',
             type: 'dateRange',
             operators: ['between'],
-        },
-        {
-            key: 'location',
-            label: 'Địa điểm',
-            type: 'string',
-            operators: ['contains', 'eq'],
         }
     ], []);
+
+    const openCalendarAt = (date: any) => {
+        setCalendarValue(dayjs(date));
+        setIsCalendarModalVisible(true);
+    };
 
     const columns: DataTableColumn<Meeting>[] = [
         {
@@ -124,21 +136,25 @@ const MeetingsPage = () => {
             key: "title",
             width: 250,
             render: (_: any, record: Meeting) => (
-                <Space direction="vertical" size={0}>
-                    <Text strong style={{ color: 'var(--primary-color)', cursor: 'pointer' }} onClick={() => openDetail(record)}>
-                        {record.title}
-                    </Text>
-                    <Space style={{ fontSize: 12, color: '#8c8c8c' }}>
-                        <EnvironmentOutlined /> {record.location}
-                    </Space>
-                </Space>
+                <Text strong style={{ color: 'var(--primary-color)', cursor: 'pointer' }} onClick={() => openDetail(record)}>
+                    {record.title}
+                </Text>
             )
         },
         {
             title: "Thời gian",
             key: "meetingAt",
             width: 180,
-            render: (_: any, record: Meeting) => dayjs(record.meetingAt).format('HH:mm DD/MM/YYYY')
+            render: (_: any, record: Meeting) => (
+                <Tooltip title="Xem trên lịch tháng">
+                    <Text 
+                        style={{ cursor: 'pointer', color: '#1890ff', borderBottom: '1px dashed #1890ff' }} 
+                        onClick={() => openCalendarAt(record.meetingAt)}
+                    >
+                        {dayjs(record.meetingAt).format('HH:mm DD/MM/YYYY')}
+                    </Text>
+                </Tooltip>
+            )
         },
         {
             title: "Trạng thái",
@@ -146,48 +162,15 @@ const MeetingsPage = () => {
             key: "status",
             width: 140,
             render: (status: string) => {
-                const config: any = {
-                    scheduled: { color: 'blue', text: 'Đã lên lịch' },
-                    completed: { color: 'green', text: 'Hoàn thành' },
-                    cancelled: { color: 'red', text: 'Đã hủy' }
-                };
-                return <Badge status={config[status]?.color as any} text={config[status]?.text} />;
-            }
-        },
-        {
-            title: "Tham gia",
-            key: "participants",
-            width: 120,
-            render: (_: any, record: Meeting) => {
-                const total = record.participantIds?.length || 0;
-                const accepted = record.confirmations?.filter((c: any) => c.status === 'accepted').length || 0;
-                return (
-                    <Tooltip title={`${accepted}/${total} đã xác nhận tham gia`}>
-                        <Tag color="cyan">
-                            <TeamOutlined /> {accepted}/{total}
-                        </Tag>
-                    </Tooltip>
-                );
-            }
-        },
-        {
-            title: "Phản hồi của tôi",
-            key: "my_rsvp",
-            width: 150,
-            render: (_: any, record: Meeting) => {
-                const myConfirm = record.confirmations?.find((c: any) => c.userId === currentUser?.id);
-                if (!myConfirm) return <Tag color="default">Không có trong DS</Tag>;
-                if (myConfirm.status === 'accepted' || myConfirm.status === 'present' || myConfirm.status === 'late') 
-                    return <Tag color="green" icon={<CheckOutlined />}>Tham gia</Tag>;
-                if (myConfirm.status === 'declined' || myConfirm.status === 'absent') 
-                    return <Tag color="red" icon={<CloseOutlined />}>Từ chối</Tag>;
-                return <Tag color="orange" icon={<ClockCircleOutlined />}>Chưa phản hồi</Tag>;
+                const colors: any = { scheduled: 'blue', completed: 'green', cancelled: 'red' };
+                const texts: any = { scheduled: 'Sắp diễn ra', completed: 'Đã xong', cancelled: 'Đã hủy' };
+                return <Tag color={colors[status]}>{texts[status]}</Tag>;
             }
         },
         {
             title: "Thao tác",
             key: "actions",
-            width: 160,
+            width: 220,
             fixed: 'right',
             align: 'center',
             render: (_: any, record: Meeting) => {
@@ -196,89 +179,38 @@ const MeetingsPage = () => {
                 
                 return (
                     <Space size="small">
-                        <Tooltip title="Sao chép thông tin">
-                            <Button 
-                                variant="ghost" 
-                                buttonSize="small" 
-                                style={{ color: '#8c8c8c' }} 
-                                onClick={() => copyMeetingInfo(record)}
-                            >
-                                <CopyOutlined />
+                        <Tooltip title="Xem chi tiết">
+                            <Button variant="ghost" buttonSize="small" style={{ color: '#1890ff' }} onClick={() => openDetail(record)}>
+                                <EyeOutlined />
                             </Button>
                         </Tooltip>
-                        
-                        {/* Quick RSVP Actions */}
-                        {record.status === 'scheduled' && record.participantIds?.includes(currentUser?.id || 0) && (
-                            <>
-                                {record.confirmations?.find(c => c.userId === currentUser?.id)?.status !== 'accepted' && (
-                                    <Tooltip title="Xác nhận tham gia nhanh">
-                                        <Button 
-                                            variant="ghost" 
-                                            buttonSize="small" 
-                                            style={{ color: '#52c41a' }} 
-                                            onClick={() => handleQuickRsvp(record.id, 'accepted')}
-                                        >
-                                            <CheckOutlined />
-                                        </Button>
-                                    </Tooltip>
-                                )}
-                                {record.confirmations?.find(c => c.userId === currentUser?.id)?.status !== 'declined' && (
-                                    <Tooltip title="Từ chối tham gia nhanh">
-                                        <Button 
-                                            variant="ghost" 
-                                            buttonSize="small" 
-                                            style={{ color: '#f5222d' }} 
-                                            onClick={() => handleQuickRsvp(record.id, 'declined')}
-                                        >
-                                            <CloseOutlined />
-                                        </Button>
-                                    </Tooltip>
-                                )}
-                            </>
-                        )}
-
-                        <Tooltip title="Chi tiết & Phản hồi">
-                            <Button 
-                                variant="ghost" 
-                                buttonSize="small" 
-                                style={{ color: '#1890ff' }} 
-                                onClick={() => openDetail(record)}
-                            >
-                                <EyeOutlined />
+                        <Tooltip title="Xem trên lịch">
+                            <Button variant="ghost" buttonSize="small" style={{ color: '#8b5cf6' }} onClick={() => openCalendarAt(record.meetingAt)}>
+                                <AppstoreOutlined />
                             </Button>
                         </Tooltip>
                         {canEdit && (
                             <Tooltip title="Sửa">
-                                <Button 
-                                    variant="ghost" 
-                                    buttonSize="small" 
-                                    style={{ color: 'var(--primary-color)' }} 
-                                    onClick={() => openEdit(record)}
-                                >
+                                <Button variant="ghost" buttonSize="small" style={{ color: 'var(--primary-color)' }} onClick={() => openEdit(record)}>
                                     <EditOutlined />
                                 </Button>
                             </Tooltip>
                         )}
                         {canAttendance && record.status === 'scheduled' && (
                              <Tooltip title="Điểm danh">
-                                <Button 
-                                    variant="ghost" 
-                                    buttonSize="small" 
-                                    style={{ color: '#faad14' }} 
-                                    onClick={() => setAttendanceRecord(record)}
-                                >
+                                <Button variant="ghost" buttonSize="small" style={{ color: '#faad14' }} onClick={() => setAttendanceRecord(record)}>
                                     <CheckCircleOutlined />
                                 </Button>
                             </Tooltip>
                         )}
+                        <Tooltip title="Sao chép">
+                            <Button variant="ghost" buttonSize="small" style={{ color: '#8c8c8c' }} onClick={() => copyMeetingInfo(record)}>
+                                <CopyOutlined />
+                            </Button>
+                        </Tooltip>
                         {canManageAll && (
                             <Tooltip title="Xóa">
-                                <Button 
-                                    variant="ghost" 
-                                    buttonSize="small" 
-                                    danger 
-                                    onClick={() => handleDelete(record.id)}
-                                >
+                                <Button variant="ghost" buttonSize="small" danger onClick={() => handleDelete(record.id)}>
                                     <DeleteOutlined />
                                 </Button>
                             </Tooltip>
@@ -297,6 +229,7 @@ const MeetingsPage = () => {
 
     const openEdit = (record: Meeting) => {
         setEditingId(record.id);
+        setInitialParticipants(record.participants || []);
         form.setFieldsValue({
             ...record,
             meetingAt: dayjs(record.meetingAt),
@@ -307,9 +240,9 @@ const MeetingsPage = () => {
 
     const openDetail = (record: Meeting) => {
         setViewingRecord(record);
-        const myConfirm = record.confirmations?.find((c: any) => c.userId === currentUser?.id);
-        if (myConfirm && (myConfirm.status === 'accepted' || myConfirm.status === 'declined')) {
-            setRsvpStatus(myConfirm.status as any);
+        const myConfirm = record.confirmations?.find((c: any) => String(c.userId) === String(currentUser?.id));
+        if (myConfirm && (String(myConfirm.status).toLowerCase() === 'accepted' || String(myConfirm.status).toLowerCase() === 'declined')) {
+            setRsvpStatus(String(myConfirm.status).toLowerCase() as any);
             setRsvpReason(myConfirm.reason || '');
         } else {
             setRsvpStatus('accepted');
@@ -321,7 +254,7 @@ const MeetingsPage = () => {
     const handleDelete = async (id: number) => {
         Modal.confirm({
             title: 'Xác nhận xóa',
-            content: 'Bạn có chắc chắn muốn xóa lịch họp này? Mọi thông tin phản hồi sẽ bị mất.',
+            content: 'Bạn có chắc chắn muốn xóa lịch họp này?',
             okText: 'Xóa',
             cancelText: 'Hủy',
             okButtonProps: { danger: true },
@@ -329,12 +262,13 @@ const MeetingsPage = () => {
         });
     };
 
-    const handleRsvp = async () => {
+    const handleRsvp = async (status: 'accepted' | 'declined') => {
         if (!viewingRecord) return;
+        setRsvpStatus(status);
         setIsSubmittingRsvp(true);
         try {
             const res = await meetingService.rsvp(viewingRecord.id, {
-                status: rsvpStatus,
+                status,
                 reason: rsvpReason
             });
             if (res.success) {
@@ -350,19 +284,24 @@ const MeetingsPage = () => {
         }
     };
 
-    const handleQuickRsvp = async (meetingId: number, status: 'accepted' | 'declined') => {
+    const handleSaveMinutes = async (id: number, minutesData: any) => {
+        setIsSubmittingRsvp(true);
         try {
-            const res = await meetingService.rsvp(meetingId, {
-                status,
-                reason: status === 'accepted' ? 'Xác nhận nhanh qua danh sách' : 'Từ chối nhanh qua danh sách'
-            });
+            const res = await meetingService.update(id, minutesData);
             if (res.success) {
-                message.success(status === 'accepted' ? 'Đã xác nhận tham gia' : 'Đã từ chối tham gia');
+                // If submitted, we might want to close the detail modal too
+                if (minutesData.minutesStatus === 'submitted') {
+                    setIsDetailVisible(false);
+                    // Also update status to completed if not already
+                    await meetingService.setStatus(id, 'completed');
+                }
                 fetchAll();
             }
         } catch (error) {
-            console.error("Quick RSVP failed:", error);
-            message.error('Thao tác thất bại');
+            console.error("Save minutes failed:", error);
+            message.error('Lưu biên bản thất bại');
+        } finally {
+            setIsSubmittingRsvp(false);
         }
     };
 
@@ -376,14 +315,17 @@ const MeetingsPage = () => {
             });
             if (res.success) {
                 message.success('Cập nhật điểm danh thành công');
-                const updatedConfirmations = attendanceRecord.confirmations.map(c => 
-                    c.userId === userId ? { ...c, status: status as any } : c
-                );
-                if (!updatedConfirmations.find(c => c.userId === userId)) {
-                    updatedConfirmations.push({ userId, status: status as any, respondedAt: new Date().toISOString() });
-                }
-                setAttendanceRecord({ ...attendanceRecord, confirmations: updatedConfirmations });
                 fetchAll();
+                // Update local state for immediate feedback
+                if (attendanceRecord) {
+                    const newConfirmations = attendanceRecord.confirmations.map(c => 
+                        String(c.userId) === String(userId) ? { ...c, status: status as any } : c
+                    );
+                    if (!newConfirmations.find(c => String(c.userId) === String(userId))) {
+                        newConfirmations.push({ userId, status: status as any, respondedAt: new Date().toISOString() });
+                    }
+                    setAttendanceRecord({ ...attendanceRecord, confirmations: newConfirmations });
+                }
             }
         } catch (error) {
             console.error("Attendance failed:", error);
@@ -396,26 +338,9 @@ const MeetingsPage = () => {
 📅 CUỘC HỌP: ${record.title}
 📍 Địa điểm: ${record.location}
 ⏰ Thời gian: ${dayjs(record.meetingAt).format('HH:mm DD/MM/YYYY')}
-📝 Nội dung: ${record.agenda || 'N/A'}
         `.trim();
         navigator.clipboard.writeText(info);
-        message.success('Đã sao chép thông tin cuộc họp');
-    };
-
-    const dateCellRender = (date: dayjs.Dayjs) => {
-        const listData = data.filter((item: Meeting) => dayjs(item.meetingAt).isSame(date, 'day'));
-        return (
-            <ul className="events" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {listData.map((item: Meeting) => (
-                    <li key={item.id} onClick={(e) => {
-                        e.stopPropagation();
-                        openDetail(item);
-                    }}>
-                        <Badge status={item.status === 'scheduled' ? 'processing' : 'default'} text={item.title} />
-                    </li>
-                ))}
-            </ul>
-        );
+        message.success('Đã sao chép thông tin');
     };
 
     const onOk = async () => {
@@ -428,11 +353,8 @@ const MeetingsPage = () => {
             };
 
             let success;
-            if (editingId) {
-                success = await update(editingId, formattedValues);
-            } else {
-                success = await create(formattedValues);
-            }
+            if (editingId) success = await update(editingId, formattedValues);
+            else success = await create(formattedValues);
 
             if (success) {
                 setIsModalVisible(false);
@@ -443,134 +365,121 @@ const MeetingsPage = () => {
         }
     };
 
-    // --- Header Construction (Synchronized for both views) ---
-    
     const PageHeaderTitle = (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <h2 style={{ margin: 0 }}>{canCreate ? "Quản lý Lịch họp" : "Lịch họp của tôi"}</h2>
             <Button 
                 variant="ghost" 
                 buttonSize="small"
-                icon={<QuestionCircleOutlined style={{ color: '#8c8c8c' }} />} 
+                icon={<QuestionCircleOutlined />} 
                 onClick={() => setIsGuideModalVisible(true)}
-                style={{ border: '1px solid #d9d9d9', borderRadius: 6 }}
+                style={{ border: '1px solid #d9d9d9' }}
             >
                 Hướng dẫn
             </Button>
         </div>
     );
 
-    const PageHeaderStats = (
-        <StatisticsCard
-            hideCard={true}
-            loading={loading}
-            data={[
-                {
-                    title: "Sắp diễn ra (24h)",
-                    value: stats.upcoming,
-                    icon: <CalendarOutlined />,
-                    valueColor: "#1890ff",
-                },
-                {
-                    title: "Chờ xác nhận",
-                    value: stats.pendingRsvp,
-                    icon: <MessageOutlined />,
-                    valueColor: "#faad14",
-                },
-                {
-                    title: "Trong tháng này",
-                    value: stats.totalMonth,
-                    icon: <ClockCircleOutlined />,
-                    valueColor: "#52c41a",
-                }
-            ]}
-            statShadow={false}
-        />
-    );
-
-    const ViewSwitcher = (
-        <TabSwitcher>
-            <Tabs
-                activeKey={viewMode}
-                onChange={(key) => setViewMode(key as 'list' | 'calendar')}
-                className="hifi-tabs-management"
-                tabBarGutter={24}
-                items={[
-                    { key: 'list', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}><BarsOutlined /> Danh sách</span> },
-                    { key: 'calendar', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}><AppstoreOutlined /> Lịch họp</span> }
-                ]}
-            />
-        </TabSwitcher>
-    );
-
-    const PageHeaderExtra = (
-        <Access anyPermission={["meeting:create:all", "meeting:create:dept"]}>
-            <Button 
-                variant="primary" 
-                buttonSize="small"
-                icon={<PlusOutlined />} 
-                onClick={openCreate}
-            >
-                Lên lịch mới
-            </Button>
-        </Access>
-    );
-
     return (
         <div className="meetings-page-container" style={{ padding: '0 8px' }}>
-            {viewMode === 'list' ? (
-                <DataTable
-                    title={PageHeaderTitle}
-                    extra={PageHeaderExtra}
-                    headerContent={
-                        <>
-                            {PageHeaderStats}
-                            {ViewSwitcher}
-                        </>
-                    }
-                    loading={loading}
-                    columns={columns.map(col => ({ ...col, resizable: true }))}
-                    dataSource={data}
-                    pagination={pagination}
-                    onPaginationChange={handleTableChange}
-                    onRefresh={() => fetchAll()}
-                    searchable={true}
-                    searchValue={searchTerm}
-                    onSearch={search}
-                    filters={filtersConfig}
-                    bordered={true}
-                    size="middle"
-                    rowKey="id"
-                    scroll={{ x: 'max-content' }}
-                    saveColumnWidths={true}
-                    columnResizeKey="meetings-table-v4"
-                />
-            ) : (
-                <div className="data-table-wrapper">
-                    <div className="data-table-title">
-                        {PageHeaderTitle}
-                    </div>
-                    <Card bodyStyle={{ borderRadius: 12, padding: 0 }} hoverable={false}>
-                        <div className="data-table-header-content">
-                            {PageHeaderStats}
-                            {ViewSwitcher}
-                        </div>
-                        <div className="data-table-toolbar">
-                            <Space wrap>{/* Left tools empty */}</Space>
-                            <Space wrap align="center" className="right-tools">
-                                {PageHeaderExtra}
-                            </Space>
-                        </div>
-                        <div style={{ padding: '16px 24px' }}>
+            <DataTable
+                title={PageHeaderTitle}
+                extra={
+                    <Access anyPermission={["meeting:create:all", "meeting:create:dept"]}>
+                        <Button variant="primary" buttonSize="small" icon={<PlusOutlined />} onClick={openCreate}>
+                            Lên lịch mới
+                        </Button>
+                    </Access>
+                }
+                headerContent={
+                    <StatisticsCard
+                        hideCard={true}
+                        loading={loading}
+                        data={[
+                            { title: "Sắp diễn ra (24h)", value: stats.upcoming, icon: <CalendarOutlined />, valueColor: "#1890ff" },
+                            { title: "Chờ xác nhận", value: stats.pendingRsvp, icon: <MessageOutlined />, valueColor: "#faad14" },
+                            { title: "Trong tháng này", value: stats.totalMonth, icon: <ClockCircleOutlined />, valueColor: "#52c41a" }
+                        ]}
+                        statShadow={false}
+                    />
+                }
+                loading={loading}
+                columns={columns}
+                dataSource={data}
+                pagination={pagination}
+                onPaginationChange={handleTableChange}
+                onRefresh={() => fetchAll()}
+                searchable={true}
+                searchValue={searchTerm}
+                onSearch={search}
+                filters={filtersConfig}
+                rowKey="id"
+            />
+
+            {/* Calendar View Modal */}
+            <Modal
+                title={
+                    <Space>
+                        <AppstoreOutlined style={{ color: 'var(--primary-color)' }} />
+                        <span style={{ fontWeight: 700 }}>Lịch họp chi tiết</span>
+                    </Space>
+                }
+                open={isCalendarModalVisible}
+                onCancel={() => setIsCalendarModalVisible(false)}
+                footer={[
+                    <Button key="close" variant="outline" buttonSize="small" onClick={() => setIsCalendarModalVisible(false)} style={{ minWidth: 100 }}>
+                        Đóng
+                    </Button>
+                ]}
+                width={1000}
+                centered
+                className="calendar-modal"
+            >
+                <div style={{ marginTop: -12 }}>
+                    <Spin spinning={loading}>
+                        <ConfigProvider locale={vi_VN}>
                             <Calendar 
-                                className="meetings-calendar"
-                                cellRender={dateCellRender} 
-                                onSelect={() => {}}
+                                fullscreen={true}
+                                value={calendarValue}
+                                onChange={(val) => setCalendarValue(val)}
+                                dateCellRender={(date) => {
+                                    const dateStr = date.format('YYYY-MM-DD');
+                                    const dayMeetings = data.filter(m => dayjs(m.meetingAt).format('YYYY-MM-DD') === dateStr);
+                                    return (
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                            {dayMeetings.map(m => (
+                                                <li key={m.id} style={{ marginBottom: 4 }}>
+                                                    <Tag 
+                                                        style={{ 
+                                                            width: '100%', 
+                                                            margin: 0, 
+                                                            fontSize: 10, 
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            background: 'var(--primary-color)',
+                                                            color: '#fff',
+                                                            border: 'none',
+                                                            fontWeight: 500
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openDetail(m);
+                                                        }}
+                                                    >
+                                                        {dayjs(m.meetingAt).format('HH:mm')} {m.title}
+                                                    </Tag>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    );
+                                }}
                             />
-                        </div>
-                    </Card>
+                        </ConfigProvider>
+                    </Spin>
                 </div>
-            )}
+            </Modal>
 
             <MeetingForm
                 open={isModalVisible}
@@ -578,189 +487,65 @@ const MeetingsPage = () => {
                 form={form}
                 onOk={onOk}
                 onCancel={() => setIsModalVisible(false)}
+                users={users}
+                initialParticipants={initialParticipants}
             />
 
-            {/* Modals remain the same */}
-            <Modal
-                title={
-                    <div style={{ textAlign: 'left', width: '100%' }}>
-                        <Space>
-                            <CalendarOutlined style={{ color: 'var(--primary-color)' }} />
-                            <Text strong style={{ fontSize: 18 }}>{canCreate ? 'Chi tiết & Quản lý RSVP' : 'Chi tiết & Phản hồi họp'}</Text>
-                        </Space>
-                    </div>
-                }
+            <MeetingDetailModal
                 open={isDetailVisible}
                 onCancel={() => setIsDetailVisible(false)}
-                footer={[
-                    <Button key="close" variant="outline" onClick={() => setIsDetailVisible(false)}>Đóng</Button>,
-                    viewingRecord?.status === 'scheduled' && viewingRecord?.participantIds?.includes(currentUser?.id || 0) && (
-                        <Button 
-                            key="submit" 
-                            variant="primary" 
-                            loading={isSubmittingRsvp} 
-                            onClick={handleRsvp}
-                        >
-                            Gửi phản hồi
-                        </Button>
-                    )
-                ]}
-                width={650}
-                centered
-            >
-                {viewingRecord && (
-                    <div>
-                        <div style={{ marginBottom: 24 }}>
-                            <Title level={4}>{viewingRecord.title}</Title>
-                            <Space direction="vertical" style={{ width: '100%' }}>
-                                <Space><CalendarOutlined /> <Text strong>{dayjs(viewingRecord.meetingAt).format('HH:mm [ngày] DD/MM/YYYY')}</Text></Space>
-                                <Space><EnvironmentOutlined /> <Text>{viewingRecord.location}</Text></Space>
-                            </Space>
-                        </div>
-                        
-                        <Divider orientation="left" plain>Nội dung cuộc họp</Divider>
-                        <div style={{ padding: '12px', background: '#f5f5f5', borderRadius: 8, marginBottom: 24 }}>
-                            <Text style={{ whiteSpace: 'pre-wrap' }}>{viewingRecord.agenda || 'Chưa có nội dung chi tiết.'}</Text>
-                        </div>
+                record={viewingRecord}
+                currentUser={currentUser}
+                users={users}
+                rsvpStatus={rsvpStatus}
+                rsvpReason={rsvpReason}
+                setRsvpReason={setRsvpReason}
+                isSubmitting={isSubmittingRsvp}
+                onRsvp={handleRsvp}
+                canCreate={canCreate}
+                onOpenMinutes={() => {
+                    setIsDetailVisible(false);
+                    setIsMinutesModalVisible(true);
+                }}
+            />
 
-                        {viewingRecord.status === 'scheduled' && viewingRecord.participantIds?.includes(currentUser?.id || 0) && (
-                            <>
-                                <Divider orientation="left" plain>Xác nhận tham gia (RSVP)</Divider>
-                                <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                                    <Radio.Group 
-                                        value={rsvpStatus} 
-                                        onChange={(e) => setRsvpStatus(e.target.value)}
-                                        buttonStyle="solid"
-                                        size="large"
-                                    >
-                                        <Radio.Button value="accepted" style={{ width: 140 }}>Tham gia</Radio.Button>
-                                        <Radio.Button value="declined" style={{ width: 140 }}>Từ chối</Radio.Button>
-                                    </Radio.Group>
-                                    <div style={{ marginTop: 16 }}>
-                                        <Input.TextArea 
-                                            placeholder="Ghi chú (Lý do nếu vắng mặt...)" 
-                                            rows={2} 
-                                            value={rsvpReason}
-                                            onChange={(e) => setRsvpReason(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
+            <MeetingMinutesModal
+                open={isMinutesModalVisible}
+                onCancel={() => setIsMinutesModalVisible(false)}
+                record={viewingRecord}
+                users={users}
+                onSave={handleSaveMinutes}
+                isSubmitting={isSubmittingRsvp}
+            />
 
-                        <Divider orientation="left" plain>Danh sách phản hồi ({viewingRecord.confirmations?.filter((c: any) => c.status === 'accepted').length || 0}/{viewingRecord.participantIds?.length || 0})</Divider>
-                        <List
-                            itemLayout="horizontal"
-                            dataSource={viewingRecord.participantIds || []}
-                            renderItem={(userId: number) => {
-                                const myConfirm = viewingRecord.confirmations?.find((c: any) => c.userId === userId);
-                                const status = myConfirm?.status || 'pending';
-                                const user = users.find((u: User) => u.id === userId);
-                                return (
-                                    <List.Item>
-                                        <List.Item.Meta
-                                            avatar={<Avatar src={user?.avatar} icon={<UserOutlined />} />}
-                                            title={<Text strong>{user?.name || `Thành viên #${userId}`}</Text>}
-                                            description={
-                                                <Space>
-                                                    {(status === 'accepted' || status === 'present' || status === 'late') && <Tag color="green">Tham gia</Tag>}
-                                                    {(status === 'declined' || status === 'absent') && <Tag color="red">Vắng mặt</Tag>}
-                                                    {status === 'pending' && <Tag color="default">Chưa phản hồi</Tag>}
-                                                </Space>
-                                            }
-                                        />
-                                    </List.Item>
-                                );
-                            }}
-                        />
-                    </div>
-                )}
-            </Modal>
-
-            {/* Điểm danh Modal */}
-            <Modal
-                title={
-                    <Space>
-                        <TeamOutlined style={{ color: 'var(--primary-color)' }} />
-                        <Text strong style={{ fontSize: 18 }}>Điểm danh cuộc họp</Text>
-                    </Space>
-                }
+            <MeetingAttendanceModal
                 open={!!attendanceRecord}
                 onCancel={() => setAttendanceRecord(null)}
-                footer={[
-                    <Button key="close" variant="primary" onClick={() => setAttendanceRecord(null)}>Hoàn tất</Button>
-                ]}
-                width={700}
-                centered
-            >
-                {attendanceRecord && (
-                    <>
-                        <div style={{ marginBottom: 16 }}>
-                            <Text strong>{attendanceRecord.title}</Text>
-                            <br />
-                            <Text type="secondary">Đánh giá sự chuyên cần của các thành viên tham gia cuộc họp.</Text>
-                        </div>
-                        <List
-                            itemLayout="horizontal"
-                            dataSource={attendanceRecord.participantIds || []}
-                            renderItem={(userId: number) => {
-                                const confirmation = attendanceRecord.confirmations?.find((c: any) => c.userId === userId);
-                                const status = confirmation?.status || 'pending';
-                                const user = users.find((u: User) => u.id === userId);
-                                
-                                return (
-                                    <List.Item
-                                        actions={[
-                                            <Select
-                                                key="status"
-                                                value={['present', 'late', 'absent'].includes(status) ? status : undefined}
-                                                placeholder="Chọn trạng thái"
-                                                style={{ width: 140 }}
-                                                onChange={(val: string) => handleMarkAttendance(userId, val)}
-                                                options={[
-                                                    { label: 'Tham gia', value: 'present' },
-                                                    { label: 'Đi muộn', value: 'late' },
-                                                    { label: 'Vắng mặt', value: 'absent' },
-                                                ]}
-                                            />
-                                        ]}
-                                    >
-                                        <List.Item.Meta
-                                            avatar={<Avatar src={user?.avatar} icon={<UserOutlined />} />}
-                                            title={<Text strong>{user?.name || `Thành viên #${userId}`}</Text>}
-                                            description={
-                                                <Space direction="vertical" size={0}>
-                                                    <Text type="secondary" style={{ fontSize: 12 }}>{user?.studentId || user?.email}</Text>
-                                                    <Space style={{ marginTop: 4 }}>
-                                                        {status === 'accepted' && <Tag color="green">Đã xác nhận RSVP</Tag>}
-                                                        {status === 'declined' && <Tag color="red">Đã từ chối RSVP</Tag>}
-                                                        {status === 'present' && <Tag color="blue">Đã có mặt</Tag>}
-                                                        {status === 'late' && <Tag color="orange">Muộn</Tag>}
-                                                        {status === 'absent' && <Tag color="volcano">Vắng</Tag>}
-                                                        {status === 'pending' && <Tag>Chưa có thông tin</Tag>}
-                                                    </Space>
-                                                </Space>
-                                            }
-                                        />
-                                    </List.Item>
-                                );
-                            }}
-                        />
-                    </>
-                )}
-            </Modal>
+                record={attendanceRecord}
+                users={users}
+                onMarkAttendance={handleMarkAttendance}
+            />
 
             <Modal
                 title="Hướng dẫn sử dụng"
                 open={isGuideModalVisible}
                 onCancel={() => setIsGuideModalVisible(false)}
-                footer={[<Button key="ok" variant="primary" onClick={() => setIsGuideModalVisible(false)}>Đã hiểu</Button>]}
+                footer={
+                    <Button
+                        variant="primary"
+                        buttonSize="small"
+                        onClick={() => setIsGuideModalVisible(false)}
+                        style={{ minWidth: 100, borderRadius: 8 }}
+                    >
+                        Đã hiểu
+                    </Button>
+                }
             >
                 <div style={{ padding: '0 10px' }}>
-                    <p><strong>1. Danh sách:</strong> Xem tất cả cuộc họp dưới dạng bảng, có thể lọc và tìm kiếm.</p>
+                    <p><strong>1. Danh sách:</strong> Xem tất cả cuộc họp dưới dạng bảng.</p>
                     <p><strong>2. Lịch họp:</strong> Xem các cuộc họp theo ngày trên lịch tháng.</p>
-                    <p><strong>3. RSVP:</strong> Nhấn vào tên cuộc họp hoặc nút "Phản hồi" để xác nhận tham gia.</p>
-                    <p><strong>4. Điểm danh:</strong> (Dành cho Admin/Leader) Nhấn vào biểu tượng điểm danh để cập nhật chuyên cần.</p>
+                    <p><strong>3. RSVP:</strong> Xác nhận tham gia ngay trong chi tiết cuộc họp.</p>
+                    <p><strong>4. Điểm danh:</strong> (Dành cho Admin/Leader) Cập nhật chuyên cần thực tế.</p>
                 </div>
             </Modal>
         </div>

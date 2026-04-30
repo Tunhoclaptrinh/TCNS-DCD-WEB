@@ -20,6 +20,9 @@ dayjs.extend(isSameOrBefore);
 
 
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
+import meetingService from '@/services/meeting.service';
+import userService from '@/services/user.service';
+import { User } from '@/types';
 import '../DutyCalendar.less';
 
 // Child Components
@@ -27,6 +30,7 @@ import MemberDutySlotModal from './components/MemberDutySlotModal';
 import MemberDutyTableView from './components/MemberDutyTableView';
 import MemberDutyTimelineView from './components/MemberDutyTimelineView';
 import ShiftLeaderAttendanceModal from './components/ShiftLeaderAttendanceModal';
+import MeetingDetailModal from '@/pages/Meetings/components/MeetingDetailModal';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -40,8 +44,12 @@ const MemberCalendar: React.FC = () => {
   const [templates, setTemplates] = useState<DutyShift[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
 
+  const [meetings, setMeetings] = useState<any[]>([]);
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
   const [dutySettings, setDutySettings] = useState<any>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
+  const [isMeetingDetailVisible, setIsMeetingDetailVisible] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
   const [showDefaultBoundaries] = useState(false);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
@@ -57,6 +65,11 @@ const MemberCalendar: React.FC = () => {
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [selectedAttendanceSlot, setSelectedAttendanceSlot] = useState<DutySlot | null>(null);
   const [now, setNow] = useState(dayjs());
+
+  // RSVP States
+  const [rsvpStatus, setRsvpStatus] = useState<'accepted' | 'declined'>('accepted');
+  const [rsvpReason, setRsvpReason] = useState('');
+  const [isRsvpSubmitting, setIsRsvpSubmitting] = useState(false);
 
   const currentGeneration = dutySettings?.currentGeneration;
   const userGeneration = (user as any)?.generation;
@@ -98,6 +111,16 @@ const MemberCalendar: React.FC = () => {
         if (gRes.success && gRes.data) {
           setTemplateGroups(gRes.data);
         }
+
+        // Fetch Meetings for members
+        const mRes = await meetingService.getAll({
+          limit: 100,
+          meetingAt_gte: currentWeek.startOf('isoWeek' as any).toISOString(),
+          meetingAt_lte: currentWeek.endOf('isoWeek' as any).toISOString(),
+        });
+        if (mRes.success && mRes.data) {
+          setMeetings(mRes.data);
+        }
       }
     } catch (err) {
       message.error('Không thể tải lịch trực');
@@ -110,6 +133,21 @@ const MemberCalendar: React.FC = () => {
     fetchSchedule();
     fetchDutySettings();
   }, [currentWeek]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await userService.getAll({ _limit: 1000 });
+        if (res.success && res.data) {
+          const userData = Array.isArray(res.data) ? res.data : (res.data as any)?.data || [];
+          setUsers(userData);
+        }
+      } catch (err) {
+        console.error('Lỗi tải danh sách nhân sự');
+      }
+    };
+    fetchUsers();
+  }, []);
 
 
   const handlePrevWeek = () => setCurrentWeek(prev => prev.subtract(1, 'week'));
@@ -223,6 +261,27 @@ const MemberCalendar: React.FC = () => {
     }
   };
 
+  const handleRsvp = async (status: 'accepted' | 'declined') => {
+    if (!selectedMeeting) return;
+    setRsvpStatus(status);
+    setIsRsvpSubmitting(true);
+    try {
+      const res = await meetingService.rsvp(selectedMeeting.id, {
+        status,
+        reason: rsvpReason,
+      });
+      if (res.success) {
+        message.success('Đã gửi phản hồi thành công');
+        fetchSchedule(); 
+        setIsMeetingDetailVisible(false);
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Không thể gửi phản hồi');
+    } finally {
+      setIsRsvpSubmitting(false);
+    }
+  };
+
   const slotsByDay = useMemo(() =>
     slots.reduce((acc: Record<string, DutySlot[]>, slot) => {
       const date = dayjs(slot.shiftDate).format('YYYY-MM-DD');
@@ -236,10 +295,7 @@ const MemberCalendar: React.FC = () => {
   return (
     <div className="duty-calendar-container" style={{ padding: '0 8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <Title level={3} style={{ margin: 0, color: '#1e293b', fontSize: '24px', letterSpacing: '-0.5px' }}>Lịch trực tuần này</Title>
-          <Text type="secondary">Đăng ký, xem lịch và quản lý ca trực của bạn.</Text>
-        </div>
+        <Title level={3} style={{ margin: 0 }}>Lịch trực tuần này</Title>
         <Space>
           <Button 
             icon={<QuestionCircleOutlined />}
@@ -350,6 +406,14 @@ const MemberCalendar: React.FC = () => {
               setCollapsedGroups={setCollapsedGroups}
               eventFocusMode={eventFocusMode}
               showDefaultBoundaries={showDefaultBoundaries}
+              meetings={meetings}
+              onViewMeeting={(m) => {
+                setSelectedMeeting(m);
+                const myConfirm = m.confirmations?.find((c: any) => String(c.userId) === String(currentUserId));
+                setRsvpStatus(myConfirm?.status === 'declined' ? 'declined' : 'accepted');
+                setRsvpReason(myConfirm?.reason || '');
+                setIsMeetingDetailVisible(true);
+              }}
             />
           ) : (
             <MemberDutyTimelineView
@@ -365,6 +429,14 @@ const MemberCalendar: React.FC = () => {
               openAttendanceModal={openAttendanceModal}
               onSelfCheckIn={handleSelfCheckIn}
               eventFocusMode={eventFocusMode}
+              meetings={meetings}
+              onViewMeeting={(m) => {
+                setSelectedMeeting(m);
+                const myConfirm = m.confirmations?.find((c: any) => String(c.userId) === String(currentUserId));
+                setRsvpStatus(myConfirm?.status === 'declined' ? 'declined' : 'accepted');
+                setRsvpReason(myConfirm?.reason || '');
+                setIsMeetingDetailVisible(true);
+              }}
             />
           )}
         </Spin>
@@ -388,6 +460,21 @@ const MemberCalendar: React.FC = () => {
         onCancel={() => setIsAttendanceModalOpen(false)}
         onSuccess={fetchSchedule}
         slot={selectedAttendanceSlot}
+      />
+
+      <MeetingDetailModal
+        open={isMeetingDetailVisible}
+        onCancel={() => setIsMeetingDetailVisible(false)}
+        record={selectedMeeting}
+        currentUser={user}
+        users={users}
+        rsvpStatus={rsvpStatus}
+        rsvpReason={rsvpReason}
+        setRsvpReason={setRsvpReason}
+        isSubmitting={isRsvpSubmitting}
+        onRsvp={handleRsvp}
+        canCreate={false}
+        onOpenMinutes={() => {}}
       />
     </div>
   );

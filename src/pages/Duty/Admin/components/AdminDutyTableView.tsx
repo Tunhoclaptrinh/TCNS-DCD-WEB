@@ -19,6 +19,7 @@ interface AdminDutyTableViewProps {
   eventFocusMode: 'off' | 'overlap' | 'all';
   showDefaultBoundaries: boolean;
   meetings?: any[];
+  onViewMeeting?: (meeting: any) => void;
 }
 
 const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
@@ -33,7 +34,8 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
   setCollapsedGroups,
   eventFocusMode,
   showDefaultBoundaries,
-  meetings
+  meetings,
+  onViewMeeting
 }) => {
 
 
@@ -405,15 +407,23 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {dayMeetings.map(m => (
                             <Tooltip key={m.id} title={`Họp: ${m.title} tại ${m.location || 'Chưa rõ'}`}>
-                              <div style={{ 
-                                padding: '4px 6px', 
-                                background: '#ede9fe', 
-                                borderRadius: 4, 
-                                fontSize: '11px', 
-                                borderLeft: '3px solid #8b5cf6',
-                                textAlign: 'left',
-                                color: '#5b21b6'
-                              }}>
+                              <div 
+                                key={m.id} 
+                                style={{ 
+                                  padding: '4px 6px', 
+                                  background: '#ede9fe', 
+                                  borderRadius: 4, 
+                                  fontSize: '11px', 
+                                  borderLeft: '3px solid #8b5cf6',
+                                  textAlign: 'left',
+                                  color: '#5b21b6',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onViewMeeting?.(m);
+                                }}
+                              >
                                 <b>{dayjs(m.meetingAt).format('HH:mm')}</b>: {m.title}
                               </div>
                             </Tooltip>

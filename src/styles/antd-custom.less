@@ -2,9 +2,6 @@
 @import "./variables.less";
 
 // Ant Design Custom Theme
-// @primary-color is now imported from variables.less, allowing functions like fade() to work correctly.
-// @primary-color: var(--primary-color); // REMOVED: This breaks LESS color functions.
-
 @link-color: @primary-color;
 @success-color: #22c55e;
 @warning-color: #f97316;
@@ -44,8 +41,6 @@
 
   &:hover,
   &:focus {
-    // background-color: darken(@primary-color, 10%); // Cannot use darken with css var
-    // border-color: darken(@primary-color, 10%);
     filter: brightness(90%);
     box-shadow: none !important;
   }
@@ -103,6 +98,20 @@
 .ant-layout-footer {
   background: #fafafa;
   border-top: 1px solid #e8e8e8;
+}
+
+/* ==================== Modal Customizations ==================== */
+.ant-modal-footer {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 12px !important;
+  padding: 16px 24px !important;
+  border-top: 1px solid #f0f0f0 !important;
+  
+  // Reset AntD's default button margins when using flex
+  .ant-btn + .ant-btn {
+    margin-inline-start: 0 !important;
+  }
 }
 
 /* ==================== Table Customizations ==================== */

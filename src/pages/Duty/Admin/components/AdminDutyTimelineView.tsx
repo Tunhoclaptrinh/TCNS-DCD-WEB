@@ -20,6 +20,7 @@ interface AdminDutyTimelineViewProps {
   handleRemoveShiftFromDay: (date: string, shiftId: number) => void;
   eventFocusMode: 'off' | 'overlap' | 'all';
   meetings?: any[];
+  onViewMeeting?: (meeting: any) => void;
 }
 
 const START_HOUR = 5;
@@ -55,7 +56,8 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
   openQuickCreate,
   handleRemoveShiftFromDay,
   eventFocusMode,
-  meetings
+  meetings,
+  onViewMeeting
 }) => {
 
 
@@ -370,8 +372,15 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                           flexDirection: 'column',
                           justifyContent: 'center',
                           boxShadow: '0 2px 4px rgba(139, 92, 246, 0.1)',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'transform 0.1s'
                         }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewMeeting?.(meeting);
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                       >
                         <div style={{ fontSize: '11px', fontWeight: 700, color: '#5b21b6', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           📅 {meeting.title}

@@ -1,10 +1,13 @@
 import React from 'react';
-import { Form, Input, DatePicker, Select, Space } from 'antd';
+import { Form, Input, DatePicker, Select, Space, Checkbox, Typography } from 'antd';
 import { 
-  CalendarOutlined, EnvironmentOutlined, ProfileOutlined 
+  CalendarOutlined, EnvironmentOutlined, ProfileOutlined, UsergroupAddOutlined 
 } from '@ant-design/icons';
+
+const { Text } = Typography;
 import FormModal from '@/components/common/FormModal';
 import MeetingMemberPicker from './MeetingMemberPicker';
+import { User } from '@/types';
 
 interface MeetingFormProps {
   open: boolean;
@@ -12,6 +15,8 @@ interface MeetingFormProps {
   form: any;
   onOk: () => void;
   onCancel: () => void;
+  users?: User[];
+  initialParticipants?: User[];
 }
 
 const MeetingForm: React.FC<MeetingFormProps> = ({
@@ -20,8 +25,16 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
   form,
   onOk,
   onCancel,
+  users = [],
+  initialParticipants = [],
 }) => {
-  // Logic fetching users was moved inside MeetingMemberPicker to be more encapsulated and use useCRUD standard
+  // Combine global users with specific meeting participants to ensure all names are resolved
+  const combinedUsers = React.useMemo(() => {
+    const map = new Map<number, User>();
+    users.forEach(u => map.set(Number(u.id), u));
+    initialParticipants.forEach(u => map.set(Number(u.id), u));
+    return Array.from(map.values());
+  }, [users, initialParticipants]);
 
   return (
     <FormModal
@@ -45,13 +58,24 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
         <Input placeholder="VD: Họp giao ban tuần..." prefix={<ProfileOutlined style={{ color: '#bfbfbf' }} />} />
       </Form.Item>
 
-      <Form.Item
-        name="location"
-        label="Địa điểm"
-        rules={[{ required: true, message: 'Vui lòng nhập địa điểm' }]}
-      >
-        <Input placeholder="VD: Phòng P302, Zoom..." prefix={<EnvironmentOutlined style={{ color: '#bfbfbf' }} />} />
-      </Form.Item>
+      <div style={{ display: 'flex', gap: '16px' }}>
+        <Form.Item
+          name="location"
+          label="Địa điểm"
+          rules={[{ required: true, message: 'Vui lòng nhập địa điểm' }]}
+          style={{ flex: 1 }}
+        >
+          <Input placeholder="VD: Phòng P302, Zoom..." prefix={<EnvironmentOutlined style={{ color: '#bfbfbf' }} />} />
+        </Form.Item>
+
+        <Form.Item name="status" label="Trạng thái" initialValue="scheduled" style={{ width: 180 }}>
+          <Select options={[
+            { label: 'Đã lên lịch', value: 'scheduled' },
+            { label: 'Đã hoàn thành', value: 'completed' },
+            { label: 'Đã hủy', value: 'cancelled' },
+          ]} />
+        </Form.Item>
+      </div>
 
       <div style={{ display: 'flex', gap: '16px' }}>
         <Form.Item
@@ -72,38 +96,52 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
         </Form.Item>
       </div>
 
-      {/* Member Selection Section - Encapsulated with useCRUD internally */}
-      <div style={{ 
-          background: '#f8fafc', 
-          padding: '16px', 
-          borderRadius: 12, 
-          border: '1px solid #e2e8f0', 
-          marginTop: 8,
-          marginBottom: 24 
-      }}>
-        <Form.Item 
-            name="participantIds" 
-            noStyle 
-            rules={[{ required: true, message: 'Vui lòng chọn thành viên' }]}
-        >
-            <MeetingMemberPicker />
-        </Form.Item>
-      </div>
-
       <Form.Item name="agenda" label="Nội dung cuộc họp">
         <Input.TextArea placeholder="Các đầu mục nội dung chính..." rows={3} />
       </Form.Item>
 
-      <div style={{ display: 'flex', gap: '16px' }}>
-        <Form.Item name="status" label="Trạng thái" initialValue="scheduled" style={{ flex: 1 }}>
-          <Select options={[
-            { label: 'Đã lên lịch', value: 'scheduled' },
-            { label: 'Đã hoàn thành', value: 'completed' },
-            { label: 'Đã hủy', value: 'cancelled' },
-          ]} />
-        </Form.Item>
-        <Form.Item name="note" label="Ghi chú" style={{ flex: 1 }}>
-          <Input placeholder="Ghi chú thêm (nếu có)..." />
+      <Form.Item name="note" label="Ghi chú thêm">
+        <Input placeholder="Ghi chú thêm (nếu có)..." />
+      </Form.Item>
+
+      {/* Member Selection Section */}
+      <div style={{ marginTop: 16, marginBottom: 24 }}>
+        <Form.Item noStyle shouldUpdate={(prev, curr) => prev.isAllParticipants !== curr.isAllParticipants}>
+          {({ getFieldValue }) => {
+            const isAll = getFieldValue('isAllParticipants');
+            
+            return (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Form.Item name="isAllParticipants" valuePropName="checked" style={{ marginBottom: 0 }}>
+                    <Checkbox style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: 13 }}>
+                      Mời toàn bộ đội tham gia
+                    </Checkbox>
+                  </Form.Item>
+                </div>
+
+                {isAll ? (
+                  <div style={{ 
+                    padding: '8px 0', 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <UsergroupAddOutlined style={{ color: 'var(--primary-color)' }} />
+                    <Text strong style={{ fontSize: 13 }}>Đang chọn: Toàn bộ thành viên trong đội</Text>
+                  </div>
+                ) : (
+                  <Form.Item 
+                    name="participantIds" 
+                    noStyle 
+                    rules={[{ required: true, message: 'Vui lòng chọn thành viên' }]}
+                  >
+                    <MeetingMemberPicker users={combinedUsers} />
+                  </Form.Item>
+                )}
+              </>
+            );
+          }}
         </Form.Item>
       </div>
     </FormModal>

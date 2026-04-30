@@ -72,3 +72,31 @@
         }
     }
 }
+
+// Calendar Modal Styling
+.calendar-modal {
+  .ant-picker-calendar-date {
+    border-top: 1px solid #f0f0f0 !important;
+    margin: 0 !important;
+    padding: 4px 8px !important;
+    transition: all 0.3s;
+  }
+  
+  .ant-picker-cell-selected .ant-picker-calendar-date {
+    background: rgba(24, 144, 255, 0.05) !important;
+  }
+  
+  .ant-picker-cell-selected .ant-picker-calendar-date-value {
+    color: var(--primary-color) !important;
+    font-weight: 700;
+  }
+  
+  .ant-picker-calendar-date-today {
+    border-top: 2px solid var(--primary-color) !important;
+    background: rgba(24, 144, 255, 0.02) !important;
+    
+    .ant-picker-calendar-date-value {
+      color: var(--primary-color) !important;
+    }
+  }
+}
