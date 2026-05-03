@@ -475,6 +475,41 @@ class DutyService {
     const response = await apiClient.get<BaseApiResponse<{ leaveRequests: any[], swapRequests: any[] }>>(`/duty/slots/${slotId}/requests`);
     return response;
   }
+
+  /**
+   * Export schedule as Excel (Range or Weekly)
+   */
+  async exportRangeExcel(options: { 
+    weekStart?: string, 
+    mode?: 'only_duty' | 'with_meetings' | 'all', 
+    startDate?: string, 
+    endDate?: string, 
+    includeDays?: number[],
+    date?: string 
+  }) {
+    const response = await apiClient.get(`/duty/week/export`, {
+      params: options,
+      responseType: 'blob'
+    });
+    
+    // Create a download link
+    const url = window.URL.createObjectURL(new Blob([(response as any)]));
+    const link = document.createElement('a');
+    link.href = url;
+    
+    let suffix = 'Data';
+    if (options.date) suffix = `Ngay_${options.date}`;
+    else if (options.startDate && options.endDate) suffix = `${options.startDate}_to_${options.endDate}`;
+    else if (options.weekStart) suffix = `Tuan_${options.weekStart}`;
+
+    link.setAttribute('download', `Lich_Truc_${suffix}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    return { success: true };
+  }
 }
 
 export const dutyService = new DutyService();
