@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider, Modal } from 'antd';
+import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider, Modal, Tag } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -55,6 +55,7 @@ const MemberCalendar: React.FC = () => {
   const [showDefaultBoundaries] = useState(false);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
+  const [userMetadata, setUserMetadata] = useState<{ weeklyQuota: number, registeredKips: number, limitMode: string, weeklyLimitEnabled?: boolean } | null>(null);
 
   const weekDays = useMemo(() =>
     Array.from({ length: 7 }).map((_, i) => currentWeek.add(i, 'day')),
@@ -99,6 +100,7 @@ const MemberCalendar: React.FC = () => {
       if (res.success && res.data) {
         const rawSlots = res.data.slots || [];
         setSlots(Array.isArray(rawSlots) ? rawSlots : []);
+        setUserMetadata(res.data.userMetadata || null);
         
         const rawAssignments = res.data.assignments || [];
 
@@ -310,7 +312,7 @@ const MemberCalendar: React.FC = () => {
                     <Paragraph><strong>1. Đăng ký kíp:</strong> Nhấn vào các ô trống trong bảng hoặc nhấn &quot;Đăng ký&quot; trong giao diện lịch để tham gia kíp trực.</Paragraph>
                     <Paragraph><strong>2. Hủy kíp:</strong> Bạn có thể tự hủy đăng ký nếu kíp chưa đầy hoặc chưa bị khóa. Nếu không, hãy gửi đơn xin nghỉ.</Paragraph>
                     <Paragraph><strong>3. Đổi ca:</strong> Sử dụng tính năng &quot;Đổi ca&quot; để gửi yêu cầu cho thành viên khác hoặc chuyển ca cho Admin duyệt.</Paragraph>
-                    <Paragraph><strong>4. Quy định:</strong> Tuân thủ giới hạn số kíp tối đa trong tuần theo cấu hình của Đội.</Paragraph>
+                    <Paragraph><strong>4. Định mức kíp trực:</strong> Hệ thống áp dụng giới hạn đăng ký dựa trên <strong>Định mức kíp trực tối thiểu/tuần</strong> của bạn (tùy theo chức danh/nhóm vai trò). Bạn cần hoàn thành đủ số kíp định mức này.</Paragraph>
                   </div>
                 ),
                 okText: 'Đã hiểu'
@@ -350,6 +352,15 @@ const MemberCalendar: React.FC = () => {
             <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '16px' }}>
               Tuần {currentWeek.format('ww')} <span style={{ fontWeight: 400, color: '#64748b', fontSize: '14px' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</span>
             </Title>
+            {userMetadata && userMetadata.weeklyLimitEnabled !== false && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Tooltip title={`Định mức kíp trực tối thiểu/tuần của bạn: ${userMetadata.weeklyQuota} kíp. Hiện đã đăng ký ${userMetadata.registeredKips} kíp.`}>
+                  <Tag bordered={false} color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} style={{ borderRadius: 6, margin: 0, fontWeight: 600 }}>
+                    Định mức tuần: {userMetadata.registeredKips} / {userMetadata.weeklyQuota}
+                  </Tag>
+                </Tooltip>
+              </div>
+            )}
           </div>
         }
         extra={

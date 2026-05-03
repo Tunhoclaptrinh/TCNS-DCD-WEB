@@ -166,7 +166,7 @@ const StatisticsPage: React.FC = () => {
     try {
       const res = await dutyService.updateSettings(values);
       if (res.success) {
-        message.success('Đã lưu cấu hình định mức chuyên sâu');
+        message.success('Đã lưu cấu hình định mức kíp trực tối thiểu/tuần');
         setSettingsModal({ open: false, data: null });
         fetchData();
       }
@@ -362,10 +362,10 @@ const StatisticsPage: React.FC = () => {
     },
     { title: 'Đơn vị', dataIndex: 'department', key: 'department', width: 140 },
     {
-      title: 'Tổng kíp',
+      title: 'Thực hiện / Định mức',
       dataIndex: 'totalKips',
       key: 'totalKips',
-      width: 100,
+      width: 140,
       align: 'center',
       sorter: (a: any, b: any) => a.totalKips - b.totalKips,
       render: (val: number, record: any) => (
@@ -447,7 +447,7 @@ const StatisticsPage: React.FC = () => {
           <Col>
             <Space align="center" size={8}>
               <Title level={4} style={{ margin: 0 }}>Thống kê & Quyết toán Trực ca</Title>
-              <Tooltip title="Quản lý định mức kíp trực, theo dõi hiệu suất làm việc và tự động tính toán chi trả thù lao cho thành viên.">
+              <Tooltip title="Quản lý định mức kíp trực tối thiểu, theo dõi hiệu suất làm việc và tự động tính toán chi trả thù lao cho thành viên.">
                 <QuestionCircleOutlined style={{ color: '#bfbfbf', cursor: 'help' }} />
               </Tooltip>
             </Space>
@@ -596,7 +596,7 @@ const StatisticsPage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Space size={4}>
                     <Text strong>Tiến độ định mức</Text>
-                    <Tooltip title="Tỷ lệ nhân sự đã hoàn thành đủ số kíp trực tối thiểu (định mức) so với tổng số nhân sự đang xem.">
+                    <Tooltip title="Tỷ lệ nhân sự đã hoàn thành đủ số kíp trực tối thiểu/tuần (định mức) so với tổng số nhân sự đang xem.">
                       <QuestionCircleOutlined style={{ color: '#bfbfbf', fontSize: 12, cursor: 'help' }} />
                     </Tooltip>
                   </Space>

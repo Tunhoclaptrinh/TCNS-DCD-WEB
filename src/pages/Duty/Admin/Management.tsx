@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Modal, Form, Space, message, Typography, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch, InputNumber, Input } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
@@ -10,9 +10,12 @@ import {
   ExclamationCircleOutlined,
   CalendarOutlined,
   UnorderedListOutlined,
-  StopOutlined, SyncOutlined,
+  SyncOutlined,
   UserOutlined,
-  GlobalOutlined
+  GlobalOutlined,
+  StopOutlined,
+  SolutionOutlined,
+  ArrowDownOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -21,6 +24,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import dutyService, { DutyShift } from '@/services/duty.service';
+import userService from '@/services/user.service';
 import { DataTable, StatisticsCard, TabSwitcher } from '@/components/common';
 import ShiftTemplateModal from './components/ShiftTemplateModal';
 import GroupModal from './components/GroupModal';
@@ -34,7 +38,7 @@ import ManualSlotForm from './components/ManualSlotForm';
 
 const { Text, Title } = Typography;
 
-const DutyManagement: React.FC = () => {
+const DutyManagement = () => {
   const [loading, setLoading] = useState(false);
   const [templateGroups, setTemplateGroups] = useState<any[]>([]);
   const [currentTemplateId, setCurrentTemplateId] = useState<number | null>(null);
@@ -99,12 +103,30 @@ const DutyManagement: React.FC = () => {
     return Array.from({ length: 7 }).map((_, i) => slotFilterWeek.add(i, 'day'));
   }, [slotFilterWeek]);
 
+  const [users, setUsers] = useState<any[]>([]);
+  const userMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach(u => {
+      if (u.studentId) map[u.studentId] = u.name;
+      map[u.id] = u.name;
+    });
+    return map;
+  }, [users]);
+
   useEffect(() => {
     if (!slotFilterWeek) return;
     fetchGroups();
     fetchSlots();
     fetchDutySettings();
+    fetchUsers();
   }, [slotFilterWeek]);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await userService.getActive();
+      if (res.success && res.data) setUsers(res.data);
+    } catch (err) { console.error('Lỗi tải danh sách người dùng'); }
+  };
 
   const fetchDutySettings = async () => {
     try {
@@ -112,7 +134,11 @@ const DutyManagement: React.FC = () => {
       if (res.success && res.data) {
         settingsForm.setFieldsValue({
           ...res.data,
-          weeklyLimitEnabled: !!(res.data.weeklyKipLimit && res.data.weeklyKipLimit > 0)
+          weeklyLimitEnabled: !!res.data.weeklyLimitEnabled,
+          allowedIpRanges: Array.isArray(res.data.allowedIpRanges) 
+            ? res.data.allowedIpRanges.join(', ') 
+            : res.data.allowedIpRanges,
+          quotaRules: res.data.quotaRules || []
         });
       }
     } catch (err) {
@@ -121,16 +147,13 @@ const DutyManagement: React.FC = () => {
   };
 
   const handleUpdateSettings = async (values: any) => {
+    console.log('[Management] Updating settings with values:', values);
     setSettingsLoading(true);
     try {
-      const { weeklyLimitEnabled, ...rest } = values;
-      const payload = {
-        ...rest,
-        weeklyKipLimit: weeklyLimitEnabled ? values.weeklyKipLimit : null
-      };
-      const res = await dutyService.updateSettings(payload);
+      const res = await dutyService.updateSettings(values);
       if (res.success) {
         message.success('Đã cập nhật cấu hình hệ thống');
+        fetchDutySettings();
       }
     } catch (err) {
       message.error('Lỗi khi cập nhật cấu hình');
@@ -177,7 +200,7 @@ const DutyManagement: React.FC = () => {
 
   const currentDaySlots = useMemo(() => {
     if (!selectedDate || !Array.isArray(slots)) return slots || [];
-    return slots.filter(s => dayjs(s.shiftDate).isSame(selectedDate, 'day'));
+    return (slots as any[]).filter((s: any) => dayjs(s.shiftDate).isSame(selectedDate, 'day'));
   }, [slots, selectedDate]);
 
   const dailyStats = useMemo(() => {
@@ -186,9 +209,9 @@ const DutyManagement: React.FC = () => {
     
     return {
       total: currentDaySlots.length,
-      locked: currentDaySlots.filter(s => s.status === 'locked').length,
-      open: currentDaySlots.filter(s => s.status === 'open').length,
-      personnel: currentDaySlots.reduce((acc, s) => acc + (s.capacity || s.kip?.capacity || 0), 0)
+      locked: (currentDaySlots as any[]).filter((s: any) => s.status === 'locked').length,
+      open: (currentDaySlots as any[]).filter((s: any) => s.status === 'open').length,
+      personnel: (currentDaySlots as any[]).reduce((acc: number, s: any) => acc + (s.capacity || s.kip?.capacity || 0), 0)
     };
   }, [currentDaySlots]);
 
@@ -442,19 +465,19 @@ const DutyManagement: React.FC = () => {
 
             <div className="grid-container">
               <div className="grid-lines-bg">
-                {Array.from({ length: END_HOUR - START_HOUR }).map((_, i) => (
+                {Array.from({ length: END_HOUR - START_HOUR }).map((_: any, i: number) => (
                   <div key={i} className="grid-line" />
                 ))}
               </div>
 
-              {weekDays7.map((d, dIdx) => {
+              {weekDays7.map((d: dayjs.Dayjs, dIdx: number) => {
                 const dateStr = d.format('YYYY-MM-DD');
                 const previewDay = previewDates.find((p: any) => p.date.format('YYYY-MM-DD') === dateStr);
                 const isSelected = previewDay?.isSelected;
                 const dayOfWeek = (d.day() + 6) % 7; // 0=Mon, 6=Sun
 
                 // Always show shift backgrounds from templates for visual context
-                const dayShiftTemplates = templates.filter(sh => {
+                const dayShiftTemplates = templates.filter((sh: any) => {
                   const shDays = sh.daysOfWeek && sh.daysOfWeek.length > 0 ? sh.daysOfWeek : [0,1,2,3,4,5,6];
                   return shDays.map(String).includes(String(dayOfWeek));
                 });
@@ -472,7 +495,7 @@ const DutyManagement: React.FC = () => {
                   >
                     {/* Shift Template Backgrounds (always shown) */}
                     {dayShiftTemplates.reduce((acc: any[], curr: any) => {
-                      if (!acc.find(x => x.id === curr.id || (x.name === curr.name && x.startTime === curr.startTime))) acc.push(curr);
+                      if (!acc.find((x: any) => x.id === curr.id || (x.name === curr.name && x.startTime === curr.startTime))) acc.push(curr);
                       return acc;
                     }, []).map((shift: any, sIdx: number) => {
                       const isSpecialEvent = shift.name && shift.name.toLowerCase().includes('sự kiện');
@@ -504,7 +527,7 @@ const DutyManagement: React.FC = () => {
                     {calculateEventLayout(dayKipSlots).map((layout: any, i: number) => {
                       const { event: slot, colIdx, totalCols } = layout;
                       // Find parent shift for fallback times
-                      const parentShift = templates.find(s => s.id === slot.shiftId || s.name === slot.shiftName);
+                      const parentShift = templates.find((s: any) => s.id === slot.shiftId || s.name === slot.shiftName);
                       const start = slot.startTime || slot.sStart || parentShift?.startTime;
                       const end = slot.endTime || slot.sEnd || parentShift?.endTime;
                       if (!start || !end) return null;
@@ -546,20 +569,20 @@ const DutyManagement: React.FC = () => {
     const kipsGrid: Record<number, any[]> = {0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
     const shiftsGrid: Record<number, any[]> = {0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
     
-    templates.forEach(sh => {
+    templates.forEach((sh: any) => {
       const shDays = sh.daysOfWeek && sh.daysOfWeek.length > 0 ? sh.daysOfWeek : [0,1,2,3,4,5,6];
       
-      shDays.forEach(d => {
+      shDays.forEach((d: number) => {
         if (shiftsGrid[d]) {
           shiftsGrid[d].push(sh);
         }
       });
 
-      sh.kips.forEach(k => {
+      sh.kips.forEach((k: any) => {
         const kDays = k.daysOfWeek && k.daysOfWeek.length > 0 ? k.daysOfWeek : shDays;
         const start = k.startTime || sh.startTime;
         const end = k.endTime || sh.endTime;
-        kDays.forEach(d => {
+        kDays.forEach((d: number) => {
           if (kipsGrid[d]) {
             kipsGrid[d].push({ ...k, shiftName: sh.name, shiftId: sh.id, start, end });
           }
@@ -809,9 +832,9 @@ const DutyManagement: React.FC = () => {
 
                   <Divider type="vertical" style={{ height: 32, borderLeft: '1px solid #e2e8f0', margin: '0 4px' }} />
 
-                  {weekDays.map(d => {
+                  {weekDays.map((d: dayjs.Dayjs) => {
                     const isSelected = selectedDate && d.isSame(selectedDate, 'day');
-                    const daySlotsCount = slots.filter(s => dayjs(s.shiftDate).isSame(d, 'day')).length;
+                    const daySlotsCount = (slots as any[]).filter((s: any) => dayjs(s.shiftDate).isSame(d, 'day')).length;
                     const isToday = d.isSame(dayjs(), 'day');
 
                     return (
@@ -1018,7 +1041,7 @@ const DutyManagement: React.FC = () => {
                 <BulkSchedulingForm 
                   form={coordinationForm}
                   templateGroups={templateGroups}
-                  onPreview={(values) => {
+                  onPreview={(values: any) => {
                     const range = values.range;
                     if (!range) return;
                     const start = range[0];
@@ -1127,7 +1150,7 @@ const DutyManagement: React.FC = () => {
                 </div>
                  {previewViewMode === 'week' ? renderBulkPreviewCalendar() : (
                   <div style={{ maxHeight: 420, overflowY: 'auto', border: '1px solid #f1f5f9', borderRadius: 12, background: '#fff' }}>
-                    {previewDates.map((d: any, i: number) => (
+                    {(previewDates as any[]).map((d: any, i: number) => (
                       <div 
                         key={i} 
                         style={{ 
@@ -1246,7 +1269,7 @@ const DutyManagement: React.FC = () => {
                 value={currentTemplateId}
                 onChange={setCurrentTemplateId}
                 placeholder="Chọn nhóm..."
-                options={templateGroups.map(g => ({ 
+                options={templateGroups.map((g: any) => ({ 
                   label: (
                     <Space>
                       <span style={{ fontWeight: 500 }}>{g.name}</span>
@@ -1404,7 +1427,7 @@ const DutyManagement: React.FC = () => {
                           </div>
                         ) : (
                           <div style={{ border: '1px solid #f1f5f9', borderRadius: 12, overflow: 'hidden' }}>
-                            {s.kips.map((k, idx) => (
+                            {(s.kips as any[]).map((k: any, idx: number) => (
                               <div 
                                 key={k.id} 
                                 style={{ 
@@ -1491,160 +1514,389 @@ const DutyManagement: React.FC = () => {
           </div>
 
           <Form form={settingsForm} layout="vertical" onFinish={handleUpdateSettings}>
-            <Row gutter={[32, 24]}>
-              <Col xs={24} md={12}>
-                <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>Giới hạn số kíp đăng ký/tuần</span>
-                    <Form.Item name="weeklyLimitEnabled" valuePropName="checked" noStyle>
-                      <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+            <Row gutter={[20, 20]}>
+              {/* LEFT COLUMN: REGISTRATION LIMIT (TALL) */}
+              {/* LEFT COLUMN: REGISTRATION LIMIT & DETAILED RULES (INTEGRATED) */}
+              <Col xs={24} md={14}>
+                <Space direction="vertical" size={20} style={{ width: '100%' }}>
+                  <div style={{ 
+                    background: '#ffffff', 
+                    padding: '20px', 
+                    borderRadius: 16, 
+                    border: '1px solid #f1f5f9', 
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                      <Space direction="vertical" size={0}>
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <ScheduleOutlined style={{ color: 'var(--primary-color)' }} />
+                          Giới hạn đăng ký kíp trực / tuần
+                        </span>
+                        <Text type="secondary" style={{ fontSize: 11 }}>Ngăn chặn thành viên đăng ký quá nhiều kíp</Text>
+                      </Space>
+                      <Form.Item name="weeklyLimitEnabled" valuePropName="checked" noStyle>
+                        <Switch checkedChildren="Bật" unCheckedChildren="Tắt" size="small" />
+                      </Form.Item>
+                    </div>
+
+                    <Form.Item 
+                      noStyle 
+                      shouldUpdate={(prev, curr) => prev.weeklyLimitEnabled !== curr.weeklyLimitEnabled}
+                    >
+                      {({ getFieldValue }) => getFieldValue('weeklyLimitEnabled') ? (
+                        <div style={{ 
+                          padding: '16px', 
+                          background: '#f8fafc', 
+                          borderRadius: 12, 
+                          border: '1px solid #e2e8f0',
+                        }}>
+                          <Form.Item name="kipLimitMode" label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Chế độ áp dụng</span>} style={{ marginBottom: 16 }}>
+                            <Segmented 
+                              block
+                              size="small"
+                              options={[
+                                { label: 'Theo định mức (Quota)', value: 'quota' },
+                                { label: 'Cố định (Manual)', value: 'manual' }
+                              ]} 
+                            />
+                          </Form.Item>
+                          
+                          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.kipLimitMode !== curr.kipLimitMode}>
+                            {({ getFieldValue: getVal }) => (
+                              getVal('kipLimitMode') === 'manual' ? (
+                                <Form.Item 
+                                  name="weeklyKipLimit" 
+                                  label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Số kíp tối đa</span>}
+                                  rules={[{ required: true, message: 'Vui lòng nhập số kíp' }]}
+                                >
+                                  <InputNumber 
+                                    min={1} 
+                                    placeholder="Ví dụ: 2" 
+                                    style={{ width: '100%', borderRadius: 8 }} 
+                                    addonAfter="kíp / tuần"
+                                  />
+                                </Form.Item>
+                              ) : (
+                                <Space direction="vertical" style={{ width: '100%' }} size={16}>
+                                  <div style={{ 
+                                    padding: '12px 14px', 
+                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)', 
+                                    borderRadius: 10, 
+                                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                                    display: 'flex',
+                                    gap: 10,
+                                    alignItems: 'flex-start'
+                                  }}>
+                                    <ArrowDownOutlined style={{ color: '#3b82f6', marginTop: 2, fontSize: 13 }} />
+                                    <Text style={{ fontSize: 12, color: '#1e40af', lineHeight: 1.5 }}>
+                                      Chế độ linh hoạt: Giới hạn sẽ được tra cứu theo danh sách <b>Quy tắc định mức chi tiết</b> ngay phía dưới.
+                                    </Text>
+                                  </div>
+                                </Space>
+                              )
+                            )}
+                          </Form.Item>
+                        </div>
+                      ) : (
+                        <div style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column',
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          background: '#f8fafc', 
+                          borderRadius: 12, 
+                          border: '1px dashed #e2e8f0',
+                          minHeight: 180
+                        }}>
+                          <StopOutlined style={{ fontSize: 28, color: '#94a3b8', marginBottom: 10 }} />
+                          <Text type="secondary" style={{ fontSize: 13 }}>Tính năng giới hạn đang tắt</Text>
+                        </div>
+                      )}
                     </Form.Item>
                   </div>
-                  <Form.Item 
-                    noStyle 
-                    shouldUpdate={(prev, curr) => prev.weeklyLimitEnabled !== curr.weeklyLimitEnabled}
-                  >
-                    {({ getFieldValue }) => (
-                      getFieldValue('weeklyLimitEnabled') ? (
-                        <Form.Item name="weeklyKipLimit" noStyle rules={[{ required: true, message: 'Vui lòng nhập số kíp' }]}>
-                          <InputNumber 
-                            min={1} 
-                            placeholder="Ví dụ: 2" 
-                            style={{ width: '100%' }} 
-                            addonAfter="kíp / tuần"
-                          />
-                        </Form.Item>
-                      ) : (
-                        <div style={{ height: 40, display: 'flex', alignItems: 'center', padding: '0 12px', background: '#f1f5f9', borderRadius: 8, color: '#64748b', fontSize: 13 }}>
-                          <StopOutlined style={{ marginRight: 8, fontSize: 12 }} /> Không giới hạn (Unset)
-                        </div>
-                      )
-                    )}
-                  </Form.Item>
-                </div>
-              </Col>
-              <Col xs={24} md={12}>
-                <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>Chính sách Hủy kíp</span>
-                    <Tooltip 
-                      color="white"
-                      overlayInnerStyle={{ color: '#1e293b', padding: '12px', borderRadius: 8 }}
-                      title={
-                        <div style={{ fontSize: '12px' }}>
-                          <div style={{ marginBottom: 8 }}>
-                            <Text strong style={{ color: '#166534' }}>● Chế độ Chặt chẽ (Tắt):</Text><br/>
-                            Khi kíp đã FULL, thành viên không thể tự hủy. Giúp đảm bảo quân số trực ổn định.
-                          </div>
-                          <div>
-                            <Text strong style={{ color: '#9a3412' }}>● Chế độ Linh hoạt (Bật):</Text><br/>
-                            Cho phép tự hủy tự do. Rủi ro thiếu hụt nhân sự phút chót.
-                          </div>
-                        </div>
-                      }
-                    >
-                      <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
-                    </Tooltip>
-                  </div>
-                  <Form.Item name="allowUnregisterWhenFull" valuePropName="checked" noStyle>
-                    <Checkbox>Cho phép tự hủy đăng ký ngay cả khi kíp đã FULL</Checkbox>
-                  </Form.Item>
-                </div>
-              </Col>
-            </Row>
 
-            <Row gutter={[32, 24]} style={{ marginTop: 24 }}>
-              <Col xs={24}>
-                <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>An ninh & Điểm danh (IP Văn phòng)</span>
-                    <Tooltip title="Nhập danh sách IP cho phép điểm danh, ngăn cách bởi dấu phẩy. Hỗ trợ dấu * (Ví dụ: 192.168.1.*)">
-                      <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
-                    </Tooltip>
-                  </div>
-                  <Form.Item name="allowedIpRanges" noStyle>
-                    <Input 
-                      placeholder="Ví dụ: 1.2.3.4, 192.168.1.*" 
-                      style={{ borderRadius: 8 }} 
-                      prefix={<GlobalOutlined style={{ color: '#94a3b8' }} />}
-                    />
-                  </Form.Item>
-                  <div style={{ marginTop: 8 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      Thành viên chỉ có thể <b>Tự điểm danh</b> khi truy cập từ các địa chỉ mạng này.
-                    </Text>
-                  </div>
-                </div>
-              </Col>
-            </Row>
+                  <Form.Item noStyle shouldUpdate={(prev, curr) => prev.kipLimitMode !== curr.kipLimitMode || prev.weeklyLimitEnabled !== curr.weeklyLimitEnabled}>
+                    {({ getFieldValue: getLimitVals }) => {
+                      const isActiveQuota = getLimitVals('weeklyLimitEnabled') && getLimitVals('kipLimitMode') === 'quota';
+                      return (
+                        <div style={{ 
+                          background: '#ffffff', 
+                          padding: '20px', 
+                          borderRadius: 16, 
+                          border: isActiveQuota ? '2px solid #8b5cf6' : '1px solid #f1f5f9', 
+                          boxShadow: isActiveQuota ? '0 10px 15px -3px rgba(139, 92, 246, 0.1), 0 4px 6px -2px rgba(139, 92, 246, 0.05)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          position: 'relative'
+                        }}>
+                          {isActiveQuota && (
+                            <div style={{ 
+                              position: 'absolute', 
+                              top: -12, 
+                              right: 24, 
+                              background: '#8b5cf6', 
+                              color: '#fff', 
+                              padding: '2px 12px', 
+                              borderRadius: 20, 
+                              fontSize: 10, 
+                              fontWeight: 700,
+                              boxShadow: '0 2px 4px rgba(139, 92, 246, 0.3)',
+                              zIndex: 1
+                            }}>
+                              ĐANG ÁP DỤNG
+                            </div>
+                          )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                      <Space direction="vertical" size={0}>
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <SolutionOutlined style={{ color: '#8b5cf6' }} />
+                          Quy tắc định mức chi tiết
+                        </span>
+                        <Text type="secondary" style={{ fontSize: 11 }}>Thiết lập ưu tiên cho từng nhóm hoặc cá nhân</Text>
+                      </Space>
+                    </div>
 
-            <Row gutter={[32, 24]} style={{ marginTop: 24 }}>
-              <Col xs={24}>
-                <div style={{ background: '#fff1f0', padding: '16px 20px', borderRadius: 8, border: '1px solid #ffa39e' }}>
-                  <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 600, color: '#cf1322', fontSize: 15 }}>Quy định Phạt (Tự động)</span>
-                    <Tooltip title="Hệ thống sẽ tự động tạo phiếu phạt tương ứng khi Quản lý báo lỗi hoặc Điểm danh vắng.">
-                      <QuestionCircleOutlined style={{ color: '#cf1322', cursor: 'pointer' }} />
-                    </Tooltip>
+                    <Form.List name="quotaRules">
+                      {(fields, { add, remove }) => (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {fields.map(({ key, name, ...restField }) => (
+                            <Card 
+                              key={key} 
+                              size="small" 
+                              className="quota-rule-card"
+                              style={{ 
+                                borderRadius: 12, 
+                                border: '1px solid #f1f5f9',
+                                background: '#f8fafc'
+                              }}
+                              bodyStyle={{ padding: '12px 16px' }}
+                            >
+                              <Row gutter={[12, 12]} align="middle">
+                                <Col xs={24} sm={8}>
+                                  <Form.Item {...restField} label={<span style={{fontSize: 11, fontWeight: 600}}>Đối tượng</span>} name={[name, 'type']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                    <Select size="small" options={[
+                                      { label: 'Cụ thể theo MSV', value: 'user' },
+                                      { label: 'Đội trưởng', value: 'dt' },
+                                      { label: 'Trưởng ban', value: 'tb' },
+                                      { label: 'Phó ban', value: 'pb' },
+                                      { label: 'Thành viên (Nói chung)', value: 'member_all' },
+                                      { label: 'Cộng tác viên', value: 'ctv' },
+                                    ]} />
+                                  </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={7}>
+                                  <Form.Item noStyle shouldUpdate>
+                                    {({ getFieldValue }) => {
+                                      const type = getFieldValue(['quotaRules', name, 'type']);
+                                      const target = getFieldValue(['quotaRules', name, 'target']);
+                                      const userName = type === 'user' && target ? userMap[target] : null;
+                                      
+                                      return (
+                                        <Form.Item {...restField} 
+                                          label={
+                                            <Space size={4}>
+                                              <span style={{fontSize: 11, fontWeight: 600}}>{type === 'user' ? 'Mã sinh viên' : 'Ban / Đơn vị'}</span>
+                                              {userName && <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>{userName}</Tag>}
+                                            </Space>
+                                          } 
+                                          name={[name, 'target']} 
+                                          rules={[{ required: true }]} 
+                                          style={{ marginBottom: 0 }}
+                                        >
+                                          {type === 'user' ? (
+                                            <Input size="small" placeholder="MSV..." prefix={<UserOutlined style={{ color: '#bfbfbf', fontSize: 12 }} />} />
+                                          ) : (
+                                            <Select size="small" placeholder="Chọn Ban">
+                                              <Select.Option value="all">Tất cả các ban</Select.Option>
+                                              {/* In a real app, map over actual departments */}
+                                              <Select.Option value="Nhân sự">Ban Nhân sự</Select.Option>
+                                              <Select.Option value="Truyền thông">Ban Truyền thông</Select.Option>
+                                              <Select.Option value="Kỹ thuật">Ban Kỹ thuật</Select.Option>
+                                              <Select.Option value="Hậu cần">Ban Hậu cần</Select.Option>
+                                            </Select>
+                                          )}
+                                        </Form.Item>
+                                      );
+                                    }}
+                                  </Form.Item>
+                                </Col>
+                                <Col xs={12} sm={4}>
+                                  <Form.Item {...restField} label={<span style={{fontSize: 11, fontWeight: 600}}>Định mức</span>} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                    <InputNumber size="small" step={0.5} min={0} style={{ width: '100%' }} placeholder="Kíp" />
+                                  </Form.Item>
+                                </Col>
+                                <Col xs={12} sm={4}>
+                                  <Form.Item {...restField} label={<span style={{fontSize: 11, fontWeight: 600}}>Chu kỳ</span>} name={[name, 'cycle']} initialValue="week" style={{ marginBottom: 0 }}>
+                                    <Select size="small" options={[
+                                      { label: 'Tuần', value: 'week' },
+                                      { label: 'Tháng', value: 'month' },
+                                    ]} />
+                                  </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={1}>
+                                  <div style={{ textAlign: 'right', paddingTop: 18 }}>
+                                    <Popconfirm title="Xóa?" onConfirm={() => remove(name)}>
+                                      <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                                    </Popconfirm>
+                                  </div>
+                                </Col>
+                              </Row>
+                            </Card>
+                          ))}
+                          <Button 
+                            type="dashed" 
+                            onClick={() => add({ type: 'role_group', target: 'member_official', quota: 2.5 })} 
+                            block 
+                            icon={<PlusOutlined />}
+                            style={{ height: 40, borderRadius: 10, background: '#fff' }}
+                          >
+                            Thêm quy tắc định mức mới
+                          </Button>
+                        </div>
+                      )}
+                    </Form.List>
+                        </div>
+                      );
+                    }}
+                  </Form.Item>
+                </Space>
+              </Col>
+
+              {/* RIGHT COLUMN: CANCEL POLICY & SECURITY (STACKED) */}
+              <Col xs={24} md={10}>
+                <Space direction="vertical" size={20} style={{ width: '100%' }}>
+                  {/* CANCEL POLICY */}
+                  <div style={{ 
+                    background: '#ffffff', 
+                    padding: '20px', 
+                    borderRadius: 16, 
+                    border: '1px solid #f1f5f9', 
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <UnlockOutlined style={{ color: '#10b981' }} />
+                        Chính sách Hủy kíp
+                      </span>
+                      <Text type="secondary" style={{ fontSize: 11 }}>Quy định quyền tự rút tên khỏi kíp trực</Text>
+                    </div>
+                    
+                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 16 }}>
+                      <Form.Item name="allowUnregisterWhenFull" valuePropName="checked" noStyle>
+                        <Checkbox style={{ fontSize: 13, fontWeight: 500 }}>
+                          Cho phép tự hủy khi kíp đã FULL
+                          <Tooltip title="Nếu kíp trực đã đủ người, thành viên vẫn có thể hủy để người khác đăng ký thay thế.">
+                            <QuestionCircleOutlined style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }} />
+                          </Tooltip>
+                        </Checkbox>
+                      </Form.Item>
+                    </div>
+
+                    <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: '11px', color: '#166534', lineHeight: 1.4 }}>
+                        <b>Ghi chú:</b> Chế độ "Chặt chẽ" giúp ổn định nhân sự khi kíp đã đủ người.
+                      </div>
+                    </div>
                   </div>
-                  <Row gutter={16}>
-                    <Col xs={24} md={8}>
+
+                  {/* SECURITY / IP LIMIT */}
+                  <div style={{ 
+                    background: '#ffffff', 
+                    padding: '20px', 
+                    borderRadius: 16, 
+                    border: '1px solid #f1f5f9', 
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
+                  }}>
+                    <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Space direction="vertical" size={0}>
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <GlobalOutlined style={{ color: '#3b82f6' }} />
+                          IP Văn phòng
+                        </span>
+                        <Text type="secondary" style={{ fontSize: 11 }}>Giới hạn mạng điểm danh</Text>
+                      </Space>
+                    </div>
+                    <Form.Item name="allowedIpRanges" noStyle>
+                      <Input 
+                        placeholder="Ví dụ: 192.168.1.*" 
+                        style={{ borderRadius: 10, height: 36, fontSize: 13 }} 
+                        prefix={<GlobalOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
+                      />
+                    </Form.Item>
+                    <div style={{ marginTop: 10, padding: '8px 12px', background: '#eff6ff', borderRadius: 8, border: '1px solid #dbeafe' }}>
+                      <Text style={{ fontSize: 11, color: '#1d4ed8' }}>
+                        Để trống để cho phép mọi nơi.
+                      </Text>
+                    </div>
+                  </div>
+
+                  {/* PENALTY SECTION (MOVED HERE) */}
+                  <div style={{ 
+                    background: '#fffcfc', 
+                    padding: '20px', 
+                    borderRadius: 16, 
+                    border: '1px solid #fee2e2', 
+                    boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.03)'
+                  }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <span style={{ fontWeight: 700, color: '#991b1b', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ExclamationCircleOutlined style={{ color: '#dc2626' }} />
+                        Quy định Phạt (Tự động)
+                      </span>
+                      <Text type="secondary" style={{ fontSize: 11 }}>Mức phạt mặc định khi vi phạm</Text>
+                    </div>
+                    <Space direction="vertical" style={{ width: '100%' }} size={12}>
                       <Form.Item 
                         name="penaltyAbsentNoPermission" 
-                        label={<span style={{ fontWeight: 500 }}>Vắng không phép</span>}
+                        label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Vắng không phép</span>}
                         rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
+                        style={{ marginBottom: 0 }}
                       >
                         <InputNumber 
                           min={0} 
                           step={5000}
                           formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                           parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
-                          style={{ width: '100%' }} 
+                          style={{ width: '100%', borderRadius: 8 }} 
                           addonAfter="VNĐ"
                         />
                       </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
                       <Form.Item 
                         name="penaltyAbsentWithPermissionLate" 
-                        label={<span style={{ fontWeight: 500 }}>Vắng báo muộn</span>}
+                        label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Vắng báo muộn</span>}
                         rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
+                        style={{ marginBottom: 0 }}
                       >
                         <InputNumber 
                           min={0} 
                           step={5000}
                           formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                           parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
-                          style={{ width: '100%' }} 
+                          style={{ width: '100%', borderRadius: 8 }} 
                           addonAfter="VNĐ"
                         />
                       </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
                       <Form.Item 
                         name="penaltyLate" 
-                        label={<span style={{ fontWeight: 500 }}>Đi muộn</span>}
+                        label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Đi muộn</span>}
                         rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
+                        style={{ marginBottom: 0 }}
                       >
                         <InputNumber 
                           min={0} 
                           step={5000}
                           formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                           parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
-                          style={{ width: '100%' }} 
+                          style={{ width: '100%', borderRadius: 8 }} 
                           addonAfter="VNĐ"
                         />
                       </Form.Item>
-                    </Col>
-                  </Row>
-                  <Text type="secondary" style={{ fontSize: 12, color: '#cf1322' }}>
-                    * Lưu ý: Khi báo lỗi trên hệ thống, quản lý có thể nhập hệ số (ví dụ: 1.5). Số tiền thực phạt = Mức cài đặt × Hệ số.
-                  </Text>
-                </div>
+                    </Space>
+                  </div>
+                </Space>
               </Col>
             </Row>
 
-            <Divider style={{ margin: '32px 0' }} />
+            <Divider style={{ margin: '24px 0 32px' }} />
 
             <Alert
               message={<span style={{ fontWeight: 600, fontSize: 14 }}>Hướng dẫn Cấu hình Hệ thống</span>}
@@ -1656,10 +1908,16 @@ const DutyManagement: React.FC = () => {
                       Dùng để kiểm soát khối lượng công việc của từng thành viên. Khi đạt giới hạn, người dùng sẽ nhận được cảnh báo và không thể đăng ký thêm vào kíp trống.
                     </Text>
                   </div>
-                  <div>
-                    <Text strong style={{ color: 'var(--primary-color)' }}>2. Chính sách Hủy kíp:</Text>
+                  <div style={{ marginBottom: 12 }}>
+                    <Text strong style={{ color: 'var(--primary-color)' }}>2. Quy tắc định mức chi tiết:</Text>
                     <Text type="secondary" style={{ marginLeft: 8 }}>
-                      Chế độ <b>"Chặt chẽ"</b> ngăn thành viên tự rút tên khỏi kíp đã đủ người (Full). Chế độ <b>"Linh hoạt"</b> cho phép hủy tự do nhưng rủi ro thiếu hụt nhân sự.
+                      Cho phép thiết lập giới hạn khác nhau cho từng nhóm đối tượng (ví dụ: Thành viên chính thức 3 kíp, CTV 2 kíp). Hệ thống ưu tiên theo thứ tự: <b>Cá nhân {'>'} Chức danh {'>'} Nhóm vai trò {'>'} Mặc định</b>.
+                    </Text>
+                  </div>
+                  <div>
+                    <Text strong style={{ color: 'var(--primary-color)' }}>3. Chính sách Hủy kíp:</Text>
+                    <Text type="secondary" style={{ marginLeft: 8 }}>
+                      Chế độ <b>"Chặt chẽ"</b> ngăn thành viên tự rút tên khỏi kíp đã đủ người (Full) để đảm bảo ổn định nhân sự.
                     </Text>
                   </div>
                 </div>
@@ -1669,22 +1927,24 @@ const DutyManagement: React.FC = () => {
               style={{ marginBottom: 32, borderRadius: 8, padding: '16px 20px', backgroundColor: '#f0f9ff', border: '1px solid #e0f2fe' }}
             />
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 8 }}>
               <Button 
-                type="default" 
+                type="primary" 
                 htmlType="submit" 
                 loading={settingsLoading} 
                 icon={<SettingOutlined />} 
                 style={{ 
-                  borderRadius: 8, 
-                  padding: '0 24px', 
+                  borderRadius: 10, 
+                  padding: '0 32px', 
                   fontWeight: 600,
-                  borderColor: 'var(--primary-color)',
-                  color: 'var(--primary-color)',
-                  height: 40
+                  height: 40,
+                  fontSize: 14,
+                  boxShadow: '0 4px 10px rgba(37, 99, 235, 0.15)',
+                  background: 'var(--primary-color)',
+                  borderColor: 'var(--primary-color)'
                 }}
               >
-                Lưu cấu hình
+                Lưu cấu hình hệ thống
               </Button>
             </div>
           </Form>

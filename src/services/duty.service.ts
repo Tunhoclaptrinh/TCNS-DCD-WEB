@@ -23,6 +23,7 @@ export interface DutyKip {
   status?: string;
   fromTemplateKipId?: number;
   order?: number;
+  isStamped?: boolean;
 }
 
 
@@ -43,6 +44,7 @@ export interface DutyShift {
   fromTemplateShiftId?: number;
   order?: number;
   slotStructure?: any[];
+  isStamped?: boolean;
 }
 
 
@@ -88,8 +90,8 @@ class DutyService {
   /**
    * Get weekly schedule
    */
-  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[], templates?: DutyShift[] }>> {
-    const response = await apiClient.get<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[], templates?: DutyShift[] }>>("/duty/week", {
+  async getWeeklySchedule(weekStart?: string): Promise<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[], templates?: DutyShift[], userMetadata?: any }>> {
+    const response = await apiClient.get<BaseApiResponse<{ slots: DutySlot[], days: DutyDay[], assignments: any[], templates?: DutyShift[], userMetadata?: any }>>("/duty/week", {
       params: { weekStart }
     });
     return response;
@@ -407,6 +409,7 @@ class DutyService {
 
   async getSettings(): Promise<BaseApiResponse<{ 
     id: any; 
+    weeklyLimitEnabled: boolean,
     weeklyKipLimit: number, 
     allowUnregisterWhenFull: boolean, 
     currentGeneration: string, 
@@ -414,13 +417,15 @@ class DutyService {
     defaultQuota: number,
     kipPrice: number,
     violationPenaltyRate: number,
-    quotaRules: any[]
+    quotaRules: any[],
+    allowedIpRanges: string[]
   }>> {
     const response = await apiClient.get<BaseApiResponse<any>>("/duty/settings");
     return response;
   }
 
   async updateSettings(data: { 
+    weeklyLimitEnabled?: boolean,
     weeklyKipLimit: number, 
     allowUnregisterWhenFull: boolean, 
     currentGeneration?: string, 
@@ -428,7 +433,8 @@ class DutyService {
     defaultQuota?: number,
     kipPrice?: number,
     violationPenaltyRate?: number,
-    quotaRules?: any[]
+    quotaRules?: any[],
+    allowedIpRanges?: string | string[]
   }): Promise<BaseApiResponse<any>> {
     const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
     return response;

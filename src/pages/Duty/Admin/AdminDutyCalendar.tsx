@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, Space, Button, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented } from 'antd';
+import { Card, Modal, Space, Button, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Tag } from 'antd';
 import {
   LeftOutlined,
   RightOutlined,
@@ -99,6 +99,7 @@ const AdminDutyCalendar: React.FC = () => {
   const [manualTemplateGroupId, setManualTemplateGroupId] = useState<string | null>(null);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]); // For table view co-axial
+  const [userMetadata, setUserMetadata] = useState<{ weeklyQuota: number, registeredKips: number, limitMode: string } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(dayjs()), 60000);
@@ -128,6 +129,7 @@ const AdminDutyCalendar: React.FC = () => {
       if (res.success && res.data) {
         setSlots(res.data.slots || []);
         setAssignments(res.data.assignments || []);
+        setUserMetadata(res.data.userMetadata || null);
 
         // Merge "Snapshot" templates into the local pool to ensure historical rendering
         if (res.data?.templates) {
@@ -235,12 +237,12 @@ const AdminDutyCalendar: React.FC = () => {
       });
     }
 
-    // 3. Include Special Events ONLY IF Focus Mode is ON
-    if (eventFocusMode !== 'off') {
+    // 3. Include Special Events ONLY IF Focus Mode is ON AND Show Templates is ON
+    if (showDefaultBoundaries && eventFocusMode !== 'off') {
       const specialEventShifts = templates.filter(t => 
-        t.description !== 'INSTANCE' && 
+        !t.date && // Chỉ lấy bản mẫu
         t.isSpecialEvent &&
-        !candidates.find(c => String(c.id) === String(t.id))
+        !candidates.find(c => String(c.fromTemplateShiftId) === String(t.id) || (c.name === t.name && c.startTime === t.startTime))
       ).map(t => ({ ...t, isSpecial: true, isStamped: false }));
       candidates = [...candidates, ...specialEventShifts];
     }
@@ -479,6 +481,16 @@ const AdminDutyCalendar: React.FC = () => {
                 </Title>
                 <Text type="secondary" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</Text>
               </div>
+
+              {userMetadata && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
+                  <Tooltip title={`Định mức đăng ký tuần của bạn: ${userMetadata.weeklyQuota} kíp`}>
+                    <Tag bordered={false} color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} style={{ borderRadius: 6, margin: 0, fontWeight: 600 }}>
+                      Định mức: {userMetadata.registeredKips} / {userMetadata.weeklyQuota}
+                    </Tag>
+                  </Tooltip>
+                </div>
+              )}
               
               <Select
                 value={viewMode}

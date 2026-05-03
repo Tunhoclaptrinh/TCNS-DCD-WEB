@@ -232,28 +232,30 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                               openQuickCreate(day, getTimeTop(shift.startTime), shift, null, 'shift');
                             }}
                           />
-                          <CloseOutlined
-                            className="shift-delete-icon"
-                            style={{ 
-                              fontSize: 10, 
-                              cursor: 'pointer', 
-                              padding: '2px', 
-                              background: 'rgba(0,0,0,0.05)', 
-                              borderRadius: '2px',
-                              transition: 'all 0.2s'
-                            }}
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              Modal.confirm({
-                                title: 'Xác nhận xóa lẻ',
-                                content: `Bạn có chắc muốn xóa khung ca "${shift.name}" chỉ riêng cho ngày ${day.format('DD/MM')} này không?`,
-                                okText: 'Xóa',
-                                cancelText: 'Hủy',
-                                okType: 'danger',
-                                onOk: () => handleRemoveShiftFromDay(day.format('YYYY-MM-DD'), shift.id)
-                              });
-                            }}
-                          />
+                          {shift.isStamped && (
+                            <CloseOutlined
+                              className="shift-delete-icon"
+                              style={{ 
+                                fontSize: 10, 
+                                cursor: 'pointer', 
+                                padding: '2px', 
+                                background: 'rgba(0,0,0,0.05)', 
+                                borderRadius: '2px',
+                                transition: 'all 0.2s'
+                              }}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                Modal.confirm({
+                                  title: 'Xác nhận xóa lẻ',
+                                  content: `Bạn có chắc muốn xóa khung ca "${shift.name}" chỉ riêng cho ngày ${day.format('DD/MM')} này không?`,
+                                  okText: 'Xóa',
+                                  cancelText: 'Hủy',
+                                  okType: 'danger',
+                                  onOk: () => handleRemoveShiftFromDay(day.format('YYYY-MM-DD'), shift.id)
+                                });
+                              }}
+                            />
+                          )}
                         </Space>
                       </div>
                       {isSpecialEvent && (
@@ -276,7 +278,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0 }}
-                        className={`calendar-slot-box ${slot.status === 'locked' || isPastSlot ? 'locked' : ''} ${!isAdmin && !slot.assignedUserIds?.includes(currentUserId || 0) && (slot.assignedUserIds?.length || 0) < (slot.capacity || slot.kip?.capacity || 0) ? 'can-join' : ''}`}
+                        className={`calendar-slot-box ${slot.status === 'locked' || isPastSlot ? 'locked' : ''} ${slot.isSpecialEvent ? 'special-event' : ''} ${!isAdmin && !slot.assignedUserIds?.includes(currentUserId || 0) && (slot.assignedUserIds?.length || 0) < (slot.capacity || slot.kip?.capacity || 0) ? 'can-join' : ''}`}
                         style={{
                           top: `${getTimeTop(slot.startTime)}px`,
                           height: `${getTimeHeight(slot.startTime, slot.endTime)}px`

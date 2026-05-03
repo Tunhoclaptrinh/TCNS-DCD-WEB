@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Space, Typography, TimePicker, message, List, Tag, Modal, Tooltip, Alert, InputNumber } from 'antd';
+import { Form, Input, Space, Typography, TimePicker, message, List, Tag, Modal, Tooltip, Alert, InputNumber, Switch } from 'antd';
 import { CalendarOutlined, TeamOutlined, EditOutlined, CloseOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutyShift, DutySlot } from '@/services/duty.service';
@@ -73,6 +73,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
       shiftLabel: context?.kip?.name || (viewMode === 'kip' ? `Kíp ${kipSlots.length + 1}` : (shift?.name || 'Ca trực mới')),
       timeRange: [dayjs(startStr, 'HH:mm'), dayjs(endStr, 'HH:mm')],
       capacity: context?.kip?.capacity || 1,
+      isSpecialEvent: shift?.isSpecialEvent || false,
       note: '',
     });
   }, [open, viewMode, shift, form]);
@@ -166,6 +167,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
           name: values.shiftLabel,
           startTime,
           endTime,
+          isSpecialEvent: values.isSpecialEvent,
           note: values.note,
         };
         const res = await dutyService.updateActualShift(shift.id, payload);
@@ -180,6 +182,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
           name: values.shiftLabel,
           startTime,
           endTime,
+          isSpecialEvent: values.isSpecialEvent,
           note: values.note,
         };
         const res = await dutyService.createActualShift(payload);
@@ -252,7 +255,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
       destroyOnClose
       footer={
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, width: '100%' }}>
-          {viewMode === 'shift' && shift && (
+          {viewMode === 'shift' && shift && shift.isStamped && (
             <Button 
               variant="danger" 
               buttonSize="small" 
@@ -262,7 +265,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
               Xóa Ca trực này
             </Button>
           )}
-          {viewMode === 'kip' && context?.kip && (
+          {viewMode === 'kip' && context?.kip && context.kip.isStamped && (
             <Button 
               variant="danger" 
               buttonSize="small" 
@@ -398,6 +401,15 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
         <Form.Item name="note" label="Ghi chú">
           <Input.TextArea placeholder="Ghi chú thêm..." rows={2} />
         </Form.Item>
+
+        {viewMode === 'shift' && (
+          <Form.Item name="isSpecialEvent" label="Loại Ca" valuePropName="checked" initialValue={false}>
+            <Switch 
+              checkedChildren="Sự kiện đặc biệt" 
+              unCheckedChildren="Ca trực chuẩn" 
+            />
+          </Form.Item>
+        )}
 
         {viewMode === 'kip' && kipSlots.length > 0 && (
           <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', marginTop: 16 }}>
