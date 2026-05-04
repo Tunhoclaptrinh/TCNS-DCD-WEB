@@ -142,10 +142,10 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
               // Mode: Absolute Focus - ONLY show special events
               filteredDaySlots = daySlots.filter(s => !!s.isSpecialEvent);
             } else if (eventFocusMode === 'off') {
-              // Mode: Normal - Hide ALL special events
-              filteredDaySlots = daySlots.filter(s => !s.isSpecialEvent);
+              // Mode: Standard - Show EVERYTHING
+              filteredDaySlots = daySlots;
             } else {
-              // Mode: Overlap
+              // Mode: Overlap (Shift + Event)
               const specialEvents = effectiveShifts.filter(s => !!s.isSpecialEvent);
               if (specialEvents.length > 0) {
                 filteredDaySlots = daySlots.filter(s => {

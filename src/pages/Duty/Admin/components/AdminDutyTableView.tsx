@@ -128,9 +128,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
           {groupedShifts
             .filter(group => {
               const isSpecial = group.originalShift.isSpecialEvent;
-              if (eventFocusMode === 'off') return !isSpecial;
-              if (isSpecial) return true;
-              if (eventFocusMode === 'all') return false;
+              if (eventFocusMode === 'all') return isSpecial;
               return true;
             })
             .map((group: any) => (
