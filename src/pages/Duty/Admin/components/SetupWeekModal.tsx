@@ -4,6 +4,7 @@ import Button from '@/components/common/Button';
 import { SettingOutlined, QuestionCircleOutlined, CopyOutlined, ClearOutlined, DeleteOutlined, PlusOutlined, SolutionOutlined } from '@ant-design/icons';
 const { Text } = Typography;
 import dutyService from '@/services/duty.service';
+import { DEPARTMENTS } from '../constants';
 import dayjs from 'dayjs';
 
 interface SetupWeekModalProps {
@@ -212,12 +213,9 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
                                         ) : (
                                           <Select size="small" placeholder="Tất cả các ban">
                                             <Select.Option value="all">Tất cả các ban</Select.Option>
-                                            <Select.Option value="Nhân sự">Ban Nhân sự</Select.Option>
-                                            <Select.Option value="Truyền thông">Ban Truyền thông</Select.Option>
-                                            <Select.Option value="Kỹ thuật">Ban Kỹ thuật</Select.Option>
-                                            <Select.Option value="Hậu cần">Ban Hậu cần</Select.Option>
-                                            <Select.Option value="Đào tạo">Ban Đào tạo</Select.Option>
-                                            <Select.Option value="Sự kiện">Ban Sự kiện</Select.Option>
+                                            {DEPARTMENTS.map(dept => (
+                                              <Select.Option key={dept.id} value={dept.id}>{dept.name}</Select.Option>
+                                            ))}
                                           </Select>
                                         )}
                                       </Form.Item>

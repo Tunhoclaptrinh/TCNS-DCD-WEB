@@ -16,6 +16,7 @@ import {
   InfoCircleOutlined,
   SolutionOutlined,
   ArrowDownOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -35,6 +36,7 @@ import { Progress } from 'antd';
 import BulkSchedulingForm from './components/BulkSchedulingForm';
 import ManualSlotForm from './components/ManualSlotForm';
 import QuotaSettingsModal from './Statistics/components/QuotaSettingsModal';
+import { DEPARTMENTS } from './constants';
 
 const { Text, Title } = Typography;
 
@@ -1308,7 +1310,7 @@ const DutyManagement = () => {
               />
               <Dropdown overlay={
                 <Menu>
-                  <Menu.Item key="edit" icon={<EditOutlined />} disabled={!currentTemplateId} onClick={() => { setEditingGroup(templateGroups.find(g => g.id === currentTemplateId) || null); setIsGroupModalOpen(true); }}>Đổi tên</Menu.Item>
+                  <Menu.Item key="edit" icon={<EditOutlined />} disabled={!currentTemplateId} onClick={() => { setEditingGroup(templateGroups.find(g => g.id === currentTemplateId) || null); setIsGroupModalOpen(true); }}>Chỉnh sửa</Menu.Item>
                   <Menu.Item key="delete" icon={<DeleteOutlined />} danger disabled={!currentTemplateId} onClick={() => { if (currentTemplateId) handleDeleteGroup(currentTemplateId); }}>Xóa nhóm</Menu.Item>
                 </Menu>
               }>
@@ -1361,6 +1363,74 @@ const DutyManagement = () => {
               </Button>
             </Space>
           </div>
+
+          {/* Hiển thị thông tin tóm tắt của bản mẫu đang chọn */}
+          {currentTemplateId && (
+            <div style={{ 
+              marginBottom: 20, 
+              padding: '12px 20px', 
+              background: '#f8fafc', 
+              borderRadius: 12, 
+              border: '1px solid #f1f5f9',
+              display: 'flex',
+              gap: 32,
+              alignItems: 'center',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+            }}>
+              {(() => {
+                const group = templateGroups.find(g => g.id === currentTemplateId);
+                if (!group) return null;
+                return (
+                  <>
+                    <Space size={8}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: group.defaultQuota ? '#3b82f6' : '#ef4444' }} />
+                      <Text type="secondary" style={{ fontSize: 13 }}>Định mức:</Text>
+                      {group.defaultQuota ? (
+                        <Text strong style={{ color: '#1e293b' }}>{group.defaultQuota} kíp/tuần</Text>
+                      ) : (
+                        <Text type="danger" style={{ fontStyle: 'italic', fontWeight: 600 }}>Chưa thiết lập</Text>
+                      )}
+                    </Space>
+                    <Divider type="vertical" style={{ height: 24, borderColor: '#e2e8f0' }} />
+                    <Space size={8}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>Đơn giá:</Text>
+                      {group.kipPrice ? (
+                        <Text strong style={{ color: '#10b981' }}>{group.kipPrice.toLocaleString()} VNĐ</Text>
+                      ) : (
+                        <Text type="danger" style={{ fontStyle: 'italic', fontWeight: 600 }}>Chưa thiết lập</Text>
+                      )}
+                    </Space>
+                    <Divider type="vertical" style={{ height: 24, borderColor: '#e2e8f0' }} />
+                    <Space size={8}>
+                      <Text type="secondary" style={{ fontSize: 13 }}>Hệ số phạt:</Text>
+                      {group.violationPenaltyRate !== undefined && group.violationPenaltyRate !== null ? (
+                        <Text strong style={{ color: '#ef4444' }}>x{group.violationPenaltyRate}</Text>
+                      ) : (
+                        <Text type="danger" style={{ fontStyle: 'italic', fontWeight: 600 }}>Chưa thiết lập</Text>
+                      )}
+                    </Space>
+                    <div style={{ marginLeft: 'auto' }}>
+                      {group.quotaRules?.length ? (
+                        <Tag color="processing" bordered={false} style={{ borderRadius: 6, padding: '2px 10px' }}>
+                          <Space size={4}>
+                            <SettingOutlined />
+                            <span>{group.quotaRules.length} quy tắc nâng cao</span>
+                          </Space>
+                        </Tag>
+                      ) : (
+                        <Tag color="error" bordered={false} style={{ borderRadius: 6, padding: '2px 10px' }}>
+                          <Space size={4}>
+                            <WarningOutlined />
+                            <span>Chưa có quy tắc bản mẫu</span>
+                          </Space>
+                        </Tag>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
           {templateViewMode === 'calendar' ? renderTemplateWeeklyView() : (
             <>
               {templates.length === 0 ? (
@@ -1815,14 +1885,7 @@ const DutyManagement = () => {
         editingGroup={editingGroup}
         onSubmit={handleSubmitGroup}
         loading={loading}
-        departments={[
-          { id: 'Nhân sự', name: 'Ban Nhân sự' },
-          { id: 'Truyền thông', name: 'Ban Truyền thông' },
-          { id: 'Kỹ thuật', name: 'Ban Kỹ thuật' },
-          { id: 'Hậu cần', name: 'Ban Hậu cần' },
-          { id: 'Đào tạo', name: 'Ban Đào tạo' },
-          { id: 'Sự kiện', name: 'Ban Sự kiện' },
-        ]}
+        departments={DEPARTMENTS}
       />
 
       <ShiftTemplateModal
@@ -1857,14 +1920,7 @@ const DutyManagement = () => {
         onCancel={() => setIsQuotaModalOpen(false)}
         initialData={currentPeriodConfig}
         initialDateRange={[slotFilterWeek.startOf('isoWeek' as any), slotFilterWeek.endOf('isoWeek' as any)]}
-        departments={[
-          { id: 'Nhân sự', name: 'Ban Nhân sự' },
-          { id: 'Truyền thông', name: 'Ban Truyền thông' },
-          { id: 'Kỹ thuật', name: 'Ban Kỹ thuật' },
-          { id: 'Hậu cần', name: 'Ban Hậu cần' },
-          { id: 'Đào tạo', name: 'Ban Đào tạo' },
-          { id: 'Sự kiện', name: 'Ban Sự kiện' },
-        ]}
+        departments={DEPARTMENTS}
         onSave={async (values) => {
           const res = await dutyService.updatePeriodConfig({
             ...values,

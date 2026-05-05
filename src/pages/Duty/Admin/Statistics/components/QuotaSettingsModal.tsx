@@ -11,9 +11,9 @@ import {
   ClearOutlined,
   DownloadOutlined,
   SafetyCertificateOutlined,
-  CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { userService } from '@/services/user.service';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -51,6 +51,28 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const [sysDepartments, setSysDepartments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const res = await userService.getStats();
+        const statsData = res.data || (res as any);
+        if (statsData?.byDepartment) {
+          const depts = Object.keys(statsData.byDepartment)
+            .filter(name => name !== '__unassigned__' && name !== 'undefined' && name !== 'null')
+            .sort()
+            .map(name => ({ id: name, name: name }));
+          setSysDepartments(depts);
+        }
+      } catch (err) {
+        console.error('Lỗi tải danh sách ban', err);
+      }
+    };
+    fetchMetadata();
+  }, []);
+
+  const displayDepartments = departments?.length > 0 ? departments : sysDepartments;
 
   const handleImportTemplate = (groupId: number) => {
     const group = templateGroups.find(g => g.id === groupId);
@@ -58,6 +80,7 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
       form.setFieldsValue({
         defaultQuota: group.defaultQuota,
         kipPrice: group.kipPrice,
+        violationPenaltyRate: group.violationPenaltyRate,
         quotaRules: group.quotaRules?.map((r: any) => ({
           ...r,
           cycle: 'week',
@@ -124,69 +147,54 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
   return (
     <Modal
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ 
-            width: 40, height: 40, borderRadius: 10, 
-            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-          }}>
-            <SettingOutlined style={{ color: '#fff', fontSize: 20 }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>Cấu hình Định mức & Quy tắc</div>
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
-              <CalendarOutlined style={{ marginRight: 4 }} />
-              Giai đoạn: {initialDateRange ? `${initialDateRange[0].format('DD/MM')} - ${initialDateRange[1].format('DD/MM/YYYY')}` : 'Chưa chọn'}
-            </div>
-          </div>
-        </div>
+        <Space>
+          <SettingOutlined style={{ color: 'var(--primary-color)' }} />
+          <Text strong>Cấu hình Định mức & Quy tắc</Text>
+        </Space>
       }
       open={open}
       onCancel={onCancel}
       width={900}
       footer={[
-        <Button key="cancel" onClick={onCancel} style={{ borderRadius: 8, height: 38, padding: '0 24px' }}>Hủy</Button>,
+        <Button key="cancel" onClick={onCancel}>Hủy</Button>,
         <Button 
           key="save" 
           type="primary" 
           loading={saving} 
           onClick={() => form.submit()}
-          style={{ borderRadius: 8, height: 38, padding: '0 24px', fontWeight: 600, background: '#2563eb' }}
         >
           Lưu thay đổi
         </Button>
       ]}
-      bodyStyle={{ padding: '20px 24px' }}
-      className="premium-modal"
+      className="base-modal"
     >
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         {/* Compact Instruction */}
         <div style={{ 
-          background: 'linear-gradient(to right, #f0f9ff, #e0f2fe)', 
+          background: '#f0f9ff', 
           padding: '12px 16px', 
-          borderRadius: 12, 
+          borderRadius: 4, 
           border: '1px solid #bae6fd',
           marginBottom: 20,
           display: 'flex',
           gap: 12
         }}>
-          <SafetyCertificateOutlined style={{ color: '#0284c7', fontSize: 18, marginTop: 2 }} />
+          <SafetyCertificateOutlined style={{ color: '#0284c7', fontSize: 16, marginTop: 2 }} />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 2 }}>Chế độ Quản lý theo Giai đoạn</div>
-            <div style={{ fontSize: 12, color: '#0c4a6e', lineHeight: 1.5 }}>
-              Hệ thống sẽ <b>Ưu tiên tuyệt đối</b> các quy tắc này. Thứ tự áp dụng: 
-              <span style={{ marginLeft: 6 }}>Cá nhân (MSV) → Chức danh → Nhóm vai trò → Mặc định toàn đội.</span>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1' }}>
+              Chế độ Quản lý theo Giai đoạn: {initialDateRange ? `${initialDateRange[0].format('DD/MM')} - ${initialDateRange[1].format('DD/MM/YYYY')}` : 'Chưa chọn'}
+            </div>
+            <div style={{ fontSize: 12, color: '#0c4a6e' }}>
+              Thứ tự áp dụng: Cá nhân (MSV) → Ban/Đơn vị → Nhóm vai trò → Mặc định.
             </div>
           </div>
         </div>
 
-        {/* Base Parameters Row */}
-        <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', border: '1px solid #f1f5f9', marginBottom: 24, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 4, padding: '16px', border: '1px solid #f1f5f9', marginBottom: 20 }}>
+          <Space style={{ marginBottom: 16 }}>
             <InfoCircleOutlined style={{ color: '#3b82f6' }} />
-            <Text strong style={{ fontSize: 14, color: '#334155' }}>THÔNG SỐ CƠ BẢN</Text>
-          </div>
+            <Text strong style={{ fontSize: 12, color: '#64748b', textTransform: 'uppercase' }}>Thông số cơ bản</Text>
+          </Space>
           <Row gutter={24}>
             <Col span={8}>
               <Form.Item 
@@ -277,11 +285,11 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                           return (
                             <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>{isUser ? 'MÃ SINH VIÊN' : 'BAN / ĐƠN VỊ'}</span>} name={[name, 'target']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                               {isUser ? (
-                                <Input placeholder="MSV..." prefix={<UserOutlined style={{ fontSize: 12, color: '#94a3b8' }} />} style={{ borderRadius: 6 }} />
+                                <Input placeholder="MSV..." prefix={<UserOutlined style={{ fontSize: 12, color: '#94a3b8' }} />} />
                               ) : (
-                                <Select placeholder="Chọn Ban" style={{ borderRadius: 6 }}>
+                                <Select placeholder="Chọn Ban">
                                   <Select.Option value="all">Tất cả các ban</Select.Option>
-                                  {departments.map(d => <Select.Option key={d.id} value={d.id}>{d.name}</Select.Option>)}
+                                  {displayDepartments.map(d => <Select.Option key={d.id} value={d.id}>{d.name}</Select.Option>)}
                                 </Select>
                               )}
                             </Form.Item>
@@ -351,24 +359,12 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
       </Form>
       
       <style>{`
-        .premium-modal .ant-modal-content {
-          border-radius: 20px;
-          overflow: hidden;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        .base-modal .ant-modal-content {
+          border-radius: 8px;
         }
-        .premium-modal .ant-modal-header {
-          padding: 20px 24px;
-          margin-bottom: 0;
+        .base-modal .ant-modal-header {
+          padding: 16px 24px;
           border-bottom: 1px solid #f1f5f9;
-        }
-        .premium-modal .ant-form-item-label label {
-          letter-spacing: 0.025em;
-        }
-        .premium-modal .ant-input-number, .premium-modal .ant-input, .premium-modal .ant-select-selector {
-          border-color: #e2e8f0 !important;
-        }
-        .premium-modal .ant-input-number:hover, .premium-modal .ant-input:hover, .premium-modal .ant-select-selector:hover {
-          border-color: #3b82f6 !important;
         }
       `}</style>
     </Modal>

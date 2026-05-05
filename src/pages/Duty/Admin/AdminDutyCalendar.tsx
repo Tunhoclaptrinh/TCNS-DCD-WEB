@@ -40,6 +40,7 @@ import AdminDutyTableView from './components/AdminDutyTableView';
 import AdminDutyTimelineView from './components/AdminDutyTimelineView';
 import ExportDutyModal from './components/ExportDutyModal';
 import QuotaSettingsModal from './Statistics/components/QuotaSettingsModal';
+import { DEPARTMENTS } from './constants';
 
 // Meeting Components
 import MeetingDetailModal from '@/pages/Meetings/components/MeetingDetailModal';
@@ -757,14 +758,7 @@ const AdminDutyCalendar: React.FC = () => {
         onCancel={() => setIsQuotaModalOpen(false)}
         onSave={handleUpdatePeriodConfig}
         initialData={currentPeriodConfig}
-        departments={[
-          { id: 'Nhân sự', name: 'Ban Nhân sự' },
-          { id: 'Truyền thông', name: 'Ban Truyền thông' },
-          { id: 'Kỹ thuật', name: 'Ban Kỹ thuật' },
-          { id: 'Hậu cần', name: 'Ban Hậu cần' },
-          { id: 'Đào tạo', name: 'Ban Đào tạo' },
-          { id: 'Sự kiện', name: 'Ban Sự kiện' },
-        ]}
+        departments={DEPARTMENTS}
         initialDateRange={[currentWeek.startOf('isoWeek' as any), currentWeek.endOf('isoWeek' as any)]}
         templateGroups={templateGroups}
       />

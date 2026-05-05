@@ -5,6 +5,7 @@ import { CalendarOutlined, RocketOutlined, InteractionOutlined, SolutionOutlined
 const { Text } = Typography;
 import dutyService from '@/services/duty.service';
 import { useSocket } from '@/contexts/SocketContext';
+import { DEPARTMENTS } from '../constants';
 
 interface AssignTemplateModalProps {
   open: boolean;
@@ -219,12 +220,9 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
                                         ) : (
                                           <Select size="small" placeholder="Chọn Ban">
                                             <Select.Option value="all">Tất cả các ban</Select.Option>
-                                            <Select.Option value="Nhân sự">Ban Nhân sự</Select.Option>
-                                            <Select.Option value="Truyền thông">Ban Truyền thông</Select.Option>
-                                            <Select.Option value="Kỹ thuật">Ban Kỹ thuật</Select.Option>
-                                            <Select.Option value="Hậu cần">Ban Hậu cần</Select.Option>
-                                            <Select.Option value="Đào tạo">Ban Đào tạo</Select.Option>
-                                            <Select.Option value="Sự kiện">Ban Sự kiện</Select.Option>
+                                            {DEPARTMENTS.map(dept => (
+                                              <Select.Option key={dept.id} value={dept.id}>{dept.name}</Select.Option>
+                                            ))}
                                           </Select>
                                         )}
                                       </Form.Item>

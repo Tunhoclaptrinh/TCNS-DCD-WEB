@@ -6,6 +6,10 @@ export interface DutyTemplate {
   name: string;
   isDefault: boolean;
   description?: string;
+  defaultQuota?: number;
+  kipPrice?: number;
+  violationPenaltyRate?: number;
+  quotaRules?: any[];
 }
 
 export interface DutyKip {
