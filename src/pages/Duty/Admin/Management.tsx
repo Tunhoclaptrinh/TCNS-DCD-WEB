@@ -13,7 +13,7 @@ import {
   SyncOutlined,
   UserOutlined,
   GlobalOutlined,
-  StopOutlined,
+  InfoCircleOutlined,
   SolutionOutlined,
   ArrowDownOutlined,
 } from '@ant-design/icons';
@@ -24,7 +24,6 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import dutyService, { DutyShift } from '@/services/duty.service';
-import userService from '@/services/user.service';
 import { DataTable, StatisticsCard, TabSwitcher } from '@/components/common';
 import ShiftTemplateModal from './components/ShiftTemplateModal';
 import GroupModal from './components/GroupModal';
@@ -35,6 +34,7 @@ import { useSocket } from '@/contexts/SocketContext';
 import { Progress } from 'antd';
 import BulkSchedulingForm from './components/BulkSchedulingForm';
 import ManualSlotForm from './components/ManualSlotForm';
+import QuotaSettingsModal from './Statistics/components/QuotaSettingsModal';
 
 const { Text, Title } = Typography;
 
@@ -75,6 +75,8 @@ const DutyManagement = () => {
   const [previewWeekOffset, setPreviewWeekOffset] = useState(0);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsForm] = Form.useForm();
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
+  const [currentPeriodConfig, setCurrentPeriodConfig] = useState<any>(null);
 
   const manualOrder = Form.useWatch('order', manualSlotForm);
   const manualShiftId = Form.useWatch('shiftId', manualSlotForm);
@@ -103,30 +105,14 @@ const DutyManagement = () => {
     return Array.from({ length: 7 }).map((_, i) => slotFilterWeek.add(i, 'day'));
   }, [slotFilterWeek]);
 
-  const [users, setUsers] = useState<any[]>([]);
-  const userMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    users.forEach(u => {
-      if (u.studentId) map[u.studentId] = u.name;
-      map[u.id] = u.name;
-    });
-    return map;
-  }, [users]);
 
   useEffect(() => {
-    if (!slotFilterWeek) return;
     fetchGroups();
     fetchSlots();
     fetchDutySettings();
-    fetchUsers();
+    fetchCurrentPeriodConfig();
   }, [slotFilterWeek]);
 
-  const fetchUsers = async () => {
-    try {
-      const res = await userService.getActive();
-      if (res.success && res.data) setUsers(res.data);
-    } catch (err) { console.error('Lỗi tải danh sách người dùng'); }
-  };
 
   const fetchDutySettings = async () => {
     try {
@@ -138,12 +124,20 @@ const DutyManagement = () => {
           allowedIpRanges: Array.isArray(res.data.allowedIpRanges) 
             ? res.data.allowedIpRanges.join(', ') 
             : res.data.allowedIpRanges,
-          quotaRules: res.data.quotaRules || []
         });
       }
     } catch (err) {
       console.error('Lỗi tải cấu hình');
     }
+  };
+
+  const fetchCurrentPeriodConfig = async () => {
+    try {
+      const start = slotFilterWeek.startOf('isoWeek' as any).toISOString();
+      const end = slotFilterWeek.endOf('isoWeek' as any).toISOString();
+      const res = await dutyService.getPeriodConfig(start, end);
+      if (res.success) setCurrentPeriodConfig(res.data);
+    } catch (err) { console.error('Lỗi tải định mức tuần'); }
   };
 
   const handleUpdateSettings = async (values: any) => {
@@ -790,10 +784,40 @@ const DutyManagement = () => {
                     </Text>
                   </div>
                 </Space>
-
-                <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
-                  {slotFilterWeek.format('[Tuần] ww, YYYY')}
-                </Tag>
+                
+                <Dropdown
+                  menu={{
+                    items: [
+                      {
+                        key: 'quota',
+                        label: 'Thiết lập định mức & quy tắc',
+                        icon: <SolutionOutlined />,
+                        onClick: () => setIsQuotaModalOpen(true),
+                      },
+                      {
+                        key: 'divider',
+                        type: 'divider',
+                      },
+                      {
+                        key: 'export',
+                        label: 'Xuất báo cáo tuần (Excel)',
+                        icon: <ArrowDownOutlined />,
+                        disabled: true, // Placeholder
+                      },
+                    ],
+                  }}
+                  placement="bottomRight"
+                >
+                  <Button 
+                    size="small" 
+                    type="primary" 
+                    ghost
+                    icon={<SettingOutlined />} 
+                    style={{ borderRadius: 6, fontSize: '12px' }}
+                  >
+                    Quản trị tuần
+                  </Button>
+                </Dropdown>
               </div>
 
               <div>
@@ -1041,11 +1065,14 @@ const DutyManagement = () => {
                 <BulkSchedulingForm 
                   form={coordinationForm}
                   templateGroups={templateGroups}
-                  onPreview={(values: any) => {
+                  onPreview={async (values: any) => {
                     const range = values.range;
                     if (!range) return;
                     const start = range[0];
                     const end = range[1];
+
+                    // Quota and Period settings are now handled separately via QuotaSettingsModal
+
                     const genTemplateId = values.templateId;
                     const genMode = values.mode;
 
@@ -1506,17 +1533,23 @@ const DutyManagement = () => {
       label: <span><SettingOutlined /> Cấu hình hệ thống</span>,
       children: (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Title level={4} style={{ margin: 0 }}>Cấu hình Hệ thống</Title>
             <Tooltip title="Các thiết lập này ảnh hưởng đến toàn bộ quy trình đăng ký, mở đợt và đổi kíp trực.">
               <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
             </Tooltip>
           </div>
 
+          <Alert
+            message="Lưu ý về Định mức"
+            description="Các thiết lập định mức ở đây là giá trị MẶC ĐỊNH của toàn hệ thống. Nếu một tuần đã được cấu hình Định mức riêng (trong phần Quản trị tuần), hệ thống sẽ ưu tiên sử dụng cấu hình riêng đó."
+            type="warning"
+            showIcon
+            style={{ marginBottom: 24, borderRadius: 12 }}
+          />
+
           <Form form={settingsForm} layout="vertical" onFinish={handleUpdateSettings}>
             <Row gutter={[20, 20]}>
-              {/* LEFT COLUMN: REGISTRATION LIMIT (TALL) */}
-              {/* LEFT COLUMN: REGISTRATION LIMIT & DETAILED RULES (INTEGRATED) */}
               <Col xs={24} md={14}>
                 <Space direction="vertical" size={20} style={{ width: '100%' }}>
                   <div style={{ 
@@ -1530,241 +1563,36 @@ const DutyManagement = () => {
                       <Space direction="vertical" size={0}>
                         <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
                           <ScheduleOutlined style={{ color: 'var(--primary-color)' }} />
-                          Giới hạn đăng ký kíp trực / tuần
+                          Giới hạn đăng ký kíp trực
                         </span>
-                        <Text type="secondary" style={{ fontSize: 11 }}>Ngăn chặn thành viên đăng ký quá nhiều kíp</Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>Bật/Tắt kiểm soát định mức đăng ký kíp trực</Text>
                       </Space>
                       <Form.Item name="weeklyLimitEnabled" valuePropName="checked" noStyle>
                         <Switch checkedChildren="Bật" unCheckedChildren="Tắt" size="small" />
                       </Form.Item>
                     </div>
 
-                    <Form.Item 
-                      noStyle 
-                      shouldUpdate={(prev, curr) => prev.weeklyLimitEnabled !== curr.weeklyLimitEnabled}
-                    >
-                      {({ getFieldValue }) => getFieldValue('weeklyLimitEnabled') ? (
-                        <div style={{ 
-                          padding: '16px', 
-                          background: '#f8fafc', 
-                          borderRadius: 12, 
-                          border: '1px solid #e2e8f0',
-                        }}>
-                          <Form.Item name="kipLimitMode" label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Chế độ áp dụng</span>} style={{ marginBottom: 16 }}>
-                            <Segmented 
-                              block
-                              size="small"
-                              options={[
-                                { label: 'Theo định mức (Quota)', value: 'quota' },
-                                { label: 'Cố định (Manual)', value: 'manual' }
-                              ]} 
-                            />
-                          </Form.Item>
-                          
-                          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.kipLimitMode !== curr.kipLimitMode}>
-                            {({ getFieldValue: getVal }) => (
-                              getVal('kipLimitMode') === 'manual' ? (
-                                <Form.Item 
-                                  name="weeklyKipLimit" 
-                                  label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Số kíp tối đa</span>}
-                                  rules={[{ required: true, message: 'Vui lòng nhập số kíp' }]}
-                                >
-                                  <InputNumber 
-                                    min={1} 
-                                    placeholder="Ví dụ: 2" 
-                                    style={{ width: '100%', borderRadius: 8 }} 
-                                    addonAfter="kíp / tuần"
-                                  />
-                                </Form.Item>
-                              ) : (
-                                <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                                  <div style={{ 
-                                    padding: '12px 14px', 
-                                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)', 
-                                    borderRadius: 10, 
-                                    border: '1px solid rgba(59, 130, 246, 0.2)',
-                                    display: 'flex',
-                                    gap: 10,
-                                    alignItems: 'flex-start'
-                                  }}>
-                                    <ArrowDownOutlined style={{ color: '#3b82f6', marginTop: 2, fontSize: 13 }} />
-                                    <Text style={{ fontSize: 12, color: '#1e40af', lineHeight: 1.5 }}>
-                                      Chế độ linh hoạt: Giới hạn sẽ được tra cứu theo danh sách <b>Quy tắc định mức chi tiết</b> ngay phía dưới.
-                                    </Text>
-                                  </div>
-                                </Space>
-                              )
-                            )}
-                          </Form.Item>
-                        </div>
-                      ) : (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column',
-                          alignItems: 'center', 
-                          justifyContent: 'center',
-                          background: '#f8fafc', 
-                          borderRadius: 12, 
-                          border: '1px dashed #e2e8f0',
-                          minHeight: 180
-                        }}>
-                          <StopOutlined style={{ fontSize: 28, color: '#94a3b8', marginBottom: 10 }} />
-                          <Text type="secondary" style={{ fontSize: 13 }}>Tính năng giới hạn đang tắt</Text>
-                        </div>
-                      )}
-                    </Form.Item>
-                  </div>
-
-                  <Form.Item noStyle shouldUpdate={(prev, curr) => prev.kipLimitMode !== curr.kipLimitMode || prev.weeklyLimitEnabled !== curr.weeklyLimitEnabled}>
-                    {({ getFieldValue: getLimitVals }) => {
-                      const isActiveQuota = getLimitVals('weeklyLimitEnabled') && getLimitVals('kipLimitMode') === 'quota';
-                      return (
-                        <div style={{ 
-                          background: '#ffffff', 
-                          padding: '20px', 
-                          borderRadius: 16, 
-                          border: isActiveQuota ? '2px solid #8b5cf6' : '1px solid #f1f5f9', 
-                          boxShadow: isActiveQuota ? '0 10px 15px -3px rgba(139, 92, 246, 0.1), 0 4px 6px -2px rgba(139, 92, 246, 0.05)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          position: 'relative'
-                        }}>
-                          {isActiveQuota && (
-                            <div style={{ 
-                              position: 'absolute', 
-                              top: -12, 
-                              right: 24, 
-                              background: '#8b5cf6', 
-                              color: '#fff', 
-                              padding: '2px 12px', 
-                              borderRadius: 20, 
-                              fontSize: 10, 
-                              fontWeight: 700,
-                              boxShadow: '0 2px 4px rgba(139, 92, 246, 0.3)',
-                              zIndex: 1
-                            }}>
-                              ĐANG ÁP DỤNG
-                            </div>
-                          )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <Space direction="vertical" size={0}>
-                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <SolutionOutlined style={{ color: '#8b5cf6' }} />
-                          Quy tắc định mức chi tiết
-                        </span>
-                        <Text type="secondary" style={{ fontSize: 11 }}>Thiết lập ưu tiên cho từng nhóm hoặc cá nhân</Text>
-                      </Space>
+                    <div style={{ 
+                      padding: '16px', 
+                      background: '#f8fafc', 
+                      borderRadius: 12, 
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      gap: 12,
+                      alignItems: 'flex-start'
+                    }}>
+                      <InfoCircleOutlined style={{ color: '#3b82f6', marginTop: 2 }} />
+                      <Text style={{ fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
+                        Hệ thống hiện đang sử dụng cơ chế <b>Quản lý Định mức theo Tuần</b>. 
+                        Để thiết lập giới hạn cho từng tuần cụ thể, vui lòng sử dụng menu <b>"Quản trị tuần"</b> trong giao diện Lịch trực.
+                      </Text>
                     </div>
-
-                    <Form.List name="quotaRules">
-                      {(fields, { add, remove }) => (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          {fields.map(({ key, name, ...restField }) => (
-                            <Card 
-                              key={key} 
-                              size="small" 
-                              className="quota-rule-card"
-                              style={{ 
-                                borderRadius: 12, 
-                                border: '1px solid #f1f5f9',
-                                background: '#f8fafc'
-                              }}
-                              bodyStyle={{ padding: '12px 16px' }}
-                            >
-                              <Row gutter={[12, 12]} align="middle">
-                                <Col xs={24} sm={8}>
-                                  <Form.Item {...restField} label={<span style={{fontSize: 11, fontWeight: 600}}>Đối tượng</span>} name={[name, 'type']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                                    <Select size="small" options={[
-                                      { label: 'Cụ thể theo MSV', value: 'user' },
-                                      { label: 'Đội trưởng', value: 'dt' },
-                                      { label: 'Trưởng ban', value: 'tb' },
-                                      { label: 'Phó ban', value: 'pb' },
-                                      { label: 'Thành viên (Nói chung)', value: 'member_all' },
-                                      { label: 'Cộng tác viên', value: 'ctv' },
-                                    ]} />
-                                  </Form.Item>
-                                </Col>
-                                <Col xs={24} sm={7}>
-                                  <Form.Item noStyle shouldUpdate>
-                                    {({ getFieldValue }) => {
-                                      const type = getFieldValue(['quotaRules', name, 'type']);
-                                      const target = getFieldValue(['quotaRules', name, 'target']);
-                                      const userName = type === 'user' && target ? userMap[target] : null;
-                                      
-                                      return (
-                                        <Form.Item {...restField} 
-                                          label={
-                                            <Space size={4}>
-                                              <span style={{fontSize: 11, fontWeight: 600}}>{type === 'user' ? 'Mã sinh viên' : 'Ban / Đơn vị'}</span>
-                                              {userName && <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>{userName}</Tag>}
-                                            </Space>
-                                          } 
-                                          name={[name, 'target']} 
-                                          rules={[{ required: true }]} 
-                                          style={{ marginBottom: 0 }}
-                                        >
-                                          {type === 'user' ? (
-                                            <Input size="small" placeholder="MSV..." prefix={<UserOutlined style={{ color: '#bfbfbf', fontSize: 12 }} />} />
-                                          ) : (
-                                            <Select size="small" placeholder="Chọn Ban">
-                                              <Select.Option value="all">Tất cả các ban</Select.Option>
-                                              {/* In a real app, map over actual departments */}
-                                              <Select.Option value="Nhân sự">Ban Nhân sự</Select.Option>
-                                              <Select.Option value="Truyền thông">Ban Truyền thông</Select.Option>
-                                              <Select.Option value="Kỹ thuật">Ban Kỹ thuật</Select.Option>
-                                              <Select.Option value="Hậu cần">Ban Hậu cần</Select.Option>
-                                            </Select>
-                                          )}
-                                        </Form.Item>
-                                      );
-                                    }}
-                                  </Form.Item>
-                                </Col>
-                                <Col xs={12} sm={4}>
-                                  <Form.Item {...restField} label={<span style={{fontSize: 11, fontWeight: 600}}>Định mức</span>} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                                    <InputNumber size="small" step={0.5} min={0} style={{ width: '100%' }} placeholder="Kíp" />
-                                  </Form.Item>
-                                </Col>
-                                <Col xs={12} sm={4}>
-                                  <Form.Item {...restField} label={<span style={{fontSize: 11, fontWeight: 600}}>Chu kỳ</span>} name={[name, 'cycle']} initialValue="week" style={{ marginBottom: 0 }}>
-                                    <Select size="small" options={[
-                                      { label: 'Tuần', value: 'week' },
-                                      { label: 'Tháng', value: 'month' },
-                                    ]} />
-                                  </Form.Item>
-                                </Col>
-                                <Col xs={24} sm={1}>
-                                  <div style={{ textAlign: 'right', paddingTop: 18 }}>
-                                    <Popconfirm title="Xóa?" onConfirm={() => remove(name)}>
-                                      <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-                                    </Popconfirm>
-                                  </div>
-                                </Col>
-                              </Row>
-                            </Card>
-                          ))}
-                          <Button 
-                            type="dashed" 
-                            onClick={() => add({ type: 'role_group', target: 'member_official', quota: 2.5 })} 
-                            block 
-                            icon={<PlusOutlined />}
-                            style={{ height: 40, borderRadius: 10, background: '#fff' }}
-                          >
-                            Thêm quy tắc định mức mới
-                          </Button>
-                        </div>
-                      )}
-                    </Form.List>
-                        </div>
-                      );
-                    }}
-                  </Form.Item>
+                  </div>
                 </Space>
               </Col>
 
-              {/* RIGHT COLUMN: CANCEL POLICY & SECURITY (STACKED) */}
               <Col xs={24} md={10}>
                 <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                  {/* CANCEL POLICY */}
                   <div style={{ 
                     background: '#ffffff', 
                     padding: '20px', 
@@ -1798,7 +1626,6 @@ const DutyManagement = () => {
                     </div>
                   </div>
 
-                  {/* SECURITY / IP LIMIT */}
                   <div style={{ 
                     background: '#ffffff', 
                     padding: '20px', 
@@ -1829,7 +1656,6 @@ const DutyManagement = () => {
                     </div>
                   </div>
 
-                  {/* PENALTY SECTION (MOVED HERE) */}
                   <div style={{ 
                     background: '#fffcfc', 
                     padding: '20px', 
@@ -1855,7 +1681,6 @@ const DutyManagement = () => {
                           min={0} 
                           step={5000}
                           formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
                           style={{ width: '100%', borderRadius: 8 }} 
                           addonAfter="VNĐ"
                         />
@@ -1870,7 +1695,6 @@ const DutyManagement = () => {
                           min={0} 
                           step={5000}
                           formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
                           style={{ width: '100%', borderRadius: 8 }} 
                           addonAfter="VNĐ"
                         />
@@ -1885,7 +1709,6 @@ const DutyManagement = () => {
                           min={0} 
                           step={5000}
                           formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          parser={(value: any) => value.replace(/\$\s?|(,*)/g, '')}
                           style={{ width: '100%', borderRadius: 8 }} 
                           addonAfter="VNĐ"
                         />
@@ -1992,6 +1815,14 @@ const DutyManagement = () => {
         editingGroup={editingGroup}
         onSubmit={handleSubmitGroup}
         loading={loading}
+        departments={[
+          { id: 'Nhân sự', name: 'Ban Nhân sự' },
+          { id: 'Truyền thông', name: 'Ban Truyền thông' },
+          { id: 'Kỹ thuật', name: 'Ban Kỹ thuật' },
+          { id: 'Hậu cần', name: 'Ban Hậu cần' },
+          { id: 'Đào tạo', name: 'Ban Đào tạo' },
+          { id: 'Sự kiện', name: 'Ban Sự kiện' },
+        ]}
       />
 
       <ShiftTemplateModal
@@ -2019,6 +1850,34 @@ const DutyManagement = () => {
         slot={editingSlot}
         templates={templates}
         loading={loading}
+      />
+
+      <QuotaSettingsModal
+        open={isQuotaModalOpen}
+        onCancel={() => setIsQuotaModalOpen(false)}
+        initialData={currentPeriodConfig}
+        initialDateRange={[slotFilterWeek.startOf('isoWeek' as any), slotFilterWeek.endOf('isoWeek' as any)]}
+        departments={[
+          { id: 'Nhân sự', name: 'Ban Nhân sự' },
+          { id: 'Truyền thông', name: 'Ban Truyền thông' },
+          { id: 'Kỹ thuật', name: 'Ban Kỹ thuật' },
+          { id: 'Hậu cần', name: 'Ban Hậu cần' },
+          { id: 'Đào tạo', name: 'Ban Đào tạo' },
+          { id: 'Sự kiện', name: 'Ban Sự kiện' },
+        ]}
+        onSave={async (values) => {
+          const res = await dutyService.updatePeriodConfig({
+            ...values,
+            startDate: slotFilterWeek.startOf('isoWeek' as any).toISOString(),
+            endDate: slotFilterWeek.endOf('isoWeek' as any).toISOString(),
+          });
+          if (res.success) {
+            message.success('Đã cập nhật định mức tuần');
+            setIsQuotaModalOpen(false);
+            fetchCurrentPeriodConfig();
+          }
+        }}
+        templateGroups={templateGroups}
       />
 
 

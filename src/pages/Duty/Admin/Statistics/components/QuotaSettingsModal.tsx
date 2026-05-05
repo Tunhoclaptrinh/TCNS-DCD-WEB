@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Form, Row, Col, Card, Input, InputNumber, 
-  Select, DatePicker, Space, Divider, Alert, Typography, Tooltip,
-  Button
+  Form, Row, Col, Input, InputNumber, 
+  Select, DatePicker, Space, Typography, Tooltip,
+  Button, message, Modal
 } from 'antd';
 import { 
   SettingOutlined, DeleteOutlined, PlusOutlined, 
   InfoCircleOutlined, GroupOutlined,
-  UserOutlined
+  UserOutlined,
+  ClearOutlined,
+  DownloadOutlined,
+  SafetyCertificateOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import FormModal from '@/components/common/FormModal';
 
-const { RangePicker } = DatePicker;
 const { Text } = Typography;
+const { RangePicker } = DatePicker;
 
 // Role Group Mapping (Synced with DutyStatsService)
 const ROLE_GROUPS = [
@@ -25,11 +28,6 @@ const ROLE_GROUPS = [
   { label: 'Cộng tác viên', value: 'ctv' },
 ];
 
-const CYCLE_OPTIONS = [
-  { label: 'Theo Tuần', value: 'week' },
-  { label: 'Theo Tháng', value: 'month' },
-];
-
 interface QuotaSettingsModalProps {
   open: boolean;
   onCancel: () => void;
@@ -37,27 +35,56 @@ interface QuotaSettingsModalProps {
   initialData?: any;
   departments: any[];
   initialDateRange?: [dayjs.Dayjs, dayjs.Dayjs];
+  loading?: boolean;
+  templateGroups?: any[];
 }
 
 
-const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
-  open,
-  onCancel,
-  onSave,
-  initialData,
+const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({ 
+  open, 
+  onCancel, 
+  onSave, 
+  initialData, 
   departments,
-  initialDateRange
+  initialDateRange,
+  templateGroups = []
 }) => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+
+  const handleImportTemplate = (groupId: number) => {
+    const group = templateGroups.find(g => g.id === groupId);
+    if (group) {
+      form.setFieldsValue({
+        defaultQuota: group.defaultQuota,
+        kipPrice: group.kipPrice,
+        quotaRules: group.quotaRules?.map((r: any) => ({
+          ...r,
+          cycle: 'week',
+          dateRange: initialDateRange
+        }))
+      });
+      message.success(`Đã kế thừa cấu hình từ: ${group.name}`);
+    }
+  };
+
+  const handleClearAll = () => {
+    form.setFieldsValue({
+      defaultQuota: 0,
+      kipPrice: 0,
+      violationPenaltyRate: 0,
+      quotaRules: []
+    });
+    message.info('Đã xóa trắng các thiết lập');
+  };
 
   useEffect(() => {
     if (open) {
       if (initialData) {
         const quotaRules = (initialData.quotaRules || []).map((r: any) => ({
           ...r,
-          cycle: r.cycle || 'week',
-          dateRange: r.startDate && r.endDate ? [dayjs(r.startDate), dayjs(r.endDate)] : undefined
+          cycle: 'week', // Force week cycle
+          dateRange: initialDateRange // Always use period range
         }));
         form.setFieldsValue({
           defaultQuota: initialData.defaultQuota,
@@ -65,146 +92,194 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
           violationPenaltyRate: initialData.violationPenaltyRate,
           quotaRules,
         });
-      } else if (initialDateRange) {
-        // If opening from a specific week in Matrix View
-        form.setFieldsValue({
-          quotaRules: [{
-            type: 'member_all',
-            target: 'all',
-            quota: 2.5,
-            cycle: 'week',
-            dateRange: initialDateRange
-          }]
-        });
+      } else {
+        // Reset to empty for new weeks
+        form.resetFields();
       }
     }
   }, [open, initialData, initialDateRange, form]);
 
-
-  const handleOk = async (values: any) => {
+  const handleFinish = async (values: any) => {
+    setSaving(true);
     try {
-      setSaving(true);
-      // Process date ranges
-      const processedValues = { ...values };
-      if (processedValues.quotaRules) {
-        processedValues.quotaRules = processedValues.quotaRules.map((r: any) => {
-          const rule = { ...r };
-          if (r.dateRange && r.dateRange.length === 2) {
-            rule.startDate = r.dateRange[0].startOf('day').toISOString();
-            rule.endDate = r.dateRange[1].endOf('day').toISOString();
-          } else {
-            rule.startDate = null;
-            rule.endDate = null;
-          }
-          delete rule.dateRange;
-          return rule;
-        });
-      }
+      const processedRules = values.quotaRules?.map((r: any) => {
+        const rule = { ...r };
+        if (r.dateRange && r.dateRange.length === 2) {
+          rule.startDate = r.dateRange[0].startOf('day').toISOString();
+          rule.endDate = r.dateRange[1].endOf('day').toISOString();
+        }
+        delete rule.dateRange;
+        return rule;
+      });
 
-      await onSave(processedValues);
-      form.resetFields();
-    } catch (err) {
-      console.error('Save failed:', err);
+      await onSave({
+        ...values,
+        quotaRules: processedRules,
+      });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <FormModal
+    <Modal
       title={
-        <Space size={8}>
-          <SettingOutlined />
-          <span>Cấu hình Định mức Chuyên sâu</span>
-        </Space>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ 
+            width: 40, height: 40, borderRadius: 10, 
+            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+          }}>
+            <SettingOutlined style={{ color: '#fff', fontSize: 20 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>Cấu hình Định mức & Quy tắc</div>
+            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+              <CalendarOutlined style={{ marginRight: 4 }} />
+              Giai đoạn: {initialDateRange ? `${initialDateRange[0].format('DD/MM')} - ${initialDateRange[1].format('DD/MM/YYYY')}` : 'Chưa chọn'}
+            </div>
+          </div>
+        </div>
       }
       open={open}
       onCancel={onCancel}
-      onOk={handleOk}
-      form={form}
-      loading={saving}
-      width={1000}
-      okText="Lưu thay đổi"
+      width={900}
+      footer={[
+        <Button key="cancel" onClick={onCancel} style={{ borderRadius: 8, height: 38, padding: '0 24px' }}>Hủy</Button>,
+        <Button 
+          key="save" 
+          type="primary" 
+          loading={saving} 
+          onClick={() => form.submit()}
+          style={{ borderRadius: 8, height: 38, padding: '0 24px', fontWeight: 600, background: '#2563eb' }}
+        >
+          Lưu thay đổi
+        </Button>
+      ]}
+      bodyStyle={{ padding: '20px 24px' }}
+      className="premium-modal"
     >
-      <div style={{ padding: '0 4px' }}>
-        <Alert
-          message="Thứ tự ưu tiên áp dụng (Từ cao đến thấp)"
-          description={
-            <div style={{ fontSize: 12, marginTop: 4 }}>
-              1. <b>Cá nhân (MSV)</b> &nbsp;→&nbsp; 
-              2. <b>Chức vụ cụ thể</b> (Trưởng/Phó ban, Đội trưởng) &nbsp;→&nbsp; 
-              3. <b>Nhóm vai trò</b> (Thành viên/CTV) &nbsp;→&nbsp; 
-              4. <b>Mặc định toàn đội</b>.
-              <br />
-              <Text type="secondary" italic>* Trong mỗi cấp độ, quy tắc có chọn "Ban cụ thể" sẽ ưu tiên hơn quy tắc "Tất cả các ban".</Text>
+      <Form form={form} layout="vertical" onFinish={handleFinish}>
+        {/* Compact Instruction */}
+        <div style={{ 
+          background: 'linear-gradient(to right, #f0f9ff, #e0f2fe)', 
+          padding: '12px 16px', 
+          borderRadius: 12, 
+          border: '1px solid #bae6fd',
+          marginBottom: 20,
+          display: 'flex',
+          gap: 12
+        }}>
+          <SafetyCertificateOutlined style={{ color: '#0284c7', fontSize: 18, marginTop: 2 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 2 }}>Chế độ Quản lý theo Giai đoạn</div>
+            <div style={{ fontSize: 12, color: '#0c4a6e', lineHeight: 1.5 }}>
+              Hệ thống sẽ <b>Ưu tiên tuyệt đối</b> các quy tắc này. Thứ tự áp dụng: 
+              <span style={{ marginLeft: 6 }}>Cá nhân (MSV) → Chức danh → Nhóm vai trò → Mặc định toàn đội.</span>
             </div>
-          }
-          type="info"
-          showIcon
-          style={{ marginBottom: 20, borderRadius: 8 }}
-        />
+          </div>
+        </div>
 
-        <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-          <Space size={4}><InfoCircleOutlined /><span style={{ fontSize: 13, fontWeight: 600 }}>Thông số cơ bản</span></Space>
-        </Divider>
+        {/* Base Parameters Row */}
+        <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', border: '1px solid #f1f5f9', marginBottom: 24, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <InfoCircleOutlined style={{ color: '#3b82f6' }} />
+            <Text strong style={{ fontSize: 14, color: '#334155' }}>THÔNG SỐ CƠ BẢN</Text>
+          </div>
+          <Row gutter={24}>
+            <Col span={8}>
+              <Form.Item 
+                name="defaultQuota" 
+                label={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Định mức mặc định (kíp/tuần)</span>}
+              >
+                <InputNumber min={0} step={0.5} style={{ width: '100%', borderRadius: 8 }} placeholder="2.5" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item 
+                name="kipPrice" 
+                label={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Đơn giá kíp (VNĐ)</span>}
+              >
+                <InputNumber 
+                  min={0} step={5000} 
+                  style={{ width: '100%', borderRadius: 8 }} 
+                  placeholder="0"
+                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item 
+                name="violationPenaltyRate" 
+                label={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Hệ số phạt vi phạm</span>}
+              >
+                <InputNumber min={0} max={1} step={0.1} style={{ width: '100%', borderRadius: 8 }} placeholder="0.0" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </div>
 
-        <Row gutter={24}>
-          <Col span={8}>
-            <Form.Item label="Định mức mặc định toàn đội" name="defaultQuota" tooltip="Số kíp cơ bản áp dụng hàng tuần khi không có quy tắc riêng">
-              <InputNumber min={0} step={0.5} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="Đơn giá kíp (VNĐ)" name="kipPrice">
-              <InputNumber 
-                min={0} 
-                step={1000} 
-                style={{ width: '100%' }} 
-                formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="Hệ số phạt lỗi" name="violationPenaltyRate" tooltip="Tỉ lệ trừ tiền trên đơn giá kíp khi có lỗi">
-              <InputNumber min={0} max={1} step={0.1} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Divider orientation="left" style={{ marginTop: 12, marginBottom: 16 }}>
-          <Space size={4}><GroupOutlined /><span style={{ fontSize: 13, fontWeight: 600 }}>Quy tắc ưu tiên chi tiết</span></Space>
-        </Divider>
+        {/* Advanced Rules Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Space>
+            <GroupOutlined style={{ color: '#3b82f6', fontSize: 16 }} />
+            <Text strong style={{ fontSize: 14, color: '#334155' }}>QUY TẮC ƯU TIÊN CHI TIẾT</Text>
+          </Space>
+          <Space>
+            <Select 
+              placeholder="Kế thừa từ Bản mẫu..." 
+              size="middle" 
+              style={{ width: 220 }}
+              suffixIcon={<DownloadOutlined />}
+              onChange={handleImportTemplate}
+              options={templateGroups.map(g => ({ label: g.name, value: g.id }))}
+              dropdownStyle={{ borderRadius: 10 }}
+            />
+            <Button 
+              size="middle" 
+              danger 
+              icon={<ClearOutlined />}
+              onClick={handleClearAll}
+              style={{ borderRadius: 8 }}
+            >
+              Xóa trắng
+            </Button>
+          </Space>
+        </div>
         
         <Form.List name="quotaRules">
           {(fields, { add, remove }) => (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
               {fields.map(({ key, name, ...restField }) => (
-                <Card 
+                <div 
                   key={key} 
-                  size="small" 
                   style={{ 
-                    borderRadius: 8, 
-                    border: '1px solid #f0f0f0',
-                    background: '#fafafa'
+                    background: '#ffffff', 
+                    padding: '12px 16px', 
+                    borderRadius: 12, 
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    position: 'relative'
                   }}
-                  bodyStyle={{ padding: '16px 20px' }}
                 >
-                  <Row gutter={[12, 0]} align="middle">
+                  <Row gutter={12} align="middle">
                     <Col span={5}>
-                      <Form.Item {...restField} label="Đối tượng" name={[name, 'type']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                        <Select options={ROLE_GROUPS} />
+                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>ĐỐI TƯỢNG</span>} name={[name, 'type']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                        <Select options={ROLE_GROUPS} style={{ borderRadius: 6 }} />
                       </Form.Item>
                     </Col>
                     <Col span={5}>
                       <Form.Item noStyle shouldUpdate>
                         {({ getFieldValue }) => {
                           const type = getFieldValue(['quotaRules', name, 'type']);
+                          const isUser = type === 'user';
                           return (
-                            <Form.Item {...restField} label={type === 'user' ? 'Mã sinh viên' : 'Ban / Đơn vị'} name={[name, 'target']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                              {type === 'user' ? (
-                                <Input placeholder="MSV..." prefix={<UserOutlined style={{ color: '#bfbfbf' }} />} />
+                            <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>{isUser ? 'MÃ SINH VIÊN' : 'BAN / ĐƠN VỊ'}</span>} name={[name, 'target']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                              {isUser ? (
+                                <Input placeholder="MSV..." prefix={<UserOutlined style={{ fontSize: 12, color: '#94a3b8' }} />} style={{ borderRadius: 6 }} />
                               ) : (
-                                <Select placeholder="Chọn Ban">
+                                <Select placeholder="Chọn Ban" style={{ borderRadius: 6 }}>
                                   <Select.Option value="all">Tất cả các ban</Select.Option>
                                   {departments.map(d => <Select.Option key={d.id} value={d.id}>{d.name}</Select.Option>)}
                                 </Select>
@@ -214,48 +289,89 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                         }}
                       </Form.Item>
                     </Col>
-                    <Col span={5}>
-                      <Form.Item {...restField} label="Thời gian" name={[name, 'dateRange']} style={{ marginBottom: 0 }}>
-                        <RangePicker style={{ width: '100%' }} placeholder={['Từ', 'Đến']} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={3}>
-                      <Form.Item {...restField} label="Chu kỳ" name={[name, 'cycle']} initialValue="week" style={{ marginBottom: 0 }}>
-                        <Select options={CYCLE_OPTIONS} />
+                    <Col span={8}>
+                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>THỜI GIAN ÁP DỤNG</span>} name={[name, 'dateRange']} style={{ marginBottom: 0 }}>
+                        <RangePicker 
+                          style={{ width: '100%', background: '#f8fafc', borderRadius: 6, border: '1px dashed #cbd5e1' }} 
+                          placeholder={['Từ', 'Đến']} 
+                          disabled 
+                          format="DD/MM"
+                        />
                       </Form.Item>
                     </Col>
                     <Col span={4}>
-                      <Form.Item {...restField} label="Định mức" name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                        <InputNumber step={0.5} min={0} style={{ width: '100%' }} placeholder="Số kíp" />
+                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>ĐỊNH MỨC</span>} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                        <InputNumber step={0.5} min={0} style={{ width: '100%', borderRadius: 6 }} placeholder="0.0" />
                       </Form.Item>
                     </Col>
-                    <Col span={2} style={{ textAlign: 'right', paddingTop: 28 }}>
-                      <Tooltip title="Xóa">
+                    <Col span={2} style={{ textAlign: 'right', paddingTop: 14 }}>
+                      <Tooltip title="Xóa quy tắc">
                         <Button 
                           type="text" 
                           danger 
+                          shape="circle" 
                           icon={<DeleteOutlined />} 
-                          onClick={() => remove(name)}
+                          onClick={() => remove(name)} 
+                          style={{ marginTop: 4 }}
                         />
                       </Tooltip>
                     </Col>
                   </Row>
-                </Card>
+                </div>
               ))}
+              
               <Button 
                 type="dashed" 
-                onClick={() => add({ type: 'member_all', target: 'all', quota: 2.5, cycle: 'week' })} 
+                onClick={() => add({ 
+                  type: 'member_all', 
+                  target: 'all', 
+                  quota: 2.5, 
+                  cycle: 'week',
+                  dateRange: initialDateRange
+                })} 
                 block 
                 icon={<PlusOutlined />}
-                style={{ height: 42, borderRadius: 8 }}
+                style={{ 
+                  height: 48, 
+                  borderRadius: 12, 
+                  borderStyle: 'dashed', 
+                  borderWidth: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#2563eb',
+                  background: '#f8fafc'
+                }}
               >
-                Thêm quy tắc mới
+                Thêm quy tắc định mức mới
               </Button>
             </div>
           )}
         </Form.List>
-      </div>
-    </FormModal>
+      </Form>
+      
+      <style>{`
+        .premium-modal .ant-modal-content {
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .premium-modal .ant-modal-header {
+          padding: 20px 24px;
+          margin-bottom: 0;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .premium-modal .ant-form-item-label label {
+          letter-spacing: 0.025em;
+        }
+        .premium-modal .ant-input-number, .premium-modal .ant-input, .premium-modal .ant-select-selector {
+          border-color: #e2e8f0 !important;
+        }
+        .premium-modal .ant-input-number:hover, .premium-modal .ant-input:hover, .premium-modal .ant-select-selector:hover {
+          border-color: #3b82f6 !important;
+        }
+      `}</style>
+    </Modal>
   );
 };
 

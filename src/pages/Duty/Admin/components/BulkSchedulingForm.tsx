@@ -1,9 +1,8 @@
 import React from 'react';
-import { Form, Row, Col, DatePicker, Select, Button, Typography, Divider, Space, Modal, message } from 'antd';
+import { Form, Row, Col, DatePicker, Select, Button, Modal, message, Divider, Space } from 'antd';
 import { ScheduleOutlined, DeleteOutlined } from '@ant-design/icons';
 import dutyService from '@/services/duty.service';
 
-const { } = Typography;
 
 interface BulkSchedulingFormProps {
   form: any;
@@ -77,6 +76,18 @@ const BulkSchedulingForm: React.FC<BulkSchedulingFormProps> = ({
                 style={{ width: '100%' }}
                 placeholder="Tự động theo Giai đoạn hệ thống" 
                 options={templateGroups.map(g => ({ label: g.isDefault ? `${g.name} (Mặc định)` : g.name, value: g.id }))} 
+                onChange={(id) => {
+                  if (id) {
+                    const selected = templateGroups.find(g => g.id === id);
+                    if (selected) {
+                      form.setFieldsValue({
+                        defaultQuota: selected.defaultQuota,
+                        kipPrice: selected.kipPrice,
+                        quotaRules: selected.quotaRules
+                      });
+                    }
+                  }
+                }}
               />
             </Form.Item>
           </Col>
@@ -97,6 +108,7 @@ const BulkSchedulingForm: React.FC<BulkSchedulingFormProps> = ({
             </Form.Item>
           </Col>
         </Row>
+
 
         <Divider style={{ margin: '16px 0' }} />
 

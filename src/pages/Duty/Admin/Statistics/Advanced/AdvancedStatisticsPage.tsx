@@ -130,9 +130,9 @@ const AdvancedStatisticsPage: React.FC = () => {
         }}
         departments={settings?.departments || []}
         onSaveQuotaSettings={async (values) => {
-           const res = await dutyService.updateSettings(values);
+           const res = await dutyService.updatePeriodConfig(values);
            if (res.success) {
-             message.success('Đã cập nhật định mức thành công');
+             message.success('Đã cập nhật định mức tuần thành công');
              fetchData(); // Refetch to sync simulation
            }
         }}

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Alert, Progress } from 'antd';
+import { Modal, Form, Space, Row, Col, Select, DatePicker, Input, message, Card, Tag, Alert, Progress, InputNumber, Collapse, Typography } from 'antd';
 import { Button } from '@/components/common';
-import { CalendarOutlined, RocketOutlined, InteractionOutlined } from '@ant-design/icons';
+import { CalendarOutlined, RocketOutlined, InteractionOutlined, SolutionOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+const { Text } = Typography;
 import dutyService from '@/services/duty.service';
 import { useSocket } from '@/contexts/SocketContext';
 
@@ -51,6 +52,8 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
         note: values.note,
         jobId, // send to backend
       };
+
+      // Removed automatic PeriodConfig update to maintain clean state for the week
 
       const res = await dutyService.createTemplateAssignment(payload);
       
@@ -129,6 +132,14 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
                   placeholder="Mùa Đông, Mùa Hè..."
                   onChange={async (val) => {
                     form.setFieldsValue({ templateId: val });
+                    const selected = templateGroups.find(g => g.id === val);
+                    if (selected) {
+                      form.setFieldsValue({
+                        defaultQuota: selected.defaultQuota,
+                        kipPrice: selected.kipPrice,
+                        quotaRules: selected.quotaRules
+                      });
+                    }
                     try {
                       const res = await dutyService.getShiftTemplates(val);
                       if (res.success && res.data) setPreviewShifts(res.data);
@@ -156,6 +167,90 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
               </Form.Item>
             </Col>
           </Row>
+
+          <Collapse 
+            ghost 
+            expandIconPosition="end"
+            style={{ marginBottom: 16 }}
+            items={[{
+              key: 'quota',
+              label: <Space><SolutionOutlined /> <Text strong style={{ fontSize: 13 }}>Thiết lập Định mức & Đơn giá áp dụng cho Giai đoạn này</Text></Space>,
+              children: (
+                <div style={{ padding: '0 8px' }}>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item label={<span style={{ fontSize: 12 }}>Định mức kíp</span>} name="defaultQuota">
+                        <InputNumber size="small" min={0} step={0.5} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item label={<span style={{ fontSize: 12 }}>Đơn giá kíp (VNĐ)</span>} name="kipPrice">
+                        <InputNumber size="small" min={0} step={1000} style={{ width: '100%' }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  
+                  <Form.List name="quotaRules">
+                    {(fields, { add, remove }) => (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {fields.map(({ key, name, ...restField }) => (
+                          <Card key={key} size="small" style={{ borderRadius: 8, background: '#f8fafc' }} bodyStyle={{ padding: '12px' }}>
+                            <Row gutter={[12, 12]} align="middle">
+                              <Col span={8}>
+                                <Form.Item {...restField} label={<span style={{fontSize: 11}}>Đối tượng</span>} name={[name, 'type']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                  <Select size="small" options={[
+                                    { label: 'MSV', value: 'user' },
+                                    { label: 'Đội trưởng', value: 'dt' },
+                                    { label: 'Trưởng ban', value: 'tb' },
+                                    { label: 'Phó ban', value: 'pb' },
+                                    { label: 'Thành viên', value: 'member_all' },
+                                    { label: 'CTV', value: 'ctv' },
+                                  ]} />
+                                </Form.Item>
+                              </Col>
+                              <Col span={9}>
+                                <Form.Item noStyle shouldUpdate>
+                                  {({ getFieldValue }) => {
+                                    const type = getFieldValue(['quotaRules', name, 'type']);
+                                    return (
+                                      <Form.Item {...restField} label={<span style={{fontSize: 11}}>{type === 'user' ? 'Mã sinh viên' : 'Ban'}</span>} name={[name, 'target']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                        {type === 'user' ? (
+                                          <Input size="small" placeholder="MSV..." />
+                                        ) : (
+                                          <Select size="small" placeholder="Chọn Ban">
+                                            <Select.Option value="all">Tất cả các ban</Select.Option>
+                                            <Select.Option value="Nhân sự">Ban Nhân sự</Select.Option>
+                                            <Select.Option value="Truyền thông">Ban Truyền thông</Select.Option>
+                                            <Select.Option value="Kỹ thuật">Ban Kỹ thuật</Select.Option>
+                                            <Select.Option value="Hậu cần">Ban Hậu cần</Select.Option>
+                                            <Select.Option value="Đào tạo">Ban Đào tạo</Select.Option>
+                                            <Select.Option value="Sự kiện">Ban Sự kiện</Select.Option>
+                                          </Select>
+                                        )}
+                                      </Form.Item>
+                                    );
+                                  }}
+                                </Form.Item>
+                              </Col>
+                              <Col span={5}>
+                                <Form.Item {...restField} label={<span style={{fontSize: 11}}>Định mức</span>} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" step={0.5} min={0} style={{ width: '100%' }} />
+                                </Form.Item>
+                              </Col>
+                              <Col span={2} style={{ textAlign: 'right', paddingTop: 18 }}>
+                                <Button variant="danger" ghost icon={<DeleteOutlined />} onClick={() => remove(name)} style={{ border: 'none' }} />
+                              </Col>
+                            </Row>
+                          </Card>
+                        ))}
+                        <Button variant="outline" buttonSize="small" onClick={() => add({ type: 'member_all', target: 'all', quota: 2.5 })} block icon={<PlusOutlined />}>Thêm quy tắc định mức</Button>
+                      </div>
+                    )}
+                  </Form.List>
+                </div>
+              )
+            }]}
+          />
           <Row gutter={[24, 16]}>
             <Col span={11}>
               <Form.Item name="mode" label={<span style={{ fontWeight: 500 }}>Chế độ dập khuôn</span>} initialValue="kips">

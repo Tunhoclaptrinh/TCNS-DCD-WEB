@@ -439,6 +439,18 @@ class DutyService {
     const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
     return response;
   }
+
+  async getPeriodConfig(startDate: string, endDate: string): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.get<BaseApiResponse<any>>("/duty/period-config", {
+      params: { startDate, endDate }
+    });
+    return response;
+  }
+
+  async updatePeriodConfig(data: any): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.put<BaseApiResponse<any>>("/duty/period-config", data);
+    return response;
+  }
   async getStats() {
     const response = await apiClient.get(`/duty/stats/summary`);
     return response;

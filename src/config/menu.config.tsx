@@ -74,7 +74,7 @@ export const adminMenu: IMenuItem[] = [
         key: 'meetings',
         path: '/admin/meetings',
         name: 'Lịch họp',
-        icon: <CalendarOutlined />,
+        icon: <TeamOutlined />,
         accessFilter: ['meeting:view', 'meeting:create:all', 'meeting:create:dept'],
     },
     {
@@ -161,7 +161,7 @@ export const customerMenu: IMenuItem[] = [
         key: 'meetings-member',
         path: '/duty/meetings',
         name: 'Lịch họp',
-        icon: <CalendarOutlined />,
+        icon: <TeamOutlined />,
         accessFilter: ['meeting:view'],
     },
     {

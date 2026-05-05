@@ -39,6 +39,7 @@ import AssignTemplateModal from './components/AssignTemplateModal';
 import AdminDutyTableView from './components/AdminDutyTableView';
 import AdminDutyTimelineView from './components/AdminDutyTimelineView';
 import ExportDutyModal from './components/ExportDutyModal';
+import QuotaSettingsModal from './Statistics/components/QuotaSettingsModal';
 
 // Meeting Components
 import MeetingDetailModal from '@/pages/Meetings/components/MeetingDetailModal';
@@ -86,6 +87,7 @@ const AdminDutyCalendar: React.FC = () => {
   const [isMinutesModalVisible, setIsMinutesModalVisible] = useState(false);
   const [isMinutesViewModalVisible, setIsMinutesViewModalVisible] = useState(false);
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
 
   // Chuyển từ modal Kíp → modal Ca cha
   const handleOpenCaFromSlot = (slot: DutySlot) => {
@@ -104,6 +106,7 @@ const AdminDutyCalendar: React.FC = () => {
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]); // For table view co-axial
   const [userMetadata, setUserMetadata] = useState<{ weeklyQuota: number, registeredKips: number, limitMode: string } | null>(null);
+  const [currentPeriodConfig, setCurrentPeriodConfig] = useState<any>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(dayjs()), 60000);
@@ -167,6 +170,14 @@ const AdminDutyCalendar: React.FC = () => {
       });
       if (mRes.success && mRes.data) {
         setMeetings(mRes.data);
+      }
+
+      // Fetch Period Config
+      const pcRes = await dutyService.getPeriodConfig(start, currentWeek.endOf('isoWeek' as any).format('YYYY-MM-DD'));
+      if (pcRes.success) {
+        setCurrentPeriodConfig(pcRes.data);
+      } else {
+        setCurrentPeriodConfig(null);
       }
 
     } catch (err) {
@@ -436,14 +447,34 @@ const AdminDutyCalendar: React.FC = () => {
   }, [templates, assignments, templateGroups, slots, currentWeek, showDefaultBoundaries, manualTemplateGroupId, eventFocusMode]);
 
 
+  const handleUpdatePeriodConfig = async (values: any) => {
+    try {
+      const payload = {
+        ...values,
+        startDate: currentWeek.startOf('isoWeek' as any).toISOString(),
+        endDate: currentWeek.endOf('isoWeek' as any).toISOString()
+      };
+      const res = await dutyService.updatePeriodConfig(payload);
+      if (res.success) {
+        message.success('Đã cập nhật định mức tuần');
+        setIsQuotaModalOpen(false);
+        fetchSchedule();
+      }
+    } catch (err) {
+      message.error('Lỗi cập nhật định mức');
+    }
+  };
+
   const adminMenu = (
     <Menu onClick={({ key }) => {
       if (key === 'setup') setIsSetupModalVisible(true);
       else if (key === 'assign') setIsAssignModalVisible(true);
+      else if (key === 'quota') setIsQuotaModalOpen(true);
       else if (key === 'clear') handleClearWeek();
     }}>
       <Menu.Item key="setup" icon={<SettingOutlined />}>Khởi tạo Tuần</Menu.Item>
       <Menu.Item key="assign" icon={<CalendarOutlined />}>Gắn Bản mẫu</Menu.Item>
+      <Menu.Item key="quota" icon={<SolutionOutlined />}>Thiết lập Định mức tuần</Menu.Item>
       <Menu.Divider />
       <Menu.Item key="clear" icon={<DeleteOutlined />} danger>Xóa trắng tuần</Menu.Item>
     </Menu>
@@ -536,7 +567,7 @@ const AdminDutyCalendar: React.FC = () => {
                   onChange={setManualTemplateGroupId}
                   dropdownMatchSelectWidth={false}
                   style={{ 
-                    width: 160, 
+                    width: 100, 
                     opacity: showDefaultBoundaries ? 1 : 0.5,
                     pointerEvents: showDefaultBoundaries ? 'auto' : 'none',
                   }}
@@ -719,6 +750,23 @@ const AdminDutyCalendar: React.FC = () => {
         open={isExportModalVisible}
         onCancel={() => setIsExportModalVisible(false)}
         defaultRange={[currentWeek, currentWeek.add(6, 'day')]}
+      />
+
+      <QuotaSettingsModal
+        open={isQuotaModalOpen}
+        onCancel={() => setIsQuotaModalOpen(false)}
+        onSave={handleUpdatePeriodConfig}
+        initialData={currentPeriodConfig}
+        departments={[
+          { id: 'Nhân sự', name: 'Ban Nhân sự' },
+          { id: 'Truyền thông', name: 'Ban Truyền thông' },
+          { id: 'Kỹ thuật', name: 'Ban Kỹ thuật' },
+          { id: 'Hậu cần', name: 'Ban Hậu cần' },
+          { id: 'Đào tạo', name: 'Ban Đào tạo' },
+          { id: 'Sự kiện', name: 'Ban Sự kiện' },
+        ]}
+        initialDateRange={[currentWeek.startOf('isoWeek' as any), currentWeek.endOf('isoWeek' as any)]}
+        templateGroups={templateGroups}
       />
 
       <Modal

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Modal, Form, Space, Card, Select, Tooltip, Divider, message } from 'antd';
+import { Modal, Form, Space, Card, Select, Tooltip, Divider, message, InputNumber, Row, Col, Input, Collapse, Typography } from 'antd';
 import Button from '@/components/common/Button';
-import { SettingOutlined, QuestionCircleOutlined, CopyOutlined, ClearOutlined } from '@ant-design/icons';
+import { SettingOutlined, QuestionCircleOutlined, CopyOutlined, ClearOutlined, DeleteOutlined, PlusOutlined, SolutionOutlined } from '@ant-design/icons';
+const { Text } = Typography;
 import dutyService from '@/services/duty.service';
 import dayjs from 'dayjs';
 
@@ -27,9 +28,10 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
       const values = await form.validateFields();
       const start = currentWeek.startOf('isoWeek' as any).format('YYYY-MM-DD');
       const end = currentWeek.endOf('isoWeek' as any).format('YYYY-MM-DD');
+
       const res = await dutyService.generateRangeSlots(start, end, values.templateId, values.mode);
       if (res.success) {
-        message.success('Đã khởi tạo từ bản mẫu');
+        message.success('Đã khởi tạo từ bản mẫu và áp dụng định mức');
         onSuccess();
         onCancel();
       }
@@ -120,14 +122,28 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           <Button variant="outline" buttonSize="small" onClick={onCancel} style={{ minWidth: 120 }}>Đóng</Button>
         </div>
       ]}
-      width={400}
+      width={500}
       destroyOnClose
     >
       <Form form={form} layout="vertical" initialValues={{ templateId: templateGroups.find(g => g.isDefault)?.id, mode: 'kips' }}>
         <Space direction="vertical" style={{ width: '100%' }} size={16}>
           <Card size="small" title="Cấu hình Khởi tạo" style={{ backgroundColor: '#f8fafc' }}>
             <Form.Item name="templateId" label="Chọn Bản mẫu" rules={[{ required: true }]}>
-              <Select size="small" placeholder="Chọn nhóm bản mẫu" options={templateGroups.map(g => ({ label: g.name, value: g.id }))} />
+              <Select 
+                size="small" 
+                placeholder="Chọn nhóm bản mẫu" 
+                options={templateGroups.map(g => ({ label: g.name, value: g.id }))} 
+                onChange={(id) => {
+                  const selected = templateGroups.find(g => g.id === id);
+                  if (selected) {
+                    form.setFieldsValue({
+                      defaultQuota: selected.defaultQuota,
+                      kipPrice: selected.kipPrice,
+                      quotaRules: selected.quotaRules
+                    });
+                  }
+                }}
+              />
             </Form.Item>
             <Form.Item name="mode" label="Chế độ khởi tạo" rules={[{ required: true }]}>
               <Select size="small" options={[
@@ -137,6 +153,89 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
               ]} />
             </Form.Item>
           </Card>
+
+          <Collapse 
+            ghost 
+            expandIconPosition="end"
+            items={[{
+              key: 'quota',
+              label: <Space><SolutionOutlined /> <Text strong style={{ fontSize: 13 }}>Thiết lập Định mức & Quy tắc</Text></Space>,
+              children: (
+                <div style={{ padding: '0 8px' }}>
+                  <Row gutter={12}>
+                    <Col span={12}>
+                      <Form.Item label={<span style={{ fontSize: 11 }}>Định mức kíp</span>} name="defaultQuota">
+                        <InputNumber size="small" min={0} step={0.5} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item label={<span style={{ fontSize: 11 }}>Đơn giá kíp</span>} name="kipPrice">
+                        <InputNumber size="small" min={0} step={1000} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  
+                  <Form.List name="quotaRules">
+                    {(fields, { add, remove }) => (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {fields.map(({ key, name, ...restField }) => (
+                          <Card key={key} size="small" style={{ borderRadius: 8, background: '#fff' }} bodyStyle={{ padding: '8px 12px' }}>
+                            <Row gutter={[8, 8]} align="middle">
+                              <Col span={10}>
+                                <Form.Item {...restField} name={[name, 'type']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                  <Select size="small" placeholder="Đối tượng" options={[
+                                    { label: 'MSV', value: 'user' },
+                                    { label: 'Đội trưởng', value: 'dt' },
+                                    { label: 'Trưởng ban', value: 'tb' },
+                                    { label: 'Phó ban', value: 'pb' },
+                                    { label: 'Thành viên', value: 'member_all' },
+                                    { label: 'CTV', value: 'ctv' },
+                                  ]} />
+                                </Form.Item>
+                              </Col>
+                              <Col span={10}>
+                                <Form.Item {...restField} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                  <InputNumber size="small" step={0.5} min={0} placeholder="Đ.mức" style={{ width: '100%' }} />
+                                </Form.Item>
+                              </Col>
+                              <Col span={4} style={{ textAlign: 'right' }}>
+                                <Button buttonSize="small" variant="danger" ghost icon={<DeleteOutlined />} onClick={() => remove(name)} style={{ border: 'none' }} />
+                              </Col>
+                              <Col span={24}>
+                                <Form.Item noStyle shouldUpdate>
+                                  {({ getFieldValue }) => {
+                                    const type = getFieldValue(['quotaRules', name, 'type']);
+                                    return (
+                                      <Form.Item {...restField} name={[name, 'target']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                                        {type === 'user' ? (
+                                          <Input size="small" placeholder="Mã sinh viên..." />
+                                        ) : (
+                                          <Select size="small" placeholder="Tất cả các ban">
+                                            <Select.Option value="all">Tất cả các ban</Select.Option>
+                                            <Select.Option value="Nhân sự">Ban Nhân sự</Select.Option>
+                                            <Select.Option value="Truyền thông">Ban Truyền thông</Select.Option>
+                                            <Select.Option value="Kỹ thuật">Ban Kỹ thuật</Select.Option>
+                                            <Select.Option value="Hậu cần">Ban Hậu cần</Select.Option>
+                                            <Select.Option value="Đào tạo">Ban Đào tạo</Select.Option>
+                                            <Select.Option value="Sự kiện">Ban Sự kiện</Select.Option>
+                                          </Select>
+                                        )}
+                                      </Form.Item>
+                                    );
+                                  }}
+                                </Form.Item>
+                              </Col>
+                            </Row>
+                          </Card>
+                        ))}
+                        <Button variant="outline" buttonSize="small" onClick={() => add({ type: 'member_all', target: 'all', quota: 2.5 })} block icon={<PlusOutlined />}>Thêm quy tắc</Button>
+                      </div>
+                    )}
+                  </Form.List>
+                </div>
+              )
+            }]}
+          />
 
           <Tooltip title="Tự động tạo các khung giờ kíp trực dựa trên cấu hình Bản mẫu đã thiết lập" placement="right">
             <Button buttonSize="small" fullWidth variant="primary" icon={<SettingOutlined />} onClick={() => {

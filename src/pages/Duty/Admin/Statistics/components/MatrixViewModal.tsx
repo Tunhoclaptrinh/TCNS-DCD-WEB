@@ -12,6 +12,7 @@ import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 
 dayjs.extend(isoWeek);
+import { dutyService } from '@/services/duty.service';
 
 
 import QuotaSettingsModal from './QuotaSettingsModal';
@@ -61,6 +62,8 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
 
   const [quotaSettingsOpen, setQuotaSettingsOpen] = React.useState(false);
   const [selectedWeekRange, setSelectedWeekRange] = React.useState<any>(null);
+  const [editingConfig, setEditingConfig] = React.useState<any>(null);
+  const [loadingConfig, setLoadingConfig] = React.useState(false);
 
   // Safely extract data with multiple fallbacks
   const { details = [], meta = {} } = stats || { details: [], meta: {} };
@@ -316,11 +319,21 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                         type="text" 
                         size="small" 
                         icon={<SettingOutlined style={{ fontSize: 12, color: '#1890ff' }} />} 
-                        onClick={() => {
+                        onClick={async () => {
                           const start = dayjs(week.dates[0]).startOf('day');
                           const end = dayjs(week.dates[week.dates.length - 1]).endOf('day');
                           setSelectedWeekRange([start, end]);
-                          setQuotaSettingsOpen(true);
+                          
+                          setLoadingConfig(true);
+                          try {
+                            const res = await dutyService.getPeriodConfig(start.toISOString(), end.toISOString());
+                            if (res.success) {
+                              setEditingConfig(res.data);
+                            }
+                          } finally {
+                            setLoadingConfig(false);
+                            setQuotaSettingsOpen(true);
+                          }
                         }}
                       />
                     </Tooltip>
@@ -477,11 +490,20 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
         open={quotaSettingsOpen}
         onCancel={() => setQuotaSettingsOpen(false)}
         onSave={async (values) => {
-          if (onSaveQuotaSettings) await onSaveQuotaSettings(values);
+          if (onSaveQuotaSettings && selectedWeekRange) {
+            const payload = {
+              ...values,
+              startDate: selectedWeekRange[0].toISOString(),
+              endDate: selectedWeekRange[1].toISOString(),
+            };
+            await onSaveQuotaSettings(payload);
+          }
           setQuotaSettingsOpen(false);
         }}
         departments={departments}
         initialDateRange={selectedWeekRange}
+        initialData={editingConfig}
+        loading={loadingConfig}
       />
     </Modal>
   );
