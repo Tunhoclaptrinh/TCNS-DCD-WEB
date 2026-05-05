@@ -520,11 +520,27 @@ const AdminDutyCalendar: React.FC = () => {
 
               {userMetadata && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
-                  <Tooltip title={`Định mức đăng ký tuần của bạn: ${userMetadata.weeklyQuota} kíp`}>
-                    <Tag bordered={false} color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} style={{ borderRadius: 6, margin: 0, fontWeight: 600 }}>
-                      Định mức: {userMetadata.registeredKips} / {userMetadata.weeklyQuota}
-                    </Tag>
-                  </Tooltip>
+                  {isAdmin ? (
+                    <Tooltip title="Xem và chỉnh sửa cấu hình định mức cho tuần này">
+                      <Tag 
+                        bordered={false} 
+                        color="blue" 
+                        style={{ borderRadius: 6, margin: 0, fontWeight: 600, cursor: 'pointer' }}
+                        onClick={() => setIsSetupModalVisible(true)}
+                      >
+                        <Space size={4}>
+                          <SolutionOutlined style={{ fontSize: 12 }} />
+                          <span>Xem chi tiết định mức</span>
+                        </Space>
+                      </Tag>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title={`Định mức đăng ký tuần của bạn: ${userMetadata.weeklyQuota} kíp`}>
+                      <Tag bordered={false} color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} style={{ borderRadius: 6, margin: 0, fontWeight: 600 }}>
+                        Định mức: {userMetadata.registeredKips} / {userMetadata.weeklyQuota}
+                      </Tag>
+                    </Tooltip>
+                  )}
                 </div>
               )}
               

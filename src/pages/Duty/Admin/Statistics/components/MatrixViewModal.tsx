@@ -435,11 +435,11 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                 })}
                 
                 <td style={{ ...stickyColumnStyle, left: 'auto', right: '140px', backgroundColor: '#e6f7ff', textAlign: 'center', fontWeight: 'bold', borderLeft: '2px solid #adc6ff', zIndex: 20 }}>{user.totalKips}</td>
-                <td style={{ ...stickyColumnStyle, left: 'auto', right: '70px', backgroundColor: '#fff1f0', textAlign: 'center', color: (user.simulatedQuota !== undefined) ? '#8c8c8c' : '#faad14', zIndex: 20 }}>
-                  {user.simulatedQuota !== undefined ? user.simulatedQuota : '--'}
+                <td style={{ ...stickyColumnStyle, left: 'auto', right: '70px', backgroundColor: '#fff1f0', textAlign: 'center', color: (user.userQuota !== undefined || user.simulatedQuota !== undefined) ? '#8c8c8c' : '#faad14', zIndex: 20 }}>
+                  {user.userQuota !== undefined ? user.userQuota : (user.simulatedQuota !== undefined ? user.simulatedQuota : '--')}
                 </td>
-                <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, backgroundColor: '#f9f0ff', textAlign: 'center', fontWeight: 'bold', color: (user.simulatedDeficiency ?? 0) > 0 ? '#cf1322' : '#52c41a', zIndex: 20 }}>
-                  {user.simulatedDeficiency !== undefined ? (user.simulatedDeficiency > 0 ? user.simulatedDeficiency : '✓') : '--'}
+                <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, backgroundColor: '#f9f0ff', textAlign: 'center', fontWeight: 'bold', color: ((user.deficiency ?? user.simulatedDeficiency) ?? 0) > 0 ? '#cf1322' : '#52c41a', zIndex: 20 }}>
+                  {(user.deficiency !== undefined) ? (user.deficiency > 0 ? user.deficiency : '✓') : (user.simulatedDeficiency !== undefined ? (user.simulatedDeficiency > 0 ? user.simulatedDeficiency : '✓') : '--')}
                 </td>
 
 

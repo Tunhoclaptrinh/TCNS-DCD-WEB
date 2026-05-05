@@ -125,7 +125,7 @@ const GroupModal: React.FC<GroupModalProps> = ({
               name="violationPenaltyRate" 
               rules={[{ required: true, message: 'Bắt buộc nhập hệ số phạt' }]}
             >
-              <InputNumber min={0} max={1} step={0.1} style={{ width: '100%' }} placeholder="0.0" />
+              <InputNumber min={0} step={0.1} style={{ width: '100%' }} placeholder="0.0" />
             </Form.Item>
           </Col>
         </Row>
@@ -134,15 +134,6 @@ const GroupModal: React.FC<GroupModalProps> = ({
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>Danh sách quy tắc dập khuôn ưu tiên (Nâng cao):</Text>
           <Form.List 
             name="quotaRules"
-            rules={[
-              {
-                validator: async (_, names) => {
-                  if (!names || names.length < 1) {
-                    return Promise.reject(new Error('Phải có ít nhất một quy tắc bản mẫu'));
-                  }
-                },
-              },
-            ]}
           >
             {(fields, { add, remove }, { errors }) => (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

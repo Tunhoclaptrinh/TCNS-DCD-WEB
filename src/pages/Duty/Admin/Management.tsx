@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, Form, Space, message, Typography, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch, InputNumber, Input } from 'antd';
+import { Card, Button, Modal, Form, Space, message, Typography, Select, Divider, Alert, DatePicker, Row, Col, Tooltip, Tag, Checkbox, Badge, Popconfirm, Dropdown, Menu, Tabs, Segmented, Switch, InputNumber, Input, Popover, List } from 'antd';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined,
   ScheduleOutlined, SettingOutlined,
@@ -16,7 +16,7 @@ import {
   InfoCircleOutlined,
   SolutionOutlined,
   ArrowDownOutlined,
-  WarningOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -1411,17 +1411,49 @@ const DutyManagement = () => {
                     </Space>
                     <div style={{ marginLeft: 'auto' }}>
                       {group.quotaRules?.length ? (
-                        <Tag color="processing" bordered={false} style={{ borderRadius: 6, padding: '2px 10px' }}>
-                          <Space size={4}>
-                            <SettingOutlined />
-                            <span>{group.quotaRules.length} quy tắc nâng cao</span>
-                          </Space>
-                        </Tag>
+                        <Popover 
+                          trigger="click" 
+                          placement="bottomRight"
+                          title={<Text strong style={{ fontSize: 13 }}>Danh sách quy tắc nâng cao</Text>}
+                          content={
+                            <List
+                              size="small"
+                              dataSource={group.quotaRules}
+                              style={{ width: 320 }}
+                              renderItem={(r: any) => (
+                                <List.Item style={{ padding: '8px 4px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Tag color={r.type === 'user' ? 'blue' : r.type === 'department' ? 'orange' : 'purple'} style={{ borderRadius: 4, fontSize: 10 }}>
+                                        {r.type === 'user' ? 'Người dùng' : r.type === 'department' ? 'Ban/Phòng' : 'Chức vụ'}
+                                      </Tag>
+                                      <Text strong style={{ fontSize: 12 }}>{r.quota} kíp/tuần</Text>
+                                    </div>
+                                    <Text style={{ fontSize: 12, color: '#1e293b' }}>Đối tượng: <Text code>{r.target}</Text></Text>
+                                    {r.startDate && <Text type="secondary" style={{ fontSize: 10 }}>Hạn: {dayjs(r.startDate).format('DD/MM')} - {dayjs(r.endDate).format('DD/MM')}</Text>}
+                                  </div>
+                                </List.Item>
+                              )}
+                            />
+                          }
+                        >
+                          <Tag 
+                            color="processing" 
+                            bordered={false} 
+                            style={{ borderRadius: 6, padding: '2px 10px', cursor: 'pointer' }}
+                          >
+                            <Space size={4}>
+                              <SettingOutlined />
+                              <span>{group.quotaRules.length} quy tắc nâng cao</span>
+                              <ArrowDownOutlined style={{ fontSize: 10 }} />
+                            </Space>
+                          </Tag>
+                        </Popover>
                       ) : (
-                        <Tag color="error" bordered={false} style={{ borderRadius: 6, padding: '2px 10px' }}>
+                        <Tag color="default" bordered={false} style={{ borderRadius: 6, padding: '2px 10px', color: '#64748b' }}>
                           <Space size={4}>
-                            <WarningOutlined />
-                            <span>Chưa có quy tắc bản mẫu</span>
+                            <InfoCircleOutlined />
+                            <span>Dùng định mức chung</span>
                           </Space>
                         </Tag>
                       )}
@@ -1602,240 +1634,173 @@ const DutyManagement = () => {
       key: '5',
       label: <span><SettingOutlined /> Cấu hình hệ thống</span>,
       children: (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <Title level={4} style={{ margin: 0 }}>Cấu hình Hệ thống</Title>
-            <Tooltip title="Các thiết lập này ảnh hưởng đến toàn bộ quy trình đăng ký, mở đợt và đổi kíp trực.">
+            <Tooltip title="Các thiết lập này ảnh hưởng đến toàn bộ quy trình của hệ thống.">
               <QuestionCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer' }} />
             </Tooltip>
           </div>
 
           <Alert
             message="Lưu ý về Định mức"
-            description="Các thiết lập định mức ở đây là giá trị MẶC ĐỊNH của toàn hệ thống. Nếu một tuần đã được cấu hình Định mức riêng (trong phần Quản trị tuần), hệ thống sẽ ưu tiên sử dụng cấu hình riêng đó."
+            description="Các thiết lập định mức ở đây là giá trị MẶC ĐỊNH. Hệ thống sẽ ưu tiên sử dụng cấu hình riêng trong 'Quản trị tuần' nếu có."
             type="warning"
             showIcon
-            style={{ marginBottom: 24, borderRadius: 12 }}
+            style={{ marginBottom: 24, borderRadius: 8 }}
           />
 
           <Form form={settingsForm} layout="vertical" onFinish={handleUpdateSettings}>
-            <Row gutter={[20, 20]}>
-              <Col xs={24} md={14}>
-                <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                  <div style={{ 
-                    background: '#ffffff', 
-                    padding: '20px', 
-                    borderRadius: 16, 
-                    border: '1px solid #f1f5f9', 
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                      <Space direction="vertical" size={0}>
-                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <ScheduleOutlined style={{ color: 'var(--primary-color)' }} />
-                          Giới hạn đăng ký kíp trực
-                        </span>
-                        <Text type="secondary" style={{ fontSize: 11 }}>Bật/Tắt kiểm soát định mức đăng ký kíp trực</Text>
-                      </Space>
-                      <Form.Item name="weeklyLimitEnabled" valuePropName="checked" noStyle>
-                        <Switch checkedChildren="Bật" unCheckedChildren="Tắt" size="small" />
-                      </Form.Item>
-                    </div>
-
-                    <div style={{ 
-                      padding: '16px', 
-                      background: '#f8fafc', 
-                      borderRadius: 12, 
-                      border: '1px solid #e2e8f0',
-                      display: 'flex',
-                      gap: 12,
-                      alignItems: 'flex-start'
-                    }}>
-                      <InfoCircleOutlined style={{ color: '#3b82f6', marginTop: 2 }} />
-                      <Text style={{ fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
-                        Hệ thống hiện đang sử dụng cơ chế <b>Quản lý Định mức theo Tuần</b>. 
-                        Để thiết lập giới hạn cho từng tuần cụ thể, vui lòng sử dụng menu <b>"Quản trị tuần"</b> trong giao diện Lịch trực.
-                      </Text>
-                    </div>
-                  </div>
-                </Space>
-              </Col>
-
-              <Col xs={24} md={10}>
-                <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                  <div style={{ 
-                    background: '#ffffff', 
-                    padding: '20px', 
-                    borderRadius: 16, 
-                    border: '1px solid #f1f5f9', 
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
-                  }}>
-                    <div style={{ marginBottom: 16 }}>
-                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <UnlockOutlined style={{ color: '#10b981' }} />
-                        Chính sách Hủy kíp
-                      </span>
-                      <Text type="secondary" style={{ fontSize: 11 }}>Quy định quyền tự rút tên khỏi kíp trực</Text>
-                    </div>
-                    
-                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 16 }}>
-                      <Form.Item name="allowUnregisterWhenFull" valuePropName="checked" noStyle>
-                        <Checkbox style={{ fontSize: 13, fontWeight: 500 }}>
-                          Cho phép tự hủy khi kíp đã FULL
-                          <Tooltip title="Nếu kíp trực đã đủ người, thành viên vẫn có thể hủy để người khác đăng ký thay thế.">
-                            <QuestionCircleOutlined style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }} />
-                          </Tooltip>
-                        </Checkbox>
-                      </Form.Item>
-                    </div>
-
-                    <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
-                      <div style={{ fontSize: '11px', color: '#166534', lineHeight: 1.4 }}>
-                        <b>Ghi chú:</b> Chế độ "Chặt chẽ" giúp ổn định nhân sự khi kíp đã đủ người.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ 
-                    background: '#ffffff', 
-                    padding: '20px', 
-                    borderRadius: 16, 
-                    border: '1px solid #f1f5f9', 
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
-                  }}>
-                    <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Space direction="vertical" size={0}>
-                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <GlobalOutlined style={{ color: '#3b82f6' }} />
-                          IP Văn phòng
-                        </span>
-                        <Text type="secondary" style={{ fontSize: 11 }}>Giới hạn mạng điểm danh</Text>
-                      </Space>
-                    </div>
-                    <Form.Item name="allowedIpRanges" noStyle>
-                      <Input 
-                        placeholder="Ví dụ: 192.168.1.*" 
-                        style={{ borderRadius: 10, height: 36, fontSize: 13 }} 
-                        prefix={<GlobalOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
-                      />
+            <Row gutter={[24, 24]}>
+              <Col xs={24} lg={12}>
+                <Card 
+                  title={<Space><ScheduleOutlined /> Giới hạn đăng ký kíp trực</Space>}
+                  extra={
+                    <Form.Item name="weeklyLimitEnabled" valuePropName="checked" noStyle>
+                      <Switch checkedChildren="Bật" unCheckedChildren="Tắt" size="small" />
                     </Form.Item>
-                    <div style={{ marginTop: 10, padding: '8px 12px', background: '#eff6ff', borderRadius: 8, border: '1px solid #dbeafe' }}>
-                      <Text style={{ fontSize: 11, color: '#1d4ed8' }}>
-                        Để trống để cho phép mọi nơi.
-                      </Text>
-                    </div>
+                  }
+                  style={{ height: '100%', borderRadius: 12 }}
+                >
+                  <div style={{ marginBottom: 16 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Kiểm soát định mức đăng ký kíp trực của thành viên theo từng tuần.
+                    </Text>
                   </div>
-
-                  <div style={{ 
-                    background: '#fffcfc', 
-                    padding: '20px', 
-                    borderRadius: 16, 
-                    border: '1px solid #fee2e2', 
-                    boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.03)'
-                  }}>
-                    <div style={{ marginBottom: 16 }}>
-                      <span style={{ fontWeight: 700, color: '#991b1b', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <ExclamationCircleOutlined style={{ color: '#dc2626' }} />
-                        Quy định Phạt (Tự động)
-                      </span>
-                      <Text type="secondary" style={{ fontSize: 11 }}>Mức phạt mặc định khi vi phạm</Text>
-                    </div>
-                    <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                      <Form.Item 
-                        name="penaltyAbsentNoPermission" 
-                        label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Vắng không phép</span>}
-                        rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <InputNumber 
-                          min={0} 
-                          step={5000}
-                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          style={{ width: '100%', borderRadius: 8 }} 
-                          addonAfter="VNĐ"
-                        />
-                      </Form.Item>
-                      <Form.Item 
-                        name="penaltyAbsentWithPermissionLate" 
-                        label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Vắng báo muộn</span>}
-                        rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <InputNumber 
-                          min={0} 
-                          step={5000}
-                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          style={{ width: '100%', borderRadius: 8 }} 
-                          addonAfter="VNĐ"
-                        />
-                      </Form.Item>
-                      <Form.Item 
-                        name="penaltyLate" 
-                        label={<span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Đi muộn</span>}
-                        rules={[{ required: true, message: 'Vui lòng nhập số tiền' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <InputNumber 
-                          min={0} 
-                          step={5000}
-                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          style={{ width: '100%', borderRadius: 8 }} 
-                          addonAfter="VNĐ"
-                        />
-                      </Form.Item>
+                  <div style={{ padding: '12px 16px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <Space align="start">
+                      <InfoCircleOutlined style={{ color: '#3b82f6', marginTop: 3 }} />
+                      <Text style={{ fontSize: 12, color: '#475569' }}>
+                        Để thiết lập giới hạn cho từng tuần cụ thể, vui lòng sử dụng menu <b>"Quản trị tuần"</b>.
+                      </Text>
                     </Space>
                   </div>
-                </Space>
+                </Card>
+              </Col>
+
+              <Col xs={24} lg={12}>
+                <Card 
+                  title={<Space><UnlockOutlined /> Chính sách Hủy kíp</Space>}
+                  style={{ height: '100%', borderRadius: 12 }}
+                >
+                  <div style={{ marginBottom: 16 }}>
+                    <Form.Item name="allowUnregisterWhenFull" valuePropName="checked" noStyle>
+                      <Checkbox style={{ fontSize: 13, fontWeight: 500 }}>
+                        Cho phép tự hủy khi kíp đã FULL
+                      </Checkbox>
+                    </Form.Item>
+                  </div>
+                  <div style={{ padding: '12px 16px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                    <Space align="start">
+                      <CheckCircleOutlined style={{ color: '#166534', marginTop: 3 }} />
+                      <Text style={{ fontSize: 12, color: '#166534' }}>
+                        <b>Chế độ "Chặt chẽ":</b> Giúp ổn định nhân sự khi kíp đã đủ người.
+                      </Text>
+                    </Space>
+                  </div>
+                </Card>
+              </Col>
+
+              <Col xs={24} lg={12}>
+                <Card 
+                  title={<Space><GlobalOutlined /> IP Văn phòng</Space>}
+                  style={{ height: '100%', borderRadius: 12 }}
+                >
+                  <div style={{ marginBottom: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Giới hạn mạng thực hiện điểm danh tại văn phòng.</Text>
+                  </div>
+                  <Form.Item name="allowedIpRanges" style={{ marginBottom: 12 }}>
+                    <Input 
+                      placeholder="Ví dụ: 192.168.1.*" 
+                      style={{ borderRadius: 8 }} 
+                      prefix={<GlobalOutlined style={{ color: '#94a3b8' }} />}
+                    />
+                  </Form.Item>
+                  <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                    * Để trống để cho phép mọi địa chỉ IP.
+                  </Text>
+                </Card>
+              </Col>
+
+              <Col xs={24} lg={12}>
+                <Card 
+                  title={<Space><ExclamationCircleOutlined /> Quy định Phạt (Tự động)</Space>}
+                  style={{ height: '100%', borderRadius: 12, border: '1px solid #fee2e2' }}
+                  headStyle={{ background: '#fffcfc' }}
+                >
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item 
+                        name="penaltyAbsentNoPermission" 
+                        label={<span style={{ fontSize: 12 }}>Vắng không phép</span>}
+                        rules={[{ required: true, message: 'Nhập số tiền' }]}
+                      >
+                        <InputNumber 
+                          min={0} step={5000} 
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          style={{ width: '100%', borderRadius: 6 }} 
+                          addonAfter="đ"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item 
+                        name="penaltyAbsentWithPermissionLate" 
+                        label={<span style={{ fontSize: 12 }}>Vắng báo muộn</span>}
+                        rules={[{ required: true, message: 'Nhập số tiền' }]}
+                      >
+                        <InputNumber 
+                          min={0} step={5000} 
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          style={{ width: '100%', borderRadius: 6 }} 
+                          addonAfter="đ"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
+                      <Form.Item 
+                        name="penaltyLate" 
+                        label={<span style={{ fontSize: 12 }}>Đi muộn</span>}
+                        rules={[{ required: true, message: 'Nhập số tiền' }]}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <InputNumber 
+                          min={0} step={5000} 
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          style={{ width: '100%', borderRadius: 6 }} 
+                          addonAfter="đ"
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Card>
               </Col>
             </Row>
 
-            <Divider style={{ margin: '24px 0 32px' }} />
+            <Divider style={{ margin: '24px 0' }} />
 
             <Alert
-              message={<span style={{ fontWeight: 600, fontSize: 14 }}>Hướng dẫn Cấu hình Hệ thống</span>}
+              message={<span style={{ fontWeight: 600 }}>Hướng dẫn Cấu hình Hệ thống</span>}
               description={
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ marginBottom: 12 }}>
-                    <Text strong style={{ color: 'var(--primary-color)' }}>1. Giới hạn tuần:</Text> 
-                    <Text type="secondary" style={{ marginLeft: 8 }}>
-                      Dùng để kiểm soát khối lượng công việc của từng thành viên. Khi đạt giới hạn, người dùng sẽ nhận được cảnh báo và không thể đăng ký thêm vào kíp trống.
-                    </Text>
-                  </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <Text strong style={{ color: 'var(--primary-color)' }}>2. Quy tắc định mức chi tiết:</Text>
-                    <Text type="secondary" style={{ marginLeft: 8 }}>
-                      Cho phép thiết lập giới hạn khác nhau cho từng nhóm đối tượng (ví dụ: Thành viên chính thức 3 kíp, CTV 2 kíp). Hệ thống ưu tiên theo thứ tự: <b>Cá nhân {'>'} Chức danh {'>'} Nhóm vai trò {'>'} Mặc định</b>.
-                    </Text>
-                  </div>
-                  <div>
-                    <Text strong style={{ color: 'var(--primary-color)' }}>3. Chính sách Hủy kíp:</Text>
-                    <Text type="secondary" style={{ marginLeft: 8 }}>
-                      Chế độ <b>"Chặt chẽ"</b> ngăn thành viên tự rút tên khỏi kíp đã đủ người (Full) để đảm bảo ổn định nhân sự.
-                    </Text>
-                  </div>
+                <div style={{ marginTop: 8, fontSize: 13 }}>
+                  <p>1. <b>Giới hạn tuần:</b> Dùng để kiểm soát khối lượng công việc của thành viên.</p>
+                  <p>2. <b>Thứ tự ưu tiên:</b> Cá nhân {'>'} Chức danh {'>'} Nhóm vai trò {'>'} Mặc định.</p>
+                  <p>3. <b>Chính sách Hủy kíp:</b> Chế độ "Chặt chẽ" ngăn rút tên khi kíp đã đủ người.</p>
                 </div>
               }
               type="info"
               showIcon
-              style={{ marginBottom: 32, borderRadius: 8, padding: '16px 20px', backgroundColor: '#f0f9ff', border: '1px solid #e0f2fe' }}
+              style={{ marginBottom: 32, borderRadius: 8 }}
             />
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32, marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
               <Button 
                 type="primary" 
                 htmlType="submit" 
                 loading={settingsLoading} 
                 icon={<SettingOutlined />} 
-                style={{ 
-                  borderRadius: 10, 
-                  padding: '0 32px', 
-                  fontWeight: 600,
-                  height: 40,
-                  fontSize: 14,
-                  boxShadow: '0 4px 10px rgba(37, 99, 235, 0.15)',
-                  background: 'var(--primary-color)',
-                  borderColor: 'var(--primary-color)'
-                }}
+                size="large"
+                style={{ borderRadius: 8, padding: '0 40px', fontWeight: 600 }}
               >
                 Lưu cấu hình hệ thống
               </Button>
