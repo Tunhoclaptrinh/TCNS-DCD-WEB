@@ -30,6 +30,8 @@ const DutyManagement = lazy(() => import("@/pages/Duty/Admin/Management"));
 const LeaveRequests = lazy(() => import("@/pages/Duty/Admin/LeaveRequests"));
 const SwapRequests = lazy(() => import("@/pages/Duty/Admin/SwapRequests"));
 const DutyStatistics = lazy(() => import("@/pages/Duty/Admin/Statistics/index"));
+const AdvancedStatistics = lazy(() => import("@/pages/Duty/Admin/Statistics/Advanced/AdvancedStatisticsPage"));
+
 const Generations = lazy(() => import("@/pages/Generations"));
 const Permissions = lazy(() => import("@/pages/Permissions"));
 const Roles = lazy(() => import("@/pages/Roles"));
@@ -219,8 +221,18 @@ const routes: RouteObject[] = [
       },
       {
         path: "statistics",
-        element: <DutyStatistics />,
+        children: [
+          {
+            index: true,
+            element: <DutyStatistics />,
+          },
+          {
+            path: "advanced",
+            element: <AdvancedStatistics />,
+          }
+        ]
       },
+
       {
         path: "reward-penalties",
         element: <RewardPenalties />,

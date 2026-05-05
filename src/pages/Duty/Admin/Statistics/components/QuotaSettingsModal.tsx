@@ -34,35 +34,52 @@ interface QuotaSettingsModalProps {
   open: boolean;
   onCancel: () => void;
   onSave: (values: any) => Promise<void>;
-  initialData: any;
+  initialData?: any;
   departments: any[];
+  initialDateRange?: [dayjs.Dayjs, dayjs.Dayjs];
 }
+
 
 const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
   open,
   onCancel,
   onSave,
   initialData,
-  departments
+  departments,
+  initialDateRange
 }) => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open && initialData) {
-      const quotaRules = (initialData.quotaRules || []).map((r: any) => ({
-        ...r,
-        cycle: r.cycle || 'week',
-        dateRange: r.startDate && r.endDate ? [dayjs(r.startDate), dayjs(r.endDate)] : undefined
-      }));
-      form.setFieldsValue({
-        defaultQuota: initialData.defaultQuota,
-        kipPrice: initialData.kipPrice,
-        violationPenaltyRate: initialData.violationPenaltyRate,
-        quotaRules,
-      });
+    if (open) {
+      if (initialData) {
+        const quotaRules = (initialData.quotaRules || []).map((r: any) => ({
+          ...r,
+          cycle: r.cycle || 'week',
+          dateRange: r.startDate && r.endDate ? [dayjs(r.startDate), dayjs(r.endDate)] : undefined
+        }));
+        form.setFieldsValue({
+          defaultQuota: initialData.defaultQuota,
+          kipPrice: initialData.kipPrice,
+          violationPenaltyRate: initialData.violationPenaltyRate,
+          quotaRules,
+        });
+      } else if (initialDateRange) {
+        // If opening from a specific week in Matrix View
+        form.setFieldsValue({
+          quotaRules: [{
+            type: 'member_all',
+            target: 'all',
+            quota: 2.5,
+            cycle: 'week',
+            dateRange: initialDateRange
+          }]
+        });
+      }
     }
-  }, [open, initialData, form]);
+  }, [open, initialData, initialDateRange, form]);
+
 
   const handleOk = async (values: any) => {
     try {

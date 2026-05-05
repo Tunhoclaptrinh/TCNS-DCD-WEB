@@ -22,8 +22,10 @@ import {
   SettingOutlined,
   TableOutlined,
   SyncOutlined,
+  ThunderboltOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons';
+
 import { dutyService } from '@/services/duty.service';
 import { userService } from '@/services/user.service';
 import { generationService } from '@/services/generation.service';
@@ -454,10 +456,12 @@ const StatisticsPage: React.FC = () => {
           </Col>
           <Col>
             <Space size={12}>
+              <Button icon={<ThunderboltOutlined />} onClick={() => window.location.href = '/admin/statistics/advanced'}>Chế độ nâng cao</Button>
               <Button icon={<TableOutlined />} onClick={() => setMatrixModalOpen(true)}>Bảng Excel</Button>
               <Button icon={<FileExcelOutlined />} type="primary" onClick={handleExport}>Xuất báo cáo</Button>
             </Space>
           </Col>
+
         </Row>
 
       {/* 2. Filter & Toolbar Bar */}

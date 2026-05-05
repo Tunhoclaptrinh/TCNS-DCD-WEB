@@ -460,6 +460,23 @@ class DutyService {
     return response;
   }
 
+  // Snapshots
+  async getSnapshots() {
+    const response = await apiClient.get<BaseApiResponse<any[]>>('/duty/snapshots');
+    return response;
+  }
+
+  async createSnapshot(data: any) {
+    const response = await apiClient.post<BaseApiResponse<any>>('/duty/snapshots', data);
+    return response;
+  }
+
+  async deleteSnapshot(id: string) {
+    const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/snapshots/${id}`);
+    return response;
+  }
+
+
   // History & Logs
   async getUserRemarks(userId: number) {
     const response = await apiClient.get<BaseApiResponse<any[]>>(`/duty/remarks/user/${userId}`);
