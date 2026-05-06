@@ -251,7 +251,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
       onCancel={onCancel}
       onOk={handleOk}
       loading={loading}
-      width={540}
+      width={640}
       destroyOnClose
       footer={
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, width: '100%' }}>

@@ -269,7 +269,12 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
                 <div style={{ padding: '0 4px 8px' }}>
                   <Row gutter={16} style={{ marginBottom: 16 }}>
                     <Col span={12}>
-                      <Form.Item label={<span style={{ fontSize: 12, color: '#64748b' }}><FieldTimeOutlined /> Định mức kíp</span>} name="defaultQuota" style={{ marginBottom: 12 }}>
+                      <Form.Item 
+                        label={<span style={{ fontSize: 12, color: '#64748b' }}><FieldTimeOutlined /> Định mức kíp</span>} 
+                        name="defaultQuota" 
+                        style={{ marginBottom: 12 }}
+                        rules={[{ required: true, message: 'Vui lòng nhập định mức' }]}
+                      >
                         <InputNumber 
                           min={0} step={0.5} 
                           style={{ width: '100%', borderRadius: 8 }} 

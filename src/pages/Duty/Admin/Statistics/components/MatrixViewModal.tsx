@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Modal, Space, Typography, Button, Radio, Tooltip, Tag, DatePicker } from 'antd';
+import { Modal, Space, Typography, Button, Radio, Tooltip, Tag, DatePicker, Segmented, Row, Col, Card, InputNumber } from 'antd';
 import { 
   TableOutlined, 
   LeftOutlined, 
@@ -64,10 +64,35 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
   const [selectedWeekRange, setSelectedWeekRange] = React.useState<any>(null);
   const [editingConfig, setEditingConfig] = React.useState<any>(null);
   const [loadingConfig, setLoadingConfig] = React.useState(false);
+  const [showFinance, setShowFinance] = React.useState(false);
+  
+  // Simulation States
+  const [simQuota, setSimQuota] = React.useState<number | null>(null);
+  const [simPrice, setSimPrice] = React.useState<number | null>(null);
+  const [isSimulating, setIsSimulating] = React.useState(false);
 
   // Safely extract data with multiple fallbacks
-  const { details = [], meta = {} } = stats || { details: [], meta: {} };
+  const { details: rawDetails = [], meta = {} } = stats || { details: [], meta: {} };
   const { slots = [], kips = [] } = meta || { slots: [], kips: [] };
+
+  const details = useMemo(() => {
+    if (!isSimulating) return rawDetails;
+    return rawDetails.map((u: any) => {
+      const q = simQuota !== null ? simQuota : (u.userQuota || 0);
+      const p = simPrice !== null ? simPrice : (u.userKipPrice || 0);
+      
+      const earnings = (u.totalKips || 0) * p;
+      // We don't have violation count in details directly, so we might need to approximate or skip penalties in sim
+      // But let's assume we use the ratio if possible or just update earnings
+      return {
+        ...u,
+        simulatedQuota: q,
+        simulatedDeficiency: Math.max(0, q - (u.totalKips || 0)),
+        totalEarnings: earnings,
+        netEarnings: earnings - (u.totalPenalties || 0) // Keep original penalties for now
+      };
+    });
+  }, [rawDetails, isSimulating, simQuota, simPrice]);
 
 
 
@@ -159,6 +184,14 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
     });
   }, [weekGroups, groupedData]);
 
+  const totalKipCols = useMemo(() => {
+    return dates.reduce((acc, date) => {
+      const dayShifts = groupedData[date];
+      const dayKipsCount = dayShifts.reduce((sum, g) => sum + g.kips.length, 0);
+      return acc + Math.max(1, dayKipsCount);
+    }, 0);
+  }, [dates, groupedData]);
+
   // 5. Lookup map
   const userSlotMap = useMemo(() => {
     const map = new Map<string, any>();
@@ -229,57 +262,133 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
       onCancel={onCancel}
       width="99%"
       style={{ top: 10 }}
-      footer={null}
-      bodyStyle={{ padding: '0 16px 16px 16px' }}
+      bodyStyle={{ padding: '0 24px 24px 24px', background: '#f8fafc' }}
     >
-      {/* Toolbar Area */}
+      {/* Simulation & Controls Bar */}
       <div style={{ 
         background: '#fff', 
-        padding: '16px 0', 
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid #f0f0f0',
-        marginBottom: 16
+        padding: '16px', 
+        borderRadius: '0 0 16px 16px',
+        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+        marginBottom: 20,
+        border: '1px solid #e2e8f0',
+        borderTop: 'none'
       }}>
-        <Space size={16} wrap>
-          <div style={{ display: 'flex', alignItems: 'center', background: '#f5f5f5', padding: '4px 8px', borderRadius: '6px' }}>
-            <Button type="text" icon={<LeftOutlined />} onClick={handlePrevRange} size="small" />
-            <Text strong style={{ margin: '0 8px', color: '#1d39c4', minWidth: 140, textAlign: 'center' }}>{dateRangeText}</Text>
-            <Button type="text" icon={<RightOutlined />} onClick={handleNextRange} size="small" />
-          </div>
+        <Row gutter={24} align="middle">
+          <Col span={10}>
+            <Space size={12}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', padding: '4px 8px', borderRadius: '8px' }}>
+                <Button type="text" icon={<LeftOutlined />} onClick={handlePrevRange} size="small" />
+                <Text strong style={{ margin: '0 12px', color: '#1e293b', minWidth: 140, textAlign: 'center', fontSize: 13 }}>{dateRangeText}</Text>
+                <Button type="text" icon={<RightOutlined />} onClick={handleNextRange} size="small" />
+              </div>
+              <DatePicker.RangePicker 
+                size="small"
+                value={filters.dateRange}
+                onChange={(val) => val && onFilterChange({ ...filters, dateRange: [val[0], val[1]], viewType: 'range' })}
+                style={{ width: 220, borderRadius: 8 }}
+              />
+            </Space>
+          </Col>
           
-          <Space>
-            <Text type="secondary" style={{ fontSize: '12px' }}>Chọn khoảng ngày:</Text>
-            <DatePicker.RangePicker 
-              size="middle"
-              value={filters.dateRange}
-              onChange={(val) => val && onFilterChange({ ...filters, dateRange: [val[0], val[1]], viewType: 'range' })}
-              style={{ width: 280 }}
-            />
-          </Space>
+          <Col span={14} style={{ textAlign: 'right' }}>
+            <Space size={16}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', background: isSimulating ? '#fff1f0' : '#f8fafc', borderRadius: 10, border: `1px solid ${isSimulating ? '#ffccc7' : '#e2e8f0'}` }}>
+                <Text style={{ fontSize: 12, fontWeight: 600 }}>Mô phỏng:</Text>
+                <InputNumber 
+                  size="small" 
+                  placeholder="Đ.mức" 
+                  style={{ width: 60, borderRadius: 6 }} 
+                  value={simQuota} 
+                  onChange={v => { setSimQuota(v); setIsSimulating(true); }} 
+                />
+                <InputNumber 
+                  size="small" 
+                  placeholder="Giá" 
+                  style={{ width: 80, borderRadius: 6 }} 
+                  value={simPrice} 
+                  onChange={v => { setSimPrice(v); setIsSimulating(true); }} 
+                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                />
+                {isSimulating && (
+                  <Button 
+                    type="link" 
+                    danger 
+                    size="small" 
+                    onClick={() => { setIsSimulating(false); setSimQuota(null); setSimPrice(null); }}
+                    style={{ padding: 0 }}
+                  >
+                    Hủy
+                  </Button>
+                )}
+              </div>
 
-          {weekGroups.some(w => w.isFragmented) && (
-            <Tooltip title="Khoảng ngày chọn chứa các tuần không đầy đủ (dưới 7 ngày).">
-              <Tag icon={<ExclamationCircleOutlined />} color="warning" style={{ margin: 0 }}>Tuần dở dang</Tag>
-            </Tooltip>
-          )}
-        </Space>
-
-
-        
-        <Space size={16}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: '#f6ffed', border: '1px solid #b7eb8f', marginRight: 4 }}></div>
-            <Text style={{ fontSize: 12 }}>Đã trực</Text>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: '#fffbe6', border: '1px solid #ffe58f', marginRight: 4 }}></div>
-            <Text style={{ fontSize: 12 }}>Chưa điểm danh</Text>
-          </div>
-        </Space>
+              <Segmented
+                options={[
+                  { label: <Space><TableOutlined style={{ fontSize: 12 }} /><span>Chuyên môn</span></Space>, value: 'duty' },
+                  { label: <Space><SettingOutlined style={{ fontSize: 12 }} /><span>Tài chính</span></Space>, value: 'finance' }
+                ]}
+                value={showFinance ? 'finance' : 'duty'}
+                onChange={(v) => setShowFinance(v === 'finance')}
+                style={{ borderRadius: 8 }}
+              />
+              
+              <Button 
+                icon={<SettingOutlined />} 
+                onClick={() => setQuotaSettingsOpen(true)}
+                style={{ borderRadius: 8 }}
+              >
+                Cấu hình Gốc
+              </Button>
+            </Space>
+          </Col>
+        </Row>
       </div>
-      
+
+      {/* Summary Dashboard */}
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={6}>
+          <Card size="small" style={{ borderRadius: 12, background: '#e6f7ff', border: '1px solid #91d5ff' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#0050b3' }}>TỔNG KÍP TRỰC</Text>
+              <Text style={{ fontSize: 24, fontWeight: 800, color: '#003a8c' }}>
+                {details.reduce((acc: number, u: any) => acc + (u.totalKips || 0), 0)}
+              </Text>
+            </div>
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small" style={{ borderRadius: 12, background: '#f6ffed', border: '1px solid #b7eb8f' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#237804' }}>TỔNG ĐỊNH MỨC</Text>
+              <Text style={{ fontSize: 24, fontWeight: 800, color: '#135200' }}>
+                {details.reduce((acc: number, u: any) => acc + (u.userQuota || u.simulatedQuota || 0), 0).toFixed(1)}
+              </Text>
+            </div>
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small" style={{ borderRadius: 12, background: '#fff7e6', border: '1px solid #ffd591' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#874d00' }}>TỔNG THU NHẬP</Text>
+              <Text style={{ fontSize: 24, fontWeight: 800, color: '#613400' }}>
+                {(details.reduce((acc: number, u: any) => acc + (u.totalEarnings || 0), 0) / 1000000).toFixed(2)}M
+              </Text>
+            </div>
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card size="small" style={{ borderRadius: 12, background: '#fff1f0', border: '1px solid #ffa39e' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#a8071a' }}>TỔNG TIỀN PHẠT</Text>
+              <Text style={{ fontSize: 24, fontWeight: 800, color: '#820014' }}>
+                {(details.reduce((acc: number, u: any) => acc + (u.totalPenalties || 0), 0) / 1000).toLocaleString()}k
+              </Text>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
       <div style={{ 
         overflowX: 'auto', 
         overflowY: 'auto', 
@@ -396,6 +505,17 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                 );
 
               })}
+              
+              <th style={{ ...stickyHeaderStyle, top: '80px', right: showFinance ? '280px' : '140px', zIndex: 31, width: '70px', backgroundColor: '#e6f7ff' }}>Kíp</th>
+              <th style={{ ...stickyHeaderStyle, top: '80px', right: showFinance ? '210px' : '70px', zIndex: 31, width: '70px', backgroundColor: '#fff7e6' }}>Đ.mức</th>
+              <th style={{ ...stickyHeaderStyle, top: '80px', right: showFinance ? '140px' : 0, zIndex: 31, width: '70px', backgroundColor: '#fff1f0' }}>Thiếu</th>
+
+              {showFinance && (
+                <>
+                  <th style={{ ...stickyHeaderStyle, top: '80px', right: '70px', zIndex: 31, width: '70px', backgroundColor: '#f9f0ff' }}>Phạt</th>
+                  <th style={{ ...stickyHeaderStyle, top: '80px', right: 0, zIndex: 31, width: '70px', backgroundColor: '#f6ffed' }}>Thực nhận</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -405,9 +525,6 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                 <td style={{ ...stickyColumnStyle, left: '40px', zIndex: 20, width: '100px', minWidth: '100px', whiteSpace: 'nowrap' }}>{user.lastName}</td>
                 <td style={{ ...stickyColumnStyle, left: '140px', zIndex: 20, width: '100px', minWidth: '100px', whiteSpace: 'nowrap', borderRight: '2px solid #f0f0f0' }}><Text strong>{user.firstName}</Text></td>
 
-
-
-                
                 {dates.map(date => {
                   const dayShifts = groupedData[date];
                   if (dayShifts.length === 0) return <td key={`empty-${date}`} style={{ textAlign: 'center', color: '#f0f0f0' }}>·</td>;
@@ -434,19 +551,74 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                   );
                 })}
                 
-                <td style={{ ...stickyColumnStyle, left: 'auto', right: '140px', backgroundColor: '#e6f7ff', textAlign: 'center', fontWeight: 'bold', borderLeft: '2px solid #adc6ff', zIndex: 20 }}>{user.totalKips}</td>
-                <td style={{ ...stickyColumnStyle, left: 'auto', right: '70px', backgroundColor: '#fff1f0', textAlign: 'center', color: (user.userQuota !== undefined || user.simulatedQuota !== undefined) ? '#8c8c8c' : '#faad14', zIndex: 20 }}>
-                  {user.userQuota !== undefined ? user.userQuota : (user.simulatedQuota !== undefined ? user.simulatedQuota : '--')}
+                <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '280px' : '140px', backgroundColor: '#e6f7ff', textAlign: 'center', fontWeight: 'bold', borderLeft: '2px solid #adc6ff', zIndex: 20 }}>{user.totalKips}</td>
+                <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '140px' : 0, backgroundColor: '#fff1f0', textAlign: 'center', fontWeight: 'bold', borderRight: showFinance ? '1px solid #f0f0f0' : 'none', zIndex: 20 }}>
+                  {(user.deficiency !== undefined) ? (
+                    user.deficiency > 0 ? (
+                      <span style={{ 
+                        color: user.deficiency > 2 ? '#cf1322' : '#fa8c16',
+                        background: user.deficiency > 2 ? '#fff1f0' : '#fff7e6',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${user.deficiency > 2 ? '#ffa39e' : '#ffd591'}`
+                      }}>
+                        -{user.deficiency}
+                      </span>
+                    ) : <Tag color="success" style={{ margin: 0, borderRadius: 4 }}>✓ Đủ</Tag>
+                  ) : (user.simulatedDeficiency !== undefined ? (
+                    user.simulatedDeficiency > 0 ? (
+                      <span style={{ color: '#cf1322', fontWeight: 'bold' }}>-{user.simulatedDeficiency}</span>
+                    ) : <Tag color="success" style={{ margin: 0, borderRadius: 4 }}>✓ Đủ</Tag>
+                  ) : '--')}
                 </td>
-                <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, backgroundColor: '#f9f0ff', textAlign: 'center', fontWeight: 'bold', color: ((user.deficiency ?? user.simulatedDeficiency) ?? 0) > 0 ? '#cf1322' : '#52c41a', zIndex: 20 }}>
-                  {(user.deficiency !== undefined) ? (user.deficiency > 0 ? user.deficiency : '✓') : (user.simulatedDeficiency !== undefined ? (user.simulatedDeficiency > 0 ? user.simulatedDeficiency : '✓') : '--')}
-                </td>
 
-
-
+                {showFinance && (
+                  <>
+                    <td style={{ ...stickyColumnStyle, left: 'auto', right: '70px', backgroundColor: '#f9f0ff', textAlign: 'center', zIndex: 20 }}>
+                      <Tooltip title={`Hệ số phạt: ${((user.userPenaltyRate || 0) * 100).toFixed(0)}%`}>
+                        <span style={{ color: user.totalPenalties ? '#cf1322' : '#8c8c8c', fontWeight: 600 }}>
+                          {user.totalPenalties ? `-${(user.totalPenalties / 1000).toLocaleString()}k` : '0'}
+                        </span>
+                      </Tooltip>
+                    </td>
+                    <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, backgroundColor: '#f6ffed', textAlign: 'center', fontWeight: 'bold', color: '#52c41a', zIndex: 20 }}>
+                      <Tooltip title={`Thu nhập (${(user.totalEarnings / 1000).toLocaleString()}k) - Phạt (${(user.totalPenalties / 1000).toLocaleString()}k)`}>
+                        <span>{((user.netEarnings || 0) / 1000).toLocaleString()}k</span>
+                      </Tooltip>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>
+          <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 30, backgroundColor: '#f8fafc', fontWeight: 'bold' }}>
+            <tr>
+              <td colSpan={3} style={{ ...stickyColumnStyle, left: 0, backgroundColor: '#f8fafc', borderTop: '2px solid #e2e8f0', textAlign: 'right', paddingRight: 16 }}>TỔNG CỘNG</td>
+              {/* Empty cells for kips */}
+              {Array.from({ length: totalKipCols }).map((_, i) => (
+                <td key={`foot-${i}`} style={{ borderTop: '2px solid #e2e8f0', backgroundColor: '#f8fafc' }}></td>
+              ))}
+              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '280px' : '140px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0' }}>
+                {details.reduce((acc: number, u: any) => acc + (u.totalKips || 0), 0)}
+              </td>
+              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '210px' : '70px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0' }}>
+                {details.reduce((acc: number, u: any) => acc + (u.userQuota || u.simulatedQuota || 0), 0).toFixed(1)}
+              </td>
+              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '140px' : 0, textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0' }}>
+                {details.reduce((acc: number, u: any) => acc + Math.max(0, u.deficiency || u.simulatedDeficiency || 0), 0).toFixed(1)}
+              </td>
+              {showFinance && (
+                <>
+                  <td style={{ ...stickyColumnStyle, left: 'auto', right: '70px', textAlign: 'center', backgroundColor: '#fff1f0', borderTop: '2px solid #e2e8f0', color: '#cf1322' }}>
+                    -{(details.reduce((acc: number, u: any) => acc + (u.totalPenalties || 0), 0) / 1000).toLocaleString()}k
+                  </td>
+                  <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, textAlign: 'center', backgroundColor: '#f6ffed', borderTop: '2px solid #e2e8f0', color: '#52c41a' }}>
+                    {(details.reduce((acc: number, u: any) => acc + (u.netEarnings || 0), 0) / 1000).toLocaleString()}k
+                  </td>
+                </>
+              )}
+            </tr>
+          </tfoot>
         </table>
       </div>
       

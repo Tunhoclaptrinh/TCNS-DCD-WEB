@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Form, Row, Col, Input, InputNumber, 
-  Select, DatePicker, Space, Typography, Tooltip,
+  Select, DatePicker, Space, Typography,
   Button, message, Modal
 } from 'antd';
 import { 
@@ -200,6 +200,7 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
               <Form.Item 
                 name="defaultQuota" 
                 label={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Định mức mặc định (kíp/tuần)</span>}
+                rules={[{ required: true, message: 'Vui lòng nhập định mức mặc định' }]}
               >
                 <InputNumber min={0} step={0.5} style={{ width: '100%', borderRadius: 8 }} placeholder="2.5" />
               </Form.Item>
@@ -297,32 +298,37 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                         }}
                       </Form.Item>
                     </Col>
-                    <Col span={8}>
+                    <Col span={3}>
+                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>Đ.MỨC</span>} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
+                        <InputNumber step={0.5} min={0} style={{ width: '100%', borderRadius: 6 }} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={4}>
+                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>ĐƠN GIÁ (K)</span>} name={[name, 'kipPrice']} style={{ marginBottom: 0 }}>
+                        <InputNumber 
+                          min={0} step={5000} 
+                          style={{ width: '100%', borderRadius: 6 }} 
+                          placeholder="Mặc định"
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={3}>
+                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>PHẠT (%)</span>} name={[name, 'violationPenaltyRate']} style={{ marginBottom: 0 }}>
+                        <InputNumber min={0} max={1} step={0.1} style={{ width: '100%', borderRadius: 6 }} placeholder="0.0" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={5}>
                       <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>THỜI GIAN ÁP DỤNG</span>} name={[name, 'dateRange']} style={{ marginBottom: 0 }}>
                         <RangePicker 
                           style={{ width: '100%', background: '#f8fafc', borderRadius: 6, border: '1px dashed #cbd5e1' }} 
-                          placeholder={['Từ', 'Đến']} 
                           disabled 
                           format="DD/MM"
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={4}>
-                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>ĐỊNH MỨC</span>} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
-                        <InputNumber step={0.5} min={0} style={{ width: '100%', borderRadius: 6 }} placeholder="0.0" />
-                      </Form.Item>
-                    </Col>
-                    <Col span={2} style={{ textAlign: 'right', paddingTop: 14 }}>
-                      <Tooltip title="Xóa quy tắc">
-                        <Button 
-                          type="text" 
-                          danger 
-                          shape="circle" 
-                          icon={<DeleteOutlined />} 
-                          onClick={() => remove(name)} 
-                          style={{ marginTop: 4 }}
-                        />
-                      </Tooltip>
+                    <Col span={1} style={{ textAlign: 'right', paddingTop: 18 }}>
+                      <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => remove(name)} />
                     </Col>
                   </Row>
                 </div>
