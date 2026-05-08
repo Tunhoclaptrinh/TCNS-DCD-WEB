@@ -1,12 +1,16 @@
 import React, { useMemo } from 'react';
-import { Modal, Space, Typography, Button, Radio, Tooltip, Tag, DatePicker, Segmented, Row, Col, Card, InputNumber } from 'antd';
+import { Modal, Space, Typography, Button, Radio, Tooltip, Tag, DatePicker, Segmented, Row, Col, Card, InputNumber, Alert, Popover } from 'antd';
 import { 
   TableOutlined, 
   LeftOutlined, 
   RightOutlined,
   CalendarOutlined,
   ExclamationCircleOutlined,
-  SettingOutlined
+  SettingOutlined,
+  ThunderboltOutlined,
+  ExpandOutlined,
+  CloseOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -65,11 +69,34 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
   const [editingConfig, setEditingConfig] = React.useState<any>(null);
   const [loadingConfig, setLoadingConfig] = React.useState(false);
   const [showFinance, setShowFinance] = React.useState(false);
+  const [templateGroups, setTemplateGroups] = React.useState<any[]>([]);
   
   // Simulation States
   const [simQuota, setSimQuota] = React.useState<number | null>(null);
   const [simPrice, setSimPrice] = React.useState<number | null>(null);
   const [isSimulating, setIsSimulating] = React.useState(false);
+
+  const handleOpenSettings = async () => {
+    setLoadingConfig(true);
+    try {
+      const res = await dutyService.getPeriodConfig(
+        selectedWeekRange[0].toISOString(),
+        selectedWeekRange[1].toISOString()
+      );
+      if (res.success) setEditingConfig(res.data);
+    } finally {
+      setLoadingConfig(false);
+      setQuotaSettingsOpen(true);
+    }
+  };
+
+  React.useEffect(() => {
+    if (open) {
+      dutyService.getTemplateGroups().then(res => {
+        if (res.success) setTemplateGroups(res.data || []);
+      });
+    }
+  }, [open]);
 
   // Safely extract data with multiple fallbacks
   const { details: rawDetails = [], meta = {} } = stats || { details: [], meta: {} };
@@ -81,15 +108,15 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
       const q = simQuota !== null ? simQuota : (u.userQuota || 0);
       const p = simPrice !== null ? simPrice : (u.userKipPrice || 0);
       
-      const earnings = (u.totalKips || 0) * p;
-      // We don't have violation count in details directly, so we might need to approximate or skip penalties in sim
-      // But let's assume we use the ratio if possible or just update earnings
+      const totalEarnings = (u.totalKips || 0) * p;
+      const netEarnings = totalEarnings;
+
       return {
         ...u,
         simulatedQuota: q,
         simulatedDeficiency: Math.max(0, q - (u.totalKips || 0)),
-        totalEarnings: earnings,
-        netEarnings: earnings - (u.totalPenalties || 0) // Keep original penalties for now
+        totalEarnings,
+        netEarnings
       };
     });
   }, [rawDetails, isSimulating, simQuota, simPrice]);
@@ -332,59 +359,78 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                 onChange={(v) => setShowFinance(v === 'finance')}
                 style={{ borderRadius: 8 }}
               />
-              
-              <Button 
-                icon={<SettingOutlined />} 
-                onClick={() => setQuotaSettingsOpen(true)}
-                style={{ borderRadius: 8 }}
-              >
-                Cấu hình Gốc
-              </Button>
             </Space>
           </Col>
         </Row>
       </div>
 
+      {(!isPeriodInitialized && stats?.meta?.isPeriodInitialized !== true) && (
+        <Alert
+          message={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Space>
+                <ExclamationCircleOutlined style={{ fontSize: 18, color: '#d46b08' }} />
+                <Text strong style={{ color: '#d46b08', fontSize: 14 }}>CHƯA KHỞI TẠO ĐỊNH MỨC CHÍNH THỨC CHO GIAI ĐOẠN NÀY!</Text>
+              </Space>
+              <Text style={{ fontSize: 13, color: '#856404', marginLeft: 26 }}>
+                Hệ thống đang tạm thời sử dụng định mức mặc định <b>2.5 kíp/tuần</b>. Vui lòng nhấn nút bên phải để chốt số liệu vào cơ sở dữ liệu.
+              </Text>
+            </div>
+          }
+          type="warning"
+          showIcon={false}
+          action={
+            <Button 
+              type="primary" 
+              size="middle"
+              icon={<ThunderboltOutlined />}
+              onClick={handleOpenSettings} 
+              style={{ backgroundColor: '#faad14', borderColor: '#faad14', fontWeight: 700, height: 40, marginTop: 4 }}
+            >
+              KHỞI TẠO NGAY
+            </Button>
+          }
+          style={{ 
+            marginBottom: 20, 
+            borderRadius: 12, 
+            border: '2px solid #ffe58f', 
+            backgroundColor: '#fffbe6', 
+            padding: '16px 20px',
+            boxShadow: '0 4px 12px rgba(255, 229, 143, 0.4)'
+          }}
+        />
+      )}
+
       {/* Summary Dashboard */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
-          <Card size="small" style={{ borderRadius: 12, background: '#e6f7ff', border: '1px solid #91d5ff' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#0050b3' }}>TỔNG KÍP TRỰC</Text>
-              <Text style={{ fontSize: 24, fontWeight: 800, color: '#003a8c' }}>
-                {details.reduce((acc: number, u: any) => acc + (u.totalKips || 0), 0)}
-              </Text>
-            </div>
+      <Row gutter={12} style={{ marginBottom: 16 }}>
+        <Col span={4}>
+          <Card size="small" style={{ borderRadius: 12, background: '#e6f7ff', border: '1px solid #91d5ff', padding: '8px 12px' }}>
+            <Text type="secondary" style={{ fontSize: 10, fontWeight: 600, color: '#0050b3' }}>TỔNG KÍP</Text>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#003a8c' }}>{stats?.meta?.totalKips || 0}</div>
           </Card>
         </Col>
-        <Col span={6}>
-          <Card size="small" style={{ borderRadius: 12, background: '#f6ffed', border: '1px solid #b7eb8f' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#237804' }}>TỔNG ĐỊNH MỨC</Text>
-              <Text style={{ fontSize: 24, fontWeight: 800, color: '#135200' }}>
-                {details.reduce((acc: number, u: any) => acc + (u.userQuota || u.simulatedQuota || 0), 0).toFixed(1)}
-              </Text>
-            </div>
+        <Col span={4}>
+          <Card size="small" style={{ borderRadius: 12, background: '#f6ffed', border: '1px solid #b7eb8f', padding: '8px 12px' }}>
+            <Text type="secondary" style={{ fontSize: 10, fontWeight: 600, color: '#237804' }}>ĐỊNH MỨC</Text>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#135200' }}>{(stats?.meta?.totalQuota || 0).toFixed(1)}</div>
           </Card>
         </Col>
-        <Col span={6}>
-          <Card size="small" style={{ borderRadius: 12, background: '#fff7e6', border: '1px solid #ffd591' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#874d00' }}>TỔNG THU NHẬP</Text>
-              <Text style={{ fontSize: 24, fontWeight: 800, color: '#613400' }}>
-                {(details.reduce((acc: number, u: any) => acc + (u.totalEarnings || 0), 0) / 1000000).toFixed(2)}M
-              </Text>
-            </div>
+        <Col span={4}>
+          <Card size="small" style={{ borderRadius: 12, background: '#fff1f0', border: '1px solid #ffa39e', padding: '8px 12px' }}>
+            <Text type="secondary" style={{ fontSize: 10, fontWeight: 600, color: '#cf1322' }}>TỔNG LỖI</Text>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#cf1322' }}>{stats?.meta?.totalViolations || 0}</div>
           </Card>
         </Col>
-        <Col span={6}>
-          <Card size="small" style={{ borderRadius: 12, background: '#fff1f0', border: '1px solid #ffa39e' }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, color: '#a8071a' }}>TỔNG TIỀN PHẠT</Text>
-              <Text style={{ fontSize: 24, fontWeight: 800, color: '#820014' }}>
-                {(details.reduce((acc: number, u: any) => acc + (u.totalPenalties || 0), 0) / 1000).toLocaleString()}k
-              </Text>
-            </div>
+        <Col span={4}>
+          <Card size="small" style={{ borderRadius: 12, background: '#fff7e6', border: '1px solid #ffd591', padding: '8px 12px' }}>
+            <Text type="secondary" style={{ fontSize: 10, fontWeight: 600, color: '#d46b08' }}>TIỀN PHẠT</Text>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#d46b08' }}>{(stats?.meta?.totalPenalties || 0).toLocaleString()}</div>
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card size="small" style={{ borderRadius: 12, background: '#f0f5ff', border: '1px solid #adc6ff', padding: '8px 12px' }}>
+            <Text type="secondary" style={{ fontSize: 10, fontWeight: 600, color: '#003a8c' }}>TỔNG QUYẾT TOÁN (TẠM TÍNH)</Text>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#003a8c' }}>{(stats?.meta?.totalNetEarnings || 0).toLocaleString()} VNĐ</div>
           </Card>
         </Col>
       </Row>
@@ -403,9 +449,9 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
           <thead>
             {/* Row 1: Week */}
             <tr>
-              <th rowSpan={4} style={{ ...stickyHeaderStyle, left: 0, zIndex: 100, backgroundColor: '#fff', width: '40px', minWidth: '40px' }}>TT</th>
-              <th rowSpan={4} style={{ ...stickyHeaderStyle, left: '40px', zIndex: 100, width: '100px', minWidth: '100px', backgroundColor: '#fff' }}>Họ</th>
-              <th rowSpan={4} style={{ ...stickyHeaderStyle, left: '140px', zIndex: 100, width: '100px', minWidth: '100px', backgroundColor: '#fff' }}>Tên</th>
+              <th rowSpan={4} style={{ ...stickyHeaderStyle, left: 0, zIndex: 100, backgroundColor: '#f8fafc', width: '40px', minWidth: '40px' }}>TT</th>
+              <th rowSpan={4} style={{ ...stickyHeaderStyle, left: '40px', zIndex: 100, width: '100px', minWidth: '100px', backgroundColor: '#f8fafc' }}>Họ</th>
+              <th rowSpan={4} style={{ ...stickyHeaderStyle, left: '140px', zIndex: 100, width: '100px', minWidth: '100px', backgroundColor: '#f8fafc' }}>Tên</th>
 
 
 
@@ -417,9 +463,10 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                 }}>
                   <Space>
                     <span>Tuần {week.weekNum} ({week.year})</span>
-                    {!isPeriodInitialized && (
-                      <Tooltip title="Tuần này chưa được khởi tạo định mức chính thức!">
-                        <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+                    {/* Show warning if this specific week is using defaults */}
+                    {stats?.meta?.weekInitStatus?.[`${week.year}-${week.weekNum}`] === false && (
+                      <Tooltip title={`Tuần ${week.weekNum} chưa được khởi tạo định mức chính thức! Đang dùng mặc định 2.5`}>
+                        <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: 14, marginLeft: 4 }} />
                       </Tooltip>
                     )}
 
@@ -447,13 +494,74 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                       />
                     </Tooltip>
 
+                    {week.isFragmented && (
+                      <Popover 
+                        title={<Space><InfoCircleOutlined style={{ color: '#faad14' }} /><span>Tuần không trọn vẹn</span></Space>}
+                        content={
+                          <div style={{ maxWidth: 250 }}>
+                            <p style={{ fontSize: 13, marginBottom: 12 }}>
+                              Tuần này chỉ hiển thị <b>{week.dates.length}/7 ngày</b> do giới hạn của bộ lọc thời gian. Bạn muốn xử lý thế nào?
+                            </p>
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <Button 
+                                block 
+                                size="small" 
+                                icon={<ExpandOutlined />}
+                                onClick={() => {
+                                  // Expand range to cover the whole week
+                                  const fullStart = dayjs(week.dates[0]).startOf('isoWeek');
+                                  const fullEnd = dayjs(week.dates[0]).endOf('isoWeek');
+                                  
+                                  const newRange = [...(filters.dateRange || [])] as [dayjs.Dayjs, dayjs.Dayjs];
+                                  if (idx === 0) newRange[0] = fullStart;
+                                  if (idx === weekGroups.length - 1) newRange[1] = fullEnd;
+                                  
+                                  onFilterChange({ ...filters, dateRange: newRange });
+                                }}
+                              >
+                                Lấy toàn bộ tuần này
+                              </Button>
+                              <Button 
+                                block 
+                                size="small" 
+                                danger
+                                icon={<CloseOutlined />}
+                                onClick={() => {
+                                  // Shrink range to exclude these partial days
+                                  const nextWeekStart = dayjs(week.dates[0]).add(1, 'week').startOf('isoWeek');
+                                  const prevWeekEnd = dayjs(week.dates[0]).subtract(1, 'week').endOf('isoWeek');
+                                  
+                                  const newRange = [...(filters.dateRange || [])] as [dayjs.Dayjs, dayjs.Dayjs];
+                                  if (idx === 0) newRange[0] = nextWeekStart;
+                                  if (idx === weekGroups.length - 1) newRange[1] = prevWeekEnd;
+                                  
+                                  onFilterChange({ ...filters, dateRange: newRange });
+                                }}
+                              >
+                                Loại bỏ tuần lẻ này
+                              </Button>
+                            </Space>
+                          </div>
+                        }
+                      >
+                        <ExclamationCircleOutlined style={{ color: '#faad14', cursor: 'pointer' }} />
+                      </Popover>
+                    )}
+
                   </Space>
                 </th>
               ))}
 
-              <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: '140px', backgroundColor: '#e6f7ff', minWidth: '70px', zIndex: 110, borderLeft: '2px solid #adc6ff' }}>Tổng</th>
-              <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: '70px', backgroundColor: '#fff1f0', minWidth: '70px', zIndex: 110 }}>Định mức</th>
-              <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: 0, backgroundColor: '#f9f0ff', minWidth: '70px', zIndex: 110 }}>Thiếu</th>
+              <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: showFinance ? '370px' : '140px', backgroundColor: '#e6f7ff', width: '70px', minWidth: '70px', zIndex: 110, borderLeft: '2px solid #adc6ff' }}>Tổng</th>
+              <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: showFinance ? '300px' : '70px', backgroundColor: '#fff7e6', width: '70px', minWidth: '70px', zIndex: 110 }}>Định mức</th>
+              <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: showFinance ? '230px' : 0, backgroundColor: '#fff1f0', width: '70px', minWidth: '70px', zIndex: 110 }}>Thiếu/Thừa</th>
+              {showFinance && (
+                <>
+                  <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: '160px', backgroundColor: '#fff1f0', width: '70px', minWidth: '70px', zIndex: 110, color: '#cf1322' }}>Lỗi</th>
+                  <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: '90px', backgroundColor: '#fff7e6', width: '70px', minWidth: '70px', zIndex: 110, color: '#d46b08' }}>Phạt</th>
+                  <th rowSpan={4} style={{ ...stickyHeaderStyle, position: 'sticky', right: 0, backgroundColor: '#f6ffed', width: '90px', minWidth: '90px', zIndex: 110, color: '#52c41a' }}>Thực nhận</th>
+                </>
+              )}
 
             </tr>
             {/* Row 2: Date */}
@@ -505,17 +613,6 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                 );
 
               })}
-              
-              <th style={{ ...stickyHeaderStyle, top: '80px', right: showFinance ? '280px' : '140px', zIndex: 31, width: '70px', backgroundColor: '#e6f7ff' }}>Kíp</th>
-              <th style={{ ...stickyHeaderStyle, top: '80px', right: showFinance ? '210px' : '70px', zIndex: 31, width: '70px', backgroundColor: '#fff7e6' }}>Đ.mức</th>
-              <th style={{ ...stickyHeaderStyle, top: '80px', right: showFinance ? '140px' : 0, zIndex: 31, width: '70px', backgroundColor: '#fff1f0' }}>Thiếu</th>
-
-              {showFinance && (
-                <>
-                  <th style={{ ...stickyHeaderStyle, top: '80px', right: '70px', zIndex: 31, width: '70px', backgroundColor: '#f9f0ff' }}>Phạt</th>
-                  <th style={{ ...stickyHeaderStyle, top: '80px', right: 0, zIndex: 31, width: '70px', backgroundColor: '#f6ffed' }}>Thực nhận</th>
-                </>
-              )}
             </tr>
           </thead>
           <tbody>
@@ -551,40 +648,25 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
                   );
                 })}
                 
-                <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '280px' : '140px', backgroundColor: '#e6f7ff', textAlign: 'center', fontWeight: 'bold', borderLeft: '2px solid #adc6ff', zIndex: 20 }}>{user.totalKips}</td>
-                <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '140px' : 0, backgroundColor: '#fff1f0', textAlign: 'center', fontWeight: 'bold', borderRight: showFinance ? '1px solid #f0f0f0' : 'none', zIndex: 20 }}>
-                  {(user.deficiency !== undefined) ? (
-                    user.deficiency > 0 ? (
-                      <span style={{ 
-                        color: user.deficiency > 2 ? '#cf1322' : '#fa8c16',
-                        background: user.deficiency > 2 ? '#fff1f0' : '#fff7e6',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        border: `1px solid ${user.deficiency > 2 ? '#ffa39e' : '#ffd591'}`
-                      }}>
-                        -{user.deficiency}
-                      </span>
-                    ) : <Tag color="success" style={{ margin: 0, borderRadius: 4 }}>✓ Đủ</Tag>
-                  ) : (user.simulatedDeficiency !== undefined ? (
-                    user.simulatedDeficiency > 0 ? (
-                      <span style={{ color: '#cf1322', fontWeight: 'bold' }}>-{user.simulatedDeficiency}</span>
-                    ) : <Tag color="success" style={{ margin: 0, borderRadius: 4 }}>✓ Đủ</Tag>
-                  ) : '--')}
+                {/* Summary Columns */}
+                <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '370px' : '140px', textAlign: 'center', backgroundColor: '#e6f7ff', fontSize: '13px', fontWeight: 'bold', borderLeft: '2px solid #adc6ff', zIndex: 20, width: '70px', minWidth: '70px' }}>{user.totalKips}</td>
+                <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '300px' : '70px', textAlign: 'center', backgroundColor: '#fff7e6', fontSize: '12px', zIndex: 20, width: '70px', minWidth: '70px' }}>{user.userQuota || user.simulatedQuota}</td>
+                <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '230px' : 0, textAlign: 'center', backgroundColor: '#fff1f0', color: (user.totalKips - (user.userQuota || user.simulatedQuota)) >= 0 ? '#52c41a' : '#cf1322', fontWeight: 'bold', zIndex: 20, width: '70px', minWidth: '70px' }}>
+                  {(() => {
+                    const diff = (user.totalKips || 0) - (user.userQuota || user.simulatedQuota || 0);
+                    return diff >= 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1);
+                  })()}
                 </td>
-
                 {showFinance && (
                   <>
-                    <td style={{ ...stickyColumnStyle, left: 'auto', right: '70px', backgroundColor: '#f9f0ff', textAlign: 'center', zIndex: 20 }}>
-                      <Tooltip title={`Hệ số phạt: ${((user.userPenaltyRate || 0) * 100).toFixed(0)}%`}>
-                        <span style={{ color: user.totalPenalties ? '#cf1322' : '#8c8c8c', fontWeight: 600 }}>
-                          {user.totalPenalties ? `-${(user.totalPenalties / 1000).toLocaleString()}k` : '0'}
-                        </span>
-                      </Tooltip>
+                    <td style={{ ...stickyColumnStyle, left: 'auto', right: '160px', textAlign: 'center', backgroundColor: '#fff1f0', color: '#cf1322', fontWeight: 'bold', zIndex: 20, width: '70px', minWidth: '70px' }}>
+                      {user.violationCount || 0}
                     </td>
-                    <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, backgroundColor: '#f6ffed', textAlign: 'center', fontWeight: 'bold', color: '#52c41a', zIndex: 20 }}>
-                      <Tooltip title={`Thu nhập (${(user.totalEarnings / 1000).toLocaleString()}k) - Phạt (${(user.totalPenalties / 1000).toLocaleString()}k)`}>
-                        <span>{((user.netEarnings || 0) / 1000).toLocaleString()}k</span>
-                      </Tooltip>
+                    <td style={{ ...stickyColumnStyle, left: 'auto', right: '90px', textAlign: 'center', backgroundColor: '#fff7e6', color: '#d46b08', fontWeight: 'bold', zIndex: 20, width: '70px', minWidth: '70px' }}>
+                      {((user.totalPenaltyAmount || 0) / 1000).toLocaleString()}k
+                    </td>
+                    <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, backgroundColor: '#f6ffed', textAlign: 'center', fontWeight: 'bold', color: '#52c41a', zIndex: 20, width: '90px', minWidth: '90px' }}>
+                      <span>{((user.netEarnings || 0) / 1000).toLocaleString()}k</span>
                     </td>
                   </>
                 )}
@@ -598,21 +680,27 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
               {Array.from({ length: totalKipCols }).map((_, i) => (
                 <td key={`foot-${i}`} style={{ borderTop: '2px solid #e2e8f0', backgroundColor: '#f8fafc' }}></td>
               ))}
-              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '280px' : '140px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0' }}>
+              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '370px' : '140px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0', zIndex: 20, width: '70px', minWidth: '70px' }}>
                 {details.reduce((acc: number, u: any) => acc + (u.totalKips || 0), 0)}
               </td>
-              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '210px' : '70px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0' }}>
-                {details.reduce((acc: number, u: any) => acc + (u.userQuota || u.simulatedQuota || 0), 0).toFixed(1)}
+              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '300px' : '70px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0', zIndex: 20, width: '70px', minWidth: '70px' }}>
+                {(details.reduce((acc: number, u: any) => acc + (u.userQuota || u.simulatedQuota || 0), 0)).toFixed(1)}
               </td>
-              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '140px' : 0, textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0' }}>
-                {details.reduce((acc: number, u: any) => acc + Math.max(0, u.deficiency || u.simulatedDeficiency || 0), 0).toFixed(1)}
+              <td style={{ ...stickyColumnStyle, left: 'auto', right: showFinance ? '230px' : 0, textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0', zIndex: 20, width: '70px', minWidth: '70px' }}>
+                {(() => {
+                  const totalDiff = details.reduce((acc: number, u: any) => acc + ((u.totalKips || 0) - (u.userQuota || u.simulatedQuota || 0)), 0);
+                  return totalDiff >= 0 ? `+${totalDiff.toFixed(1)}` : totalDiff.toFixed(1);
+                })()}
               </td>
               {showFinance && (
                 <>
-                  <td style={{ ...stickyColumnStyle, left: 'auto', right: '70px', textAlign: 'center', backgroundColor: '#fff1f0', borderTop: '2px solid #e2e8f0', color: '#cf1322' }}>
-                    -{(details.reduce((acc: number, u: any) => acc + (u.totalPenalties || 0), 0) / 1000).toLocaleString()}k
+                  <td style={{ ...stickyColumnStyle, left: 'auto', right: '160px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0', zIndex: 20, width: '70px', minWidth: '70px', color: '#cf1322' }}>
+                    {details.reduce((acc: number, u: any) => acc + (u.violationCount || 0), 0)}
                   </td>
-                  <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, textAlign: 'center', backgroundColor: '#f6ffed', borderTop: '2px solid #e2e8f0', color: '#52c41a' }}>
+                  <td style={{ ...stickyColumnStyle, left: 'auto', right: '90px', textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0', zIndex: 20, width: '70px', minWidth: '70px', color: '#d46b08' }}>
+                    {(details.reduce((acc: number, u: any) => acc + (u.totalPenaltyAmount || 0), 0) / 1000).toLocaleString()}k
+                  </td>
+                  <td style={{ ...stickyColumnStyle, left: 'auto', right: 0, textAlign: 'center', backgroundColor: '#f1f5f9', borderTop: '2px solid #e2e8f0', zIndex: 20, color: '#52c41a', width: '90px', minWidth: '90px' }}>
                     {(details.reduce((acc: number, u: any) => acc + (u.netEarnings || 0), 0) / 1000).toLocaleString()}k
                   </td>
                 </>
@@ -676,6 +764,7 @@ const MatrixViewModal: React.FC<MatrixViewModalProps> = ({
         initialDateRange={selectedWeekRange}
         initialData={editingConfig}
         loading={loadingConfig}
+        templateGroups={templateGroups}
       />
     </Modal>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Col, Form, Input, Row, Select, Divider, Tooltip, Collapse, Space, Tag, Alert, DatePicker, Image } from 'antd';
+import { Col, Form, Input, Row, Select, Divider, Tooltip, Collapse, Space, Tag, Alert, DatePicker, Image, AutoComplete } from 'antd';
 import type { FormInstance } from 'antd';
 import { 
   UserOutlined, 
@@ -26,9 +26,10 @@ interface UsersFormProps {
   generations: { id: number; name: string }[];
   roles: { id: number; name: string }[];
   permissions: { id: number; name: string; key: string; module: string }[];
+  departments: string[];
 }
 
-const DEPARTMENT_OPTIONS = ['Nhân sự', 'Tài chính', 'Truyền thông'];
+// Removed hardcoded DEPARTMENT_OPTIONS to allow dynamic input
 
 const POSITION_LABELS: Record<string, string> = {
   ctv: 'Cộng tác viên',
@@ -49,6 +50,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
   generations,
   roles,
   permissions,
+  departments,
 }) => {
   // Watch position to handle department visibility/requirement
   const position = Form.useWatch('position', form);
@@ -316,14 +318,17 @@ const UsersForm: React.FC<UsersFormProps> = ({
             <Form.Item 
               name="department" 
               label="Ban chuyên môn" 
-              rules={[{ required: isDeptApplicable, message: 'Vui lòng chọn ban' }]}
+              rules={[{ required: isDeptApplicable, message: 'Vui lòng chọn hoặc nhập tên ban' }]}
             >
-              <Select 
-                placeholder={isDeptApplicable ? "Chọn ban" : "Không thuộc ban"} 
+              <AutoComplete
+                placeholder={isDeptApplicable ? "Chọn hoặc nhập tên ban mới" : "Không thuộc ban"} 
                 disabled={!isDeptApplicable}
                 allowClear 
                 onChange={handleDepartmentChange}
-                options={DEPARTMENT_OPTIONS.map(d => ({ label: d, value: d }))} 
+                options={departments.map(d => ({ value: d }))}
+                filterOption={(inputValue: string, option: any) =>
+                  String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+                }
               />
             </Form.Item>
           </Col>

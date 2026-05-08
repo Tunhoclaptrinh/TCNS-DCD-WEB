@@ -475,6 +475,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   { label: <Space><UnlockOutlined /><span>Công khai</span></Space>, value: 'public' },
                   { label: <Space><EyeInvisibleOutlined /><span>Song phương</span></Space>, value: 'private_mutual' },
                   { label: <Space><EyeOutlined /><span>Bảo vệ TV</span></Space>, value: 'protect_members' },
+                  { label: <Space><TeamOutlined /><span>Ẩn toàn bộ</span></Space>, value: 'hidden_all' },
                 ]}
               />
             </Form.Item>

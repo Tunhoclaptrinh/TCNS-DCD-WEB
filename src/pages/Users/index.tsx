@@ -36,7 +36,7 @@ const POSITION_LABELS: Record<string, string> = {
     dt: 'Đội trưởng'
 };
 
-const DEPARTMENT_OPTIONS = ['Nhân sự', 'Tài chính', 'Truyền thông'];
+// Dynamic department options will be derived from stats
 
 const UserPage = () => {
     const formatDateTime = (value?: string) => {
@@ -210,21 +210,22 @@ const UserPage = () => {
             combinedFilters.status = 'inactive';
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
+        } else if (activeTab === 'all') {
+            combinedFilters.status = 'active';
+            combinedFilters.department = undefined;
+            combinedFilters.department_nin = undefined;
+        } else if (activeTab === 'others') {
+            combinedFilters.status = 'active';
+            combinedFilters.department = undefined;
+            // Get current known departments to exclude
+            const knownDepts = Object.keys(stats?.byDepartment || {}).filter(k => k !== '__unassigned__');
+            combinedFilters.department_nin = knownDepts.length > 0 ? knownDepts : undefined;
         } else {
-            combinedFilters.status = 'active'; // Default for all other tabs
-            if (activeTab === 'all') {
-                combinedFilters.department = undefined;
-                combinedFilters.department_nin = undefined;
-            } else if (activeTab === 'others') {
-                combinedFilters.department = undefined;
-                combinedFilters.department_nin = DEPARTMENT_OPTIONS;
-            } else {
-                combinedFilters.department = activeTab;
-                combinedFilters.department_nin = undefined;
-            }
+            combinedFilters.status = 'active';
+            combinedFilters.department = activeTab;
+            combinedFilters.department_nin = undefined;
         }
 
-        // Use setFilters to REPLACE instead of merge, ensuring old filters are cleared
         fetchUserStats(combinedFilters);
         setFilters(combinedFilters);
     }, [selectedGenerationId, activeGenerationIds, activeTab]);
@@ -623,7 +624,9 @@ const UserPage = () => {
             label: "Tên Ban",
             type: "select" as const,
             operators: ['eq', 'like', 'in'] as any,
-            options: DEPARTMENT_OPTIONS.map(d => ({ label: d, value: d })),
+            options: Object.keys(stats?.byDepartment || {})
+                .filter(d => d !== '__unassigned__')
+                .map(d => ({ label: d, value: d })),
         },
 
         {
@@ -789,8 +792,8 @@ const UserPage = () => {
         ? (stats?.global || initialStatObject)
         : activeTab === 'others'
         ? Object.keys(stats?.byDepartment || {}).reduce((acc, key) => {
-            // Aggregate all departments NOT in DEPARTMENT_OPTIONS, including __unassigned__
-            if (!DEPARTMENT_OPTIONS.includes(key) || key === '__unassigned__') {
+            // Aggregate only unassigned members for 'others' tab in dynamic mode
+            if (key === '__unassigned__') {
                 const deptStats = stats.byDepartment[key];
                 acc.total += deptStats.total || 0;
                 acc.active += deptStats.active || 0;
@@ -888,10 +891,12 @@ const UserPage = () => {
                             onChange={onTabChange}
                             items={[
                                 { label: 'Toàn bộ Đội', key: 'all' },
-                                ...DEPARTMENT_OPTIONS.map(dept => ({ 
-                                    label: `Ban ${dept}`, 
-                                    key: dept 
-                                })),
+                                ...Object.keys(stats?.byDepartment || {})
+                                    .filter(d => d !== '__unassigned__')
+                                    .map(dept => ({ 
+                                        label: `Ban ${dept}`, 
+                                        key: dept 
+                                    })),
                                 { label: 'Khác', key: 'others' },
                                 { label: 'Cựu thành viên', key: 'alumni' }
                             ]}
@@ -996,6 +1001,7 @@ const UserPage = () => {
                 generations={generationList}
                 roles={roleList}
                 permissions={permissionList}
+                departments={Object.keys(stats?.byDepartment || {}).filter(d => d !== '__unassigned__')}
             />
 
             <UsersDetailModal
@@ -1039,10 +1045,12 @@ const UserPage = () => {
                             <div style={{ marginBottom: 4 }}>Chọn hoặc nhập tên ban:</div>
                             <AutoComplete
                                 style={{ width: '100%' }}
-                                placeholder="Tài chính, Truyền thông, Nhân sự..."
+                                placeholder="Chọn hoặc nhập ban mới..."
                                 value={targetDepartment}
                                 onChange={setTargetDepartment}
-                                options={DEPARTMENT_OPTIONS.map(d => ({ value: d }))}
+                                options={Object.keys(stats?.byDepartment || {})
+                                    .filter(d => d !== '__unassigned__')
+                                    .map(d => ({ value: d }))}
                                 filterOption={(inputValue, option) =>
                                     String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
                                 }

@@ -19,7 +19,6 @@ import {
   EditOutlined,
   SendOutlined,
   CommentOutlined,
-  SettingOutlined,
   TableOutlined,
   SyncOutlined,
   ThunderboltOutlined,
@@ -151,17 +150,6 @@ const StatisticsPage: React.FC = () => {
       filters: tableFilters,
       sorter,
     });
-  };
-
-  const handleOpenSettings = async () => {
-    try {
-      const res = await dutyService.getSettings();
-      if (res.success) {
-        setSettingsModal({ open: true, data: res.data });
-      }
-    } catch (err) {
-      message.error('Lỗi khi tải cấu hình');
-    }
   };
 
   const handleSaveSettings = async (values: any) => {
@@ -312,6 +300,25 @@ const StatisticsPage: React.FC = () => {
     message.success('Đã cập nhật định mức tạm thời');
   };
 
+  const handleSaveMatrixData = async (payload: any) => {
+    try {
+      setLoading(true);
+      // 1. Update the specific period configuration
+      const res = await dutyService.updatePeriodConfig(payload);
+      
+      if (res.success) {
+        message.success('Đã lưu cấu hình cho giai đoạn này thành công');
+        fetchData(); // Refresh stats
+      } else {
+        message.error(res.message || 'Lỗi khi lưu cấu hình');
+      }
+    } catch (err) {
+      message.error('Lỗi hệ thống khi lưu cấu hình');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleExport = () => {
     if (!stats || !stats.details) return;
     const headers = ['MSV', 'Họ tên', 'Ban', 'Chức vụ', 'Tổng kíp', 'Định mức', 'Thiếu', 'Số lỗi', 'Tổng nhận (VNĐ)'];
@@ -397,7 +404,7 @@ const StatisticsPage: React.FC = () => {
       key: 'deficiency',
       width: 110,
       align: 'center',
-      render: (val: number) => val > 0 ? <Tag color="error">Thiếu {val}</Tag> : <Tag color="success">Đủ</Tag>
+      render: (val: number) => val > 0 ? <Tag color="error">Thiếu {val.toFixed(1)}</Tag> : <Tag color="success">Đủ</Tag>
     },
     {
       title: 'Số lỗi',
@@ -418,27 +425,19 @@ const StatisticsPage: React.FC = () => {
   ];
 
   const getChartData = () => {
-    if (!stats) return [];
-    const groups: any = {};
-    stats.details.forEach((s: any) => {
-      const dept = s.department || 'Khác';
-      groups[dept] = (groups[dept] || 0) + s.totalKips;
-    });
-    return Object.entries(groups).map(([name, value]) => ({ name, value }));
+    if (!stats || !stats.summary?.departmentDistribution) return [];
+    return Object.values(stats.summary.departmentDistribution).map((d: any) => ({
+      name: d.name,
+      value: d.kips || 0
+    }));
   };
 
   const getRoleChartData = () => {
-    if (!stats) return [];
-    const groups: any = { 'Thành viên': 0, 'CTV': 0 };
-    stats.details.forEach((s: any) => {
-      const pos = s.position?.toLowerCase() || '';
-      if (pos.includes('cộng tác viên') || pos.includes('ctv')) {
-        groups['CTV']++;
-      } else {
-        groups['Thành viên']++;
-      }
-    });
-    return Object.keys(groups).filter(k => groups[k] > 0).map(k => ({ name: k, value: groups[k] }));
+    if (!stats || !stats.summary?.positionDistribution) return [];
+    return Object.entries(stats.summary.positionDistribution).map(([name, value]) => ({
+      name,
+      value
+    }));
   };
 
   return (
@@ -533,9 +532,6 @@ const StatisticsPage: React.FC = () => {
             >
               Nhắc nhở thiếu kíp ({stats?.summary?.warningCount || 0})
             </Button>
-            <Button icon={<SettingOutlined />} onClick={handleOpenSettings} type="default">
-              Cấu hình định mức
-            </Button>
           </Space>
         </Col>
       </Row>
@@ -605,11 +601,11 @@ const StatisticsPage: React.FC = () => {
                     </Tooltip>
                   </Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {stats?.details?.length > 0 ? Math.round(((stats.details.length - stats.summary.warningCount) / stats.details.length) * 100) : 0}% nhân sự đạt
+                    {stats?.summary?.achievementRate || 0}% nhân sự đạt
                   </Text>
                 </div>
                 <Progress 
-                  percent={stats?.details?.length > 0 ? Math.round(((stats.details.length - stats.summary.warningCount) / stats.details.length) * 100) : 0} 
+                  percent={stats?.summary?.achievementRate || 0} 
                   strokeColor={{ '0%': '#108ee9', '100%': '#87d068' }}
                   size="small"
                   showInfo={false}
@@ -830,6 +826,9 @@ const StatisticsPage: React.FC = () => {
               ? `${filters.dateRange[0].format('MM/YYYY')} (${filters.dateRange[0].format('DD/MM')} - ${filters.dateRange[1].format('DD/MM')})`
               : 'Tháng hiện tại'
         }
+        departments={departments}
+        onSaveQuotaSettings={handleSaveMatrixData}
+        isPeriodInitialized={stats?.meta?.isPeriodInitialized}
       />
     </div>
   );

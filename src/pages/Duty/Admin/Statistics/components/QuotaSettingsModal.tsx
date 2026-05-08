@@ -80,7 +80,6 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
       form.setFieldsValue({
         defaultQuota: group.defaultQuota,
         kipPrice: group.kipPrice,
-        violationPenaltyRate: group.violationPenaltyRate,
         quotaRules: group.quotaRules?.map((r: any) => ({
           ...r,
           cycle: 'week',
@@ -93,12 +92,11 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
 
   const handleClearAll = () => {
     form.setFieldsValue({
-      defaultQuota: 0,
+      defaultQuota: 2.5,
       kipPrice: 0,
-      violationPenaltyRate: 0,
       quotaRules: []
     });
-    message.info('Đã xóa trắng các thiết lập');
+    message.info('Đã xóa trắng các thiết lập và đưa về mặc định (2.5)');
   };
 
   useEffect(() => {
@@ -112,7 +110,6 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
         form.setFieldsValue({
           defaultQuota: initialData.defaultQuota,
           kipPrice: initialData.kipPrice,
-          violationPenaltyRate: initialData.violationPenaltyRate,
           quotaRules,
         });
       } else {
@@ -168,7 +165,16 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
       ]}
       className="base-modal"
     >
-      <Form form={form} layout="vertical" onFinish={handleFinish}>
+      <Form 
+        form={form} 
+        layout="vertical" 
+        onFinish={handleFinish}
+        initialValues={{
+          defaultQuota: 2.5,
+          kipPrice: 0,
+          quotaRules: []
+        }}
+      >
         {/* Compact Instruction */}
         <div style={{ 
           background: '#f0f9ff', 
@@ -196,7 +202,7 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
             <Text strong style={{ fontSize: 12, color: '#64748b', textTransform: 'uppercase' }}>Thông số cơ bản</Text>
           </Space>
           <Row gutter={24}>
-            <Col span={8}>
+            <Col span={12}>
               <Form.Item 
                 name="defaultQuota" 
                 label={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Định mức mặc định (kíp/tuần)</span>}
@@ -205,7 +211,7 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                 <InputNumber min={0} step={0.5} style={{ width: '100%', borderRadius: 8 }} placeholder="2.5" />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={12}>
               <Form.Item 
                 name="kipPrice" 
                 label={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Đơn giá kíp (VNĐ)</span>}
@@ -216,14 +222,6 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                   placeholder="0"
                   formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                 />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item 
-                name="violationPenaltyRate" 
-                label={<span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Hệ số phạt vi phạm</span>}
-              >
-                <InputNumber min={0} max={1} step={0.1} style={{ width: '100%', borderRadius: 8 }} placeholder="0.0" />
               </Form.Item>
             </Col>
           </Row>
@@ -273,12 +271,12 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                   }}
                 >
                   <Row gutter={12} align="middle">
-                    <Col span={5}>
+                    <Col span={6}>
                       <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>ĐỐI TƯỢNG</span>} name={[name, 'type']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                         <Select options={ROLE_GROUPS} style={{ borderRadius: 6 }} />
                       </Form.Item>
                     </Col>
-                    <Col span={5}>
+                    <Col span={6}>
                       <Form.Item noStyle shouldUpdate>
                         {({ getFieldValue }) => {
                           const type = getFieldValue(['quotaRules', name, 'type']);
@@ -298,7 +296,7 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                         }}
                       </Form.Item>
                     </Col>
-                    <Col span={3}>
+                    <Col span={2}>
                       <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>Đ.MỨC</span>} name={[name, 'quota']} rules={[{ required: true }]} style={{ marginBottom: 0 }}>
                         <InputNumber step={0.5} min={0} style={{ width: '100%', borderRadius: 6 }} />
                       </Form.Item>
@@ -311,11 +309,6 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
                           placeholder="Mặc định"
                           formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                         />
-                      </Form.Item>
-                    </Col>
-                    <Col span={3}>
-                      <Form.Item {...restField} label={<span style={{fontSize: 11, color: '#94a3b8', fontWeight: 600}}>PHẠT (%)</span>} name={[name, 'violationPenaltyRate']} style={{ marginBottom: 0 }}>
-                        <InputNumber min={0} max={1} step={0.1} style={{ width: '100%', borderRadius: 6 }} placeholder="0.0" />
                       </Form.Item>
                     </Col>
                     <Col span={5}>

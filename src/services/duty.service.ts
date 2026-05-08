@@ -420,7 +420,6 @@ class DutyService {
     generations: string[],
     defaultQuota: number,
     kipPrice: number,
-    violationPenaltyRate: number,
     quotaRules: any[],
     allowedIpRanges: string[]
   }>> {
@@ -430,13 +429,12 @@ class DutyService {
 
   async updateSettings(data: { 
     weeklyLimitEnabled?: boolean,
-    weeklyKipLimit: number, 
-    allowUnregisterWhenFull: boolean, 
+    weeklyKipLimit?: number, 
+    allowUnregisterWhenFull?: boolean, 
     currentGeneration?: string, 
     generations?: string[],
     defaultQuota?: number,
     kipPrice?: number,
-    violationPenaltyRate?: number,
     quotaRules?: any[],
     allowedIpRanges?: string | string[]
   }): Promise<BaseApiResponse<any>> {

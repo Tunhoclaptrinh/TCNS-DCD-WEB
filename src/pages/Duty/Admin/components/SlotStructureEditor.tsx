@@ -7,12 +7,13 @@ import Button from '@/components/common/Button';
 const { Text } = Typography;
 
 export const POSITION_OPTIONS = [
-  { label: 'Cộng tác viên (CTV)', value: 'ctc' },
+  { label: 'Cộng tác viên (CTV)', value: 'ctv' },
   { label: 'Thành viên chính thức', value: 'tv' },
   { label: 'Thành viên ban', value: 'tvb' },
   { label: 'Phó ban', value: 'pb' },
   { label: 'Trưởng ban', value: 'tb' },
   { label: 'Đội trưởng', value: 'dt' },
+  { label: 'Chủ tịch', value: 'ctc' },
 ];
 
 interface SlotStructureEditorProps {
@@ -36,11 +37,17 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({
   }, [watchStructure, onTotalChange]);
 
   const totalSlots = watchStructure.reduce((acc: number, c: any) => acc + (c?.slots || 0), 0);
+  const assignedIds = Form.useWatch('assignedUserIds', form) || [];
 
   const getCountForPositions = (targetPositions: string[]) => {
     if (!targetPositions || targetPositions.length === 0) return 0;
     const lowerTargets = targetPositions.map(p => p.toLowerCase());
-    return assignedUsers.filter(u => {
+    
+    const activeAssignedUsers = assignedUsers.filter(u => 
+      u && (assignedIds.includes(u.id) || assignedIds.includes(String(u.id)) || assignedIds.includes(Number(u.id)))
+    );
+
+    return activeAssignedUsers.filter(u => {
       const uPos = (u.position || '').toLowerCase();
       return lowerTargets.includes(uPos);
     }).length;
