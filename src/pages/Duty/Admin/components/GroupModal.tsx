@@ -59,6 +59,10 @@ const GroupModal: React.FC<GroupModalProps> = ({
       destroyOnClose
     >
       <div style={{ padding: '0 4px' }}>
+        <Form.Item name="type" initialValue="group" hidden>
+          <Input />
+        </Form.Item>
+
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
           <LayoutOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông tin cơ bản</span>
         </Divider>
