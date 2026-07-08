@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, Space, Button, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Tag } from 'antd';
+import { Card, Modal, Space, Button, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Tag, DatePicker, Radio } from 'antd';
 import {
   LeftOutlined,
   RightOutlined,
@@ -13,6 +13,7 @@ import {
   UnorderedListOutlined,
   SolutionOutlined,
   GlobalOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -89,6 +90,9 @@ const AdminDutyCalendar: React.FC = () => {
   const [isMinutesViewModalVisible, setIsMinutesViewModalVisible] = useState(false);
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
+  const [isDayLockModalVisible, setIsDayLockModalVisible] = useState(false);
+  const [dayLockDate, setDayLockDate] = useState<dayjs.Dayjs | null>(null);
+  const [dayLockStatus, setDayLockStatus] = useState<'open' | 'locked'>('locked');
 
   // Chuyển từ modal Kíp → modal Ca cha
   const handleOpenCaFromSlot = (slot: DutySlot) => {
@@ -472,12 +476,15 @@ const AdminDutyCalendar: React.FC = () => {
       else if (key === 'assign') setIsAssignModalVisible(true);
       else if (key === 'quota') setIsQuotaModalOpen(true);
       else if (key === 'clear') handleClearWeek();
+      else if (key === 'day_lock') setIsDayLockModalVisible(true);
     }}>
       <Menu.Item key="setup" icon={<SettingOutlined />}>Khởi tạo Tuần</Menu.Item>
       <Menu.Item key="assign" icon={<CalendarOutlined />}>Gắn Bản mẫu</Menu.Item>
       <Menu.Item key="quota" icon={<SolutionOutlined />}>Thiết lập Định mức tuần</Menu.Item>
       <Menu.Divider />
       <Menu.Item key="clear" icon={<DeleteOutlined />} danger>Xóa trắng tuần</Menu.Item>
+      <Menu.Divider />
+      <Menu.Item key="day_lock" icon={<LockOutlined />}>Khóa/Mở khóa ngày</Menu.Item>
     </Menu>
   );
 
@@ -722,6 +729,36 @@ const AdminDutyCalendar: React.FC = () => {
             />
           )}
         </Spin>
+        <Modal
+          visible={isDayLockModalVisible}
+          title="Khóa/Mở khóa ngày"
+          onCancel={() => setIsDayLockModalVisible(false)}
+          onOk={async () => {
+            if (!dayLockDate) return message.error('Vui lòng chọn ngày');
+            try {
+              const dateStr = dayLockDate.format('YYYY-MM-DD');
+              const res = await dutyService.setDayStatus(dateStr, dayLockStatus);
+              if (res && (res as any).success !== false) {
+                message.success('Cập nhật trạng thái ngày thành công');
+                setIsDayLockModalVisible(false);
+                fetchSchedule();
+              } else {
+                message.error('Không thể cập nhật trạng thái ngày');
+              }
+            } catch (err) {
+              console.error(err);
+              message.error('Lỗi khi gọi API');
+            }
+          }}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <DatePicker value={dayLockDate} onChange={(d) => setDayLockDate(d)} style={{ width: '100%' }} />
+            <Radio.Group value={dayLockStatus} onChange={(e) => setDayLockStatus(e.target.value)}>
+              <Radio value="locked">Khóa ngày</Radio>
+              <Radio value="open">Mở khóa ngày</Radio>
+            </Radio.Group>
+          </Space>
+        </Modal>
       </Card>
 
       <QuickCreateModal

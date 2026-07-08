@@ -83,7 +83,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
 
   const renderFooter = () => (
     <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
-      <Button disabled={loading} onClick={onCancel} style={{ minWidth: 100, borderRadius: 8 }}>Hủy</Button>
+      <Button disabled={loading} buttonSize="small" onClick={onCancel} style={{ minWidth: 100, borderRadius: 8 }}>Hủy</Button>
       <Button 
         variant="primary" 
         loading={loading} 

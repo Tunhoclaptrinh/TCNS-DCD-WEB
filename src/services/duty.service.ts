@@ -396,6 +396,14 @@ class DutyService {
     return response;
   }
 
+  /**
+   * Set day status (lock/unlock)
+   */
+  async setDayStatus(date: string, status: 'open' | 'locked') {
+    const response = await apiClient.patch(`/duty/days`, { date, status });
+    return response;
+  }
+
   async createTemplateAssignment(data: { templateId: any, startDate: string, endDate: string, mode?: string, note?: string }): Promise<BaseApiResponse<any>> {
     const response = await apiClient.post<BaseApiResponse<any>>("/duty/assignment", data);
     return response;
