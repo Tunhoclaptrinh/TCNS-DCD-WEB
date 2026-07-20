@@ -1065,7 +1065,7 @@ const UserPage = () => {
                 open={isAlumniModalVisible}
                 onOk={confirmSyncAlumni}
                 onCancel={() => setIsAlumniModalVisible(false)}
-                width={700}
+                width={800}
                 confirmLoading={syncingAlumni}
                 okText="Xác nhận chuyển thành Cựu"
                 cancelText="Hủy"

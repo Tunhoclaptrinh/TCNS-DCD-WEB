@@ -435,16 +435,20 @@ const DataTable: React.FC<DataTableProps> = ({
   const userActionColumn =
     userActionColumnIndex !== -1 ? columns[userActionColumnIndex] : null;
 
+  const hasActionHandlers = Boolean(
+    onView || onEdit || onDelete || customActions || userActionColumn
+  );
+
   // Dynamic Action Column Logic
   const standardActionCount =
     (onView ? 1 : 0) + (onEdit ? 1 : 0) + (onDelete ? 1 : 0);
   // Base width per button (32px + 8px gap) + padding (16px)
-  // If customActions exists, we add extra space or default to a safe width if not specified
+  // If customActions exists, we add extra space or default to a safe width (min 100px)
   const calculatedWidth =
-    actionsWidth || standardActionCount * 40 + (customActions ? 40 : 16);
+    actionsWidth || Math.max(100, standardActionCount * 40 + (customActions ? 40 : 16));
 
   const mergedActionsColumn =
-    showActions || userActionColumn
+    (showActions && hasActionHandlers) || userActionColumn
       ? {
           title: "Thao tác",
           key: "actions",
