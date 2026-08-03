@@ -225,7 +225,10 @@ const UsersForm: React.FC<UsersFormProps> = ({
                 <Form.Item 
                   name={editingId ? "newPassword" : "password"} 
                   label={editingId ? "Mật khẩu mới (Để trống nếu không đổi)" : "Mật khẩu"}
-                  rules={[{ required: !editingId, message: 'Vui lòng nhập mật khẩu' }]}
+                  rules={[
+                    { required: !editingId, message: 'Vui lòng nhập mật khẩu' },
+                    { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự' }
+                  ]}
                 >
                   <Input.Password prefix={<LockOutlined />} placeholder="******" />
                 </Form.Item>
@@ -333,7 +336,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>
-            <Form.Item name="generationId" label="Khóa/Thế hệ" rules={[{ required: true }]}>
+            <Form.Item name="generationId" label="Khóa/Thế hệ" rules={[{ required: true, message: 'Vui lòng chọn khóa/thế hệ' }]}>
               <Select
                 placeholder="Chọn Khóa"
                 options={generations.map(g => ({ label: g.name, value: g.id }))}

@@ -745,8 +745,7 @@ const UserPage = () => {
         form.resetFields();
         form.setFieldsValue({ 
             isActive: true, 
-            role: 'customer',
-            generationId: selectedGenerationId // Default to the currently filtered generation ID
+            role: 'customer'
         });
         setIsModalVisible(true);
     };
