@@ -25,14 +25,13 @@ import generationService, { Generation } from '../../services/generation.service
 import roleService, { Role } from '../../services/role.service';
 import permissionService from '../../services/permission.service';
 
-const POSITION_LEVELS = ['ctv', 'tv', 'tvb', 'pb', 'tb', 'ctc', 'dt'];
+const POSITION_LEVELS = ['ctv', 'tv', 'tvb', 'pb', 'tb', 'dt'];
 const POSITION_LABELS: Record<string, string> = {
     ctv: 'Cộng tác viên',
     tv: 'Thành viên thường',
     tvb: 'Thành viên ban',
     pb: 'Phó ban',
     tb: 'Trưởng ban',
-    ctc: 'Chủ tịch',
     dt: 'Đội trưởng'
 };
 
@@ -210,13 +209,21 @@ const UserPage = () => {
             combinedFilters.status = 'inactive';
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
+            combinedFilters.position = undefined;
         } else if (activeTab === 'all') {
             combinedFilters.status = 'active';
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
+            combinedFilters.position = undefined;
+        } else if (activeTab === 'ctv') {
+            combinedFilters.status = 'active';
+            combinedFilters.department = undefined;
+            combinedFilters.department_nin = undefined;
+            combinedFilters.position = 'ctv';
         } else if (activeTab === 'others') {
             combinedFilters.status = 'active';
             combinedFilters.department = undefined;
+            combinedFilters.position = undefined;
             // Get current known departments to exclude
             const knownDepts = Object.keys(stats?.byDepartment || {}).filter(k => k !== '__unassigned__');
             combinedFilters.department_nin = knownDepts.length > 0 ? knownDepts : undefined;
@@ -224,6 +231,7 @@ const UserPage = () => {
             combinedFilters.status = 'active';
             combinedFilters.department = activeTab;
             combinedFilters.department_nin = undefined;
+            combinedFilters.position = undefined;
         }
 
         fetchUserStats(combinedFilters);
@@ -292,7 +300,7 @@ const UserPage = () => {
 
     const handlePromote = (record: User) => {
         setPromotingUser(record);
-        setTargetPosition(record.position || 'ctc');
+        setTargetPosition(record.position || 'tv');
         setTargetDepartment(record.department || '');
         setIsPromoteModalVisible(true);
     };
@@ -320,7 +328,6 @@ const UserPage = () => {
             
             switch (targetPosition) {
                 case 'dt':
-                case 'ctc':
                     suggestedRoles = [findRoleId('admin')].filter(Boolean) as number[];
                     break;
                 case 'tb':
@@ -927,6 +934,7 @@ const UserPage = () => {
                                         label: `Ban ${dept}`, 
                                         key: dept 
                                     })),
+                                { label: 'Cộng tác viên', key: 'ctv' },
                                 { label: 'Khác', key: 'others' },
                                 { label: 'Cựu thành viên', key: 'alumni' }
                             ]}

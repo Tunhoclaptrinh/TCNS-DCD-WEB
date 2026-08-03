@@ -13,7 +13,6 @@ export const POSITION_OPTIONS = [
   { label: 'Phó ban', value: 'pb' },
   { label: 'Trưởng ban', value: 'tb' },
   { label: 'Đội trưởng', value: 'dt' },
-  { label: 'Chủ tịch', value: 'ctc' },
 ];
 
 interface SlotStructureEditorProps {

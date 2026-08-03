@@ -37,7 +37,6 @@ const POSITION_LABELS: Record<string, string> = {
   tvb: 'Thành viên ban',
   pb: 'Phó ban',
   tb: 'Trưởng ban',
-  ctc: 'Chủ tịch',
   dt: 'Đội trưởng'
 };
 
@@ -62,7 +61,6 @@ const UsersForm: React.FC<UsersFormProps> = ({
     
     switch (pos) {
       case 'dt':
-      case 'ctc':
         return [findRoleId('admin')].filter(Boolean) as number[];
       case 'tb':
         return dept === 'Nhân sự' 
@@ -88,7 +86,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
   const handlePositionChange = (value: string) => {
     const department = form.getFieldValue('department');
     // Clear department if not applicable
-    if (['ctv', 'tv', 'dt', 'ctc'].includes(value)) {
+    if (['ctv', 'tv', 'dt'].includes(value)) {
       form.setFieldsValue({ department: undefined });
     }
     const suggested = getSuggestedRoles(value, department);
@@ -106,7 +104,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
   };
 
   // Helper to determine if department is needed
-  const isDeptApplicable = !['ctv', 'tv', 'dt', 'ctc'].includes(position);
+  const isDeptApplicable = !['ctv', 'tv', 'dt'].includes(position);
 
   return (
     <FormModal

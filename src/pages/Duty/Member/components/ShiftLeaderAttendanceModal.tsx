@@ -66,7 +66,6 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
       'tvb': { color: 'cyan', label: 'TV Chính thức' },
       'pb': { color: 'orange', label: 'Phó ban' },
       'tb': { color: 'volcano', label: 'Trưởng ban' },
-      'ctc': { color: 'red', label: 'Chủ tịch' },
       'dt': { color: 'gold', label: 'Đội trưởng' }
     };
     const info = map[pos] || { color: 'default', label: pos || 'Thành viên' };

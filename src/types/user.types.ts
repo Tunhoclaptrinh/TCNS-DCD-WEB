@@ -1,7 +1,7 @@
 import { BaseEntity, TimestampEntity } from "./index";
 
 export enum UserPosition {
-  CTC = "ctc",
+  CTV = "ctv",
   TV = "tv",
   TVB = "tvb",
   PB = "pb",

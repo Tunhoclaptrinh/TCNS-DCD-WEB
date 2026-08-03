@@ -19,7 +19,7 @@ interface DutyPersonnelTableProps {
 }
 
 export const POSITION_LABELS: Record<string, string> = {
-  ctc: 'CTV',
+  ctv: 'CTV',
   tv: 'Thành viên',
   tvb: 'Thành viên ban',
   pb: 'Phó ban',

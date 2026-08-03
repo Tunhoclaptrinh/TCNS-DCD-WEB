@@ -46,7 +46,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
           >
             Đóng
           </Button>
-          {user && onPromote && user.position !== 'ctc' && (
+          {user && onPromote && user.position !== 'dt' && (
             <Button 
               key="promote" 
               variant="primary" 

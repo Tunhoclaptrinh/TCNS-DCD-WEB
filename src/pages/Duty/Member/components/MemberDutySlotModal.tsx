@@ -82,7 +82,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const canCancel = hasPermission('duty:update');
   const visibilityMode = slot?.config?.visibilityMode || 'public';
   const OFFICIAL_POSITIONS = ['tv', 'tvb', 'pb', 'tb', 'dt'];
-  const CTV_POSITION = 'ctc';
+  const CTV_POSITION = 'ctv';
   
   const POSITION_MAP: Record<string, { name: string, color: string, alias?: string[] }> = {
     'admin': { name: 'Quản trị viên', color: 'red' },
@@ -95,7 +95,6 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
     'nss': { name: 'Chuyên viên (NS)', color: 'blue' },
     'ns': { name: 'Chuyên viên', color: 'blue' },
     'tv': { name: 'Thành viên', color: 'cyan' },
-    'ctc': { name: 'Cộng tác viên', color: 'green' },
     'ctv': { name: 'Cộng tác viên', color: 'green' },
   };
 
@@ -117,11 +116,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
     
     const targetPos = (targetUser?.position || '').toLowerCase();
     const isTargetOfficial = OFFICIAL_POSITIONS.includes(targetPos) || targetPos.startsWith('ns');
-    const isTargetCTV = targetPos === CTV_POSITION || targetPos === 'ctv' || targetPos === 'ctc';
+    const isTargetCTV = targetPos === CTV_POSITION || targetPos === 'ctv';
 
     const currentUserPos = (currentUserData as any)?.position?.toLowerCase();
     const isCurrentUserOfficial = OFFICIAL_POSITIONS.includes(currentUserPos) || currentUserPos?.startsWith('ns');
-    const isCurrentUserCTV = currentUserPos === CTV_POSITION || currentUserPos === 'ctv' || currentUserPos === 'ctc';
+    const isCurrentUserCTV = currentUserPos === CTV_POSITION || currentUserPos === 'ctv';
 
     if (visibilityMode === 'private_mutual') {
       if (isCurrentUserOfficial && isTargetCTV) return false;

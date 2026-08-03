@@ -13,7 +13,7 @@ import { useCRUD } from '@/hooks/useCRUD';
 const { Text } = Typography;
 
 export const POSITION_LABELS: Record<string, string> = {
-  ctc: 'CTV',
+  ctv: 'CTV',
   tv: 'Thành viên',
   tvb: 'Thành viên ban',
   pb: 'Phó ban',

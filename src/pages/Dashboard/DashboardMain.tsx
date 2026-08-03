@@ -176,9 +176,15 @@ const DashboardPage: React.FC = () => {
                 valueColor: '#52c41a',
               },
               {
+                title: 'Cộng tác viên',
+                value: stats.global?.byPosition?.ctv || 0,
+                icon: <TeamOutlined />,
+                valueColor: '#fa8c16',
+              },
+              {
                 title: 'Vị trí khác',
                 value: Math.max(0, (stats.global?.total || 0) -
-                  (['dt', 'tb', 'pb', 'tvb', 'tv', 'ctc'].reduce((sum, p) => sum + (stats.global?.byPosition?.[p] || 0), 0))),
+                  (['dt', 'tb', 'pb', 'tvb', 'tv', 'ctv'].reduce((sum, p) => sum + (stats.global?.byPosition?.[p] || 0), 0))),
                 icon: <UserOutlined />,
                 valueColor: '#bfbfbf',
               },
