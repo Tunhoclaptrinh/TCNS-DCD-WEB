@@ -93,6 +93,11 @@ const PersonalDashboard: React.FC = () => {
     const displayName = user?.firstName || user?.name?.split('@')[0] || user?.name || 'Thành viên';
     const weekLabel = `Tuần ${selectedWeek.isoWeek()} (${selectedWeek.format('DD/MM')} - ${selectedWeek.endOf('isoWeek').format('DD/MM')})`;
 
+    const isThisWeek = selectedWeek.isSame(dayjs(), 'isoWeek');
+    const isNextWeek = selectedWeek.isSame(dayjs().add(1, 'week'), 'isoWeek');
+    const isLastWeek = selectedWeek.isSame(dayjs().subtract(1, 'week'), 'isoWeek');
+    const dynamicTitle = isThisWeek ? "LỊCH TRỰC TUẦN NÀY" : isNextWeek ? "LỊCH TRỰC TUẦN SAU" : isLastWeek ? "LỊCH TRỰC TUẦN TRƯỚC" : `LỊCH TRỰC TUẦN ${selectedWeek.isoWeek()}`;
+
     return (
         <div className="personal-dashboard">
             {/* Header: Greeting & Quick Stats Combined */}
@@ -170,7 +175,7 @@ const PersonalDashboard: React.FC = () => {
                     <Card 
                         title={
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '4px 0' }}>
-                                <Title level={4} style={{ margin: 0 }}>LỊCH TRỰC TUẦN NÀY</Title>
+                                <Title level={4} style={{ margin: 0, textTransform: 'uppercase' }}>{dynamicTitle}</Title>
                                 <Space size={8}>
                                     <Button variant="ghost" buttonSize="small" icon={<LeftOutlined />} onClick={handlePrevWeek} />
                                     <Text strong style={{ minWidth: 100, textAlign: 'center' }}>{weekLabel}</Text>
@@ -190,7 +195,14 @@ const PersonalDashboard: React.FC = () => {
                         ) : (
                             <div style={{ width: '100%' }}>
                                 {upcomingSlots.length > 0 ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        width: '100%',
+                                        maxHeight: 1000,
+                                        overflowY: 'auto',
+                                        paddingRight: 8
+                                    }} className="custom-scrollbar">
                                         {upcomingSlots.map((slot, index) => {
                                             const date = dayjs(slot.shiftDate);
                                             const isToday = date.isSame(dayjs(), 'day');
@@ -208,7 +220,9 @@ const PersonalDashboard: React.FC = () => {
                                                         width: '100%',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        borderLeft: isMine ? '4px solid #8b1d1d' : 'none'
+                                                        borderLeft: isMine ? '4px solid #8b1d1d' : '4px solid transparent',
+                                                        borderRadius: 6,
+                                                        marginBottom: 4
                                                     }}
                                                     onMouseEnter={(e) => e.currentTarget.style.background = isMine ? 'rgba(139, 29, 29, 0.08)' : '#fafafa'}
                                                     onMouseLeave={(e) => e.currentTarget.style.background = isMine ? (isToday ? 'rgba(139, 29, 29, 0.05)' : 'rgba(59, 130, 246, 0.02)') : '#fff'}
