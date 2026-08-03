@@ -141,7 +141,7 @@ const UserPage = () => {
 
     const fetchRoles = async () => {
         try {
-            const res = await roleService.getAll();
+            const res = await roleService.getAll({ limit: 100 });
             if (res.success && res.data) {
                 setRoleList(res.data);
             }
@@ -152,7 +152,7 @@ const UserPage = () => {
 
     const fetchGenerations = async () => {
         try {
-            const res = await generationService.getAll();
+            const res = await generationService.getAll({ limit: 100 });
             if (res.success && res.data) {
                 setGenerationList(res.data);
             }
@@ -163,7 +163,7 @@ const UserPage = () => {
 
     const fetchPermissions = async () => {
         try {
-            const res = await permissionService.getAll();
+            const res = await permissionService.getAll({ limit: 1000 });
             if (res.success && res.data) {
                 setPermissionList(res.data);
             }

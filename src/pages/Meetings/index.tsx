@@ -47,7 +47,7 @@ const MeetingsPage = () => {
     
     // Role-based Permissions
     const canCreate = useMemo(() => hasPermission('meeting:create:all') || hasPermission('meeting:create:dept'), [hasPermission]);
-    const canManageAll = useMemo(() => hasPermission('meeting:create:all') || currentUser?.role === 'admin', [hasPermission, currentUser]);
+    const canManageAll = useMemo(() => hasPermission('meeting:create:all') || currentUser?.permissions?.includes('*'), [hasPermission, currentUser]);
     const canAttendance = useMemo(() => hasPermission('meeting:attendance') || canManageAll, [hasPermission, canManageAll]);
     const canEditSubmitted = useMemo(() => hasPermission('meeting:minutes:edit_submitted') || canManageAll, [hasPermission, canManageAll]);
 
@@ -216,7 +216,7 @@ const MeetingsPage = () => {
                                 >
                                     {record.minutesStatus === 'submitted' ? 'Sửa biên bản' : 'Ghi biên bản'}
                                 </Menu.Item>
-                                {record.minutesStatus === 'submitted' && (
+                                {!['active'].includes(currentUser?.status || '') && (
                                     <Menu.Item
                                         key="view-minutes-admin"
                                         icon={<FileTextOutlined />}

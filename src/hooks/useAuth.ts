@@ -39,10 +39,8 @@ export const useAuth = () => {
   }, [dispatch]);
 
   const hasRole = useCallback(
-    (requiredRoles: string[]) => {
-      if (!user || !isAuthenticated) return false;
-      if (requiredRoles.length === 0) return true;
-      return requiredRoles.includes(user.role);
+    (_requiredRoles?: string[]) => {
+      return true; // Deprecated
     },
     [user, isAuthenticated],
   );
@@ -50,7 +48,7 @@ export const useAuth = () => {
   const hasPermission = useCallback(
     (permission: string) => {
       if (!user || !isAuthenticated) return false;
-      if (user.role === 'admin' || user.permissions?.includes('*')) return true;
+      if (user.permissions?.includes('*')) return true;
       return user.permissions?.includes(permission) || false;
     },
     [user, isAuthenticated],
@@ -59,7 +57,7 @@ export const useAuth = () => {
   const hasAnyPermission = useCallback(
     (permissions: string[]) => {
       if (!user || !isAuthenticated) return false;
-      if (user.role === 'admin' || user.permissions?.includes('*')) return true;
+      if (user.permissions?.includes('*')) return true;
       return permissions.some(p => user.permissions?.includes(p)) || false;
     },
     [user, isAuthenticated],
@@ -79,7 +77,7 @@ export const useAuth = () => {
     hasRole,
     hasPermission,
     hasAnyPermission,
-    isAdmin: user?.role === "admin" || user?.permissions?.includes('*'),
+    isAdmin: user?.permissions?.includes('*'),
   };
 };
 

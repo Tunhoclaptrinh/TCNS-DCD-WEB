@@ -2,7 +2,7 @@
 export * from "./auth.types";
 // export * from "./common.types";
 // export * from "./model.types"; // Comment out or remove if causing issues with User name
-export type { UserRole, AuthenticatedUser } from "./auth.types"; // Re-export as AuthenticatedUser
+export type {  AuthenticatedUser } from "./auth.types"; // Re-export as AuthenticatedUser
 export * from "./api.types";
 export * from "./user.types";
 

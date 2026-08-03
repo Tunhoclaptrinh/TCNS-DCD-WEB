@@ -406,7 +406,7 @@ const SwapRequestsPage: React.FC = () => {
         extra={null}
         customActions={(r) => {
           const isTarget = Number(r.targetUserId) === Number(user?.id);
-          const isAdmin = user?.role === 'admin' || user?.role === 'staff';
+          const isAdmin = user?.permissions?.includes('*');
           
           return (
             <Space size="small">

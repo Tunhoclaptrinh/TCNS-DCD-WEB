@@ -52,7 +52,7 @@ const { Title, Text } = Typography;
 
 const AdminDutyCalendar: React.FC = () => {
   const { hasPermission, user } = useAccess();
-  const isAdmin = useMemo(() => hasPermission('duty:admin') || user?.role === 'admin', [hasPermission, user]);
+  const isAdmin = useMemo(() => hasPermission('duty:admin') || user?.permissions?.includes('*'), [hasPermission, user]);
   const canEditSubmitted = useMemo(() => hasPermission('meeting:minutes:edit_submitted') || isAdmin, [hasPermission, isAdmin]);
   const currentUserId = user?.id;
 
@@ -685,7 +685,7 @@ const AdminDutyCalendar: React.FC = () => {
               weekDays={weekDays}
               slots={slots}
 
-              isAdmin={isAdmin}
+              isAdmin={!!isAdmin}
               openSlotDetail={openSlotDetail}
               handleStampShift={handleStampShift}
               openQuickCreate={openQuickCreate}
@@ -712,7 +712,7 @@ const AdminDutyCalendar: React.FC = () => {
               templates={relevantTemplates}
               getEffectiveTemplatesForDay={getEffectiveTemplatesForDay}
               showDefaultBoundaries={showDefaultBoundaries}
-              isAdmin={isAdmin}
+              isAdmin={!!isAdmin}
               currentUserId={currentUserId}
               openSlotDetail={openSlotDetail}
               openQuickCreate={openQuickCreate}
@@ -884,7 +884,7 @@ const AdminDutyCalendar: React.FC = () => {
         setRsvpReason={setRsvpReason}
         isSubmitting={isSubmittingRsvp}
         onRsvp={handleRsvp}
-        canCreate={isAdmin}
+        canCreate={!!isAdmin}
         canEditSubmitted={canEditSubmitted}
         onOpenMinutes={() => {
           setIsMeetingDetailVisible(false);

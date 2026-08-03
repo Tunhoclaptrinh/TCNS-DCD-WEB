@@ -13,7 +13,7 @@ const Home: React.FC = () => {
 
   React.useEffect(() => {
     if (isInitialized && user) {
-      if (user.role === 'admin' || user.role === 'staff') {
+      if (user.permissions?.includes('*')) {
         navigate("/admin/dashboard");
       } else {
         navigate("/duty/dashboard");

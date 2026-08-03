@@ -8,8 +8,8 @@ import { RootState } from '@/store';
 export const useAccess = () => {
     const { user } = useSelector((state: RootState) => state.auth);
     const permissions = user?.permissions || [];
-    const isAdmin = user?.role === 'admin' || permissions.includes('*');
-    const isStaff = user?.role === 'staff' || isAdmin;
+    const isAdmin = permissions.includes('*');
+    const isStaff = isAdmin;
 
     /**
      * Check if user has a specific permission

@@ -4,7 +4,6 @@ export interface AuthenticatedUser {
   name: string;
   phone?: string;
   avatar?: string;
-  role: UserRole;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -14,12 +13,6 @@ export interface AuthenticatedUser {
   permissions?: string[];
 }
 
-export enum UserRole {
-  ADMIN = "admin",
-  STAFF = "staff",
-  CUSTOMER = "customer",
-  CURATOR = "curator",
-}
 
 export interface AuthState {
   user: AuthenticatedUser | null;

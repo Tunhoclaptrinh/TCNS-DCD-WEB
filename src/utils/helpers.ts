@@ -1,5 +1,4 @@
-import { USER_ROLES } from '../config/constants';
-import type { User, UserRole } from '../types';
+import type { User } from '../types';
 
 export const getInitials = (name: string | null | undefined): string => {
     if (!name) return '';
@@ -14,16 +13,14 @@ export const getAvatarUrl = (name: string, size: number = 100): string => {
     )}&size=${size}&background=random&color=fff&bold=true&format=svg`;
 };
 
-export const hasRole = (user: User | null | undefined, roles: UserRole | UserRole[]): boolean => {
+export const hasPermission = (user: User | null | undefined, permission: string): boolean => {
     if (!user) return false;
-    if (Array.isArray(roles)) {
-        return roles.includes(user.role);
-    }
-    return user.role === roles;
+    if (user.permissions?.includes('*')) return true;
+    return user.permissions?.includes(permission) || false;
 };
 
 export const isAdmin = (user: User | null | undefined): boolean => {
-    return hasRole(user, USER_ROLES.ADMIN as UserRole);
+    return hasPermission(user, '*');
 };
 
 export const debounce = <T extends (...args: any[]) => any>(

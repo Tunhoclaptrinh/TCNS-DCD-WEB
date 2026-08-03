@@ -99,7 +99,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
                      return <Tag key={r.id} color={color} style={{ fontSize: '10px' }}>{r.name.toUpperCase()}</Tag>;
                    })
                  ) : (
-                   <Tag color="blue">{String(user.role || '').toUpperCase()}</Tag>
+                   <Tag color="blue">{"MEMBER"}</Tag>
                  )}
                </Space>
             </Space>

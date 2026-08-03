@@ -1,12 +1,5 @@
 import { BaseEntity, TimestampEntity } from "./index";
 
-export enum UserRole {
-  ADMIN = "admin",
-  STAFF = "staff",
-  CUSTOMER = "customer",
-  CURATOR = "curator",
-}
-
 export enum UserPosition {
   CTC = "ctc",
   TV = "tv",
@@ -42,7 +35,6 @@ export interface User extends BaseEntity, TimestampEntity {
   facebook?: string;
   joinDate?: string;
   lastLogin?: string;
-  role: UserRole;
   isActive: boolean;
   generationId?: number;
   generation?: {
@@ -66,7 +58,7 @@ export interface UserProfile {
   phone?: string;
   address?: string;
   avatar?: string;
-  role: UserRole;
+
 }
 
 export interface UserUpdateDTO {
@@ -84,7 +76,7 @@ export interface UserUpdateDTO {
   email?: string;
   phone?: string;
   address?: string;
-  role?: UserRole;
+
   bio?: string;
   avatar?: string;
   isActive?: boolean;
@@ -108,7 +100,7 @@ export interface UserCreateDTO {
   email: string;
   password: string;
   phone?: string;
-  role?: UserRole;
+
   bio?: string;
   avatar?: string;
   isActive?: boolean;

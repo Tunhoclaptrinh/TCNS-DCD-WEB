@@ -1,10 +1,3 @@
-export const USER_ROLES = {
-  ADMIN: "admin",
-  STAFF: "staff",
-  CUSTOMER: "customer",
-  RESEARCHER: "researcher",
-  CURATOR: "curator",
-} as const;
 
 // Storage keys used across the app
 export const STORAGE_KEYS = {
@@ -20,5 +13,3 @@ export const DEFAULT_PAGE_SIZE = 10;
 // Minimal type labels for legacy components (to be removed when components are updated)
 export const ITEM_TYPE_LABELS: Record<string, string> = {};
 
-// Type exports
-export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
