@@ -103,7 +103,7 @@ const PersonalDashboard: React.FC = () => {
                             <Col flex="auto">
                                 <Title level={3} style={{ margin: 0 }}>Chào buổi chiều, {displayName}! 👋</Title>
                                 <Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-                                    Hôm nay bạn có <Text strong>{upcomingSlots.length}</Text> ca trực sắp tới. Chúc bạn một ngày làm việc hiệu quả.
+                                    Tuần này bạn có <Text strong>{upcomingSlots.length}</Text> ca trực sắp tới. Chúc bạn một tuần làm việc hiệu quả.
                                 </Paragraph>
                             </Col>
                             <Col>
