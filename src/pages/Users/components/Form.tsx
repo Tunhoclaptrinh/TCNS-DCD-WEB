@@ -87,8 +87,8 @@ const UsersForm: React.FC<UsersFormProps> = ({
 
   const handlePositionChange = (value: string) => {
     const department = form.getFieldValue('department');
-    // Clear department if not applicable (CTV/TV)
-    if (['ctv', 'tv'].includes(value)) {
+    // Clear department if not applicable
+    if (['ctv', 'tv', 'dt', 'ctc'].includes(value)) {
       form.setFieldsValue({ department: undefined });
     }
     const suggested = getSuggestedRoles(value, department);
@@ -106,7 +106,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
   };
 
   // Helper to determine if department is needed
-  const isDeptApplicable = !['ctv', 'tv'].includes(position);
+  const isDeptApplicable = !['ctv', 'tv', 'dt', 'ctc'].includes(position);
 
   return (
     <FormModal
@@ -325,7 +325,6 @@ const UsersForm: React.FC<UsersFormProps> = ({
             >
               <AutoComplete
                 placeholder={isDeptApplicable ? "Chọn hoặc nhập tên ban mới" : "Không thuộc ban"} 
-                disabled={!isDeptApplicable}
                 allowClear 
                 onChange={handleDepartmentChange}
                 options={departments.map(d => ({ value: d }))}
@@ -338,6 +337,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
           <Col xs={12} md={6}>
             <Form.Item name="generationId" label="Khóa/Thế hệ" rules={[{ required: true, message: 'Vui lòng chọn khóa/thế hệ' }]}>
               <Select
+                allowClear
                 placeholder="Chọn Khóa"
                 options={generations.map(g => ({ label: g.name, value: g.id }))}
               />

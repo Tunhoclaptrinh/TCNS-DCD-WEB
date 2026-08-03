@@ -314,6 +314,42 @@ const UserPage = () => {
                 updateData.department = null; // Clear department if not a ban role
             }
 
+            // Đồng bộ roleIds tương ứng với chức vụ
+            const findRoleId = (key: string) => roleList.find((r: any) => r.key === key)?.id || null;
+            let suggestedRoles: number[] = [];
+            
+            switch (targetPosition) {
+                case 'dt':
+                case 'ctc':
+                    suggestedRoles = [findRoleId('admin')].filter(Boolean) as number[];
+                    break;
+                case 'tb':
+                    suggestedRoles = targetDepartment === 'Nhân sự' 
+                        ? [findRoleId('ns_leader')].filter(Boolean) as number[]
+                        : [findRoleId('other_leader')].filter(Boolean) as number[];
+                    break;
+                case 'pb':
+                    suggestedRoles = targetDepartment === 'Nhân sự' 
+                        ? [findRoleId('ns_sub_leader')].filter(Boolean) as number[]
+                        : [findRoleId('other_sub_leader')].filter(Boolean) as number[];
+                    break;
+                case 'tvb':
+                    suggestedRoles = targetDepartment === 'Nhân sự' 
+                        ? [findRoleId('ns_specialist')].filter(Boolean) as number[]
+                        : [findRoleId('member')].filter(Boolean) as number[];
+                    break;
+                case 'tv':
+                    suggestedRoles = [findRoleId('member')].filter(Boolean) as number[];
+                    break;
+                case 'ctv':
+                    suggestedRoles = [findRoleId('ctv')].filter(Boolean) as number[];
+                    break;
+            }
+
+            if (suggestedRoles.length > 0) {
+                updateData.roleIds = suggestedRoles;
+            }
+
             await update(promotingUser.id, updateData);
             message.success(`Đã cập nhật chức vụ cho ${promotingUser.name}`);
             setIsPromoteModalVisible(false);
@@ -645,11 +681,7 @@ const UserPage = () => {
             label: "Vai trò hệ thống",
             type: "select" as const,
             operators: ['eq', 'in'],
-            options: [
-                { label: "Admin", value: "admin" },
-                { label: "Staff", value: "staff" },
-                { label: "Customer", value: "customer" },
-            ],
+            options: roleList.map(r => ({ label: r.name, value: (r as any).key || r.name })),
         },
         {
             key: "isActive",
@@ -744,8 +776,7 @@ const UserPage = () => {
         setEditingId(null);
         form.resetFields();
         form.setFieldsValue({ 
-            isActive: true, 
-            role: 'customer'
+            isActive: true
         });
         setIsModalVisible(true);
     };
