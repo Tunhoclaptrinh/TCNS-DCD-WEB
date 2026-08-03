@@ -171,7 +171,13 @@ apiClient.interceptors.response.use(
       const errorMessage = data?.message || "Không tìm thấy tài nguyên.";
       message.error(errorMessage);
     } else if (status === 400) {
-      const errorMessage = data?.message || "Yêu cầu không hợp lệ.";
+      let errorMessage = data?.message || "Yêu cầu không hợp lệ.";
+      if (data?.errors && typeof data.errors === 'object') {
+        const errorDetails = Object.values(data.errors).join(', ');
+        if (errorDetails) {
+          errorMessage += `: ${errorDetails}`;
+        }
+      }
       message.error(errorMessage);
     } else if (status === 422) {
       // Validation errors
