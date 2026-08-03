@@ -46,7 +46,7 @@ const AuthPage = () => {
       message.success("Đăng nhập thành công!");
       navigate("/");
     } catch (error: any) {
-      message.error(`❌ ${error || "Đăng nhập thất bại"}`);
+      message.error(`${error || "Đăng nhập thất bại"}`);
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ const AuthPage = () => {
           password: values.password,
         }),
       ).unwrap();
-      message.success("✅ Đăng ký thành công!");
+      message.success("Đăng ký thành công!");
 
       // Auto login after registration
       await dispatch(
@@ -71,7 +71,7 @@ const AuthPage = () => {
       ).unwrap();
       navigate("/");
     } catch (error: any) {
-      message.error(`❌ ${error || "Đăng ký thất bại"}`);
+      message.error(`${error || "Đăng ký thất bại"}`);
     } finally {
       setLoading(false);
     }

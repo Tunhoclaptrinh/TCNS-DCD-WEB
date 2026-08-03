@@ -66,10 +66,10 @@ const Profile = () => {
     try {
       setLoading(true);
       await userService.updateProfile(values);
-      message.success("✅ Cập nhật hồ sơ thành công!");
+      message.success("Cập nhật hồ sơ thành công!");
       dispatch(getMe());
     } catch (error) {
-      message.error("❌ Cập nhật thất bại");
+      message.error("Cập nhật thất bại");
     } finally {
       setLoading(false);
     }
@@ -88,10 +88,10 @@ const Profile = () => {
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
       });
-      message.success("✅ Đổi mật khẩu thành công!");
+      message.success("Đổi mật khẩu thành công!");
       passwordForm.resetFields();
     } catch (error) {
-      message.error("❌ Đổi mật khẩu thất bại");
+      message.error("Đổi mật khẩu thất bại");
     } finally {
       setLoading(false);
     }

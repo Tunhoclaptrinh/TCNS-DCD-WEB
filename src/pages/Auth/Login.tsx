@@ -87,7 +87,7 @@ const AuthPage = () => {
       message.success("Đăng nhập thành công!");
       navigate("/"); // tự chuyển trang
     } catch (error: any) {
-      message.error(`❌ ${error || "Đăng nhập thất bại"}`);
+      message.error(`${error || "Đăng nhập thất bại"}`);
     } finally {
       setLoading(false);
     }
@@ -142,7 +142,7 @@ const AuthPage = () => {
         }),
       ).unwrap();
 
-      message.success("✅ Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.");
+      message.success("Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.");
 
       // Switch to login form instead of auto-login
       setIsLogin(true);
@@ -157,7 +157,7 @@ const AuthPage = () => {
       setRegConfirmPassword("");
       setAgreeTerms(false);
     } catch (error: any) {
-      message.error(`❌ ${error || "Đăng ký thất bại"}`);
+      message.error(`${error || "Đăng ký thất bại"}`);
     } finally {
       setLoading(false);
     }
