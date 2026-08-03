@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
     Form, Space, Typography, message, 
     Modal,
@@ -8,7 +8,9 @@ import {
     Spin,
     ConfigProvider,
     Dropdown,
-    Menu
+    Menu,
+    Select,
+    DatePicker
 } from 'antd';
 import { 
     CalendarOutlined, EditOutlined, DeleteOutlined, 
@@ -19,6 +21,8 @@ import {
     MenuOutlined, FileDoneOutlined, StopOutlined,
     FileTextOutlined
 } from '@ant-design/icons';
+const { Text } = Typography;
+const { RangePicker } = DatePicker;
 import { useCRUD } from '@/hooks/useCRUD';
 import { Button, DataTable, StatisticsCard, Access } from '@/components/common';
 import { DataTableColumn } from '@/components/common/DataTable/types';
@@ -40,8 +44,6 @@ import './styles.less';
 
 dayjs.locale('vi');
 
-const { Text } = Typography;
-
 const MeetingsPage = () => {
     const { hasPermission, user: currentUser } = useAccess();
     
@@ -62,8 +64,13 @@ const MeetingsPage = () => {
         handleTableChange,
         search,
         searchTerm,
+        updateFilters,
+        filters,
     } = useCRUD(meetingService, {
         autoFetch: true,
+        pageSize: 10,
+        defaultSort: 'meetingAt',
+        defaultOrder: 'descend',
     });
 
     const [form] = Form.useForm();
@@ -87,46 +94,59 @@ const MeetingsPage = () => {
     const [cancelRecord, setCancelRecord] = useState<Meeting | null>(null);
     const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
     
+    // Overdue Popup State
+    const [overdueMeetingsPopup, setOverdueMeetingsPopup] = useState<Meeting[]>([]);
+    const [overdueStatusSelections, setOverdueStatusSelections] = useState<Record<number, string>>({});
+    const [hasShownOverduePopup, setHasShownOverduePopup] = useState(false);
+    const [isUpdatingOverdue, setIsUpdatingOverdue] = useState(false);
+    
     const { data: users } = useCRUD(userService, {
         autoFetch: true,
         pageSize: 1000,
     });
 
-    // Statistics logic
-    const stats = useMemo(() => {
-        const now = dayjs();
-        const upcoming = data.filter(m => m.status === 'scheduled' && dayjs(m.meetingAt).isAfter(now) && dayjs(m.meetingAt).isBefore(now.add(24, 'hour'))).length;
-        const pendingRsvp = data.filter((m: Meeting) => {
-            const myConfirm = m.confirmations?.find((c: any) => String(c.userId) === String(currentUser?.id));
-            const rsvpStatus = String(myConfirm?.rsvpStatus || 'pending').toLowerCase();
-            const isInvited = m.isAllParticipants || m.participantIds?.some(id => String(id) === String(currentUser?.id));
-            return m.status === 'scheduled' && rsvpStatus === 'pending' && isInvited;
-        }).length;
-        const totalMonth = data.filter((m: Meeting) => dayjs(m.meetingAt).isSame(now, 'month')).length;
+    useEffect(() => {
+        if (!data || data.length === 0 || loading || !canManageAll || hasShownOverduePopup) return;
 
-        return { upcoming, pendingRsvp, totalMonth };
-    }, [data, currentUser]);
-    
-    // Advanced Filters Config
-    const filtersConfig = useMemo((): any[] => [
-        {
-            key: 'status',
-            label: 'Trạng thái',
-            type: 'select',
-            options: [
-                { label: 'Đã lên lịch', value: 'scheduled' },
-                { label: 'Đã hoàn thành', value: 'completed' },
-                { label: 'Đã hủy', value: 'cancelled' },
-            ],
-            operators: ['eq', 'ne'],
-        },
-        {
-            key: 'meetingAt',
-            label: 'Thời gian họp',
-            type: 'dateRange',
-            operators: ['between'],
+        const now = dayjs();
+        const overdues = data.filter(m => {
+            const targetTime = m.endAt || m.meetingAt;
+            return m.status === 'scheduled' && targetTime && dayjs(targetTime).isBefore(now);
+        });
+
+        if (overdues.length > 0) {
+            setOverdueMeetingsPopup(overdues);
+            const initialSelections: Record<number, string> = {};
+            overdues.forEach(m => initialSelections[m.id] = 'overdue');
+            setOverdueStatusSelections(initialSelections);
+            setHasShownOverduePopup(true);
         }
-    ], []);
+    }, [data, loading, canManageAll, hasShownOverduePopup]);
+
+    // Statistics logic from backend
+    const [stats, setStats] = useState({ upcoming: 0, pendingRsvp: 0, totalMonth: 0, overdue: 0 });
+
+    const fetchStats = async () => {
+        try {
+            const params: any = {};
+            Object.keys(filters).forEach(key => {
+                params[key] = filters[key];
+            });
+            const res = await meetingService.getStats(params);
+            if (res?.data) {
+                setStats(res.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch meeting stats:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchStats();
+    }, [data, filters]);
+    
+    // Advanced Filters Config (đã được thay thế bằng Quick Filters trực quan)
+    const filtersConfig = useMemo((): any[] => [], []);
 
     const openCalendarAt = (date: any) => {
         setCalendarValue(dayjs(date));
@@ -136,8 +156,11 @@ const MeetingsPage = () => {
     const columns: DataTableColumn<Meeting>[] = [
         {
             title: "Cuộc họp",
+            dataIndex: "title",
             key: "title",
             width: 250,
+            sorter: true,
+            searchable: true,
             render: (_: any, record: Meeting) => (
                 <Text strong style={{ color: 'var(--primary-color)', cursor: 'pointer' }} onClick={() => openDetail(record)}>
                     {record.title}
@@ -146,8 +169,10 @@ const MeetingsPage = () => {
         },
         {
             title: "Thời gian",
+            dataIndex: "meetingAt",
             key: "meetingAt",
             width: 180,
+            sorter: true,
             render: (_: any, record: Meeting) => (
                 <Tooltip title="Xem trên lịch tháng">
                     <Text 
@@ -164,9 +189,10 @@ const MeetingsPage = () => {
             dataIndex: "status",
             key: "status",
             width: 140,
+            sorter: true,
             render: (status: string) => {
-                const colors: any = { scheduled: 'blue', completed: 'green', cancelled: 'red' };
-                const texts: any = { scheduled: 'Sắp diễn ra', completed: 'Đã xong', cancelled: 'Đã hủy' };
+                const colors: any = { scheduled: 'blue', completed: 'green', cancelled: 'red', overdue: 'warning' };
+                const texts: any = { scheduled: 'Sắp diễn ra', completed: 'Đã xong', cancelled: 'Đã hủy', overdue: 'Quá hạn' };
                 return <Tag color={colors[status]}>{texts[status]}</Tag>;
             }
         },
@@ -191,7 +217,7 @@ const MeetingsPage = () => {
                                 Chỉnh sửa
                             </Menu.Item>
                         )}
-                        {canAttendance && record.status === 'scheduled' && (
+                        {canAttendance && (record.status === 'scheduled' || record.status === 'overdue') && (
                             <Menu.Item
                                 key="attendance"
                                 icon={<CheckCircleOutlined />}
@@ -242,7 +268,7 @@ const MeetingsPage = () => {
                         <Menu.Item key="copy" icon={<CopyOutlined />} onClick={() => copyMeetingInfo(record)}>
                             Sao chép thông tin
                         </Menu.Item>
-                        {canManageAll && record.status === 'scheduled' && (
+                        {canManageAll && (record.status === 'scheduled' || record.status === 'overdue') && (
                             <>
                                 <Menu.Divider />
                                 <Menu.Item
@@ -434,6 +460,27 @@ const MeetingsPage = () => {
         }
     };
 
+    const handleBulkUpdateOverdue = async () => {
+        setIsUpdatingOverdue(true);
+        try {
+            const promises = overdueMeetingsPopup.map(m => {
+                const newStatus = overdueStatusSelections[m.id];
+                if (newStatus !== 'scheduled') {
+                    return meetingService.update(m.id, { status: newStatus as any });
+                }
+                return Promise.resolve();
+            });
+            await Promise.all(promises);
+            message.success('Đã cập nhật trạng thái các cuộc họp quá hạn');
+            setOverdueMeetingsPopup([]);
+            fetchAll();
+        } catch (error) {
+            message.error('Cập nhật thất bại');
+        } finally {
+            setIsUpdatingOverdue(false);
+        }
+    };
+
     const copyMeetingInfo = (record: Meeting) => {
         const info = `
 📅 CUỘC HỌP: ${record.title}
@@ -467,17 +514,51 @@ const MeetingsPage = () => {
     };
 
     const PageHeaderTitle = (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <h2 style={{ margin: 0 }}>{canCreate ? "Quản lý Lịch họp" : "Lịch họp của tôi"}</h2>
-            <Button 
-                variant="ghost" 
-                buttonSize="small"
-                icon={<QuestionCircleOutlined />} 
-                onClick={() => setIsGuideModalVisible(true)}
-                style={{ border: '1px solid #d9d9d9' }}
-            >
-                Hướng dẫn
-            </Button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '16px', marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 20 }}>{canCreate ? "Quản lý Lịch họp" : "Lịch họp của tôi"}</h2>
+            
+            <Space style={{ flexWrap: 'wrap' }}>
+                <RangePicker 
+                    placeholder={['Từ ngày', 'Đến ngày']} 
+                    format="DD/MM/YYYY"
+                    onChange={(dates: any) => {
+                        if (dates && dates[0] && dates[1]) {
+                            updateFilters({
+                                meetingAt_gte: dates[0].startOf('day').toISOString(),
+                                meetingAt_lte: dates[1].endOf('day').toISOString(),
+                            });
+                        } else {
+                            updateFilters({
+                                meetingAt_gte: null,
+                                meetingAt_lte: null,
+                            });
+                        }
+                    }}
+                />
+                
+                <Select 
+                    placeholder="Tất cả trạng thái"
+                    style={{ width: 160 }}
+                    allowClear
+                    onChange={(val) => updateFilters({ status: val || null })}
+                    options={[
+                        { label: 'Đã lên lịch', value: 'scheduled' },
+                        { label: 'Quá hạn', value: 'overdue' },
+                        { label: 'Đã hoàn thành', value: 'completed' },
+                        { label: 'Đã hủy', value: 'cancelled' },
+                    ]}
+                />
+
+                <Button 
+                    variant="ghost" 
+                    buttonSize="small"
+                    icon={<QuestionCircleOutlined />} 
+                    onClick={() => setIsGuideModalVisible(true)}
+                    style={{ border: '1px solid #d9d9d9' }}
+                >
+                    Hướng dẫn
+                </Button>
+            </Space>
         </div>
     );
 
@@ -496,10 +577,12 @@ const MeetingsPage = () => {
                     <StatisticsCard
                         hideCard={true}
                         loading={loading}
+                        colSpan={{ xs: 24, sm: 12, md: 12, lg: 6 }}
                         data={[
-                            { title: "Sắp diễn ra (24h)", value: stats.upcoming, icon: <CalendarOutlined />, valueColor: "#1890ff" },
+                            { title: "Sắp diễn ra", value: stats.upcoming, icon: <CalendarOutlined />, valueColor: "#1890ff" },
                             { title: "Chờ xác nhận", value: stats.pendingRsvp, icon: <MessageOutlined />, valueColor: "#faad14" },
-                            { title: "Trong tháng này", value: stats.totalMonth, icon: <ClockCircleOutlined />, valueColor: "#52c41a" }
+                            { title: "Quá hạn", value: stats.overdue, icon: <ClockCircleOutlined />, valueColor: "#fa8c16" },
+                            { title: "Trong tháng này", value: stats.totalMonth, icon: <FileDoneOutlined />, valueColor: "#52c41a" }
                         ]}
                         statShadow={false}
                     />
@@ -673,6 +756,55 @@ const MeetingsPage = () => {
                     <p><strong>2. Lịch họp:</strong> Xem các cuộc họp theo ngày trên lịch tháng.</p>
                     <p><strong>3. RSVP:</strong> Xác nhận tham gia ngay trong chi tiết cuộc họp.</p>
                     <p><strong>4. Điểm danh:</strong> (Dành cho Admin/Leader) Cập nhật chuyên cần thực tế.</p>
+                </div>
+            </Modal>
+
+            <Modal
+                title="⚠️ Phát hiện Cuộc họp đã qua thời gian"
+                open={overdueMeetingsPopup.length > 0}
+                onCancel={() => setOverdueMeetingsPopup([])}
+                footer={[
+                    <Button key="skip" variant="outline" buttonSize="small" onClick={() => setOverdueMeetingsPopup([])}>
+                        Bỏ qua
+                    </Button>,
+                    <Button key="submit" variant="primary" buttonSize="small" loading={isUpdatingOverdue} onClick={handleBulkUpdateOverdue}>
+                        Cập nhật trạng thái
+                    </Button>
+                ]}
+                width={700}
+                zIndex={1001}
+            >
+                <div style={{ marginBottom: 16 }}>
+                    <Text>Có <strong>{overdueMeetingsPopup.length}</strong> cuộc họp đã qua thời gian dự kiến nhưng chưa được cập nhật trạng thái.</Text>
+                    <br/>
+                    <Text type="secondary">Gợi ý: Hãy chuyển thành "Đã hoàn thành" nếu cuộc họp đã diễn ra trót lọt, hoặc giữ nguyên "Quá hạn" (mặc định).</Text>
+                </div>
+                
+                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                    {overdueMeetingsPopup.map(m => (
+                        <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
+                            <div style={{ flex: 1, paddingRight: 16 }}>
+                                <Text strong>{m.title}</Text>
+                                <br/>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {dayjs(m.meetingAt).format('HH:mm DD/MM/YYYY')} 
+                                    {m.endAt ? ` - ${dayjs(m.endAt).format('HH:mm DD/MM/YYYY')}` : ''}
+                                </Text>
+                            </div>
+                            <div style={{ width: 150 }}>
+                                <Select
+                                    style={{ width: '100%' }}
+                                    value={overdueStatusSelections[m.id]}
+                                    onChange={(val) => setOverdueStatusSelections(prev => ({ ...prev, [m.id]: val }))}
+                                    options={[
+                                        { label: 'Quá hạn', value: 'overdue' },
+                                        { label: 'Đã hoàn thành', value: 'completed' },
+                                        { label: 'Đã hủy', value: 'cancelled' },
+                                    ]}
+                                />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </Modal>
         </div>

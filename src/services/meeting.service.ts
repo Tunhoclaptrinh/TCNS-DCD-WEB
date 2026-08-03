@@ -16,7 +16,7 @@ export interface Meeting {
   meetingAt: string;
   endAt?: string;
   agenda?: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'completed' | 'cancelled' | 'overdue';
   participantIds: number[];
   participants?: User[];
   isAllParticipants?: boolean;
@@ -80,6 +80,10 @@ class MeetingService extends BaseService<Meeting> {
    */
   async setStatus(id: number, status: 'scheduled' | 'completed' | 'cancelled') {
     return this.update(id, { status } as any);
+  }
+
+  async getStats(params?: any) {
+    return this.get('/stats', params);
   }
 }
 

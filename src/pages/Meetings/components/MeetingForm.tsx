@@ -72,6 +72,7 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
         <Form.Item name="status" label="Trạng thái" initialValue="scheduled" style={{ width: 180 }}>
           <Select options={[
             { label: 'Đã lên lịch', value: 'scheduled' },
+            { label: 'Quá hạn', value: 'overdue' },
             { label: 'Đã hoàn thành', value: 'completed' },
             { label: 'Đã hủy', value: 'cancelled' },
           ]} />
