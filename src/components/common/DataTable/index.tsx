@@ -403,7 +403,7 @@ const DataTable: React.FC<DataTableProps> = ({
     Object.entries(tableFilters).forEach(([key, value]) => {
       if (searchableColumnKeys.has(key)) {
         const keyword = Array.isArray(value) ? value[0] : value;
-        normalized[`${key}_like`] = keyword;
+        normalized[`${key}_ilike`] = keyword;
         return;
       }
 
@@ -587,7 +587,8 @@ const DataTable: React.FC<DataTableProps> = ({
 
       const colKey = String(col.key || col.dataIndex);
       const isSearchable = col.searchable;
-      const searchFilterKey = `${colKey}_like`;
+      // Ensure the column filter state matches the generated _ilike query param
+      const searchFilterKey = `${colKey}_ilike`;
       const controlledVal = isSearchable
         ? filterValues?.[searchFilterKey] ?? filterValues?.[colKey]
         : filterValues?.[colKey];

@@ -20,6 +20,7 @@ export interface Meeting {
   participantIds: number[];
   participants?: User[];
   isAllParticipants?: boolean;
+  visibility?: 'public' | 'private';
   confirmations: MeetingConfirmation[];
   note?: string;
   createdBy: number;

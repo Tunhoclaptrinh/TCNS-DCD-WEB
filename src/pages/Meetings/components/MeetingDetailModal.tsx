@@ -3,6 +3,7 @@ import { Modal, Typography, Space, Tag, Input, List, Avatar, Popover, Segmented 
 import {
     CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined,
     UserOutlined, MessageOutlined, FileTextOutlined, EditOutlined,
+    GlobalOutlined, SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { Button } from '@/components/common';
 import { Meeting } from '@/services/meeting.service';
@@ -196,7 +197,14 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
             width={600}
         >
             <div style={{ padding: '4px 0' }}>
-                <Title level={4} style={{ marginBottom: 12, fontSize: 18 }}>{record.title}</Title>
+                <Space align="center" style={{ marginBottom: 12 }}>
+                    <Title level={4} style={{ margin: 0, fontSize: 18 }}>{record.title}</Title>
+                    {record.visibility === 'public' ? (
+                        <Tag icon={<GlobalOutlined />} color="processing" style={{ borderRadius: 12 }}>Công khai</Tag>
+                    ) : (
+                        <Tag icon={<SafetyCertificateOutlined />} color="warning" style={{ borderRadius: 12 }}>Nội bộ</Tag>
+                    )}
+                </Space>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

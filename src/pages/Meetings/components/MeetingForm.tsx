@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, DatePicker, Select, Space, Checkbox, Typography } from 'antd';
+import { Form, Input, DatePicker, Select, Space, Checkbox, Typography, Radio, Tooltip } from 'antd';
 import type { FormInstance } from 'antd';
 import { 
   CalendarOutlined, EnvironmentOutlined, ProfileOutlined, UsergroupAddOutlined 
@@ -113,6 +113,27 @@ const MeetingForm: React.FC<MeetingFormProps> = ({
 
       <Form.Item name="note" label="Ghi chú thêm">
         <Input placeholder="Ghi chú thêm (nếu có)..." />
+      </Form.Item>
+
+      <Form.Item 
+        name="visibility" 
+        label="Phạm vi hiển thị lịch họp"
+        initialValue="private"
+        tooltip="Quyết định xem ai có thể nhìn thấy lịch họp này trên trang Lịch trực."
+      >
+        <Radio.Group>
+          <Space>
+            <Tooltip title="Ai cũng có thể xem">
+              <Radio value="public">Công khai</Radio>
+            </Tooltip>
+            <Tooltip title="Thành viên chính thức & Ban điều hành">
+              <Radio value="members">Chỉ thành viên</Radio>
+            </Tooltip>
+            <Tooltip title="Chỉ những người được mời mới xem được">
+              <Radio value="private">Nội bộ</Radio>
+            </Tooltip>
+          </Space>
+        </Radio.Group>
       </Form.Item>
 
       {/* Member Selection Section */}

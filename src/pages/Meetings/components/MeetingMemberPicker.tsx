@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Modal, Space, Typography, Tag, Avatar, List } from 'antd';
+const { Text } = Typography;
 import { 
-  UsergroupAddOutlined, UserOutlined, CloseOutlined 
+  UsergroupAddOutlined, UserOutlined, CloseOutlined
 } from '@ant-design/icons';
 import Button from '@/components/common/Button';
 import DataTable from '@/components/common/DataTable';
@@ -9,17 +10,7 @@ import userService from '@/services/user.service';
 import { User } from '@/types';
 import { DataTableColumn } from '@/components/common/DataTable/types';
 import { useCRUD } from '@/hooks/useCRUD';
-
-const { Text } = Typography;
-
-export const POSITION_LABELS: Record<string, string> = {
-  ctv: 'CTV',
-  tv: 'Thành viên',
-  tvb: 'Thành viên ban',
-  pb: 'Phó ban',
-  tb: 'Trưởng ban',
-  dt: 'Đội trưởng'
-};
+import { POSITION_LABELS, POSITION_FILTERS, DEPARTMENT_FILTERS } from '@/constants/user.constants';
 
 interface MeetingMemberPickerProps {
   value?: number[];
@@ -42,6 +33,9 @@ export const MeetingMemberTable: React.FC<{
     search,
     searchTerm,
     fetchAll,
+    clearFilters,
+    filters: filterValues,
+    updateFilters,
   } = useCRUD(userService, {
     autoFetch: true,
     pageSize: 10,
@@ -50,8 +44,11 @@ export const MeetingMemberTable: React.FC<{
   const columns: DataTableColumn<User>[] = [
     {
       title: 'Thành viên',
-      key: 'user',
+      dataIndex: 'name',
+      key: 'name',
       align: 'left',
+      sortable: true,
+      searchable: true,
       render: (_, record) => (
         <Space style={{marginLeft: 8}}>
           <Avatar src={record.avatar} icon={<UserOutlined />} size="small" />
@@ -60,11 +57,13 @@ export const MeetingMemberTable: React.FC<{
       ),
     },
     {
-      title: 'MSSV / Email',
-      key: 'identity',
+      title: 'Mã sinh viên',
+      dataIndex: 'studentId',
+      key: 'studentId',
+      searchable: true,
       render: (_, record) => (
         <Text type="secondary" style={{ fontSize: 12 }}>
-          {record.studentId || record.email}
+          {record.studentId || '--'}
         </Text>
       ),
     },
@@ -73,6 +72,9 @@ export const MeetingMemberTable: React.FC<{
       dataIndex: 'department',
       key: 'department',
       width: 100,
+      sortable: true,
+      filters: DEPARTMENT_FILTERS,
+      filterMultiple: false,
       render: (dept) => dept ? <Tag color="blue" style={{ fontSize: 10 }}>{dept}</Tag> : null
     },
     {
@@ -80,7 +82,33 @@ export const MeetingMemberTable: React.FC<{
       dataIndex: 'position',
       key: 'position',
       width: 110,
+      sortable: true,
+      filters: POSITION_FILTERS,
+      filterMultiple: false,
       render: (val: string) => val ? <Tag color="cyan" style={{ borderRadius: 4, fontSize: 11 }}>{POSITION_LABELS[val] || val}</Tag> : '--'
+    }
+  ];
+
+  const tableFilters = [
+    {
+      key: 'department',
+      label: 'Ban chuyên môn',
+      type: 'select' as const,
+      options: [
+        { label: 'Tất cả ban', value: '' },
+        ...DEPARTMENT_FILTERS.map(f => ({ label: f.text, value: f.value }))
+      ],
+      colSpan: 12,
+    },
+    {
+      key: 'position',
+      label: 'Chức vụ',
+      type: 'select' as const,
+      options: [
+        { label: 'Tất cả chức vụ', value: '' },
+        ...POSITION_FILTERS.map(f => ({ label: f.text, value: f.value }))
+      ],
+      colSpan: 12,
     }
   ];
 
@@ -93,11 +121,16 @@ export const MeetingMemberTable: React.FC<{
       pagination={pagination}
       onPaginationChange={handleTableChange}
       searchable={true}
+      searchPlaceholder="Tìm kiếm tên, mã sinh viên..."
       searchValue={searchTerm}
       onSearch={search}
-      onRefresh={() => fetchAll()}
-      showActions={false}
+      onRefresh={fetchAll}
+      sortable={true}
       batchOperations={false}
+      filters={tableFilters}
+      filterValues={filterValues}
+      onFilterChange={(key, value) => updateFilters({ [key]: value })}
+      onClearFilters={() => clearFilters()}
       selectedRowKeys={value}
       onSelectChange={(keys, rows) => onChange?.(keys as number[], rows as User[])}
       size="small"

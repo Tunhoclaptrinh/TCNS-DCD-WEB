@@ -24,16 +24,7 @@ import UsersDetailModal from './components/Detail';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
 import permissionService from '../../services/permission.service';
-
-const POSITION_LEVELS = ['ctv', 'tv', 'tvb', 'pb', 'tb', 'dt'];
-const POSITION_LABELS: Record<string, string> = {
-    ctv: 'Cộng tác viên',
-    tv: 'Thành viên thường',
-    tvb: 'Thành viên ban',
-    pb: 'Phó ban',
-    tb: 'Trưởng ban',
-    dt: 'Đội trưởng'
-};
+import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS } from '@/constants/user.constants';
 
 // Dynamic department options will be derived from stats
 
@@ -538,7 +529,7 @@ const UserPage = () => {
             dataIndex: "position",
             width: 180,
             resizable: true,
-            filters: Object.entries(POSITION_LABELS).map(([value, label]) => ({ text: label, value })),
+            filters: POSITION_FILTERS,
             render: (value: string) => {
                 if (!value) return '--';
                 return <Tag color="cyan">{POSITION_LABELS[value] || value.toUpperCase()}</Tag>;
