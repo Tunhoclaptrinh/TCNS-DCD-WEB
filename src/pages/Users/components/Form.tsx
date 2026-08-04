@@ -1,5 +1,5 @@
 import React from 'react';
-import { Col, Form, Input, Row, Select, Divider, Tooltip, Collapse, Space, Tag, Alert, DatePicker, Image, AutoComplete } from 'antd';
+import { Col, Form, Input, Row, Select, Divider, Tooltip, Collapse, Space, Tag, Alert, DatePicker, Image, AutoComplete, Switch } from 'antd';
 import type { FormInstance } from 'antd';
 import { 
   UserOutlined, 
@@ -384,7 +384,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
         </Row>
 
         <Row gutter={16}>
-          <Col xs={24} md={18}>
+          <Col xs={24} md={9}>
             <Form.Item 
               name="roleIds" 
               label={
@@ -406,13 +406,23 @@ const UsersForm: React.FC<UsersFormProps> = ({
               />
             </Form.Item>
           </Col>
-          <Col xs={24} md={6}>
-            <Form.Item name="status" label="Trạng thái">
+          <Col xs={12} md={5}>
+            <Form.Item name="status" label="Trạng thái HĐ">
               <Select disabled={!canEditOrg} options={[
                 { label: 'Đang hoạt động', value: 'active' },
-                { label: 'Ngừng hoạt động', value: 'inactive' },
+                { label: 'Đã nghỉ', value: 'inactive' },
                 { label: 'Đã khai trừ', value: 'dismissed' }
               ]} />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={5}>
+            <Form.Item name="isActive" label="Tài khoản" valuePropName="checked">
+              <Switch disabled={!canEditOrg} checkedChildren="Đang Bật" unCheckedChildren="Đã Tắt" />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={5}>
+            <Form.Item name="isAlumni" label="Cựu TV" valuePropName="checked">
+              <Switch disabled={!canEditOrg} checkedChildren="Có" unCheckedChildren="Không" />
             </Form.Item>
           </Col>
         </Row>

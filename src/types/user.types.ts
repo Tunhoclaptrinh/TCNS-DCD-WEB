@@ -36,6 +36,7 @@ export interface User extends BaseEntity, TimestampEntity {
   joinDate?: string;
   lastLogin?: string;
   isActive: boolean;
+  isAlumni: boolean;
   generationId?: number;
   generation?: {
     id: number;
@@ -126,6 +127,7 @@ export interface UserStatItem {
   byRole: Record<string, number>;
   byPosition: Record<string, number>;
   byGeneration: Record<string, number>;
+  locked: number;
 }
 
 export interface UserStats {

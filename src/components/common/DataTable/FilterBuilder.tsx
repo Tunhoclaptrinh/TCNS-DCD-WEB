@@ -11,7 +11,9 @@ const BACKEND_OPERATOR_OPTIONS = [
   { label: "Lớn hơn hoặc bằng", value: "gte" },
   { label: "Nhỏ hơn hoặc bằng", value: "lte" },
   { label: "Chứa", value: "like" },
+  { label: "Không chứa", value: "not_like" },
   { label: "Trong", value: "in" },
+  { label: "Không trong", value: "nin" },
 ];
 
 const normalizeOperator = (operator?: string) => {
@@ -72,8 +74,22 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
           <div className="filter-conditions-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {activeFilters.map((filter) => {
               const label = filter.label || filter.placeholder;
+              let currentOpRaw = operators[filter.key];
+              if (!currentOpRaw) {
+                  const operatorSuffixToOp: Record<string, string> = {
+                      "": "eq", "_ne": "ne", "_gte": "gte", "_lte": "lte",
+                      "_like": "like", "_in": "in", "_ilike": "ilike", "_nin": "nin"
+                  };
+                  for (const [suffix, op] of Object.entries(operatorSuffixToOp)) {
+                      const val = filterValues[`${filter.key}${suffix}`];
+                      if (Array.isArray(val) ? val.length > 0 : val !== undefined && val !== null && val !== "") {
+                          currentOpRaw = op;
+                          break;
+                      }
+                  }
+              }
               const currentOp = normalizeOperator(
-                operators[filter.key] || filter.defaultOperator || "eq",
+                currentOpRaw || filter.defaultOperator || "eq",
               );
               const operatorSuffix: Record<string, string> = {
                 eq: "",
@@ -81,7 +97,9 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                 gte: "_gte",
                 lte: "_lte",
                 like: "_like",
+                not_like: "_not_like",
                 in: "_in",
+                nin: "_nin",
               };
               const activeKey = `${filter.key}${operatorSuffix[currentOp] || ""}`;
               const isEnabled = enabledFilters[filter.key] !== false;
@@ -116,7 +134,6 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                      {label}
                   </div>
 
-                  {/* Operator */}
                   {filter.operators && (
                     <Select
                       value={currentOp}
@@ -144,7 +161,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                         filterOption={(input, option) =>
                           (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                         }
-                        mode={currentOp === "in" ? "multiple" : undefined}
+                        mode={currentOp === "in" || currentOp === "nin" ? "multiple" : undefined}
                         style={{ width: "100%" }}
                         size="middle"
                       />

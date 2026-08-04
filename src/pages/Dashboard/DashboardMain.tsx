@@ -43,6 +43,7 @@ const DashboardPage: React.FC = () => {
       byRole: {},
       byPosition: {},
       byGeneration: {},
+      locked: 0
     },
     byDepartment: {},
   });
@@ -102,9 +103,15 @@ const DashboardPage: React.FC = () => {
               },
               {
                 title: "Đang bị khóa",
-                value: stats.global?.inactive || 0,
+                value: stats.global?.locked || 0,
                 icon: <StopOutlined />,
                 valueColor: "#da2a2aff",
+              },
+              {
+                title: "Đã nghỉ",
+                value: stats.global?.inactive || 0,
+                icon: <UserDeleteOutlined />,
+                valueColor: "#8c8c8c",
               },
               {
                 title: 'Đã khai trừ',

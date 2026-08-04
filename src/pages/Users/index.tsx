@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
 import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, AutoComplete, Input, Typography } from 'antd';
 import { 
@@ -52,7 +52,6 @@ const UserPage = () => {
         update,
         handleTableChange,
         updateFilters,
-        setFilters,
         clearFilters,
         search,
         searchTerm,
@@ -102,18 +101,20 @@ const UserPage = () => {
         byRole: {},
         byPosition: {},
         byGeneration: {},
+        locked: 0,
     };
 
-    const ACTIVE_ONLY = 'active_only';
+
     const [stats, setStats] = useState<UserStats>({
         global: initialStatObject,
         byDepartment: {},
     });
+    const [currentTabStats, setCurrentTabStats] = useState<any>(initialStatObject);
     const [generationList, setGenerationList] = useState<Generation[]>([]);
     const [roleList, setRoleList] = useState<Role[]>([]);
     const [permissionList, setPermissionList] = useState<any[]>([]);
-    const [selectedGenerationId, setSelectedGenerationId] = useState<number | typeof ACTIVE_ONLY | undefined>(ACTIVE_ONLY);
-
+    const [selectedGenerationId, setSelectedGenerationId] = useState<number | 'active_members' | 'active_generations' | 'all' | undefined>('active_members');
+    const previousGenerationId = useRef<number | 'active_members' | 'active_generations' | 'all' | undefined>('active_members');
     // Optimized: Memoized active generation IDs
     const activeGenerationIds = useMemo(() => 
         generationList.filter(g => g.isActive).map(g => g.id),
@@ -121,10 +122,16 @@ const UserPage = () => {
 
     // Optimized: Centralized filter object
     const currentGenFilter = useMemo(() => {
-        if (selectedGenerationId === ACTIVE_ONLY) {
-            return { 
-                generationId: undefined, 
-                generationId_in: activeGenerationIds.length > 0 ? activeGenerationIds : undefined 
+        if (selectedGenerationId === 'active_generations') {
+            return {
+                generationId: undefined,
+                generationId_in: activeGenerationIds.length > 0 ? activeGenerationIds : undefined
+            };
+        }
+        if (selectedGenerationId === 'active_members' || selectedGenerationId === 'all' || selectedGenerationId === undefined) {
+            return {
+                generationId: undefined,
+                generationId_in: undefined
             };
         }
         return { 
@@ -181,66 +188,110 @@ const UserPage = () => {
         }
     }, []);
 
+    // Fetch stats for building Tabs
     const fetchUserStats = async (filters: any = {}) => {
         if (!hasPermission('users:view_stats')) return;
-
-        setFetchingStats(true);
         try {
             const response = await userService.getStats(filters);
             const statsData = response.data || (response as any);
-
             if (statsData) {
                 setStats(statsData);
             }
         } catch (error) {
             console.error('Failed to fetch user stats:', error);
+        }
+    };
+
+    // Fetch stats for the current Tab/Filters
+    const fetchCurrentTabStats = async (filters: any = {}) => {
+        if (!hasPermission('users:view_stats')) return;
+        setFetchingStats(true);
+        try {
+            const response = await userService.getStats(filters);
+            const statsData = response.data || (response as any);
+            if (statsData) {
+                setCurrentTabStats(statsData.global || initialStatObject);
+            }
+        } catch (error) {
+            console.error('Failed to fetch current tab stats:', error);
         } finally {
             setFetchingStats(false);
         }
     };
 
-    // Reactive data & stats update when ANY filter criteria changes
-    useEffect(() => {
+    const getCombinedFilters = () => {
         const combinedFilters: any = { ...currentGenFilter };
+        const isActiveMembersSelected = selectedGenerationId === 'active_members';
         
         // Apply Tab filters
         if (activeTab === 'alumni') {
-            combinedFilters.status = 'inactive';
+            combinedFilters.isAlumni = true;
+            combinedFilters.isAlumni_ne = undefined;
+            combinedFilters.status = undefined;
+            combinedFilters.status_ne = undefined;
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = undefined;
         } else if (activeTab === 'all') {
-            combinedFilters.status = 'active';
+            combinedFilters.isAlumni = false;
+            combinedFilters.isAlumni_ne = undefined;
+            combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
+            combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = undefined;
         } else if (activeTab === 'ctv') {
-            combinedFilters.status = 'active';
+            combinedFilters.isAlumni = false;
+            combinedFilters.isAlumni_ne = undefined;
+            combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
+            combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = 'ctv';
         } else if (activeTab === 'others') {
-            combinedFilters.status = 'active';
+            combinedFilters.isAlumni = false;
+            combinedFilters.isAlumni_ne = undefined;
+            combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
+            combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
             combinedFilters.department = undefined;
             combinedFilters.position = undefined;
             // Get current known departments to exclude
             const knownDepts = Object.keys(stats?.byDepartment || {}).filter(k => k !== '__unassigned__');
             combinedFilters.department_nin = knownDepts.length > 0 ? knownDepts : undefined;
         } else {
-            combinedFilters.status = 'active';
+            combinedFilters.isAlumni = false;
+            combinedFilters.isAlumni_ne = undefined;
+            combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
+            combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
             combinedFilters.department = activeTab;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = undefined;
         }
 
-        fetchUserStats(combinedFilters);
-        setFilters(combinedFilters);
-    }, [selectedGenerationId, activeGenerationIds, activeTab]);
+        return combinedFilters;
+    };
+
+    // Reactive data update when ANY filter criteria changes
+    useEffect(() => {
+        const filters = getCombinedFilters();
+        updateFilters(filters);
+        if (['alumni', 'others'].includes(activeTab)) {
+            fetchCurrentTabStats(filters);
+        }
+    }, [activeTab, selectedGenerationId, generationList]);
+
+    // Fetch stats separately based only on generation filter
+    useEffect(() => {
+        fetchUserStats(currentGenFilter);
+    }, [currentGenFilter]);
     
     // Synced refresh helper
     const refreshData = async () => {
         await fetchAll();
         await fetchUserStats(currentGenFilter);
+        if (['alumni', 'others'].includes(activeTab)) {
+            await fetchCurrentTabStats(getCombinedFilters());
+        }
     };
 
     const handleSyncAlumni = async () => {
@@ -291,7 +342,7 @@ const UserPage = () => {
             setEditingId(record.id);
             await userService.toggleStatus(record.id);
             await fetchAll();
-            await fetchUserStats({ generationId: selectedGenerationId });
+            await refreshData();
         } finally {
             setEditingId(null);
         }
@@ -411,7 +462,7 @@ const UserPage = () => {
                 
                 message.warning('Đã khai trừ thành viên');
                 await fetchAll();
-                await fetchUserStats({ generationId: selectedGenerationId });
+                await refreshData();
                 if (viewingUser?.id === record.id) {
                     setViewingUser({ ...record, status: 'dismissed', isActive: false, bio: updatedBio } as User);
                 }
@@ -488,7 +539,7 @@ const UserPage = () => {
                 title: <div style={{ whiteSpace: 'nowrap !important', width: 'max-content', display: 'block' }}>Khóa/Thế hệ</div>,
                 key: "generation",
                 dataIndex: "generation",
-                width: 180,
+                width: 160,
                 resizable: true,
                 align: 'left',
                 filters: generationList.map(g => ({ text: g.name, value: g.id })),
@@ -545,16 +596,48 @@ const UserPage = () => {
         },
         {
             title: "Trạng thái",
-            key: "statusDisplay",
-            width: 130,
+            key: "status",
+            dataIndex: "status",
+            width: 160,
             resizable: true,
             sortable: false,
+            filters: [
+                { text: 'Đang hoạt động', value: 'active' },
+                { text: 'Đã nghỉ', value: 'inactive' },
+                { text: 'Khai trừ', value: 'dismissed' }
+            ],
             render: (_: any, record: User) => {
-                if (record.status === 'dismissed') {
-                    return <Tag color="magenta">KHAI TRỪ</Tag>;
-                }
+                return (
+                    <Space direction="vertical" size={4}>
+                        {record.status === 'dismissed' ? (
+                            <Tag color="magenta">KHAI TRỪ</Tag>
+                        ) : record.status === 'inactive' ? (
+                            <Tag color="default">ĐÃ NGHỈ</Tag>
+                        ) : (
+                            <Tag color="green">ĐANG HĐ</Tag>
+                        )}
+                        {record.isAlumni && (
+                            <Tag color="orange" style={{ margin: 0 }}>CỰU TV</Tag>
+                        )}
+                    </Space>
+                );
+            },
+        },
+        {
+            title: "Tài khoản",
+            key: "isActive",
+            dataIndex: "isActive",
+            width: 120,
+            resizable: true,
+            sortable: false,
+            filters: [
+                { text: 'Đang Bật', value: true },
+                { text: 'Đã Tắt', value: false }
+            ],
+            render: (_: any, record: User) => {
                 return (
                     <Switch
+                        size="small"
                         checkedChildren="Bật"
                         unCheckedChildren="Tắt"
                         checked={record.isActive}
@@ -666,22 +749,49 @@ const UserPage = () => {
             key: "department",
             label: "Tên Ban",
             type: "select" as const,
-            operators: ['eq', 'like', 'in'] as any,
+            operators: ['eq', 'like', 'in', 'nin'] as any,
             options: Object.keys(stats?.byDepartment || {})
                 .filter(d => d !== '__unassigned__')
                 .map(d => ({ label: d, value: d })),
         },
 
         {
-            key: "status",
-            label: "Trạng thái thành viên",
+            key: "isAlumni",
+            label: "Cựu thành viên",
+            type: "select" as const,
+            operators: ['eq', 'ne'],
+            options: [
+                { label: "Có", value: true },
+                { label: "Không", value: false },
+            ],
+        },
+        {
+            key: "isActive",
+            label: "Trạng thái tài khoản",
             type: "select" as const,
             operators: ['eq'],
             options: [
+                { label: "Đang Bật", value: true },
+                { label: "Đã Tắt", value: false },
+            ],
+        },
+        {
+            key: "status",
+            label: "Trạng thái thành viên",
+            type: "select" as const,
+            operators: ['eq', 'ne'],
+            options: [
                 { label: "Hoạt động", value: "active" },
-                { label: "Không hoạt động", value: "inactive" },
+                { label: "Đã nghỉ", value: "inactive" },
                 { label: "Khai trừ", value: "dismissed" },
             ],
+        },
+        {
+            key: "generationId",
+            label: "Khóa/Thế hệ",
+            type: "select" as const,
+            operators: ['eq', 'in'],
+            options: generationList.map(g => ({ label: g.name, value: g.id })),
         },
         {
             key: "role",
@@ -704,37 +814,37 @@ const UserPage = () => {
             key: "studentId",
             label: "Mã SV",
             type: "input" as const,
-            operators: ['like', 'eq'],
+            operators: ['like', 'not_like', 'eq', 'ne'],
         },
         {
             key: "lastName",
             label: "Họ",
             type: "input" as const,
-            operators: ['like'],
+            operators: ['like', 'not_like', 'eq', 'ne'],
         },
         {
             key: "firstName",
             label: "Tên",
             type: "input" as const,
-            operators: ['like'],
+            operators: ['like', 'not_like', 'eq', 'ne'],
         },
         {
             key: "email",
             label: "Email",
             type: "input" as const,
-            operators: ['like', 'eq'],
+            operators: ['like', 'not_like', 'eq', 'ne'],
         },
         {
             key: "phone",
             label: "Số điện thoại",
             type: "input" as const,
-            operators: ['like', 'eq'],
+            operators: ['like', 'not_like', 'eq', 'ne'],
         },
         {
             key: "address",
             label: "Địa chỉ",
             type: "input" as const,
-            operators: ['like', 'eq'],
+            operators: ['like', 'not_like', 'eq', 'ne'],
         },
         {
             key: "bio",
@@ -763,19 +873,12 @@ const UserPage = () => {
             operators: ['gte', 'lte'],
             defaultOperator: 'gte',
         },
-        {
-            key: "generationId",
-            label: "Khóa/Thế hệ",
-            type: "select" as const,
-            operators: ['eq', 'in'],
-            options: generationList.map(g => ({ label: g.name, value: g.id })),
-        },
     ];
 
     const handleDelete = async (id: number) => {
         const success = await remove(id);
         if (success) {
-            await fetchUserStats({ generationId: selectedGenerationId });
+            await refreshData();
         }
     };
 
@@ -819,36 +922,31 @@ const UserPage = () => {
             if (success) {
                 setIsModalVisible(false);
                 form.resetFields();
-                await fetchUserStats({ generationId: selectedGenerationId });
+                await refreshData();
             }
         } catch (error) {
             console.error("Validate Failed:", error);
         }
     };
 
-    const currentStats = activeTab === 'all'
-        ? (stats?.global || initialStatObject)
-        : activeTab === 'others'
-        ? Object.keys(stats?.byDepartment || {}).reduce((acc, key) => {
-            // Aggregate only unassigned members for 'others' tab in dynamic mode
-            if (key === '__unassigned__') {
-                const deptStats = stats.byDepartment[key];
-                acc.total += deptStats.total || 0;
-                acc.active += deptStats.active || 0;
-                acc.inactive += deptStats.inactive || 0;
-                acc.dismissed += deptStats.dismissed || 0;
-                acc.ctv += deptStats.ctv || 0;
-                acc.official += deptStats.official || 0;
-                acc.management += deptStats.management || 0;
-                acc.recentSignups += deptStats.recentSignups || 0;
-            }
-            return acc;
-          }, { ...initialStatObject })
-        : (stats?.byDepartment?.[activeTab] || initialStatObject);
+    const currentStats = ['alumni', 'others'].includes(activeTab) 
+        ? (currentTabStats || initialStatObject) 
+        : (stats?.global || initialStatObject);
 
     const onTabChange = (key: string) => {
+        const isSpecialTab = ['alumni', 'others'].includes(key);
+        const wasSpecialTab = ['alumni', 'others'].includes(activeTab);
+
+        if (isSpecialTab && !wasSpecialTab) {
+            // Save the current generation selection before clearing
+            previousGenerationId.current = selectedGenerationId;
+            setSelectedGenerationId(undefined);
+        } else if (!isSpecialTab && wasSpecialTab) {
+            // Restore the previous generation selection when returning to normal tabs
+            setSelectedGenerationId(previousGenerationId.current || 'active_members');
+        }
+
         setActiveTab(key);
-        // Combined logic moved to useEffect for reactivity
     };
 
     return (
@@ -888,22 +986,28 @@ const UserPage = () => {
                                 valueColor: '#8c8c8c', // Gray
                             },
                             {
-                                title: activeTab === 'all' ? 'Ban quản lý' : `Quản lý (${activeTab === 'others' ? 'Khác' : activeTab})`,
+                                title: activeTab === 'others' ? 'Quản lý (Khác)' : 'Ban quản lý',
                                 value: currentStats.management || 0,
                                 icon: <SafetyOutlined />,
                                 valueColor: '#eb2f96', // Pink/Magenta
                             },
                             {
-                                title: activeTab === 'all' ? 'Đang hoạt động' : `Hoạt động (${activeTab === 'others' ? 'Khác' : activeTab})`,
+                                title: activeTab === 'others' ? 'Hoạt động (Khác)' : 'Đang hoạt động',
                                 value: currentStats.active || 0,
                                 icon: <RiseOutlined />,
                                 valueColor: '#52c41a', // Green
                             },
                             {
                                 title: 'Đang khóa',
-                                value: currentStats.inactive || 0,
+                                value: currentStats.locked || 0,
                                 icon: <StopOutlined />,
-                                valueColor: '#da2a2aff', // Gray
+                                valueColor: '#da2a2aff', // Red
+                            },
+                            {
+                                title: 'Đã nghỉ',
+                                value: currentStats.inactive || 0,
+                                icon: <UserDeleteOutlined />,
+                                valueColor: '#8c8c8c', // Gray
                             },
                             {
                                 title: 'Đã khai trừ',
@@ -948,25 +1052,32 @@ const UserPage = () => {
             title={
                 <Space size={16} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <h2 style={{ margin: 0 }}>Quản lý thành viên</h2>
-                    <Select
-                        placeholder="Lọc theo Khóa"
-                        style={{ width: 240, textAlign: 'right' }}
-                        value={selectedGenerationId}
-                        allowClear
-                        onChange={(val) => {
-                            setSelectedGenerationId(val);
-                            // The actual filter update is handled by the reactive useEffect
-                        }}
-                        options={[
-                            { label: 'Các khóa đang hoạt động', value: ACTIVE_ONLY },
-                            ...generationList.map(g => ({ label: g.name, value: g.id }))
-                        ]}
-                    />
+                    <Tooltip title="Lọc hiển thị theo khóa. Mặc định là Thành viên đang hoạt động.">
+                        <Select
+                            placeholder="Lọc theo Khóa"
+                            style={{ width: 220 }}
+                            value={selectedGenerationId}
+                            allowClear
+                            onChange={(val) => {
+                                setSelectedGenerationId(val);
+                                if (val === 'active_members' && ['alumni', 'others'].includes(activeTab)) {
+                                    setActiveTab('all');
+                                }
+                            }}
+                            options={[
+                                { label: 'Thành viên đang hoạt động', value: 'active_members' },
+                                { label: 'Các khóa đang hoạt động', value: 'active_generations' },
+                                { label: 'Tất cả các khóa', value: 'all' },
+                                ...generationList.map(g => ({ label: g.name, value: g.id }))
+                            ]}
+                        />
+                    </Tooltip>
                 </Space>
             }
-                loading={loading}
-                columns={columns}
-                dataSource={data}
+            key={activeTab}
+            loading={loading}
+            columns={columns}
+            dataSource={data}
                 pagination={pagination}
                 onPaginationChange={handleTableChange}
                 tableLayout="fixed"
@@ -985,11 +1096,15 @@ const UserPage = () => {
                 filters={filters}
                 filterValues={filterValues}
                 onFilterChange={(key, value) => {
-                    if (key === 'generationId') setSelectedGenerationId(value);
+                    if (key === 'generationId' || key === 'generationId_in') {
+                        if (selectedGenerationId !== undefined) {
+                            setSelectedGenerationId(undefined);
+                        }
+                    }
                     updateFilters({ [key]: value });
                 }}
                 onClearFilters={() => {
-                    setSelectedGenerationId(ACTIVE_ONLY);
+                    setSelectedGenerationId(['alumni', 'others'].includes(activeTab) ? undefined : 'active_members');
                     clearFilters();
                 }}
                 creatable={{ accessible: hasPermission('users:create'), behavior: 'disable' }}

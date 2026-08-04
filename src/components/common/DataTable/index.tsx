@@ -39,13 +39,15 @@ const OPERATOR_TO_SUFFIX: Record<string, string> = {
   gte: "_gte",
   lte: "_lte",
   like: "_like",
+  not_like: "_not_like",
   in: "_in",
+  nin: "_nin",
   ilike: "_like",
   gt: "_gte",
   lt: "_lte",
 };
 
-const FILTER_SUFFIXES = ["", "_ne", "_gte", "_lte", "_like", "_in"];
+const FILTER_SUFFIXES = ["", "_ne", "_gte", "_lte", "_like", "_not_like", "_in", "_nin"];
 
 /**
  * Module-level component — must NOT be defined inside DataTable to preserve
@@ -248,14 +250,30 @@ const DataTable: React.FC<DataTableProps> = ({
       });
     };
 
-    const appliedFilters = filters.filter((filter) => hasFilterValue(filter.key));
-    if (appliedFilters.length > 0) {
-      setActiveFilters((prev) => {
-        const map = new Map(prev.map((item) => [item.key, item]));
-        appliedFilters.forEach((item) => map.set(item.key, item));
-        return Array.from(map.values());
+    const appliedFilters = filters.filter((filter) => !filter.hidden && hasFilterValue(filter.key));
+    
+    setActiveFilters((prev) => {
+      const map = new Map(prev.map((item) => [item.key, item]));
+      let changed = false;
+
+      // Clean up any filters that are now hidden
+      const hiddenKeys = filters.filter(f => f.hidden).map(f => f.key);
+      hiddenKeys.forEach(key => {
+        if (map.has(key)) {
+          map.delete(key);
+          changed = true;
+        }
       });
-    }
+
+      appliedFilters.forEach((item) => {
+        if (!map.has(item.key)) {
+          map.set(item.key, item);
+          changed = true;
+        }
+      });
+
+      return changed ? Array.from(map.values()) : prev;
+    });
   }, [filterModalOpen, filters, filterValues]);
 
   React.useEffect(() => {
@@ -846,7 +864,7 @@ const DataTable: React.FC<DataTableProps> = ({
         {...antTableProps}
       />
       <Modal open={filterModalOpen} onCancel={() => setFilterModalOpen(false)} title="Bộ lọc tùy chỉnh" width={700} footer={null} styles={{ body: { padding: 0 } }}>
-        <FilterBuilder filters={filters} activeFilters={activeFilters} filterValues={filterValues} operators={operators} enabledFilters={enabledFilters} onAddFilter={addFilterCondition} onRemoveFilter={removeFilterCondition} onFilterChange={handleFilterValueChange} onOperatorChange={handleOperatorChange} onToggleFilter={toggleFilterEnabled} onApply={handleApplyCustomFilters} onClear={handleClearFilters} onCancel={() => setFilterModalOpen(false)} />
+        <FilterBuilder filters={filters.filter(f => !f.hidden)} activeFilters={activeFilters} filterValues={filterValues} operators={operators} enabledFilters={enabledFilters} onAddFilter={addFilterCondition} onRemoveFilter={removeFilterCondition} onFilterChange={handleFilterValueChange} onOperatorChange={handleOperatorChange} onToggleFilter={toggleFilterEnabled} onApply={handleApplyCustomFilters} onClear={handleClearFilters} onCancel={() => setFilterModalOpen(false)} />
       </Modal>
     </>
   );
