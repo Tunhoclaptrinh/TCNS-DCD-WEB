@@ -59,13 +59,12 @@ const MyRequests: React.FC = () => {
     setLoading(true);
     try {
       // Fetching all and filtering or using specialized query if available
-      const res = await dutyService.getSwapRequests({ expand: 'fromSlot,toSlot,requester,targetUser' });
+      const res = await dutyService.getSwapRequests({ expand: 'fromSlot,toSlot,requester' });
       const rawData = res.data || res;
       const all = Array.isArray(rawData) ? rawData : (rawData?.data || []);
       
       const filtered = all.filter((r: any) => 
-        String(r.requesterId) === String(currentUserId) || 
-        String(r.targetUserId) === String(currentUserId)
+        String(r.requesterId) === String(currentUserId)
       );
       setSwapRequests(filtered);
     } catch (err) {

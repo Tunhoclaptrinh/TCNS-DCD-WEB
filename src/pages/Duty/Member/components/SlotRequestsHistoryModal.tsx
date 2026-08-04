@@ -93,22 +93,6 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
       }
     },
     {
-      title: 'Người đổi cùng',
-      key: 'targetUser',
-      render: (_: any, record: any) => (
-        <Space>
-          {record.targetUser ? (
-            <>
-              <Avatar size="small" src={record.targetUser.avatar} />
-              <Text>{record.targetUser.name}</Text>
-            </>
-          ) : (
-            <Tag color="cyan">CÔNG KHAI</Tag>
-          )}
-        </Space>
-      )
-    },
-    {
       title: 'Loại đổi',
       key: 'type',
       render: (_: any, record: any) => {

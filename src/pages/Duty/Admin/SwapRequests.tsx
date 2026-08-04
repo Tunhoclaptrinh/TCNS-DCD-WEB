@@ -18,7 +18,7 @@ import dutyService from '@/services/duty.service';
 import { Button, TabSwitcher, DataTable } from '@/components/common';
 import StatisticsCard from '@/components/common/StatisticsCard';
 import { useAccess } from '@/hooks/useAccess';
-import apiClient from "@/config/axios.config";
+import UserSelect from '@/pages/Users/components/UserSelect';
 
 const { Title, Text } = Typography;
 
@@ -29,7 +29,7 @@ const SwapRequestsPage: React.FC = () => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('pending');
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
-  const { user, hasPermission, isAdmin } = useAccess();
+  const { hasPermission, isAdmin } = useAccess();
   
   // Advanced Filtering state
   const [filterValues, setFilterValues] = useState<any>({});
@@ -44,15 +44,6 @@ const SwapRequestsPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [slots, setSlots] = useState<any[]>([]);
 
-  const fetchUsers = async () => {
-    try {
-      const res = await apiClient.get('/users', { params: { limit: 1000 } });
-      setUsers(res.data?.data || []);
-    } catch (err) {
-      console.error('Failed to fetch users');
-    }
-  };
-
   const fetchAvailableSlots = async () => {
     try {
       const res = await dutyService.getWeeklySchedule();
@@ -64,7 +55,6 @@ const SwapRequestsPage: React.FC = () => {
 
   useEffect(() => {
     if (isModalVisible) {
-      fetchUsers();
       fetchAvailableSlots();
     }
   }, [isModalVisible]);
@@ -182,11 +172,26 @@ const SwapRequestsPage: React.FC = () => {
 
   const openEdit = (record: any) => {
     setEditingId(record.id);
+
+    // Make sure we have the requester and slots in the select options so it renders names instead of IDs
+    if (record.requester) {
+      setUsers(prev => prev.find(u => u.id === record.requester.id) ? prev : [...prev, record.requester]);
+    }
+    const missingSlots: any[] = [];
+    if (record.fromSlot && !slots.find(s => s.id === record.fromSlot.id)) {
+      missingSlots.push(record.fromSlot);
+    }
+    if (record.toSlot && !slots.find(s => s.id === record.toSlot.id)) {
+      missingSlots.push(record.toSlot);
+    }
+    if (missingSlots.length > 0) {
+      setSlots(prev => [...prev, ...missingSlots]);
+    }
+
     form.setFieldsValue({
-      requesterId: record.requesterId,
-      targetUserId: record.targetUserId,
-      fromSlotId: record.fromSlotId,
-      toSlotId: record.toSlotId,
+      requesterId: record.requesterId ? Number(record.requesterId) : undefined,
+      fromSlotId: record.fromSlotId ? Number(record.fromSlotId) : undefined,
+      toSlotId: record.toSlotId ? Number(record.toSlotId) : undefined,
       reason: record.reason,
       status: record.status
     });
@@ -405,7 +410,6 @@ const SwapRequestsPage: React.FC = () => {
         searchPlaceholder="Tìm kiếm thành viên..."
         extra={null}
         customActions={(r) => {
-          const isTarget = Number(r.targetUserId) === Number(user?.id);
           const canApproveSwap = isAdmin || hasPermission('duty:approve_swap');
           const canManage = isAdmin || hasPermission('duty:manage');
           
@@ -417,9 +421,9 @@ const SwapRequestsPage: React.FC = () => {
                     variant="ghost"
                     buttonSize="small"
                     icon={<CheckCircleOutlined style={{ fontSize: 16 }} />}
-                    style={{ color: (r.status === 'pending' && (isTarget || canApproveSwap)) ? '#52c41a' : '#bfbfbf', padding: '4px' }}
+                    style={{ color: (r.status === 'pending' && canApproveSwap) ? '#52c41a' : '#bfbfbf', padding: '4px' }}
                     onClick={() => handleDecide(r.id, 'approved')}
-                    disabled={r.status !== 'pending' || (!isTarget && !canApproveSwap)}
+                    disabled={r.status !== 'pending' || !canApproveSwap}
                   />
                 </Tooltip>
                 <Tooltip title={!canApproveSwap ? 'Bạn không có quyền duyệt' : 'Từ chối'}>
@@ -427,9 +431,9 @@ const SwapRequestsPage: React.FC = () => {
                     variant="ghost"
                     buttonSize="small"
                     icon={<CloseCircleOutlined style={{ fontSize: 16 }} />}
-                    style={{ color: (r.status === 'pending' && (isTarget || canApproveSwap)) ? '#ff4d4f' : '#bfbfbf', padding: '4px' }}
+                    style={{ color: (r.status === 'pending' && canApproveSwap) ? '#ff4d4f' : '#bfbfbf', padding: '4px' }}
                     onClick={() => handleDecide(r.id, 'rejected')}
-                    disabled={r.status !== 'pending' || (!isTarget && !canApproveSwap)}
+                    disabled={r.status !== 'pending' || !canApproveSwap}
                   />
                 </Tooltip>
               </>
@@ -521,24 +525,26 @@ const SwapRequestsPage: React.FC = () => {
         width={700}
         centered
         destroyOnClose
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, paddingBottom: 16 }}>
-            <Button 
-              variant="ghost" 
-              onClick={() => setIsModalVisible(false)} 
-              style={{ minWidth: 120 }}
-            >
-              Hủy bỏ
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={handleModalOk} 
-              style={{ minWidth: 120 }}
-            >
-              {editingId ? "Cập nhật" : "Tạo yêu cầu"}
-            </Button>
-          </div>
-        }
+        footer={[
+          <Button 
+            key="cancel"
+            variant="outline" 
+            buttonSize="small"
+            onClick={() => setIsModalVisible(false)} 
+            style={{ minWidth: 88 }}
+          >
+            Hủy bỏ
+          </Button>,
+          <Button 
+            key="submit"
+            variant="primary" 
+            buttonSize="small"
+            onClick={handleModalOk} 
+            style={{ minWidth: 88 }}
+          >
+            {editingId ? "Lưu lại" : "Lưu lại"}
+          </Button>
+        ]}
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -546,38 +552,14 @@ const SwapRequestsPage: React.FC = () => {
             label="Thành viên cần điều chuyển"
             rules={[{ required: true, message: 'Vui lòng chọn thành viên' }]}
           >
-            <Select
-              showSearch
-              placeholder="Tìm kiếm thành viên..."
-              optionFilterProp="children"
-              filterOption={(input, option: any) => {
-                const searchStr = (option?.label || '').toLowerCase();
-                const dataStr = (option?.['data-search'] || '').toLowerCase();
-                return searchStr.includes(input.toLowerCase()) || dataStr.includes(input.toLowerCase());
-              }}
-              options={users.map(u => ({ 
-                label: u.name, 
-                value: u.id,
-                'data-search': `${u.studentId || ''} ${u.email || ''}`,
-                render: (
-                  <Space>
-                    <Avatar size="small" src={u.avatar} icon={<UserOutlined />} />
-                    <Space direction="vertical" size={0}>
-                      <Text strong style={{ fontSize: 13 }}>{u.name}</Text>
-                      <Text type="secondary" style={{ fontSize: 11 }}>{u.studentId || u.email}</Text>
-                    </Space>
-                  </Space>
-                )
-              }))}
-              optionRender={(option) => option.data.render}
-            />
+            <UserSelect initialUsers={users} />
           </Form.Item>
 
-          <Space style={{ width: '100%' }} direction="horizontal">
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
             <Form.Item
               name="fromSlotId"
               label="Kíp trực nguồn (Rời đi)"
-              style={{ flex: 1, minWidth: 250 }}
+              style={{ flex: 1, margin: 0 }}
             >
               <Select
                 showSearch
@@ -585,31 +567,31 @@ const SwapRequestsPage: React.FC = () => {
                 placeholder="Chọn kíp hiện tại..."
                 optionFilterProp="label"
                 options={slots.map(s => ({ 
-                  label: `${dayjs(s.shiftDate).format('DD/MM')} - ${s.shiftLabel}`, 
+                  label: s.shiftDate ? `${dayjs(s.shiftDate).format('DD/MM')} - ${s.shiftLabel}` : s.shiftLabel, 
                   value: s.id 
                 }))}
               />
             </Form.Item>
 
-            <ArrowRightOutlined style={{ marginTop: 10, color: '#bfbfbf' }} />
+            <ArrowRightOutlined style={{ color: '#bfbfbf', marginTop: 38 }} />
 
             <Form.Item
               name="toSlotId"
               label="Kíp trực đích (Chuyển đến)"
               rules={[{ required: true, message: 'Vui lòng chọn kíp đích' }]}
-              style={{ flex: 1, minWidth: 250 }}
+              style={{ flex: 1, margin: 0 }}
             >
               <Select
                 showSearch
                 placeholder="Chọn kíp muốn đến..."
                 optionFilterProp="label"
                 options={slots.map(s => ({ 
-                  label: `${dayjs(s.shiftDate).format('DD/MM')} - ${s.shiftLabel}`, 
+                  label: s.shiftDate ? `${dayjs(s.shiftDate).format('DD/MM')} - ${s.shiftLabel}` : s.shiftLabel, 
                   value: s.id 
                 }))}
               />
             </Form.Item>
-          </Space>
+          </div>
 
           <Form.Item
             name="reason"

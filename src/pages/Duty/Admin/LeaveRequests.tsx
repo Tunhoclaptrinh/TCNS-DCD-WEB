@@ -15,8 +15,9 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
-import apiClient from "@/config/axios.config";
-import { Button, TabSwitcher, DataTable, StatisticsCard } from '@/components/common';
+import { Button, TabSwitcher, DataTable } from '@/components/common';
+import StatisticsCard from '@/components/common/StatisticsCard';
+import UserSelect from '@/pages/Users/components/UserSelect';
 
 const { Title, Text } = Typography;
 
@@ -46,15 +47,6 @@ const LeaveRequestsPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [slots, setSlots] = useState<any[]>([]);
 
-  const fetchUsers = async () => {
-    try {
-      const res = await apiClient.get('/users', { params: { limit: 1000 } });
-      setUsers(res.data?.data || []);
-    } catch (err) {
-      console.error('Failed to fetch users');
-    }
-  };
-
   const fetchAvailableSlots = async () => {
     try {
       const res = await dutyService.getWeeklySchedule();
@@ -66,7 +58,6 @@ const LeaveRequestsPage: React.FC = () => {
 
   useEffect(() => {
     if (isModalVisible) {
-      fetchUsers();
       fetchAvailableSlots();
     }
   }, [isModalVisible]);
@@ -152,9 +143,17 @@ const LeaveRequestsPage: React.FC = () => {
 
   const openEdit = (record: any) => {
     setEditingId(record.id);
+
+    if (record.user) {
+      setUsers(prev => prev.find(u => u.id === record.user.id) ? prev : [...prev, record.user]);
+    }
+    if (record.slot && !slots.find(s => s.id === record.slot.id)) {
+      setSlots(prev => [...prev, record.slot]);
+    }
+
     form.setFieldsValue({
-      userId: record.userId,
-      slotId: record.slotId,
+      userId: record.userId ? Number(record.userId) : undefined,
+      slotId: record.slotId ? Number(record.slotId) : undefined,
       reason: record.reason,
       status: record.status,
       rejectionReason: record.rejectionReason
@@ -490,24 +489,26 @@ const LeaveRequestsPage: React.FC = () => {
         width={500}
         centered
         destroyOnClose
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, paddingBottom: 16 }}>
-            <Button 
-              variant="ghost" 
-              onClick={() => setIsModalVisible(false)} 
-              style={{ minWidth: 120 }}
-            >
-              Hủy bỏ
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={handleModalOk} 
-              style={{ minWidth: 120 }}
-            >
-              {editingId ? "Cập nhật" : "Tạo đơn"}
-            </Button>
-          </div>
-        }
+        footer={[
+          <Button 
+            key="cancel"
+            variant="outline" 
+            buttonSize="small"
+            onClick={() => setIsModalVisible(false)} 
+            style={{ minWidth: 88 }}
+          >
+            Hủy bỏ
+          </Button>,
+          <Button 
+            key="submit"
+            variant="primary" 
+            buttonSize="small"
+            onClick={handleModalOk} 
+            style={{ minWidth: 88 }}
+          >
+            {editingId ? "Lưu lại" : "Lưu lại"}
+          </Button>
+        ]}
       >
         <Form form={form} layout="vertical" style={{ padding: '8px 0' }}>
           <Form.Item
@@ -515,31 +516,7 @@ const LeaveRequestsPage: React.FC = () => {
             label="Thành viên"
             rules={[{ required: true, message: 'Vui lòng chọn thành viên' }]}
           >
-            <Select
-              showSearch
-              placeholder="Tìm kiếm theo tên, MSV hoặc email..."
-              optionFilterProp="children"
-              filterOption={(input, option: any) => {
-                const searchStr = (option?.label || '').toLowerCase();
-                const dataStr = (option?.['data-search'] || '').toLowerCase();
-                return searchStr.includes(input.toLowerCase()) || dataStr.includes(input.toLowerCase());
-              }}
-              options={users.map(u => ({ 
-                label: u.name, 
-                value: u.id,
-                'data-search': `${u.studentId || ''} ${u.email || ''}`,
-                render: (
-                  <Space>
-                    <AntdAvatar size="small" src={u.avatar} icon={<UserOutlined />} />
-                    <Space direction="vertical" size={0}>
-                      <Text strong style={{ fontSize: 13 }}>{u.name}</Text>
-                      <Text type="secondary" style={{ fontSize: 11 }}>{u.studentId || u.email}</Text>
-                    </Space>
-                  </Space>
-                )
-              }))}
-              optionRender={(option) => option.data.render}
-            />
+            <UserSelect initialUsers={users} />
           </Form.Item>
 
           <Form.Item
