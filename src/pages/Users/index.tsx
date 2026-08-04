@@ -45,6 +45,8 @@ const UserPage = () => {
         return parsed.toLocaleString('vi-VN');
     };
 
+    const getFullName = (u: User) => (u.name || `${u.lastName || ''} ${u.firstName || ''}`).trim();
+
     const avatarFallback = `data:image/svg+xml;utf8,${encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#f0f0f0"/><circle cx="20" cy="15" r="6" fill="#bfbfbf"/><path d="M8 33c2.5-5 7-8 12-8s9.5 3 12 8" fill="#bfbfbf"/></svg>'
     )}`;
@@ -93,6 +95,8 @@ const UserPage = () => {
     const [isAlumniModalVisible, setIsAlumniModalVisible] = useState(false);
     const [syncingAlumni, setSyncingAlumni] = useState(false);
     const [alumniSelectedIds, setAlumniSelectedIds] = useState<number[]>([]);
+
+
     
     const initialStatObject = {
         total: 0,
@@ -1121,25 +1125,57 @@ const UserPage = () => {
                     Bạn hãy bỏ tích những người vẫn còn đang hoạt động.
                 </div>
                 <DataTable
+                    hideCard
                     dataSource={potentialAlumni}
                     columns={[
                         {
                             title: 'Tên thành viên',
-                            render: (_, record) => record.name || `${record.lastName} ${record.firstName}`.trim(),
+                            key: 'fullName',
+                            dataIndex: 'name',
+                            searchable: true,
+                            render: (_, record) => getFullName(record),
+                            sorter: (a, b) => getFullName(a).localeCompare(getFullName(b)),
+                            onFilter: (value, record) => getFullName(record).toLowerCase().includes(String(value).toLowerCase()),
                         },
                         {
                             title: 'Mã SV',
                             dataIndex: 'studentId',
+                            searchable: true,
+                            sorter: true,
                         },
                         {
                             title: 'Khóa',
-                            render: (_, record) => (record as any).generation?.name || '--',
+                            key: 'generation',
+                            render: (_, record) => {
+                                const genName = generationList.find(g => g.id === record.generationId)?.name;
+                                return genName ? <Tag color="geekblue">{genName}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>;
+                            },
+                            sorter: (a, b) => (a.generationId ?? 0) - (b.generationId ?? 0),
+                            filters: generationList.map(g => ({ text: g.name, value: g.id })),
+                            onFilter: (value, record) => record.generationId === value,
                         }
                     ]}
                     selectedRowKeys={alumniSelectedIds}
                     onSelectChange={(keys) => setAlumniSelectedIds(keys as number[])}
                     batchOperations={true}
-                    searchable={false}
+                    batchActions={[
+                        {
+                            key: 'confirm-alumni',
+                            label: 'Xác nhận chuyển thành Cựu',
+                            icon: <CheckCircleOutlined />,
+                            onClick: () => {
+                                confirmSyncAlumni();
+                            }
+                        },
+                        {
+                            key: 'deselect-all',
+                            label: 'Bỏ chọn tất cả',
+                            icon: <StopOutlined />,
+                            onClick: () => setAlumniSelectedIds([])
+                        }
+                    ]}
+                    searchable={true}
+                    searchPlaceholder="Tìm kiếm thành viên..."
                     pagination={false}
                     scroll={{ y: 400 }}
                 />
