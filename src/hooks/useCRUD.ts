@@ -107,7 +107,7 @@ export const useCRUD = (service: any, options: any = {}) => {
         // Add sorting
         if (sorter.field) {
             params._sort = sorter.field;
-            params._order = sorter.order === 'descend' ? 'desc' : 'asc';
+            params._order = (sorter.order === 'descend' || sorter.order === 'desc') ? 'desc' : 'asc';
         }
 
         // Add search
