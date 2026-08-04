@@ -36,7 +36,7 @@ export interface User extends BaseEntity, TimestampEntity {
   joinDate?: string;
   lastLogin?: string;
   isActive: boolean;
-  isAlumni: boolean;
+  isAlumni?: boolean;
   generationId?: number;
   generation?: {
     id: number;

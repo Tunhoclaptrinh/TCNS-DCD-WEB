@@ -14,7 +14,6 @@ import {
   Switch,
   Tooltip,
   Popover,
-  Button as AntdButton,
 } from "antd";
 import {
   DownloadOutlined,
