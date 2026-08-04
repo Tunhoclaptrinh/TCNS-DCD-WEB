@@ -21,7 +21,7 @@ import {
   ArrowRightOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons';
-import { DataTable, Button, StatisticsCard } from '@/components/common';
+import { DataTable, Button, StatisticsCard, Access } from '@/components/common';
 import { DataTableColumn, FilterConfig } from '@/components/common/DataTable/types';
 import roleService, { Role } from '@/services/role.service';
 import { useCRUD } from '@/hooks/useCRUD';
@@ -158,18 +158,20 @@ const RoleManagement: React.FC = () => {
       fixed: 'right',
       render: (_: any, record: Role) => (
         <Space size="small">
-          <Tooltip title="Cài đặt quyền chi tiết (Modal)">
-            <Button 
-              variant="ghost" 
-              icon={<SafetyOutlined />} 
-              onClick={() => {
-                setTargetRole(record);
-                setIsPermModalVisible(true);
-              }}
-              style={{ color: 'var(--primary-color)' }}
-            />
-          </Tooltip>
-          {hasPermission('system:roles:update') && (
+          <Access permission="system:permissions:edit" behavior="disable">
+            <Tooltip title="Cài đặt quyền chi tiết (Modal)">
+              <Button 
+                variant="ghost" 
+                icon={<SafetyOutlined />} 
+                onClick={() => {
+                  setTargetRole(record);
+                  setIsPermModalVisible(true);
+                }}
+                style={{ color: 'var(--primary-color)' }}
+              />
+            </Tooltip>
+          </Access>
+          <Access permission="system:roles:update" behavior="disable">
             <Tooltip title="Sửa thông tin">
               <Button 
                 variant="ghost" 
@@ -177,8 +179,8 @@ const RoleManagement: React.FC = () => {
                 onClick={() => showModal(record)} 
               />
             </Tooltip>
-          )}
-          {hasPermission('system:roles:delete') && (
+          </Access>
+          <Access permission="system:roles:delete" behavior="disable">
             <Button 
               variant="ghost" 
               icon={<DeleteOutlined />} 
@@ -195,7 +197,7 @@ const RoleManagement: React.FC = () => {
                 });
               }}
             />
-          )}
+          </Access>
         </Space>
       ),
     },
@@ -227,7 +229,8 @@ const RoleManagement: React.FC = () => {
         onFilterChange={(key, value) => updateFilters({ [key]: value })}
         onClearFilters={clearFilters}
         // Actions
-        onAdd={hasPermission('system:roles:create') ? () => showModal() : undefined}
+        onAdd={() => showModal()}
+        creatable={{ accessible: hasPermission('system:roles:create'), behavior: 'disable' }}
         onRefresh={refresh}
         onEdit={hasPermission('system:roles:update') ? showModal : undefined}
         onDelete={hasPermission('system:roles:delete') ? handleDelete : undefined}

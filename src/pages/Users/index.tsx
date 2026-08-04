@@ -172,9 +172,18 @@ const UserPage = () => {
     };
 
     useEffect(() => {
-        fetchGenerations();
-        fetchRoles();
-        fetchPermissions();
+        // generations: cần settings:view (tất cả role từ member trở lên đều có)
+        if (hasPermission('settings:view')) {
+            fetchGenerations();
+        }
+        // roles: cần system:roles:view (ns_specialist trở lên có)
+        if (hasPermission('system:roles:view')) {
+            fetchRoles();
+        }
+        // permissions: cần system:permissions:view (ns_specialist trở lên có)
+        if (hasPermission('system:permissions:view')) {
+            fetchPermissions();
+        }
     }, []);
 
     const fetchUserStats = async (filters: any = {}) => {
@@ -194,11 +203,6 @@ const UserPage = () => {
             setFetchingStats(false);
         }
     };
-
-    // Fetch initial data
-    useEffect(() => {
-        fetchGenerations();
-    }, []);
 
     // Reactive data & stats update when ANY filter criteria changes
     useEffect(() => {
@@ -612,15 +616,15 @@ const UserPage = () => {
                         placement="bottomRight"
                         overlay={
                             <Menu>
-                                <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
+                                <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!hasPermission('users:update:profile') && !hasPermission('users:update:org')}>
                                     Chỉnh sửa
                                 </Menu.Item>
                                 <Menu.Item 
                                     key="promote" 
                                     icon={<RiseOutlined />} 
                                     onClick={() => handlePromote(record)}
-                                    disabled={record.position === 'dt'}
-                                    style={{ color: '#52c41a' }}
+                                    disabled={record.position === 'dt' || !hasPermission('users:promote')}
+                                    style={{ color: record.position === 'dt' || !hasPermission('users:promote') ? undefined : '#52c41a' }}
                                 >
                                     Nâng hạng
                                 </Menu.Item>
@@ -628,7 +632,7 @@ const UserPage = () => {
                                     key="dismiss" 
                                     icon={<UserDeleteOutlined />} 
                                     onClick={() => handleDismiss(record)}
-                                    disabled={record.status === 'dismissed'}
+                                    disabled={record.status === 'dismissed' || !hasPermission('users:expel')}
                                     danger
                                 >
                                     Khai trừ
@@ -638,6 +642,7 @@ const UserPage = () => {
                                     key="delete" 
                                     icon={<DeleteOutlined />} 
                                     onClick={() => handleDelete(record.id)}
+                                    disabled={!hasPermission('users:delete')}
                                     danger
                                 >
                                     Xóa vĩnh viễn
@@ -794,7 +799,8 @@ const UserPage = () => {
             ...record, 
             roleIds: record.roleIds || (record as any).roles?.map((r: any) => r.id) || [],
             dob: record.dob ? dayjs(record.dob) : undefined,
-            joinDate: record.joinDate ? dayjs(record.joinDate) : undefined
+            joinDate: record.joinDate ? dayjs(record.joinDate) : undefined,
+            customPermissions: record.customPermissions || { extra: [], denied: [] }
         };
         form.setFieldsValue(formData);
         setIsModalVisible(true);
@@ -972,10 +978,10 @@ const UserPage = () => {
                 scroll={{ x: 1800 }}
                 saveColumnWidths
                 columnResizeKey="users-table-v11"
-                onAdd={hasPermission('users:create') ? openCreate : undefined}
+                onAdd={openCreate}
                 onRefresh={refreshData}
-                onEdit={hasPermission('users:update') ? openEdit : undefined}
-                onView={hasPermission('users:list') ? openView : undefined}
+                onEdit={(hasPermission('users:update:profile') || hasPermission('users:update:org')) ? openEdit : undefined}
+                onView={hasPermission('users:list:all') || hasPermission('users:list:dept') ? openView : undefined}
                 onDelete={hasPermission('users:delete') ? handleDelete : undefined}
                 // Search & Filter
                 searchable={true}
@@ -991,8 +997,9 @@ const UserPage = () => {
                     setSelectedGenerationId(ACTIVE_ONLY);
                     clearFilters();
                 }}
+                creatable={{ accessible: hasPermission('users:create'), behavior: 'disable' }}
                 // Batch Operations
-                batchOperations={hasPermission('users:delete')}
+                batchOperations={{ accessible: hasPermission('users:delete'), behavior: 'disable' }}
                 selectedRowKeys={selectedIds}
                 onSelectChange={setSelectedIds}
                 onBatchDelete={async (ids) => {
@@ -1002,8 +1009,8 @@ const UserPage = () => {
                     }
                 }}
                 // Import/Export
-                importable={hasPermission('users:import_export')}
-                exportable={hasPermission('users:import_export')}
+                importable={{ accessible: hasPermission('users:import'), behavior: 'disable' }}
+                exportable={{ accessible: hasPermission('users:export'), behavior: 'disable' }}
                 onImport={async (file) => {
                     const result = await importData(file);
                     if (result) {
@@ -1015,7 +1022,7 @@ const UserPage = () => {
                 onDownloadTemplate={downloadTemplate}
                 extra={
                   <Space>
-                    <Access permission="users:update">
+                    <Access permission="users:update:org" behavior="disable">
                         <Button 
                             variant="outline" 
                             buttonSize="small" 

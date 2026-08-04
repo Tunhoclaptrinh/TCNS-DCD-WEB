@@ -34,7 +34,7 @@ import permissionService, { Permission } from '@/services/permission.service';
 import userService from '@/services/user.service';
 
 // Components
-import { Button } from '@/components/common';
+import { Button, Access } from '@/components/common';
 import UsersDetailModal from '../Users/components/Detail';
 import PermModal from './components/PermModal';
 import BulkModal from './components/BulkModal';
@@ -302,8 +302,8 @@ const PermissionsPage: React.FC = () => {
                   {viewMode === 'unified' ? 'Giao diện Cũ' : 'Giao diện Mới'}
                 </Button>
 
-                {hasPermission('system:permissions:edit') && (
-                  <>
+                <Access permission="system:permissions:edit" behavior="disable">
+                  <div style={{ display: 'flex', gap: 8 }}>
                     <Button 
                       variant="outline" 
                       buttonSize="small" 
@@ -331,8 +331,8 @@ const PermissionsPage: React.FC = () => {
                     >
                       Thêm hành động
                     </Button>
-                  </>
-                )}
+                  </div>
+                </Access>
               </div>
             </div>
           </Col>
@@ -408,22 +408,22 @@ const PermissionsPage: React.FC = () => {
                                     }}
                                   />
                                 </Tooltip>
-                                {hasPermission('system:permissions:edit') && (
-                                  <Button 
-                                    variant="ghost" 
-                                    buttonSize="small" 
-                                    icon={<PlusOutlined />} 
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
-                                      setEditingPerm(null); 
-                                      pForm.resetFields(); 
-                                      pForm.setFieldsValue({ module: group.category }); 
-                                      setIsPermModalVisible(true); 
-                                    }}
-                                  >
-                                    Thêm hành động
-                                  </Button>
-                                )}
+                                 <Access permission="system:permissions:edit" behavior="disable">
+                                   <Button 
+                                     variant="ghost" 
+                                     buttonSize="small" 
+                                     icon={<PlusOutlined />} 
+                                     onClick={(e) => { 
+                                       e.stopPropagation(); 
+                                       setEditingPerm(null); 
+                                       pForm.resetFields(); 
+                                       pForm.setFieldsValue({ module: group.category }); 
+                                       setIsPermModalVisible(true); 
+                                     }}
+                                   >
+                                     Thêm hành động
+                                   </Button>
+                                 </Access>
                               </Space>
                             </div>
                           } 

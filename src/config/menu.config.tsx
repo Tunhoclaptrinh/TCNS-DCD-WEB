@@ -54,7 +54,7 @@ export const adminMenu: IMenuItem[] = [
                 key: 'duty-setup',
                 path: '/admin/duty/setup',
                 name: 'Thiết lập',
-                accessFilter: ['system:manage_config'],
+                accessFilter: ['duty:manage', 'system:manage'],
             },
             {
                 key: 'duty-leave',

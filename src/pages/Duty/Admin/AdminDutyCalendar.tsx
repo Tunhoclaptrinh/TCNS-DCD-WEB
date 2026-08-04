@@ -52,7 +52,7 @@ const { Title, Text } = Typography;
 
 const AdminDutyCalendar: React.FC = () => {
   const { hasPermission, user } = useAccess();
-  const isAdmin = useMemo(() => hasPermission('duty:admin') || user?.permissions?.includes('*'), [hasPermission, user]);
+  const isAdmin = useMemo(() => hasPermission('duty:manage') || user?.permissions?.includes('*'), [hasPermission, user]);
   const canEditSubmitted = useMemo(() => hasPermission('meeting:minutes:edit_submitted') || isAdmin, [hasPermission, isAdmin]);
   const currentUserId = user?.id;
 

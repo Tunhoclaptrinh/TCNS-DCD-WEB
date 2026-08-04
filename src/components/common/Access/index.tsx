@@ -10,7 +10,9 @@ interface AccessProps {
     allPermissions?: string[];
     /** Custom accessible condition */
     accessible?: boolean;
-    /** Element to show when not accessible */
+    /** How to handle inaccessible state: hide the element or disable it */
+    behavior?: 'hide' | 'disable';
+    /** Element to show when not accessible (only applies when behavior = 'hide') */
     fallback?: React.ReactNode;
     children: React.ReactNode;
 }
@@ -23,6 +25,7 @@ const Access: React.FC<AccessProps> = ({
     anyPermission,
     allPermissions,
     accessible,
+    behavior = 'hide',
     fallback = null,
     children
 }) => {
@@ -41,6 +44,16 @@ const Access: React.FC<AccessProps> = ({
     }
 
     if (!isAccessible) {
+        if (behavior === 'disable') {
+            // Check if children is a valid React element before cloning
+            if (React.isValidElement(children)) {
+                return React.cloneElement(children, {
+                    disabled: true,
+                    title: (children.props as any).title || "Bạn không có quyền thực hiện thao tác này",
+                    style: { ...(children.props as any).style, opacity: 0.6, cursor: 'not-allowed' }
+                } as any);
+            }
+        }
         return <>{fallback}</>;
     }
 

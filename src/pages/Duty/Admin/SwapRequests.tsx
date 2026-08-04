@@ -29,7 +29,7 @@ const SwapRequestsPage: React.FC = () => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('pending');
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
-  const { user } = useAccess();
+  const { user, hasPermission, isAdmin } = useAccess();
   
   // Advanced Filtering state
   const [filterValues, setFilterValues] = useState<any>({});
@@ -406,44 +406,56 @@ const SwapRequestsPage: React.FC = () => {
         extra={null}
         customActions={(r) => {
           const isTarget = Number(r.targetUserId) === Number(user?.id);
-          const isAdmin = user?.permissions?.includes('*');
+          const canApproveSwap = isAdmin || hasPermission('duty:approve_swap');
+          const canManage = isAdmin || hasPermission('duty:manage');
           
           return (
             <Space size="small">
-              {(isTarget || isAdmin) && (
-                <>
-                  <Tooltip title="Chấp nhận">
-                    <Button
-                      variant="ghost"
-                      buttonSize="small"
-                      icon={<CheckCircleOutlined style={{ fontSize: 16 }} />}
-                      style={{ color: r.status === 'pending' ? '#52c41a' : '#bfbfbf', padding: '4px' }}
-                      onClick={() => handleDecide(r.id, 'approved')}
-                      disabled={r.status !== 'pending'}
-                    />
-                  </Tooltip>
-                  <Tooltip title="Từ chối">
-                    <Button
-                      variant="ghost"
-                      buttonSize="small"
-                      icon={<CloseCircleOutlined style={{ fontSize: 16 }} />}
-                      style={{ color: r.status === 'pending' ? '#ff4d4f' : '#bfbfbf', padding: '4px' }}
-                      onClick={() => handleDecide(r.id, 'rejected')}
-                      disabled={r.status !== 'pending'}
-                    />
-                  </Tooltip>
-                </>
-              )}
+              <>
+                <Tooltip title={!canApproveSwap ? 'Bạn không có quyền duyệt' : 'Chấp nhận'}>
+                  <Button
+                    variant="ghost"
+                    buttonSize="small"
+                    icon={<CheckCircleOutlined style={{ fontSize: 16 }} />}
+                    style={{ color: (r.status === 'pending' && (isTarget || canApproveSwap)) ? '#52c41a' : '#bfbfbf', padding: '4px' }}
+                    onClick={() => handleDecide(r.id, 'approved')}
+                    disabled={r.status !== 'pending' || (!isTarget && !canApproveSwap)}
+                  />
+                </Tooltip>
+                <Tooltip title={!canApproveSwap ? 'Bạn không có quyền duyệt' : 'Từ chối'}>
+                  <Button
+                    variant="ghost"
+                    buttonSize="small"
+                    icon={<CloseCircleOutlined style={{ fontSize: 16 }} />}
+                    style={{ color: (r.status === 'pending' && (isTarget || canApproveSwap)) ? '#ff4d4f' : '#bfbfbf', padding: '4px' }}
+                    onClick={() => handleDecide(r.id, 'rejected')}
+                    disabled={r.status !== 'pending' || (!isTarget && !canApproveSwap)}
+                  />
+                </Tooltip>
+              </>
               <Dropdown
                 trigger={['click']}
                 placement="bottomRight"
                 overlay={
                   <Menu>
-                    <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(r)}>
+                    <Menu.Item
+                      key="edit"
+                      icon={<EditOutlined />}
+                      onClick={() => canManage ? openEdit(r) : undefined}
+                      disabled={!canManage}
+                      title={!canManage ? 'Bạn không có quyền chỉnh sửa' : undefined}
+                    >
                       Chỉnh sửa
                     </Menu.Item>
                     <Menu.Divider />
-                    <Menu.Item key="delete" icon={<DeleteOutlined />} danger onClick={() => handleDelete(r.id)}>
+                    <Menu.Item
+                      key="delete"
+                      icon={<DeleteOutlined />}
+                      danger
+                      onClick={() => canManage ? handleDelete(r.id) : undefined}
+                      disabled={!canManage}
+                      title={!canManage ? 'Bạn không có quyền xóa' : undefined}
+                    >
                       Xóa vĩnh viễn
                     </Menu.Item>
                   </Menu>

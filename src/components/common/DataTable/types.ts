@@ -35,6 +35,7 @@ export interface DataTableProps {
     loading?: boolean;
     columns?: DataTableColumn[];
     onAdd?: () => void;
+    creatable?: boolean | { accessible: boolean; behavior?: 'hide' | 'disable' };
     onView?: (record: any) => void;
     onEdit?: (record: any) => void;
     onDelete?: (id: any) => void;
@@ -63,14 +64,14 @@ export interface DataTableProps {
     customActions?: (record: any) => React.ReactNode;
     actionColumnProps?: any; // Allow overriding action column config
     actionPosition?: "left" | "right";
-    batchOperations?: boolean;
+    batchOperations?: boolean | { accessible: boolean; behavior?: 'hide' | 'disable' };
     onBatchDelete?: (keys: any[]) => void;
     selectedRowKeys?: any[];
     onSelectChange?: (keys: any[], rows?: any[]) => void;
     batchActions?: any[];
-    importable?: boolean;
+    importable?: boolean | { accessible: boolean; behavior?: 'hide' | 'disable' };
     importLoading?: boolean;
-    exportable?: boolean;
+    exportable?: boolean | { accessible: boolean; behavior?: 'hide' | 'disable' };
     exportLoading?: boolean;
     onImport?: (file: File) => void;
     onValidateImport?: (file: File) => Promise<any>;

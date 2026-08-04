@@ -212,49 +212,42 @@ const MeetingsPage = () => {
                             Xem trên lịch
                         </Menu.Item>
                         <Menu.Divider />
-                        {canEdit && (
-                            <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)}>
-                                Chỉnh sửa
-                            </Menu.Item>
-                        )}
-                        {canAttendance && (record.status === 'scheduled' || record.status === 'overdue') && (
+                        <Menu.Item
+                            key="edit"
+                            icon={<EditOutlined />}
+                            onClick={() => canEdit ? openEdit(record) : undefined}
+                            disabled={!canEdit}
+                            title={!canEdit ? 'Bạn không có quyền chỉnh sửa' : undefined}
+                        >
+                            Chỉnh sửa
+                        </Menu.Item>
+                        {(record.status === 'scheduled' || record.status === 'overdue') && (
                             <Menu.Item
                                 key="attendance"
                                 icon={<CheckCircleOutlined />}
-                                onClick={() => setAttendanceRecord(record)}
-                                style={{ color: '#faad14' }}
+                                onClick={() => canAttendance ? setAttendanceRecord(record) : undefined}
+                                disabled={!canAttendance}
+                                title={!canAttendance ? 'Bạn không có quyền điểm danh' : undefined}
+                                style={{ color: canAttendance ? '#faad14' : undefined }}
                             >
                                 Điểm danh
                             </Menu.Item>
                         )}
-                        
-                        {/* Hiện Ghi/Xem biên bản trong Menu */}
-                        {canEdit && (
-                            <>
-                                <Menu.Item
-                                    key="minutes"
-                                    icon={<FileDoneOutlined />}
-                                    onClick={() => {
-                                        setViewingRecord(record);
-                                        setIsMinutesModalVisible(true);
-                                    }}
-                                    style={{ color: '#faad14' }}
-                                >
-                                    {record.minutesStatus === 'submitted' ? 'Sửa biên bản' : 'Ghi biên bản'}
-                                </Menu.Item>
-                                {!['active'].includes(currentUser?.status || '') && (
-                                    <Menu.Item
-                                        key="view-minutes-admin"
-                                        icon={<FileTextOutlined />}
-                                        onClick={() => openMinutesView(record)}
-                                        style={{ color: '#52c41a' }}
-                                    >
-                                        Xem biên bản
-                                    </Menu.Item>
-                                )}
-                            </>
-                        )}
-                        {!canEdit && record.minutesStatus === 'submitted' && (
+                        <Menu.Item
+                            key="minutes"
+                            icon={<FileDoneOutlined />}
+                            onClick={() => {
+                                if (!canEdit) return;
+                                setViewingRecord(record);
+                                setIsMinutesModalVisible(true);
+                            }}
+                            disabled={!canEdit}
+                            title={!canEdit ? 'Bạn không có quyền ghi biên bản' : undefined}
+                            style={{ color: canEdit ? '#faad14' : undefined }}
+                        >
+                            {record.minutesStatus === 'submitted' ? 'Sửa biên bản' : 'Ghi biên bản'}
+                        </Menu.Item>
+                        {record.minutesStatus === 'submitted' && (
                             <Menu.Item
                                 key="view-minutes"
                                 icon={<FileTextOutlined />}
@@ -264,28 +257,35 @@ const MeetingsPage = () => {
                                 Xem biên bản
                             </Menu.Item>
                         )}
-
                         <Menu.Item key="copy" icon={<CopyOutlined />} onClick={() => copyMeetingInfo(record)}>
                             Sao chép thông tin
                         </Menu.Item>
-                        {canManageAll && (record.status === 'scheduled' || record.status === 'overdue') && (
+                        {(record.status === 'scheduled' || record.status === 'overdue') && (
                             <>
                                 <Menu.Divider />
                                 <Menu.Item
                                     key="cancel"
                                     icon={<StopOutlined />}
-                                    onClick={() => setCancelRecord(record)}
+                                    onClick={() => canManageAll ? setCancelRecord(record) : undefined}
+                                    disabled={!canManageAll}
+                                    title={!canManageAll ? 'Bạn không có quyền hủy cuộc họp' : undefined}
                                     danger
                                 >
                                     Hủy cuộc họp
                                 </Menu.Item>
                             </>
                         )}
-                        {canManageAll && (
-                            <Menu.Item key="delete" icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} danger>
-                                Xóa vĩnh viễn
-                            </Menu.Item>
-                        )}
+                        <Menu.Divider />
+                        <Menu.Item
+                            key="delete"
+                            icon={<DeleteOutlined />}
+                            onClick={() => canManageAll ? handleDelete(record.id) : undefined}
+                            disabled={!canManageAll}
+                            title={!canManageAll ? 'Bạn không có quyền xóa' : undefined}
+                            danger
+                        >
+                            Xóa vĩnh viễn
+                        </Menu.Item>
                     </Menu>
                 );
 
@@ -567,7 +567,7 @@ const MeetingsPage = () => {
             <DataTable
                 title={PageHeaderTitle}
                 extra={
-                    <Access anyPermission={["meeting:create:all", "meeting:create:dept"]}>
+                    <Access anyPermission={["meeting:create:all", "meeting:create:dept"]} behavior="disable">
                         <Button variant="primary" buttonSize="small" icon={<PlusOutlined />} onClick={openCreate}>
                             Lên lịch mới
                         </Button>

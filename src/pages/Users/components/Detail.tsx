@@ -1,6 +1,7 @@
 import { Descriptions, Image, Modal, Tag, Space, Typography, Divider } from 'antd';
 import { RiseOutlined, StopOutlined } from '@ant-design/icons';
 import Button from '../../../components/common/Button';
+import Access from '@/components/common/Access';
 import { User } from '../../../types';
 import { formatDate } from '../../../utils/formatters';
 
@@ -47,28 +48,32 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
             Đóng
           </Button>
           {user && onPromote && user.position !== 'dt' && (
-            <Button 
-              key="promote" 
-              variant="primary" 
-              buttonSize="small"
-              icon={<RiseOutlined />} 
-              onClick={() => onPromote(user)}
-              style={{ minWidth: 88, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-            >
-              Nâng hạng
-            </Button>
+            <Access permission="users:promote" behavior="disable">
+              <Button 
+                key="promote" 
+                variant="primary" 
+                buttonSize="small"
+                icon={<RiseOutlined />} 
+                onClick={() => onPromote(user)}
+                style={{ minWidth: 88, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+              >
+                Nâng hạng
+              </Button>
+            </Access>
           )}
           {user && onDismiss && user.status !== 'dismissed' && (
-            <Button 
-              key="dismiss" 
-              variant="danger" 
-              buttonSize="small"
-              icon={<StopOutlined />} 
-              onClick={() => onDismiss(user)}
-              style={{ minWidth: 88 }}
-            >
-              Khai trừ
-            </Button>
+            <Access permission="users:expel" behavior="disable">
+              <Button 
+                key="dismiss" 
+                variant="danger" 
+                buttonSize="small"
+                icon={<StopOutlined />} 
+                onClick={() => onDismiss(user)}
+                style={{ minWidth: 88 }}
+              >
+                Khai trừ
+              </Button>
+            </Access>
           )}
         </div>
       }

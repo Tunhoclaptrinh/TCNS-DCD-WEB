@@ -14,6 +14,7 @@ import {
 import FormModal from '../../../components/common/FormModal';
 import FileUpload from '../../../components/common/Upload/FileUpload';
 import { API_BASE_URL } from '@/config/axios.config';
+import { useAccess } from '@/hooks/useAccess';
 
 const { Panel } = Collapse;
 
@@ -24,7 +25,7 @@ interface UsersFormProps {
   onOk: () => void;
   onCancel: () => void;
   generations: { id: number; name: string }[];
-  roles: { id: number; name: string }[];
+  roles: { id: number; name: string; key?: string; permissions?: string[] }[];
   permissions: { id: number; name: string; key: string; module: string }[];
   departments: string[];
 }
@@ -51,8 +52,39 @@ const UsersForm: React.FC<UsersFormProps> = ({
   permissions,
   departments,
 }) => {
+  const { hasPermission } = useAccess();
+  const canEditOrg = hasPermission('users:update:org');
+  const canEditPerms = hasPermission('system:permissions:edit');
+
   // Watch position to handle department visibility/requirement
   const position = Form.useWatch('position', form);
+
+  // Watch roleIds to get permissions from selected roles
+  const selectedRoleIds = Form.useWatch('roleIds', form) || [];
+
+  const rolePermissionsSet = React.useMemo(() => {
+    const set = new Set<string>();
+    selectedRoleIds.forEach((roleId: number) => {
+      const role = roles.find(r => r.id === roleId);
+      if (role && Array.isArray(role.permissions)) {
+        role.permissions.forEach(p => set.add(p));
+      }
+    });
+    return set;
+  }, [selectedRoleIds, roles]);
+
+  const extraOptions = React.useMemo(() => {
+    return permissions
+      .filter(p => !rolePermissionsSet.has(p.key) && p.key !== '*')
+      .map(p => ({ label: `${p.name} (${p.key})`, value: p.key }));
+  }, [permissions, rolePermissionsSet]);
+
+  const deniedOptions = React.useMemo(() => {
+    const isSuperAdmin = rolePermissionsSet.has('*');
+    return permissions
+      .filter(p => (isSuperAdmin || rolePermissionsSet.has(p.key)) && p.key !== '*')
+      .map(p => ({ label: `${p.name} (${p.key})`, value: p.key }));
+  }, [permissions, rolePermissionsSet]);
 
   // Mapping logic for auto-sync (Duplicate of backend logic for instant UI feedback)
   const getSuggestedRoles = (pos: string, dept?: string): number[] => {
@@ -312,6 +344,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
                 placeholder="Chọn chức vụ" 
                 onChange={handlePositionChange}
                 options={Object.entries(POSITION_LABELS).map(([val, label]) => ({ label, value: val }))}
+                disabled={!canEditOrg}
               />
             </Form.Item>
           </Col>
@@ -326,6 +359,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
                 allowClear 
                 onChange={handleDepartmentChange}
                 options={departments.map(d => ({ value: d }))}
+                disabled={!canEditOrg}
                 filterOption={(inputValue: string, option: any) =>
                   String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
                 }
@@ -338,12 +372,13 @@ const UsersForm: React.FC<UsersFormProps> = ({
                 allowClear
                 placeholder="Chọn Khóa"
                 options={generations.map(g => ({ label: g.name, value: g.id }))}
+                disabled={!canEditOrg}
               />
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>
             <Form.Item name="joinDate" label="Ngày vào Đội">
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" disabled={!canEditOrg} />
             </Form.Item>
           </Col>
         </Row>
@@ -367,12 +402,13 @@ const UsersForm: React.FC<UsersFormProps> = ({
                 style={{ width: '100%' }}
                 options={roles.map(r => ({ label: r.name, value: r.id }))}
                 optionFilterProp="label"
+                disabled={!canEditOrg}
               />
             </Form.Item>
           </Col>
           <Col xs={24} md={6}>
             <Form.Item name="status" label="Trạng thái">
-              <Select options={[
+              <Select disabled={!canEditOrg} options={[
                 { label: 'Đang hoạt động', value: 'active' },
                 { label: 'Ngừng hoạt động', value: 'inactive' },
                 { label: 'Đã khai trừ', value: 'dismissed' }
@@ -389,57 +425,59 @@ const UsersForm: React.FC<UsersFormProps> = ({
           </Col>
         </Row>
 
-        <Collapse ghost style={{ marginTop: 8 }}>
-          <Panel 
-            header={
-              <Space>
-                <SafetyOutlined style={{ color: '#faad14' }} />
-                <span style={{ fontWeight: 600 }}>Cấu hình Quyền tùy chỉnh (Nâng cao)</span>
-                <Tag color="orange" style={{ fontSize: 10 }}>Dành cho thành viên đặc biệt</Tag>
-              </Space>
-            } 
-            key="custom_perms"
-          >
-            <Alert 
-              message="Lưu ý: Quyền tùy chỉnh sẽ ghi đè lên quyền từ vai trò. Extra sẽ thêm quyền mới, Denied sẽ chặn quyền hiện có."
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-            <Row gutter={24}>
-              <Col span={12}>
-                <Form.Item 
-                  name={['customPermissions', 'extra']} 
-                  label={<Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> Cấp thêm quyền riêng</Space>}
-                >
-                  <Select
-                    mode="multiple"
-                    placeholder="Chọn thêm quyền..."
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={permissions.map(p => ({ label: `${p.name} (${p.key})`, value: p.key }))}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item 
-                  name={['customPermissions', 'denied']} 
-                  label={<Space><StopOutlined style={{ color: '#ff4d4f' }} /> Chặn quyền cụ thể</Space>}
-                >
-                  <Select
-                    mode="multiple"
-                    placeholder="Chọn quyền cần chặn..."
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={permissions.map(p => ({ label: `${p.name} (${p.key})`, value: p.key }))}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Panel>
-        </Collapse>
+        {canEditPerms && (
+          <Collapse ghost style={{ marginTop: 8 }}>
+            <Panel 
+              header={
+                <Space>
+                  <SafetyOutlined style={{ color: '#faad14' }} />
+                  <span style={{ fontWeight: 600 }}>Cấu hình Quyền tùy chỉnh (Nâng cao)</span>
+                  <Tag color="orange" style={{ fontSize: 10 }}>Dành cho thành viên đặc biệt</Tag>
+                </Space>
+              } 
+              key="custom_perms"
+            >
+              <Alert 
+                message="Lưu ý: Quyền tùy chỉnh sẽ ghi đè lên quyền từ vai trò. Extra sẽ thêm quyền mới, Denied sẽ chặn quyền hiện có."
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+              <Row gutter={24}>
+                <Col span={12}>
+                  <Form.Item 
+                    name={['customPermissions', 'extra']} 
+                    label={<Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> Cấp thêm quyền riêng</Space>}
+                  >
+                    <Select
+                      mode="multiple"
+                      placeholder="Chọn thêm quyền..."
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                      options={extraOptions}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item 
+                    name={['customPermissions', 'denied']} 
+                    label={<Space><StopOutlined style={{ color: '#ff4d4f' }} /> Chặn quyền cụ thể</Space>}
+                  >
+                    <Select
+                      mode="multiple"
+                      placeholder="Chọn quyền cần chặn..."
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                      options={deniedOptions}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Panel>
+          </Collapse>
+        )}
       </Form>
     </FormModal>
   );

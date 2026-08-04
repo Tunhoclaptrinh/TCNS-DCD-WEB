@@ -654,50 +654,72 @@ const DataTable: React.FC<DataTableProps> = ({
     filters.length > 0 &&
     Object.keys(filterValues).some((key) => filterValues[key]);
 
+  const parseAccessConfig = (config: any, defaultAccessible = false) => {
+    if (typeof config === 'object' && config !== null) {
+      return {
+        visible: config.accessible || config.behavior === 'disable',
+        disabled: !config.accessible && config.behavior === 'disable'
+      };
+    }
+    const isAccessible = config === undefined ? defaultAccessible : !!config;
+    return { visible: isAccessible, disabled: false };
+  };
+
+  const createAccess = parseAccessConfig(tableProps.creatable, !!onAdd);
+  const importAccess = parseAccessConfig(importable, false);
+  const exportAccess = parseAccessConfig(exportable, false);
+  const batchAccess = parseAccessConfig(batchOperations, false);
+
   const renderContent = () => (
     <>
       {tableProps.headerContent && <div className="data-table-header-content" style={{ margin: hideCard ? 0 : undefined }} >{tableProps.headerContent}</div>}
       <div className="data-table-toolbar" style={{ marginTop: tableProps.headerContent ? 0 : undefined }}>
         <Space wrap>
-          {onAdd && (
-            <Button variant="primary" onClick={onAdd} buttonSize="small">
-              <PlusOutlined /> Thêm Mới
-            </Button>
+          {createAccess.visible && onAdd && (
+            <Tooltip title={createAccess.disabled ? "Bạn không có quyền thao tác" : ""}>
+              <Button variant="primary" onClick={onAdd} buttonSize="small" disabled={createAccess.disabled}>
+                <PlusOutlined /> Thêm Mới
+              </Button>
+            </Tooltip>
           )}
-          {importable && onImport && (
-            <Tooltip title="Nhập dữ liệu từ Excel">
+          {importAccess.visible && onImport && (
+            <Tooltip title={importAccess.disabled ? "Bạn không có quyền thao tác" : "Nhập dữ liệu từ Excel"}>
               <Button 
                 variant="outline" 
                 onClick={() => setImportModalOpen(true)} 
                 loading={tableProps.importLoading} 
                 buttonSize="small"
                 icon={<UploadOutlined />}
+                disabled={importAccess.disabled}
               >
                 Import
               </Button>
             </Tooltip>
           )}
-          {exportable && onExport && (
-            <Tooltip title="Export dữ liệu">
+          {exportAccess.visible && onExport && (
+            <Tooltip title={exportAccess.disabled ? "Bạn không có quyền thao tác" : "Export dữ liệu"}>
               <Button 
                 variant="outline" 
                 onClick={() => setExportModalOpen(true)} 
                 loading={tableProps.exportLoading} 
                 buttonSize="small"
                 icon={<DownloadOutlined />}
+                disabled={exportAccess.disabled}
               >
                 Export
               </Button>
             </Tooltip>
           )}
-          {batchOperations && activeSelectedRowKeys.length > 0 && (
-            <Badge count={activeSelectedRowKeys.length} className="batch-op-badge">
-              <Dropdown overlay={batchActionsMenu} trigger={["click"]}>
-                <Button variant="outline" buttonSize="small">
-                  Thao tác hàng loạt <span style={{ fontSize: 10, marginLeft: 4 }}>▼</span>
-                </Button>
-              </Dropdown>
-            </Badge>
+          {batchAccess.visible && activeSelectedRowKeys.length > 0 && (
+            <Tooltip title={batchAccess.disabled ? "Bạn không có quyền thao tác" : ""}>
+              <Badge count={activeSelectedRowKeys.length} className="batch-op-badge">
+                <Dropdown overlay={batchActionsMenu} trigger={batchAccess.disabled ? [] : ["click"]}>
+                  <Button variant="outline" buttonSize="small" disabled={batchAccess.disabled}>
+                    Thao tác hàng loạt <span style={{ fontSize: 10, marginLeft: 4 }}>▼</span>
+                  </Button>
+                </Dropdown>
+              </Badge>
+            </Tooltip>
           )}
           {extra}
         </Space>
