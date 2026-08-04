@@ -38,6 +38,7 @@ const Roles = lazy(() => import("@/pages/Roles"));
 const RewardPenalties = lazy(() => import("@/pages/RewardPenalties"));
 const Semesters = lazy(() => import("@/pages/Semesters"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
+const SystemSettings = lazy(() => import("@/pages/SystemSettings"));
 
 // ... (rest of the lazy loads)
 
@@ -255,6 +256,10 @@ const routes: RouteObject[] = [
           {
             path: "roles",
             element: <Roles />,
+          },
+          {
+            path: "system-settings",
+            element: <SystemSettings />,
           },
           {
             path: "semesters",

@@ -3,6 +3,7 @@ import { Modal, Radio, InputNumber, Space, Typography, Divider, Checkbox, Toolti
 import { DownloadOutlined, FilterOutlined, OrderedListOutlined } from "@ant-design/icons";
 import { Button } from "@/components/common";
 import { FilterConfig } from "./types";
+import { formatColumnTitle } from "@/constants/import-export.constants";
 import FilterBuilder from "./FilterBuilder";
 
 interface ExportModalProps {
@@ -15,6 +16,7 @@ interface ExportModalProps {
   filters?: FilterConfig[];
   currentFilters?: Record<string, any>; // Initial filter values from table
   columns?: Array<{ title: any; key: string; hidden?: boolean }>;
+  fieldLabelMap?: Record<string, string>;
 }
 
 export interface ExportOptions {
@@ -23,6 +25,7 @@ export interface ExportOptions {
   format: "xlsx" | "csv";
   filters?: Record<string, any>; // Ad-hoc filters
   columns?: string[];
+  exportType?: "raw" | "readable";
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({
@@ -34,11 +37,13 @@ const ExportModal: React.FC<ExportModalProps> = ({
   currentPageSize = 10,
   filters = [],
   currentFilters = {},
-  columns = []
+  columns = [],
+  fieldLabelMap = {},
 }) => {
   const [scope, setScope] = useState<"page" | "all" | "custom">("page");
   const [limit, setLimit] = useState<number>(100);
   const [format, setFormat] = useState<"xlsx" | "csv">("xlsx");
+  const [exportType, setExportType] = useState<"raw" | "readable">("readable");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
 
@@ -64,7 +69,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
         // Initialize columns (filter out internal columns like 'actions')
         const initialCols = columns
-          .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection')
+          .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection' && !c.hidden && !(c as any).exportHidden)
           .map(c => c.key);
         setSelectedColumns(initialCols);
     }
@@ -77,7 +82,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
       limit: scope === "custom" ? limit : undefined,
       format,
       filters: localFilterValues,
-      columns: selectedColumns
+      columns: selectedColumns,
+      exportType
     });
   };
 
@@ -208,16 +214,37 @@ const ExportModal: React.FC<ExportModalProps> = ({
                          <Radio value="csv">CSV (.csv)</Radio>
                     </Radio.Group>
                   </section>
+
+                  <Divider style={{ margin: '12px 0' }} />
+
+                  <section>
+                    <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
+                        3. Chế độ xuất dữ liệu
+                    </Typography.Text>
+                    <Radio.Group 
+                          value={exportType} 
+                          onChange={(e) => setExportType(e.target.value)}
+                          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+                    >
+                         <Radio value="readable">
+                            <strong>Tường minh</strong>
+                            <div style={{ color: '#8c8c8c', fontSize: 12, marginTop: 4 }}>Xuất các giá trị dễ đọc (VD: "Nam", "Đang hoạt động").</div>
+                         </Radio>
+                         <Radio value="raw">
+                            <strong>Mã gốc hệ thống</strong>
+                            <div style={{ color: '#8c8c8c', fontSize: 12, marginTop: 4 }}>Xuất nguyên bản mã (VD: "male", "active") để tiện Import sau này.</div>
+                         </Radio>
+                    </Radio.Group>
+                  </section>
               </Space>
 
               {/* Right Column: Column Selection */}
               <section style={{ borderLeft: '1px solid #f0f0f0', paddingLeft: 24 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Typography.Text strong>3. Chọn cột hiển thị</Typography.Text>
+                    <Typography.Text strong>4. Chọn cột hiển thị</Typography.Text>
                     <OrderedListOutlined style={{ color: '#bfbfbf' }} />
                   </div>
                   <div style={{ 
-                      maxHeight: 220, 
                       overflowY: 'auto', 
                       background: '#fafafa', 
                       padding: '12px 16px',
@@ -230,12 +257,15 @@ const ExportModal: React.FC<ExportModalProps> = ({
                       onChange={(vals) => setSelectedColumns(vals as string[])}
                     >
                       {columns
-                        .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection')
-                        .map(col => (
-                          <Checkbox key={col.key} value={col.key}>
-                            {typeof col.title === 'string' ? col.title : col.key}
-                          </Checkbox>
-                        ))
+                        .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection' && !c.hidden && !(c as any).exportHidden)
+                        .map(col => {
+                          const titleStr = formatColumnTitle(col.key, columns, fieldLabelMap);
+                          return (
+                            <Checkbox key={col.key} value={col.key}>
+                              {titleStr}
+                            </Checkbox>
+                          );
+                        })
                       }
                     </Checkbox.Group>
                   </div>
@@ -307,12 +337,15 @@ const ExportModal: React.FC<ExportModalProps> = ({
       <Divider style={{ margin: '16px 0' }} />
 
       {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <Button variant="outline" onClick={onCancel}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+          <Button variant="outline" 
+          buttonSize="small"
+          onClick={onCancel}>
               Hủy bỏ
           </Button>
           <Button 
             variant="primary" 
+            buttonSize="small"
             onClick={handleOk} 
             loading={loading}
             icon={<DownloadOutlined />}

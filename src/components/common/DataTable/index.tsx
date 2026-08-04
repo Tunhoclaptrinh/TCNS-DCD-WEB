@@ -111,6 +111,7 @@ const DataTable: React.FC<DataTableProps> = ({
   data,
   loading = false,
   columns = [],
+  importColumns,
   onAdd,
   onView,
   onEdit,
@@ -141,10 +142,15 @@ const DataTable: React.FC<DataTableProps> = ({
   onSelectChange,
   batchActions,
   importable = false,
+  importLoading = false,
   exportable = false,
+  exportLoading = false,
   onImport,
   onValidateImport,
+  onDownloadTemplate,
   onExport,
+  fieldLabelMap,
+  customValueMap,
   title,
   extra,
   rowKey = "id",
@@ -739,9 +745,6 @@ const DataTable: React.FC<DataTableProps> = ({
   // which would cause unknown DOM prop warnings.
   const {
     headerContent,
-    importLoading,
-    exportLoading,
-    onDownloadTemplate,
     creatable,
     hideGlobalSearch,
     dataSource: _dataSourceProp, // already handled via tableData
@@ -902,26 +905,29 @@ const DataTable: React.FC<DataTableProps> = ({
           filters={filters}
           currentFilters={filterValues}
           columns={columns as any}
+          fieldLabelMap={fieldLabelMap}
       />
 
       {/* Advanced Import Modal */}
       <ImportModal
           visible={importModalOpen}
           onCancel={() => setImportModalOpen(false)}
+          columns={importColumns || columns as any}
+          fieldLabelMap={fieldLabelMap}
+          customValueMap={customValueMap}
           onImport={(file) => {
               if (onImport) {
                   onImport(file);
                   setImportModalOpen(false);
               }
           }}
-          onDownloadTemplate={(selectedCols) => {
+          onDownloadTemplate={(selectedCols, withMockData) => {
               if (onDownloadTemplate) {
-                  onDownloadTemplate({ columns: selectedCols?.join(',') });
+                  onDownloadTemplate({ columns: selectedCols?.join(','), withMockData });
               }
           }}
           onValidate={onValidateImport as any}
           loading={importLoading}
-          columns={columns as any}
           entityName={typeof title === 'string' ? title : "dữ liệu"}
       />
     </div>

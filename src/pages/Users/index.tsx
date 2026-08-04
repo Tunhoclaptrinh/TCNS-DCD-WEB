@@ -24,7 +24,7 @@ import UsersDetailModal from './components/Detail';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
 import permissionService from '../../services/permission.service';
-import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS } from '@/constants/user.constants';
+import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS, USER_FIELD_LABELS, USER_VALUE_MAP } from '@/constants/user.constants';
 
 // Dynamic department options will be derived from stats
 
@@ -738,6 +738,21 @@ const UserPage = () => {
         },
     ];
 
+    const importColumns: DataTableColumn[] = [
+        { title: "Họ và tên", key: "name", required: true },
+        { title: "Họ và tên đệm", key: "lastName", required: true },
+        { title: "Tên", key: "firstName", required: true },
+        { title: "Mã SV", key: "studentId" },
+        { title: "Số CCCD", key: "cccd" },
+        { title: "ID Khóa/Thế hệ", key: "generationId", required: true },
+        { title: "Email", key: "email", required: true },
+        { title: "Số điện thoại", key: "phone" },
+        { title: "Chức vụ", key: "position" },
+        { title: "Phòng ban/Ban", key: "department" },
+        { title: "Giới tính", key: "gender" },
+        { title: "Trạng thái", key: "status" },
+    ];
+
     const filters: FilterConfig[] = [
         {
             key: "position",
@@ -1129,6 +1144,9 @@ const UserPage = () => {
                     }
                 }}
                 onExport={exportData}
+                importColumns={importColumns}
+                fieldLabelMap={USER_FIELD_LABELS}
+                customValueMap={USER_VALUE_MAP}
                 onValidateImport={validateImport}
                 onDownloadTemplate={downloadTemplate}
                 extra={

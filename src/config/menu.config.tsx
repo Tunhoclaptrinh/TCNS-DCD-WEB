@@ -108,6 +108,13 @@ export const adminMenu: IMenuItem[] = [
         routes: [
             {
                 key: 'system-settings',
+                path: '/admin/system-config/system-settings',
+                name: 'Cài đặt chung',
+                icon: <SettingOutlined />,
+                accessFilter: ['system:manage'],
+            },
+            {
+                key: 'generations',
                 path: '/admin/system-config/generations',
                 name: 'Khóa/Thế hệ',
                 accessFilter: ['system:manage:gen'],

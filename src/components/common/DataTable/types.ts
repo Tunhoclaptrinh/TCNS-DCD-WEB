@@ -35,6 +35,7 @@ export interface DataTableProps {
     data?: any[];
     loading?: boolean;
     columns?: DataTableColumn[];
+    importColumns?: DataTableColumn[];
     onAdd?: () => void;
     creatable?: boolean | { accessible: boolean; behavior?: 'hide' | 'disable' };
     onView?: (record: any) => void;
@@ -58,6 +59,9 @@ export interface DataTableProps {
     filterValues?: any;
     onFilterChange?: (key: string, value: any) => void;
     onClearFilters?: () => void;
+    onFilterReset?: () => void;
+    fieldLabelMap?: Record<string, string>; // Custom field label dictionary for import/export
+    customValueMap?: Record<string, string>; // Custom value dictionary for reverse mapping
     sortable?: boolean;
     defaultSort?: any;
     showActions?: boolean;

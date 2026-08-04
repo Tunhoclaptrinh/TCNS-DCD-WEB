@@ -63,15 +63,17 @@ export const useCRUD = (service: any, options: any = {}) => {
     /**
      * Build query parameters for API
      */
-    const buildQueryParams = useCallback(() => {
+    const buildQueryParams = useCallback((overrideFilters?: any) => {
         const params: any = {
             _page: pagination.current,
             _limit: pagination.pageSize,
         };
 
+        const activeFilters = overrideFilters || filters;
+
         // Process filters
-        Object.keys(filters).forEach(key => {
-            const value = filters[key];
+        Object.keys(activeFilters).forEach(key => {
+            const value = activeFilters[key];
             const hasOperatorSuffix = /_(gte|lte|ne|like|ilike|in)$/.test(key);
             if (Array.isArray(value)) {
                 if (value.length === 0) {
@@ -441,14 +443,7 @@ export const useCRUD = (service: any, options: any = {}) => {
                      };
                 } else {
                     // Decide which filters to use: options.filters (from Ad-hoc Export) or current URL params
-                    let baseParams = {};
-                    if (options.filters) {
-                         // Build params manually from options.filters object if provided
-                         baseParams = { ...options.filters };
-                    } else {
-                         // Fallback to current table filters
-                         baseParams = buildQueryParams();
-                    }
+                    let baseParams = buildQueryParams(options.filters);
 
                     // Otherwise construct params based on scope
                     if (scope === 'all') {
