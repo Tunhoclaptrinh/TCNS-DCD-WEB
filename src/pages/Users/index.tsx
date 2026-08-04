@@ -980,61 +980,51 @@ const UserPage = () => {
                             {
                                 title: 'Tổng nhân sự',
                                 value: currentStats.total || 0,
-                                icon: <TeamOutlined />,
                                 valueColor: 'var(--primary-color)',
                             },
                             {
                                 title: 'Thành viên chính thức',
                                 value: currentStats.official || 0,
-                                icon: <CheckCircleOutlined />,
                                 valueColor: '#1890ff', // Blue
                             },
                             {
                                 title: 'Cộng tác viên',
                                 value: currentStats.ctv || 0,
-                                icon: <TeamOutlined />,
                                 valueColor: '#fa8c16', // Orange
                             },
                             {
                                 title: 'Cựu thành viên',
                                 value: currentStats.alumni || 0,
-                                icon: <TeamOutlined />,
                                 valueColor: '#8c8c8c', // Gray
                             },
                             {
                                 title: activeTab === 'others' ? 'Quản lý (Khác)' : 'Ban quản lý',
                                 value: currentStats.management || 0,
-                                icon: <SafetyOutlined />,
                                 valueColor: '#eb2f96', // Pink/Magenta
                             },
                             {
                                 title: activeTab === 'others' ? 'Hoạt động (Khác)' : 'Đang hoạt động',
                                 value: currentStats.active || 0,
-                                icon: <RiseOutlined />,
                                 valueColor: '#52c41a', // Green
                             },
                             {
                                 title: 'Đang khóa',
                                 value: currentStats.locked || 0,
-                                icon: <StopOutlined />,
                                 valueColor: '#da2a2aff', // Red
                             },
                             {
                                 title: 'Đã nghỉ',
                                 value: currentStats.inactive || 0,
-                                icon: <UserDeleteOutlined />,
                                 valueColor: '#8c8c8c', // Gray
                             },
                             {
                                 title: 'Đã khai trừ',
                                 value: currentStats.dismissed || 0,
-                                icon: <UserDeleteOutlined />,
                                 valueColor: '#ff4d4f', // Red
                             },
                             {
                                 title: 'Mới 7 ngày',
                                 value: currentStats.recentSignups || 0,
-                                icon: <RiseOutlined />,
                                 valueColor: '#722ed1', // Purple
                             },
                         ]}
