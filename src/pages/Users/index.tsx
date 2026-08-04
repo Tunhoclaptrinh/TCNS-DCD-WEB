@@ -507,7 +507,8 @@ const UserPage = () => {
         {
             title: "Tên thành viên",
             maxWidth: 300,
-            key: "fullName",
+            dataIndex: "name",
+            key: "name",
             minWidth: 140,
             width: 200,
             resizable: true,

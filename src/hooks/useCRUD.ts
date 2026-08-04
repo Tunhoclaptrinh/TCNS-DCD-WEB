@@ -362,10 +362,15 @@ export const useCRUD = (service: any, options: any = {}) => {
         }
 
         // Update sorter
-        if (sorter.field) {
+        if (sorter && sorter.field && sorter.order) {
             setSorter({
                 field: sorter.field as string,
                 order: sorter.order as string,
+            });
+        } else {
+            setSorter({
+                field: options.defaultSort || 'createdAt',
+                order: options.defaultOrder || 'desc',
             });
         }
     }, []);
