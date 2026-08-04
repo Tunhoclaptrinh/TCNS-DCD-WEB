@@ -14,6 +14,7 @@ import {
   Switch,
   Tooltip,
   Popover,
+  Button as AntdButton,
 } from "antd";
 import {
   DownloadOutlined,
@@ -24,6 +25,7 @@ import {
   InfoCircleOutlined,
   ArrowRightOutlined,
   ArrowLeftOutlined,
+  HolderOutlined,
 } from "@ant-design/icons";
 import { Button } from "@/components/common";
 
@@ -58,6 +60,7 @@ interface ImportModalProps {
   fieldLabelMap?: Record<string, string>; // Custom label dictionary override for specific entities
   customValueMap?: Record<string, string>; // Custom value dictionary for reverse mapping
   extraInfoNotice?: React.ReactNode; // Optional custom notice banner for specific entities
+  allowRowReorder?: boolean; // Enable/disable drag & drop row reordering in preview table (default: true)
 }
 
 const ImportModal: React.FC<ImportModalProps> = ({
@@ -72,6 +75,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
   fieldLabelMap = {},
   customValueMap = {},
   extraInfoNotice,
+  allowRowReorder = true,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
@@ -79,7 +83,20 @@ const ImportModal: React.FC<ImportModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [validationReport, setValidationReport] = useState<any>(null);
   const [showErrorsOnly, setShowErrorsOnly] = useState(false);
-  const [tablePageSize, setTablePageSize] = useState<number>(5);
+  const [tablePageSize, setTablePageSize] = useState<number>(10);
+  const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+
+  const handleRowDrop = (dropIndex: number) => {
+    if (draggedRowIndex === null || draggedRowIndex === dropIndex || !validationReport?.results) return;
+    const updated = [...validationReport.results];
+    const [movedRow] = updated.splice(draggedRowIndex, 1);
+    updated.splice(dropIndex, 0, movedRow);
+    setValidationReport({
+      ...validationReport,
+      results: updated,
+    });
+    setDraggedRowIndex(null);
+  };
 
   // Download error report CSV file containing all invalid rows and exact error details
   const handleDownloadErrorReport = () => {
@@ -196,7 +213,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
         title: "Dòng",
         dataIndex: "row",
         key: "row",
-        width: 60,
+        width: allowRowReorder ? 75 : 60,
         align: "center" as const,
         fixed: "left" as const,
         render: (row: number, record: any) => {
@@ -224,38 +241,46 @@ const ImportModal: React.FC<ImportModalProps> = ({
             </div>
           );
           return (
-            <Tooltip
-              title={rawContent}
-              placement="rightTop"
-              overlayInnerStyle={{
-                background: "#fff",
-                color: "#262626",
-                border: "1px solid #e8e8e8",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                borderRadius: 8,
-                padding: "10px 14px",
-              }}
-              overlayStyle={{ maxWidth: 360 }}
-              color="#fff"
-            >
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 26,
-                  height: 26,
-                  borderRadius: "50%",
-                  background: record.status === "valid" ? "#f6ffed" : "#fff1f0",
-                  border: `1px solid ${record.status === "valid" ? "#b7eb8f" : "#ffa39e"}`,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {allowRowReorder && (
+                <HolderOutlined
+                  style={{ cursor: "grab", color: "#bfbfbf", fontSize: 13 }}
+                  title="Kéo thả để sắp xếp vị trí dòng"
+                />
+              )}
+              <Tooltip
+                title={rawContent}
+                placement="rightTop"
+                overlayInnerStyle={{
+                  background: "#fff",
+                  color: "#262626",
+                  border: "1px solid #e8e8e8",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                  borderRadius: 8,
+                  padding: "10px 14px",
                 }}
+                overlayStyle={{ maxWidth: 360 }}
+                color="#fff"
               >
-                {row}
-              </span>
-            </Tooltip>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: record.status === "valid" ? "#f6ffed" : "#fff1f0",
+                    border: `1px solid ${record.status === "valid" ? "#b7eb8f" : "#ffa39e"}`,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {row}
+                </span>
+              </Tooltip>
+            </div>
           );
         },
       },
@@ -429,7 +454,6 @@ const ImportModal: React.FC<ImportModalProps> = ({
       onCancel={onCancel}
       footer={null}
       width={modalWidth}
-      centered
       className="import-modal"
       destroyOnClose={false}
     >
@@ -665,6 +689,15 @@ const ImportModal: React.FC<ImportModalProps> = ({
               rowClassName={(r: any) =>
                 r.status === "invalid" ? "import-row-error" : "import-row-valid"
               }
+              onRow={(_, index) => {
+                if (index === undefined || !allowRowReorder) return {};
+                return {
+                  draggable: true,
+                  onDragStart: () => setDraggedRowIndex(index),
+                  onDragOver: (e: React.DragEvent) => e.preventDefault(),
+                  onDrop: () => handleRowDrop(index),
+                };
+              }}
               style={{ marginBottom: 16 }}
             />
 
@@ -696,7 +729,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
                   onClick={handleDownloadErrorReport}
                   style={{ color: "#ff4d4f", borderColor: "#ffa39e" }}
                 >
-                  Tải báo cáo lỗi (.csv)
+                  Tải báo cáo lỗi Excel (.csv)
                 </Button>
               )}
               <Button

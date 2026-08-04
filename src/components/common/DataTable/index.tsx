@@ -915,13 +915,13 @@ const DataTable: React.FC<DataTableProps> = ({
           columns={importColumns || columns as any}
           fieldLabelMap={fieldLabelMap}
           customValueMap={customValueMap}
-          onImport={(file) => {
+          onImport={(file: File) => {
               if (onImport) {
                   onImport(file);
                   setImportModalOpen(false);
               }
           }}
-          onDownloadTemplate={(selectedCols, withMockData) => {
+          onDownloadTemplate={(selectedCols?: string[], withMockData?: boolean) => {
               if (onDownloadTemplate) {
                   onDownloadTemplate({ columns: selectedCols?.join(','), withMockData });
               }
