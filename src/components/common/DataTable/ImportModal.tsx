@@ -14,6 +14,7 @@ import {
   Switch,
   Tooltip,
   Popover,
+  Spin,
 } from "antd";
 import {
   DownloadOutlined,
@@ -84,6 +85,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
   const [showErrorsOnly, setShowErrorsOnly] = useState(false);
   const [tablePageSize, setTablePageSize] = useState<number>(10);
   const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+  const [validating, setValidating] = useState(false);
 
   const handleRowDrop = (dropIndex: number) => {
     if (draggedRowIndex === null || draggedRowIndex === dropIndex || !validationReport?.results) return;
@@ -174,6 +176,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
 
   const handleRunValidation = async () => {
     if (!file) return;
+    setValidating(true);
     try {
       const result = await onValidate(file);
       const report = result?.data?.data ?? result?.data ?? result;
@@ -183,6 +186,8 @@ const ImportModal: React.FC<ImportModalProps> = ({
       }
     } catch {
       message.error("Lỗi xác minh dữ liệu");
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -458,6 +463,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
       className="import-modal"
       destroyOnClose={false}
     >
+      <Spin spinning={validating} tip="Đang xác minh dữ liệu..." size="large">
       <div style={{ padding: "4px 0" }}>
         {/* ─── Steps Bar ────────────────────────────────────────── */}
         <Steps
@@ -626,7 +632,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
                 variant="primary"
                 buttonSize="small"
                 onClick={handleRunValidation}
-                loading={loading}
+                loading={validating}
                 disabled={!file}
                 icon={<ArrowRightOutlined />}
               >
@@ -778,6 +784,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
           </div>
         )}
       </div>
+      </Spin>
 
       <style>{`
         @keyframes fadeIn {

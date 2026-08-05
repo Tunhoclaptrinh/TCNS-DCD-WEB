@@ -75,13 +75,14 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
     setCroppedAreaPixels(croppedPixels);
   }, []);
 
   const handleConfirm = async () => {
-    if (!croppedAreaPixels) return;
+    if (!croppedAreaPixels || isDragging) return;
     setConfirming(true);
     try {
       const blob = await getCroppedImg(imageSrc, croppedAreaPixels, rotation);
@@ -132,7 +133,7 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
               type="primary"
               onClick={handleConfirm}
               loading={confirming || loading}
-              disabled={cancelling}
+              disabled={cancelling || isDragging}
             >
               Xác nhận & Lưu
             </Button>
@@ -153,6 +154,8 @@ const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
           onCropChange={setCrop}
           onCropComplete={onCropComplete}
           onZoomChange={setZoom}
+          onInteractionStart={() => setIsDragging(true)}
+          onInteractionEnd={() => setIsDragging(false)}
         />
       </div>
 
