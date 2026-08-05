@@ -14,14 +14,14 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { token } = theme.useToken();
-  const { user, isAdmin } = useAccess();
+  const { user, isAdmin, hasAnyPermission } = useAccess();
 
   const handleLogout = () => {
     dispatch(logout() as any);
     navigate("/login");
   };
 
-  const isStaff = isAdmin || (user as any)?.department === 'Ban Nhân sự';
+  const isStaff = isAdmin || hasAnyPermission(['duty:manage', 'system:manage', 'users:list:all', 'users:update:org', 'meeting:create:dept', 'reward:approve']);
 
   const menuItems = [
     {

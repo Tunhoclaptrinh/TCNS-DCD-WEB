@@ -172,6 +172,10 @@ const routes: RouteObject[] = [
         path: "meetings",
         element: <Meetings />,
       },
+      {
+        path: "users",
+        element: <UserManagement />,
+      },
     ],
   },
 
@@ -179,7 +183,7 @@ const routes: RouteObject[] = [
   {
     path: "/admin",
     element: (
-      <AuthGuard requireAuth={true} requiredRoles={["admin", "staff"]}>
+      <AuthGuard requireAuth={true} requiredRoles={["admin", "staff"]} anyPermission={['system:dashboard:view', 'users:update:org', 'users:list:all', 'duty:manage']}>
         <LazyLoadWrapper>
           <AdminLayout />
         </LazyLoadWrapper>

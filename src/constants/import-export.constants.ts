@@ -5,7 +5,7 @@
 export const SYSTEM_FIELD_LABELS: Record<string, string> = {
   // Common Base Fields
   id: "ID",
-  name: "Họ và tên / Tên",
+  name: "Tên đầy đủ",
   code: "Mã",
   title: "Tiêu đề",
   description: "Mô tả",

@@ -153,6 +153,13 @@ export const customerMenu: IMenuItem[] = [
         icon: <DashboardOutlined />,
     },
     {
+        key: 'users-member',
+        path: '/duty/users',
+        name: 'Thành viên',
+        icon: <UserOutlined />,
+        accessFilter: ['users:list:dept'],
+    },
+    {
         key: 'duty-calendar-member',
         path: '/duty/calendar',
         name: 'Lịch trực của tôi',
@@ -178,11 +185,11 @@ export const customerMenu: IMenuItem[] = [
         icon: <LineChartOutlined />,
         accessFilter: ['duty:manage'],
     },
-    {
-        key: 'admin-switch',
-        path: '/admin/dashboard',
-        name: 'Trang Quản trị',
-        icon: <SettingOutlined />,
-        accessFilter: ['dashboard:view', 'duty:manage'],
-    },
+    // {
+    //     key: 'admin-switch',
+    //     path: '/admin/dashboard',
+    //     name: 'Trang Quản trị',
+    //     icon: <SettingOutlined />,
+    //     accessFilter: ['dashboard:view', 'duty:manage'],
+    // },
 ];

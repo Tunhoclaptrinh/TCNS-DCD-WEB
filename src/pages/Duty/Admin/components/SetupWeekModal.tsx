@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Space, Select, Divider, message, InputNumber, Row, Col, Input, Collapse, Typography, Badge, Popconfirm } from 'antd';
+import { Modal, Form, Space, Select, Divider, message, InputNumber, Row, Col, Input, Collapse, Typography, Badge, Popconfirm, Tooltip } from 'antd';
 import Button from '@/components/common/Button';
 import { 
   SettingOutlined, CopyOutlined, ClearOutlined, 
@@ -199,8 +199,6 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
       footer={null}
       width={900}
       destroyOnClose
-      style={{ top: 40 }}
-      bodyStyle={{ padding: '20px 24px' }}
     >
       <Form form={form} layout="vertical" initialValues={{ mode: 'kips' }}>
         <Space direction="vertical" style={{ width: '100%' }} size={20}>
@@ -482,78 +480,77 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
           />
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-            <Button 
-              buttonSize="medium" 
-              fullWidth 
-              variant="primary" 
-              icon={<SettingOutlined />} 
-              loading={loading}
-              onClick={() => {
-                Modal.confirm({
-                  title: 'Xác nhận khởi tạo tuần trực?',
-                  content: 'Hệ thống sẽ lưu cấu hình định mức và tạo các kíp trực dựa theo bản mẫu. Các ca đã có sẵn người đăng ký sẽ được giữ nguyên.',
-                  onOk: generateScheduleFromTemplates,
-                  okText: 'Bắt đầu khởi tạo',
-                  cancelText: 'Hủy',
-                  okButtonProps: { style: { borderRadius: 8 } },
-                  cancelButtonProps: { style: { borderRadius: 8 } }
-                });
-              }}
-              style={{ height: 38, borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-            >
-              Lưu & Khởi tạo từ Bản mẫu
-            </Button>
+          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', gap: 8 }}>
+            <Tooltip title="Xóa sạch toàn bộ kíp trực của tuần này">
+              <Button 
+                buttonSize="small" 
+                variant="danger" 
+                ghost 
+                icon={<ClearOutlined />} 
+                loading={loading}
+                onClick={handleClearWeek}
+                style={{ borderRadius: 6, fontSize: 12, border: '1px solid #fecaca' }}
+              >
+                Xóa lịch
+              </Button>
+            </Tooltip>
 
-            <Button 
-              buttonSize="medium" 
-              fullWidth 
-              variant="outline" 
-              icon={<FileTextOutlined />} 
-              loading={loading}
-              onClick={handleUpdateConfigOnly}
-              style={{ height: 38, borderRadius: 8, fontWeight: 600, fontSize: 13, border: '1px solid #3b82f6', color: '#3b82f6' }}
-            >
-              Chỉ cập nhật Cấu hình Định mức
-            </Button>
+            <Tooltip title="Sao chép toàn bộ kíp trực từ tuần trước sang tuần này">
+              <Button 
+                buttonSize="small" 
+                variant="outline" 
+                icon={<CopyOutlined />} 
+                loading={loading}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Xác nhận sao chép?',
+                    content: 'Toàn bộ kíp trực từ tuần trước sẽ được nhân bản sang tuần này.',
+                    onOk: handleCopyWeek,
+                    okText: 'Sao chép',
+                    cancelText: 'Hủy'
+                  });
+                }}
+                style={{ borderRadius: 6, fontSize: 12 }}
+              >
+                Sao chép
+              </Button>
+            </Tooltip>
 
-            <Row gutter={12}>
-              <Col span={12}>
-                <Button 
-                  buttonSize="medium" 
-                  fullWidth 
-                  variant="outline" 
-                  icon={<CopyOutlined />} 
-                  loading={loading}
-                  onClick={() => {
-                    Modal.confirm({
-                      title: 'Xác nhận sao chép?',
-                      content: 'Toàn bộ kíp trực từ tuần trước sẽ được nhân bản sang tuần này.',
-                      onOk: handleCopyWeek,
-                      okText: 'Sao chép',
-                      cancelText: 'Hủy'
-                    });
-                  }}
-                  style={{ height: 38, borderRadius: 8, fontSize: 13 }}
-                >
-                  Sao chép tuần trước
-                </Button>
-              </Col>
-              <Col span={12}>
-                <Button 
-                  buttonSize="medium" 
-                  fullWidth 
-                  variant="danger" 
-                  ghost 
-                  icon={<ClearOutlined />} 
-                  loading={loading}
-                  onClick={handleClearWeek}
-                  style={{ height: 38, borderRadius: 8, fontSize: 13, border: '1px solid #fecaca' }}
-                >
-                  Xóa sạch lịch tuần
-                </Button>
-              </Col>
-            </Row>
+            <Tooltip title="Chỉ cập nhật cấu hình định mức cho tuần này, không tạo kíp trực">
+              <Button 
+                buttonSize="small" 
+                variant="outline" 
+                icon={<FileTextOutlined />} 
+                loading={loading}
+                onClick={handleUpdateConfigOnly}
+                style={{ borderRadius: 6, fontWeight: 600, fontSize: 12, border: '1px solid #3b82f6', color: '#3b82f6' }}
+              >
+                Cập nhật
+              </Button>
+            </Tooltip>
+
+            <Tooltip title="Lưu cấu hình định mức và tạo các kíp trực từ bản mẫu">
+              <Button 
+                buttonSize="small" 
+                variant="primary" 
+                icon={<SettingOutlined />} 
+                loading={loading}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Xác nhận khởi tạo tuần trực?',
+                    content: 'Hệ thống sẽ lưu cấu hình định mức và tạo các kíp trực dựa theo bản mẫu. Các ca đã có sẵn người đăng ký sẽ được giữ nguyên.',
+                    onOk: generateScheduleFromTemplates,
+                    okText: 'Bắt đầu khởi tạo',
+                    cancelText: 'Hủy',
+                    okButtonProps: { style: { borderRadius: 8 } },
+                    cancelButtonProps: { style: { borderRadius: 8 } }
+                  });
+                }}
+                style={{ borderRadius: 6, fontWeight: 600, fontSize: 12 }}
+              >
+                Khởi tạo
+              </Button>
+            </Tooltip>
           </div>
         </Space>
       </Form>

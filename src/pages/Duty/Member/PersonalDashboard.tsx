@@ -11,11 +11,15 @@ import {
   TeamOutlined,
   BellOutlined,
   WarningOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  ProjectOutlined,
+  RiseOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import dutyService from '@/services/duty.service';
+import { userService } from '@/services/user.service';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -36,6 +40,7 @@ const PersonalDashboard: React.FC = () => {
     const [selectedWeek, setSelectedWeek] = useState(dayjs().startOf('isoWeek'));
     const [upcomingSlots, setUpcomingSlots] = useState<any[]>([]);
     const [showWarning, setShowWarning] = useState(true);
+    const [userStats, setUserStats] = useState<any>(null);
     const [stats, setStats] = useState<any>({
         totalHours: 0,
         attendedCount: 0,
@@ -51,6 +56,14 @@ const PersonalDashboard: React.FC = () => {
         try {
             const statsRes = await dutyService.getPersonalStats();
             if (statsRes.success) setStats(statsRes.data);
+
+            try {
+                const userStatsRes = await userService.getStats();
+                const uData = userStatsRes.data || (userStatsRes as any);
+                if (uData) setUserStats(uData);
+            } catch (e) {
+                console.error('Failed to fetch personnel stats:', e);
+            }
 
             const weekStart = weekToFetch.startOf('isoWeek').format('YYYY-MM-DD');
             const scheduleRes = await dutyService.getWeeklySchedule(weekStart);
@@ -133,6 +146,94 @@ const PersonalDashboard: React.FC = () => {
                     onClose={() => setShowWarning(false)}
                     style={{ marginBottom: 32, borderRadius: 12, padding: '16px 24px' }}
                 />
+            )}
+
+            {/* Personnel Statistics Card */}
+            {userStats && (
+                <div style={{ marginBottom: 24 }}>
+                    <StatisticsCard
+                        title="Thống kê Nhân sự Đội"
+                        data={
+                            user?.position === 'ctv' ? [
+                                {
+                                    title: "Cộng tác viên",
+                                    value: userStats.global?.ctv || userStats.global?.total || 0,
+                                    icon: <TeamOutlined />,
+                                    valueColor: "#fa8c16",
+                                },
+                                {
+                                    title: "Đang hoạt động",
+                                    value: userStats.global?.active || 0,
+                                    icon: <CheckCircleOutlined />,
+                                    valueColor: "#52c41a",
+                                },
+                                {
+                                    title: "Khóa đang hoạt động",
+                                    value: Object.keys(userStats.global?.byGeneration || {}).length,
+                                    icon: <ProjectOutlined />,
+                                    valueColor: "#1890ff",
+                                },
+                                {
+                                    title: "Mới 7 ngày",
+                                    value: userStats.global?.recentSignups || 0,
+                                    icon: <RiseOutlined />,
+                                    valueColor: "#722ed1",
+                                },
+                            ] : [
+                                {
+                                    title: "Tổng nhân sự",
+                                    value: userStats.global?.total || 0,
+                                    icon: <TeamOutlined />,
+                                    valueColor: "var(--primary-color)",
+                                },
+                                {
+                                    title: "Thành viên chính thức",
+                                    value: userStats.global?.official || 0,
+                                    icon: <CheckCircleOutlined />,
+                                    valueColor: "#1890ff",
+                                },
+                                {
+                                    title: "Cộng tác viên",
+                                    value: userStats.global?.ctv || 0,
+                                    icon: <TeamOutlined />,
+                                    valueColor: "#fa8c16",
+                                },
+                                {
+                                    title: "Tỉ lệ CTV",
+                                    value: `${Math.round(((userStats.global?.ctv || 0) / Math.max(userStats.global?.total || 1, 1)) * 100)}%`,
+                                    icon: <RiseOutlined />,
+                                    valueColor: "#fa541c",
+                                },
+                                {
+                                    title: "Ban quản lý",
+                                    value: userStats.global?.management || 0,
+                                    icon: <SafetyOutlined />,
+                                    valueColor: "#eb2f96",
+                                },
+                                {
+                                    title: "Đang hoạt động",
+                                    value: userStats.global?.active || 0,
+                                    icon: <CheckCircleOutlined />,
+                                    valueColor: "#52c41a",
+                                },
+                                {
+                                    title: "Khóa đang hoạt động",
+                                    value: Object.keys(userStats.global?.byGeneration || {}).length,
+                                    icon: <ProjectOutlined />,
+                                    valueColor: "#13c2c2",
+                                },
+                                {
+                                    title: "Mới 7 ngày",
+                                    value: userStats.global?.recentSignups || 0,
+                                    icon: <RiseOutlined />,
+                                    valueColor: "#722ed1",
+                                },
+                            ]
+                        }
+                        colSpan={{ xs: 24, sm: 12, lg: 6 }}
+                        rowGutter={16}
+                    />
+                </div>
             )}
 
             {/* Core Statistics Card - Relying on its own internal styling */}

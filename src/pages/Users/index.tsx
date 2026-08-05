@@ -5,7 +5,6 @@ import {
     CheckCircleOutlined, 
     RiseOutlined, 
     StopOutlined, 
-    TeamOutlined, 
     EditOutlined, 
     DeleteOutlined, 
     EyeOutlined,
@@ -24,7 +23,7 @@ import UsersDetailModal from './components/Detail';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
 import permissionService from '../../services/permission.service';
-import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS, USER_FIELD_LABELS, USER_VALUE_MAP } from '@/constants/user.constants';
+import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS, USER_FIELD_LABELS, USER_VALUE_MAP, DEPARTMENTS } from '@/constants/user.constants';
 
 // Dynamic department options will be derived from stats
 
@@ -68,7 +67,22 @@ const UserPage = () => {
         expand: 'generation,roles',
     });
 
-    const { hasPermission, user: currentUser } = useAccess();
+    const { hasPermission, user: currentUser, isAdmin } = useAccess();
+    const isManager = isAdmin || hasPermission('users:update:org') || hasPermission('users:list:all');
+
+    const canEditUser = (record: User) => {
+        if (isAdmin) return true;
+        if (currentUser?.id === record.id) return hasPermission('users:update:profile');
+        if (hasPermission('users:update:org')) return true;
+        if (hasPermission('users:update:profile')) {
+            const myLevel = POSITION_LEVELS.indexOf(currentUser?.position || '');
+            const targetLevel = POSITION_LEVELS.indexOf(record.position || '');
+            if (myLevel > targetLevel && currentUser?.department === record.department) {
+                return true;
+            }
+        }
+        return false;
+    };
 
     const [form] = Form.useForm();
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -80,7 +94,13 @@ const UserPage = () => {
     const [promotingUser, setPromotingUser] = useState<User | null>(null);
     const [targetPosition, setTargetPosition] = useState<string>('');
     const [targetDepartment, setTargetDepartment] = useState<string>('');
-    const [activeTab, setActiveTab] = useState<string>('all');
+    const [activeTab, setActiveTab] = useState<string>(currentUser?.position === 'ctv' ? 'ctv' : 'all');
+
+    useEffect(() => {
+        if (currentUser?.position === 'ctv' && activeTab !== 'ctv') {
+            setActiveTab('ctv');
+        }
+    }, [currentUser?.position]);
     const [potentialAlumni, setPotentialAlumni] = useState<User[]>([]);
     const [isAlumniModalVisible, setIsAlumniModalVisible] = useState(false);
     const [syncingAlumni, setSyncingAlumni] = useState(false);
@@ -190,7 +210,7 @@ const UserPage = () => {
 
     // Fetch stats for building Tabs
     const fetchUserStats = async (filters: any = {}) => {
-        if (!hasPermission('users:view_stats')) return;
+        if (!isManager || !hasPermission('users:view_stats')) return;
         try {
             const response = await userService.getStats(filters);
             const statsData = response.data || (response as any);
@@ -204,7 +224,7 @@ const UserPage = () => {
 
     // Fetch stats for the current Tab/Filters
     const fetchCurrentTabStats = async (filters: any = {}) => {
-        if (!hasPermission('users:view_stats')) return;
+        if (!isManager || !hasPermission('users:view_stats')) return;
         setFetchingStats(true);
         try {
             const response = await userService.getStats(filters);
@@ -232,6 +252,7 @@ const UserPage = () => {
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = undefined;
+            combinedFilters.tab = undefined;
         } else if (activeTab === 'all') {
             combinedFilters.isAlumni = false;
             combinedFilters.isAlumni_ne = undefined;
@@ -240,6 +261,7 @@ const UserPage = () => {
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = undefined;
+            combinedFilters.tab = undefined;
         } else if (activeTab === 'ctv') {
             combinedFilters.isAlumni = false;
             combinedFilters.isAlumni_ne = undefined;
@@ -248,16 +270,15 @@ const UserPage = () => {
             combinedFilters.department = undefined;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = 'ctv';
+            combinedFilters.tab = undefined;
         } else if (activeTab === 'others') {
             combinedFilters.isAlumni = false;
             combinedFilters.isAlumni_ne = undefined;
-            combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
-            combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
+            combinedFilters.status = undefined;
+            combinedFilters.status_ne = undefined;
             combinedFilters.department = undefined;
             combinedFilters.position = undefined;
-            // Get current known departments to exclude
-            const knownDepts = Object.keys(stats?.byDepartment || {}).filter(k => k !== '__unassigned__');
-            combinedFilters.department_nin = knownDepts.length > 0 ? knownDepts : undefined;
+            combinedFilters.tab = 'others';
         } else {
             combinedFilters.isAlumni = false;
             combinedFilters.isAlumni_ne = undefined;
@@ -266,6 +287,7 @@ const UserPage = () => {
             combinedFilters.department = activeTab;
             combinedFilters.department_nin = undefined;
             combinedFilters.position = undefined;
+            combinedFilters.tab = undefined;
         }
 
         return combinedFilters;
@@ -581,6 +603,7 @@ const UserPage = () => {
             dataIndex: "position",
             width: 180,
             resizable: true,
+            required: true,
             filters: POSITION_FILTERS,
             render: (value: string) => {
                 if (!value) return '--';
@@ -695,7 +718,7 @@ const UserPage = () => {
                         placement="bottomRight"
                         overlay={
                             <Menu>
-                                <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!hasPermission('users:update:profile') && !hasPermission('users:update:org')}>
+                                <Menu.Item key="edit" icon={<EditOutlined />} onClick={() => openEdit(record)} disabled={!canEditUser(record)}>
                                     Chỉnh sửa
                                 </Menu.Item>
                                 <Menu.Item 
@@ -739,7 +762,7 @@ const UserPage = () => {
     ];
 
     const importColumns: DataTableColumn[] = [
-        { title: "Họ và tên", key: "name", required: true },
+        { title: "Tên đầy đủ", key: "name", required: true },
         { title: "Họ và tên đệm", key: "lastName", required: true },
         { title: "Tên", key: "firstName", required: true },
         { title: "Mã SV", key: "studentId" },
@@ -747,7 +770,7 @@ const UserPage = () => {
         { title: "ID Khóa/Thế hệ", key: "generationId", required: true },
         { title: "Email", key: "email", required: true },
         { title: "Số điện thoại", key: "phone" },
-        { title: "Chức vụ", key: "position" },
+        { title: "Hạng/Chức vụ", key: "position", required: true },
         { title: "Phòng ban/Ban", key: "department" },
         { title: "Giới tính", key: "gender" },
         { title: "Trạng thái", key: "status" },
@@ -908,6 +931,10 @@ const UserPage = () => {
     };
 
     const openEdit = (record: User) => {
+        if (!canEditUser(record)) {
+            message.error('Bạn không có quyền chỉnh sửa thành viên này');
+            return;
+        }
         setEditingId(record.id);
         const formData = { 
             ...record, 
@@ -970,7 +997,7 @@ const UserPage = () => {
             <DataTable
                 headerContent={
                 <>
-                {hasPermission('users:view_stats') && (
+                {isManager && (
                 <div>
                     <StatisticsCard
                         title={selectedGenerationId ? "Thống kê theo Khóa" : "Thống kê Đội Cờ Đỏ"}
@@ -985,79 +1012,85 @@ const UserPage = () => {
                             {
                                 title: 'Thành viên chính thức',
                                 value: currentStats.official || 0,
-                                valueColor: '#1890ff', // Blue
+                                valueColor: '#1890ff',
                             },
                             {
                                 title: 'Cộng tác viên',
                                 value: currentStats.ctv || 0,
-                                valueColor: '#fa8c16', // Orange
+                                valueColor: '#fa8c16',
                             },
                             {
                                 title: 'Cựu thành viên',
                                 value: currentStats.alumni || 0,
-                                valueColor: '#8c8c8c', // Gray
+                                valueColor: '#8c8c8c',
                             },
                             {
                                 title: activeTab === 'others' ? 'Quản lý (Khác)' : 'Ban quản lý',
                                 value: currentStats.management || 0,
-                                valueColor: '#eb2f96', // Pink/Magenta
+                                valueColor: '#eb2f96',
                             },
                             {
                                 title: activeTab === 'others' ? 'Hoạt động (Khác)' : 'Đang hoạt động',
                                 value: currentStats.active || 0,
-                                valueColor: '#52c41a', // Green
+                                valueColor: '#52c41a',
                             },
                             {
                                 title: 'Đang khóa',
                                 value: currentStats.locked || 0,
-                                valueColor: '#da2a2aff', // Red
+                                valueColor: '#da2a2aff',
                             },
                             {
                                 title: 'Đã nghỉ',
                                 value: currentStats.inactive || 0,
-                                valueColor: '#8c8c8c', // Gray
+                                valueColor: '#8c8c8c',
                             },
                             {
                                 title: 'Đã khai trừ',
                                 value: currentStats.dismissed || 0,
-                                valueColor: '#ff4d4f', // Red
+                                valueColor: '#ff4d4f',
                             },
                             {
                                 title: 'Mới 7 ngày',
                                 value: currentStats.recentSignups || 0,
-                                valueColor: '#722ed1', // Purple
+                                valueColor: '#722ed1',
                             },
                         ]}
                         colSpan={{ xs: 24, sm: 12, md: 8, lg: 6 }}
                         rowGutter={12}
                         statShadow={false}
                     />
-                    <TabSwitcher>
-                        <Tabs
-                            style={{ marginTop: 8 }}
-                            activeKey={activeTab} 
-                            onChange={onTabChange}
-                            items={[
-                                { label: 'Toàn bộ Đội', key: 'all' },
-                                ...Object.keys(stats?.byDepartment || {})
-                                    .filter(d => d !== '__unassigned__')
-                                    .map(dept => ({ 
-                                        label: `Ban ${dept}`, 
-                                        key: dept 
-                                    })),
-                                { label: 'Cộng tác viên', key: 'ctv' },
-                                { label: 'Khác', key: 'others' },
-                                { label: 'Cựu thành viên', key: 'alumni' }
-                            ]}
-                        />
-                    </TabSwitcher>
                 </div>
                 )}
+                <TabSwitcher>
+                    <Tabs
+                        style={{ marginTop: 8 }}
+                        activeKey={activeTab} 
+                        onChange={onTabChange}
+                        items={currentUser?.position === 'ctv' ? [
+                            { label: 'Cộng tác viên', key: 'ctv' }
+                        ] : [
+                            { label: 'Toàn bộ Đội', key: 'all' },
+                            ...(Object.keys(stats?.byDepartment || {}).length > 0 
+                                ? Object.keys(stats.byDepartment).filter((d: string) => d !== '__unassigned__')
+                                : DEPARTMENTS.filter((d: string) => d !== 'Khác'))
+                                .map((dept: string) => ({ 
+                                    label: `Ban ${dept}`, 
+                                    key: dept 
+                                })),
+                            { label: 'Cộng tác viên', key: 'ctv' },
+                            ...(isManager ? [
+                                { label: 'Khác', key: 'others' },
+                                { label: 'Cựu thành viên', key: 'alumni' }
+                            ] : [])
+                        ]}
+                    />
+                </TabSwitcher>
                 </>
             }
             title={
                 <Space size={16} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <h2 style={{ margin: 0 }}>Quản lý thành viên</h2>
+                    {isManager && (
                     <Tooltip title="Lọc hiển thị theo khóa. Mặc định là Thành viên đang hoạt động.">
                         <Select
                             placeholder="Lọc theo Khóa"
@@ -1078,6 +1111,7 @@ const UserPage = () => {
                             ]}
                         />
                     </Tooltip>
+                    )}
                 </Space>
             }
             key={activeTab}

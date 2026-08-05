@@ -16,7 +16,6 @@ import {
   CheckCircleOutlined,
   RiseOutlined,
   UserDeleteOutlined,
-  EditOutlined,
 } from "@ant-design/icons";
 import StatisticsCard from "@/components/common/StatisticsCard";
 import Access from "@/components/common/Access";
@@ -25,10 +24,15 @@ import { RootState } from "@/store";
 import { userService } from "@/services/user.service";
 import type { UserStats } from "@/types";
 
+import { useAccess } from "@/hooks";
+
 const { Title, Paragraph } = Typography;
 
 const DashboardPage: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const { hasPermission, isAdmin } = useAccess();
+  const isManager = isAdmin || hasPermission('users:update:org') || hasPermission('users:list:all');
+
   const [stats, setStats] = useState<UserStats>({
     global: {
       total: 0,
@@ -80,171 +84,227 @@ const DashboardPage: React.FC = () => {
       <Access permission="dashboard:view">
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <StatisticsCard
-            title="Sức khỏe hệ thống & Nhân sự"
+            title="Thống kê Nhân sự"
             loading={loading}
-            data={[
-              {
-                title: "Tổng nhân sự",
-                value: stats.global?.total || 0,
-                icon: <TeamOutlined />,
-                valueColor: "var(--primary-color)",
-              },
-              {
-                title: "Đang hoạt động",
-                value: stats.global?.active || 0,
-                icon: <CheckCircleOutlined />,
-                valueColor: "#52c41a",
-              },
-              {
-                title: "Cựu thành viên",
-                value: stats.global?.alumni || 0,
-                icon: <TeamOutlined />,
-                valueColor: "#8c8c8c",
-              },
-              {
-                title: "Đang bị khóa",
-                value: stats.global?.locked || 0,
-                icon: <StopOutlined />,
-                valueColor: "#da2a2aff",
-              },
-              {
-                title: "Đã nghỉ",
-                value: stats.global?.inactive || 0,
-                icon: <UserDeleteOutlined />,
-                valueColor: "#8c8c8c",
-              },
-              {
-                title: 'Đã khai trừ',
-                value: stats.global?.dismissed || 0,
-                icon: <UserDeleteOutlined />,
-                valueColor: '#ff4d4f',
-              },
-              {
-                title: "Đăng ký mới (7 ngày)",
-                value: stats.global?.recentSignups || 0,
-                icon: <RiseOutlined />,
-                valueColor: "#722ed1",
-              },
-            ]}
+            data={
+              user?.position === 'ctv' ? [
+                {
+                  title: "Cộng tác viên",
+                  value: stats.global?.ctv || stats.global?.total || 0,
+                  icon: <TeamOutlined />,
+                  valueColor: "#fa8c16",
+                },
+                {
+                  title: "Đang hoạt động",
+                  value: stats.global?.active || 0,
+                  icon: <CheckCircleOutlined />,
+                  valueColor: "#52c41a",
+                },
+                {
+                  title: "Khóa đang hoạt động",
+                  value: Object.keys(stats.global?.byGeneration || {}).length,
+                  icon: <ProjectOutlined />,
+                  valueColor: "#1890ff",
+                },
+                {
+                  title: "Mới 7 ngày",
+                  value: stats.global?.recentSignups || 0,
+                  icon: <RiseOutlined />,
+                  valueColor: "#722ed1",
+                },
+              ] : isManager ? [
+                {
+                  title: "Tổng nhân sự",
+                  value: stats.global?.total || 0,
+                  icon: <TeamOutlined />,
+                  valueColor: "var(--primary-color)",
+                },
+                {
+                  title: "Thành viên chính thức",
+                  value: stats.global?.official || 0,
+                  icon: <CheckCircleOutlined />,
+                  valueColor: "#1890ff",
+                },
+                {
+                  title: "Cộng tác viên",
+                  value: stats.global?.ctv || 0,
+                  icon: <TeamOutlined />,
+                  valueColor: "#fa8c16",
+                },
+                {
+                  title: "Tỉ lệ CTV",
+                  value: `${Math.round(((stats.global?.ctv || 0) / Math.max(stats.global?.total || 1, 1)) * 100)}%`,
+                  icon: <RiseOutlined />,
+                  valueColor: "#fa541c",
+                },
+                {
+                  title: "Ban quản lý",
+                  value: stats.global?.management || 0,
+                  icon: <SafetyOutlined />,
+                  valueColor: "#eb2f96",
+                },
+                {
+                  title: "Đang hoạt động",
+                  value: stats.global?.active || 0,
+                  icon: <CheckCircleOutlined />,
+                  valueColor: "#52c41a",
+                },
+                {
+                  title: "Khóa đang hoạt động",
+                  value: Object.keys(stats.global?.byGeneration || {}).length,
+                  icon: <ProjectOutlined />,
+                  valueColor: "#13c2c2",
+                },
+                {
+                  title: "Cựu thành viên",
+                  value: stats.global?.alumni || 0,
+                  icon: <TeamOutlined />,
+                  valueColor: "#8c8c8c",
+                },
+                {
+                  title: "Đang bị khóa",
+                  value: stats.global?.locked || 0,
+                  icon: <StopOutlined />,
+                  valueColor: "#da2a2aff",
+                },
+                {
+                  title: "Đã nghỉ",
+                  value: stats.global?.inactive || 0,
+                  icon: <UserDeleteOutlined />,
+                  valueColor: "#8c8c8c",
+                },
+                {
+                  title: 'Đã khai trừ',
+                  value: stats.global?.dismissed || 0,
+                  icon: <UserDeleteOutlined />,
+                  valueColor: '#ff4d4f',
+                },
+                {
+                  title: "Mới 7 ngày",
+                  value: stats.global?.recentSignups || 0,
+                  icon: <RiseOutlined />,
+                  valueColor: "#722ed1",
+                },
+              ] : [
+                {
+                  title: "Tổng nhân sự",
+                  value: stats.global?.total || 0,
+                  icon: <TeamOutlined />,
+                  valueColor: "var(--primary-color)",
+                },
+                {
+                  title: "Thành viên chính thức",
+                  value: stats.global?.official || 0,
+                  icon: <CheckCircleOutlined />,
+                  valueColor: "#1890ff",
+                },
+                {
+                  title: "Cộng tác viên",
+                  value: stats.global?.ctv || 0,
+                  icon: <TeamOutlined />,
+                  valueColor: "#fa8c16",
+                },
+                {
+                  title: "Tỉ lệ CTV",
+                  value: `${Math.round(((stats.global?.ctv || 0) / Math.max(stats.global?.total || 1, 1)) * 100)}%`,
+                  icon: <RiseOutlined />,
+                  valueColor: "#fa541c",
+                },
+                {
+                  title: "Ban quản lý",
+                  value: stats.global?.management || 0,
+                  icon: <SafetyOutlined />,
+                  valueColor: "#eb2f96",
+                },
+                {
+                  title: "Đang hoạt động",
+                  value: stats.global?.active || 0,
+                  icon: <CheckCircleOutlined />,
+                  valueColor: "#52c41a",
+                },
+                {
+                  title: "Khóa đang hoạt động",
+                  value: Object.keys(stats.global?.byGeneration || {}).length,
+                  icon: <ProjectOutlined />,
+                  valueColor: "#13c2c2",
+                },
+                {
+                  title: "Mới 7 ngày",
+                  value: stats.global?.recentSignups || 0,
+                  icon: <RiseOutlined />,
+                  valueColor: "#722ed1",
+                },
+              ]
+            }
             colSpan={{ xs: 24, sm: 12, md: 8, lg: 6 }}
             statShadow
           />
 
-          <StatisticsCard
-            title="Cấu trúc tổ chức"
-            loading={loading}
-            data={[
-              {
-                title: 'Thành viên chính thức',
-                value: stats.global?.official || 0,
-                icon: <CheckCircleOutlined />,
-                valueColor: '#1890ff',
-              },
-              {
-                title: 'Cộng tác viên',
-                value: stats.global?.ctv || 0,
-                icon: <TeamOutlined />,
-                valueColor: '#fa8c16',
-              },
-              {
-                title: 'Ban điều hành (Lãnh đạo)',
-                value: stats.global?.management || 0,
-                icon: <SafetyOutlined />,
-                valueColor: '#eb2f96',
-              },
-              {
-                title: 'Đội trưởng',
-                value: stats.global?.byPosition?.dt || 0,
-                icon: <SafetyOutlined />,
-                valueColor: '#722ed1',
-              },
-              {
-                title: 'Trưởng ban',
-                value: stats.global?.byPosition?.tb || 0,
-                icon: <SafetyOutlined />,
-                valueColor: '#f5222d',
-              },
-              {
-                title: 'Phó ban',
-                value: stats.global?.byPosition?.pb || 0,
-                icon: <SafetyOutlined />,
-                valueColor: '#fa541c',
-              },
-              {
-                title: 'Thành viên ban',
-                value: stats.global?.byPosition?.tvb || 0,
-                icon: <UserOutlined />,
-                valueColor: '#13c2c2',
-              },
-              {
-                title: 'Thành viên thường',
-                value: stats.global?.byPosition?.tv || 0,
-                icon: <UserOutlined />,
-                valueColor: '#52c41a',
-              },
-              {
-                title: 'Cộng tác viên',
-                value: stats.global?.byPosition?.ctv || 0,
-                icon: <TeamOutlined />,
-                valueColor: '#fa8c16',
-              },
-              {
-                title: 'Vị trí khác',
-                value: Math.max(0, (stats.global?.total || 0) -
-                  (['dt', 'tb', 'pb', 'tvb', 'tv', 'ctv'].reduce((sum, p) => sum + (stats.global?.byPosition?.[p] || 0), 0))),
-                icon: <UserOutlined />,
-                valueColor: '#bfbfbf',
-              },
-            ]}
-            colSpan={{ xs: 24, sm: 12, md: 8, lg: 6 }}
-            statShadow
-          />
-
-          <StatisticsCard
-            title="Phân quyền & Vai trò hệ thống"
-            loading={loading}
-            data={[
-              {
-                title: "Admin (Quản trị viên)",
-                value: stats.global?.byRole?.admin || 0,
-                icon: <SafetyOutlined />,
-                valueColor: "#f5222d",
-              },
-              {
-                title: "Staff (Nhân viên)",
-                value: stats.global?.byRole?.staff || 0,
-                icon: <UserOutlined />,
-                valueColor: "#1677ff",
-              },
-              {
-                title: "Customer (Khách hàng)",
-                value: stats.global?.byRole?.customer || 0,
-                icon: <UserOutlined />,
-                valueColor: "#faad14",
-              },
-              {
-                title: "Researcher (Nghiên cứu)",
-                value: stats.global?.byRole?.researcher || 0,
-                icon: <ProjectOutlined />,
-                valueColor: "#722ed1",
-              },
-              {
-                title: "Curator (Biên tập)",
-                value: stats.global?.byRole?.curator || 0,
-                icon: <EditOutlined />,
-                valueColor: "#13c2c2",
-              },
-              {
-                title: "Vai trò khác",
-                value: (stats.global?.total || 0) -
-                  (['admin', 'staff', 'customer', 'researcher', 'curator'].reduce((sum, r) => sum + (stats.global?.byRole?.[r] || 0), 0)),
-                icon: <UserOutlined />,
-                valueColor: "#bfbfbf",
-              },
-            ]}
-            colSpan={{ xs: 24, sm: 12, md: 8, lg: 6 }}
-            statShadow
-          />
+          {isManager && (
+            <StatisticsCard
+              title="Cấu trúc tổ chức"
+              loading={loading}
+              data={[
+                {
+                  title: 'Thành viên chính thức',
+                  value: stats.global?.official || 0,
+                  icon: <CheckCircleOutlined />,
+                  valueColor: '#1890ff',
+                },
+                {
+                  title: 'Cộng tác viên',
+                  value: stats.global?.ctv || 0,
+                  icon: <TeamOutlined />,
+                  valueColor: '#fa8c16',
+                },
+                {
+                  title: 'Ban điều hành (Lãnh đạo)',
+                  value: stats.global?.management || 0,
+                  icon: <SafetyOutlined />,
+                  valueColor: '#eb2f96',
+                },
+                {
+                  title: 'Đội trưởng',
+                  value: stats.global?.byPosition?.dt || 0,
+                  icon: <SafetyOutlined />,
+                  valueColor: '#722ed1',
+                },
+                {
+                  title: 'Trưởng ban',
+                  value: stats.global?.byPosition?.tb || 0,
+                  icon: <SafetyOutlined />,
+                  valueColor: '#f5222d',
+                },
+                {
+                  title: 'Phó ban',
+                  value: stats.global?.byPosition?.pb || 0,
+                  icon: <SafetyOutlined />,
+                  valueColor: '#fa541c',
+                },
+                {
+                  title: 'Thành viên ban',
+                  value: stats.global?.byPosition?.tvb || 0,
+                  icon: <UserOutlined />,
+                  valueColor: '#13c2c2',
+                },
+                {
+                  title: 'Thành viên thường',
+                  value: stats.global?.byPosition?.tv || 0,
+                  icon: <UserOutlined />,
+                  valueColor: '#52c41a',
+                },
+                {
+                  title: 'Vị trí khác',
+                  value: Math.max(0, (stats.global?.total || 0) -
+                    (['dt', 'tb', 'pb', 'tvb', 'tv', 'ctv'].reduce((sum, p) => sum + (stats.global?.byPosition?.[p] || 0), 0))),
+                  icon: <UserOutlined />,
+                  valueColor: '#bfbfbf',
+                },
+              ]}
+              colSpan={{ xs: 24, sm: 12, md: 8, lg: 6 }}
+              statShadow
+            />
+          )}
         </Space>
       </Access>
 
