@@ -553,18 +553,18 @@ const UserPage = () => {
             render: (val: string) => (val === 'string' || !val) ? '--' : val
         },
         {
-                title: <div style={{ whiteSpace: 'nowrap !important', width: 'max-content', display: 'block' }}>Khóa/Thế hệ</div>,
-                key: "generation",
-                dataIndex: "generation",
-                width: 160,
-                resizable: true,
-                align: 'left',
-                filters: generationList.map(g => ({ text: g.name, value: g.id })),
-                render: (_: any, record: any) => {
-                    const gen = record.generation?.name;
-                    return gen ? <Tag color="geekblue">{gen}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>;
-                }
-            },
+            title: "Khóa/Thế hệ",
+            key: "generation",
+            dataIndex: "generation",
+            width: 160,
+            resizable: true,
+            align: 'left',
+            filters: generationList.map(g => ({ text: g.name, value: g.id })),
+            render: (_: any, record: any) => {
+                const gen = record.generation?.name;
+                return gen ? <Tag color="geekblue">{gen}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>;
+            }
+        },
         {
             title: "Email",
             dataIndex: "email",
@@ -683,6 +683,66 @@ const UserPage = () => {
             render: (value?: string) => formatDateTime(value),
         },
         {
+            title: "Cựu thành viên",
+            dataIndex: "isAlumni",
+            key: "isAlumni",
+            hidden: true,
+        },
+        {
+            title: "Giới tính",
+            dataIndex: "gender",
+            key: "gender",
+            hidden: true,
+        },
+        {
+            title: "Ngày sinh",
+            dataIndex: "dob",
+            key: "dob",
+            hidden: true,
+        },
+        {
+            title: "Quê quán",
+            dataIndex: "hometown",
+            key: "hometown",
+            hidden: true,
+        },
+        {
+            title: "Số CCCD",
+            dataIndex: "cccd",
+            key: "cccd",
+            hidden: true,
+        },
+        {
+            title: "Địa chỉ",
+            dataIndex: "address",
+            key: "address",
+            hidden: true,
+        },
+        {
+            title: "Tiểu sử",
+            dataIndex: "bio",
+            key: "bio",
+            hidden: true,
+        },
+        {
+            title: "Link Facebook",
+            dataIndex: "facebook",
+            key: "facebook",
+            hidden: true,
+        },
+        {
+            title: "Ngày vào Đội",
+            dataIndex: "joinDate",
+            key: "joinDate",
+            hidden: true,
+        },
+        {
+            title: "Ghi chú",
+            dataIndex: "note",
+            key: "note",
+            hidden: true,
+        },
+        {
             title: "Mật khẩu",
             key: "password",
             dataIndex: "password",
@@ -756,18 +816,30 @@ const UserPage = () => {
     ];
 
     const importColumns: DataTableColumn[] = [
+        { title: "Ảnh đại diện", key: "avatar" },
         { title: "Tên đầy đủ", key: "name", required: true },
         { title: "Họ và tên đệm", key: "lastName", required: true },
         { title: "Tên", key: "firstName", required: true },
         { title: "Mã SV", key: "studentId" },
-        { title: "Số CCCD", key: "cccd" },
         { title: "ID Khóa/Thế hệ", key: "generationId", required: true },
         { title: "Email", key: "email", required: true },
         { title: "Số điện thoại", key: "phone" },
         { title: "Hạng/Chức vụ", key: "position", required: true },
         { title: "Phòng ban/Ban", key: "department" },
-        { title: "Giới tính", key: "gender" },
         { title: "Trạng thái", key: "status" },
+        { title: "Tài khoản kích hoạt", key: "isActive" },
+        { title: "Đăng nhập gần nhất", key: "lastLogin" },
+        { title: "Ngày tạo", key: "createdAt" },
+        { title: "Cựu thành viên", key: "isAlumni" },
+        { title: "Giới tính", key: "gender" },
+        { title: "Ngày sinh", key: "dob" },
+        { title: "Quê quán", key: "hometown" },
+        { title: "Số CCCD", key: "cccd" },
+        { title: "Địa chỉ", key: "address" },
+        { title: "Tiểu sử", key: "bio" },
+        { title: "Ngày vào Đội", key: "joinDate" },
+        { title: "Link Facebook", key: "facebook" },
+        { title: "Ghi chú", key: "note" },
     ];
 
     const filters: FilterConfig[] = [

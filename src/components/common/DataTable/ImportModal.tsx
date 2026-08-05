@@ -143,10 +143,12 @@ const ImportModal: React.FC<ImportModalProps> = ({
     const wasVisible = prevVisibleRef.current;
     prevVisibleRef.current = visible;
     if (visible && !wasVisible) {
+      // Select standard data columns by default, excluding auto-generated system fields (lastLogin, createdAt) and optional secondary fields (avatar, address, bio)
+      const unselectedByDefault = ["lastLogin", "createdAt", "avatar", "address", "bio"];
       const initialCols = columns
         .filter((c) => {
           const k = getColKey(c);
-          return k && k !== "actions" && k !== "selection" && k !== "id" && !c.hidden && !c.importHidden;
+          return k && k !== "actions" && k !== "selection" && !(c as any).importHidden && !unselectedByDefault.includes(k);
         })
         .map((c) => getColKey(c));
       setSelectedColumns(initialCols);
@@ -155,7 +157,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
       setValidationReport(null);
       setShowErrorsOnly(false);
     }
-  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visible, columns]);
 
   const handleDownloadTemplate = () => {
     onDownloadTemplate(selectedColumns, withMockData);
@@ -495,7 +497,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
                 marginBottom: 20,
               }}
             >
-              <div style={{ maxHeight: 220, overflowY: "auto", paddingRight: 8 }}>
+              <div style={{ maxHeight: 280, overflowY: "auto", paddingRight: 8 }}>
                 <Checkbox.Group
                   style={{ width: "100%" }}
                   value={selectedColumns}
@@ -511,7 +513,7 @@ const ImportModal: React.FC<ImportModalProps> = ({
                     {columns
                       .filter((c) => {
                         const k = getColKey(c);
-                        return k && k !== "actions" && k !== "selection" && k !== "id" && !c.hidden && !c.importHidden;
+                        return k && k !== "actions" && k !== "selection" && !(c as any).importHidden;
                       })
                       .map((col) => {
                         const key = getColKey(col);

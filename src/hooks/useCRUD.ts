@@ -442,12 +442,21 @@ export const useCRUD = (service: any, options: any = {}) => {
                          format 
                      };
                 } else {
-                    // Merge active table filters with ad-hoc filters from export modal so tab/contextual filters are always enforced
-                    const mergedFilters = typeof options === 'object' && options.filters
-                        ? { ...filters, ...options.filters }
-                        : filters;
+                    // Ad-hoc filters from export modal completely override active table filters
+                    let finalFilters: any = {};
+                    if (typeof options === 'object' && options.filters) {
+                        // Use export modal filters directly, filtering out explicit undefined keys
+                        finalFilters = { ...options.filters };
+                        Object.keys(finalFilters).forEach((k) => {
+                            if (finalFilters[k] === undefined) {
+                                delete finalFilters[k];
+                            }
+                        });
+                    } else {
+                        finalFilters = { ...filters };
+                    }
 
-                    let baseParams = buildQueryParams(mergedFilters);
+                    let baseParams = buildQueryParams(finalFilters);
 
                     // Otherwise construct params based on scope
                     if (scope === 'all') {
@@ -457,11 +466,15 @@ export const useCRUD = (service: any, options: any = {}) => {
                         params._limit = -1; 
                     } else if (scope === 'custom') {
                         // Custom Limit: use filters but override limit
-                         const { _page, ...rest } = baseParams as any;
-                         params = { ...rest, _limit: limit, _page: 1, format };
+                        const { _page, ...rest } = baseParams as any;
+                        params = { ...rest, _limit: limit, _page: 1, format };
                     } else { // scope === 'page'
                         // Current Page: use exactly what's provided
                         params = { ...baseParams, format };
+                    }
+
+                    if (typeof options === 'object' && Array.isArray(options.columns) && options.columns.length > 0) {
+                        params.columns = options.columns.join(',');
                     }
                 }
 

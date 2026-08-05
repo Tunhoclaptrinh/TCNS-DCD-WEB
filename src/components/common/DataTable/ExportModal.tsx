@@ -67,9 +67,10 @@ const ExportModal: React.FC<ExportModalProps> = ({
         });
         setActiveFilters(active);
 
-        // Initialize columns (filter out internal columns like 'actions')
+        // Initialize columns (filter out internal columns and uncheck system/media columns by default)
+        const unselectedByDefault = ['lastLogin', 'createdAt', 'password', 'avatar'];
         const initialCols = columns
-          .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection' && !c.hidden && !(c as any).exportHidden)
+          .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection' && !(c as any).exportHidden && !unselectedByDefault.includes(c.key))
           .map(c => c.key);
         setSelectedColumns(initialCols);
     }
@@ -130,19 +131,18 @@ const ExportModal: React.FC<ExportModalProps> = ({
       }
     };
   
+    const clearFilterValueKeys = (targetValues: Record<string, any>, filterKey: string) => {
+      const next = { ...targetValues };
+      const suffixes = ['', '_eq', '_ne', '_in', '_nin', '_gt', '_gte', '_lt', '_lte', '_like', '_ilike', '_not_like'];
+      suffixes.forEach((suf) => {
+        next[`${filterKey}${suf}`] = undefined;
+      });
+      return next;
+    };
+
     const removeFilterCondition = (filterKey: string) => {
       setActiveFilters((prev) => prev.filter((f) => f.key !== filterKey));
-       
-       const activeKey = getActiveFilterKey(filterKey);
-
-       setLocalFilterValues((prev) => {
-          const next = { ...prev };
-          // Explicitly set to undefined (or delete) so merging overrides parent filters
-          next[activeKey] = undefined;
-          next[filterKey] = undefined;
-          next[`${filterKey}_in`] = undefined;
-          return next;
-       });
+      setLocalFilterValues((prev) => clearFilterValueKeys(prev, filterKey));
       setEnabledFilters((prev) => {
         const newEnabled = { ...prev };
         delete newEnabled[filterKey];
@@ -154,13 +154,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         setEnabledFilters((prev) => {
           const nextState = !prev[key];
           if (!nextState) {
-            const activeKey = getActiveFilterKey(key);
-            setLocalFilterValues((p) => ({
-              ...p,
-              [activeKey]: undefined,
-              [key]: undefined,
-              [`${key}_in`]: undefined,
-            }));
+            setLocalFilterValues((p) => clearFilterValueKeys(p, key));
           }
           return { ...prev, [key]: nextState };
         });
@@ -260,6 +254,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
                     <OrderedListOutlined style={{ color: '#bfbfbf' }} />
                   </div>
                   <div style={{ 
+                      maxHeight: 400,
+                      height: 400,
                       overflowY: 'auto', 
                       background: '#fafafa', 
                       padding: '12px 16px',
@@ -272,7 +268,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                       onChange={(vals) => setSelectedColumns(vals as string[])}
                     >
                       {columns
-                        .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection' && !c.hidden && !(c as any).exportHidden)
+                        .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection' && !(c as any).exportHidden)
                         .map(col => {
                           const titleStr = formatColumnTitle(col.key, columns, fieldLabelMap);
                           return (
@@ -285,7 +281,17 @@ const ExportModal: React.FC<ExportModalProps> = ({
                     </Checkbox.Group>
                   </div>
                   <div style={{ marginTop: 8, textAlign: 'right' }}>
-                    <Typography.Link onClick={() => setSelectedColumns(columns.map(c => c.key))}>Chọn tất cả</Typography.Link>
+                    <Typography.Link 
+                      onClick={() => 
+                        setSelectedColumns(
+                          columns
+                            .filter(c => c.key && c.key !== 'actions' && c.key !== 'selection' && !(c as any).exportHidden)
+                            .map(c => c.key)
+                        )
+                      }
+                    >
+                      Chọn tất cả
+                    </Typography.Link>
                   </div>
               </section>
           </div>
