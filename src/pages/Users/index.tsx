@@ -833,16 +833,7 @@ const UserPage = () => {
             operators: ['eq', 'in'],
             options: roleList.map(r => ({ label: r.name, value: (r as any).key || r.name })),
         },
-        {
-            key: "isActive",
-            label: "Tài khoản (Bật/Tắt)",
-            type: "select" as const,
-            operators: ['eq'],
-            options: [
-                { label: "Bật", value: true },
-                { label: "Tắt", value: false },
-            ],
-        },
+
         {
             key: "studentId",
             label: "Mã SV",
