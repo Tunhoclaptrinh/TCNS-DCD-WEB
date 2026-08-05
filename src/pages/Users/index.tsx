@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import dayjs from 'dayjs';
 import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, AutoComplete, Input, Typography } from 'antd';
 import { 
@@ -238,7 +238,7 @@ const UserPage = () => {
         }
     };
 
-    const getCombinedFilters = () => {
+    const getCombinedFilters = useCallback(() => {
         const combinedFilters: any = { ...tableGenFilter };
         const isActiveMembersSelected = selectedGenerationId === 'active_members';
         
@@ -285,7 +285,7 @@ const UserPage = () => {
         }
 
         return combinedFilters;
-    };
+    }, [tableGenFilter, selectedGenerationId, activeTab]);
 
     // Reactive data update when ANY filter criteria changes
     useEffect(() => {
@@ -294,7 +294,7 @@ const UserPage = () => {
         if (['alumni', 'others'].includes(activeTab)) {
             fetchCurrentTabStats(filters);
         }
-    }, [activeTab, selectedGenerationId, generationList]);
+    }, [getCombinedFilters]);
 
     // Fetch stats separately based only on generation filter (stats API handles 'active_generations' natively)
     useEffect(() => {
