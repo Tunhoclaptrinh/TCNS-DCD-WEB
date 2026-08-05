@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Button, message, Spin, Typography, Collapse, Select, Row, Col } from 'antd';
+import { Form, Input, message, Spin, Typography, Collapse, Select, Row, Col } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import axiosInstance from '@/config/axios.config';
+import { Button as CustomButton } from '@/components/common';
 
 const { Title, Text } = Typography;
 
 const SystemSettingsPage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -18,37 +19,48 @@ const SystemSettingsPage: React.FC = () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get('/system-settings');
-      if (res.data?.success && Array.isArray(res.data.data)) {
+      const dataList = Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+      if (dataList.length > 0) {
         const settings: Record<string, any> = {};
-        res.data.data.forEach((s: any) => {
-          settings[s.key] = s.value;
+        dataList.forEach((s: any) => {
+          if (s.key) {
+            settings[s.key] = s.value;
+            // Map case variations
+            const upperKey = String(s.key).toUpperCase().replace(/([A-Z])/g, '_$1').replace(/^_/, '');
+            settings[upperKey] = s.value;
+          }
         });
         form.setFieldsValue(settings);
       }
     } catch (error) {
+      console.error('Fetch settings error:', error);
       message.error('Lỗi khi tải cài đặt hệ thống');
     } finally {
       setLoading(false);
     }
   };
 
-  const onFinish = async (values: any) => {
+  const saveSection = async (sectionKey: string, fieldNames: string[]) => {
     try {
-      setSaving(true);
-      const res = await axiosInstance.post('/system-settings/bulk', values);
-      if (res.data?.success) {
-        message.success('Cập nhật cài đặt thành công');
+      await form.validateFields(fieldNames);
+      setSavingKey(sectionKey);
+      const allValues = form.getFieldsValue(fieldNames);
+      const res = await axiosInstance.post('/system-settings/bulk', allValues);
+      if (res.success || res.data?.success) {
+        message.success(res.message || res.data?.message || 'Cập nhật cài đặt thành công');
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.errorFields) return; // Validation error
+      console.error('Save section error:', error);
       message.error('Lỗi khi cập nhật cài đặt');
     } finally {
-      setSaving(false);
+      setSavingKey(null);
     }
   };
 
   return (
     <div className="page-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom:16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <Title level={4} style={{ margin: 0 }}>Cài đặt chung</Title>
         </div>
@@ -58,14 +70,13 @@ const SystemSettingsPage: React.FC = () => {
         <Form
           form={form}
           layout="vertical"
-          onFinish={onFinish}
           initialValues={{
             DEFAULT_IMPORT_PASSWORD_STRATEGY: 'fixed',
             DEFAULT_IMPORT_PASSWORD: 'TCNS@2026'
           }}
         >
           <Collapse
-            defaultActiveKey={['import_export']}
+            defaultActiveKey={[]}
             items={[
               {
                 key: 'import_export',
@@ -109,21 +120,57 @@ const SystemSettingsPage: React.FC = () => {
                         </Form.Item>
                       </Col>
                     </Row>
-                    <div style={{ display: 'flex', justifyContent: 'center'}}>
-                      <Button 
-                        type="primary" 
-                        htmlType="submit" 
+
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <CustomButton 
+                        variant="primary"
+                        buttonSize="small"
                         icon={<SaveOutlined />} 
-                        loading={saving}
-                        style={{ minWidth: 160 }}
+                        loading={savingKey === 'import_export'}
+                        onClick={() => saveSection('import_export', ['DEFAULT_IMPORT_PASSWORD_STRATEGY', 'DEFAULT_IMPORT_PASSWORD'])}
+                        style={{ minWidth: 88 }}
                       >
                         Lưu lại
-                      </Button>
+                      </CustomButton>
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'security_network',
+                label: <Text strong>Bảo mật & Mạng (Địa chỉ IP Điểm danh)</Text>,
+                children: (
+                  <div>
+                    <Row gutter={16}>
+                      <Col span={24}>
+                        <Form.Item
+                          name="ALLOWED_IP_RANGES"
+                          label="Dải IP được phép điểm danh ca trực"
+                          tooltip="Nhập các dải địa chỉ IP Wifi/Văn phòng được phép bấm điểm danh. Phân cách nhiều IP bằng dấu phẩy (,). Để trống nếu cho phép tất cả các IP."
+                        >
+                          <Input.TextArea 
+                            rows={3} 
+                            placeholder="Ví dụ: 14.225.21.10, 118.69.18.0/24" 
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <CustomButton 
+                        variant="primary"
+                        buttonSize="small"
+                        icon={<SaveOutlined />} 
+                        loading={savingKey === 'security_network'}
+                        onClick={() => saveSection('security_network', ['ALLOWED_IP_RANGES'])}
+                        style={{ minWidth: 88 }}
+                      >
+                        Lưu lại
+                      </CustomButton>
                     </div>
                   </div>
                 )
               }
-              // Sau này có thể bổ sung các item khác ở đây
             ]}
           />
         </Form>
