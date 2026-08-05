@@ -102,7 +102,7 @@ const DashboardPage: React.FC = () => {
                 },
                 {
                   title: "Khóa đang hoạt động",
-                  value: Object.keys(stats.global?.byGeneration || {}).length,
+                  value: (stats.global as any)?.activeGenerations ?? 0,
                   icon: <ProjectOutlined />,
                   valueColor: "#1890ff",
                 },
@@ -151,7 +151,7 @@ const DashboardPage: React.FC = () => {
                 },
                 {
                   title: "Khóa đang hoạt động",
-                  value: Object.keys(stats.global?.byGeneration || {}).length,
+                  value: (stats.global as any)?.activeGenerations ?? 0,
                   icon: <ProjectOutlined />,
                   valueColor: "#13c2c2",
                 },
@@ -224,7 +224,7 @@ const DashboardPage: React.FC = () => {
                 },
                 {
                   title: "Khóa đang hoạt động",
-                  value: Object.keys(stats.global?.byGeneration || {}).length,
+                  value: (stats.global as any)?.activeGenerations ?? 0,
                   icon: <ProjectOutlined />,
                   valueColor: "#13c2c2",
                 },

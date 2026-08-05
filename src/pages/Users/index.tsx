@@ -135,30 +135,29 @@ const UserPage = () => {
     const [permissionList, setPermissionList] = useState<any[]>([]);
     const [selectedGenerationId, setSelectedGenerationId] = useState<number | 'active_members' | 'active_generations' | 'all' | undefined>('active_members');
     const previousGenerationId = useRef<number | 'active_members' | 'active_generations' | 'all' | undefined>('active_members');
-    // Optimized: Memoized active generation IDs
-    const activeGenerationIds = useMemo(() => 
-        generationList.filter(g => g.isActive).map(g => g.id),
-    [generationList]);
-
-    // Optimized: Centralized filter object
-    const currentGenFilter = useMemo(() => {
-        if (selectedGenerationId === 'active_generations') {
-            return {
-                generationId: undefined,
-                generationId_in: activeGenerationIds.length > 0 ? activeGenerationIds : undefined
-            };
-        }
+    // statsGenFilter: passed directly to stats API (backend handles 'active_generations' natively)
+    const statsGenFilter = useMemo(() => {
         if (selectedGenerationId === 'active_members' || selectedGenerationId === 'all' || selectedGenerationId === undefined) {
-            return {
-                generationId: undefined,
-                generationId_in: undefined
-            };
+            return {};
         }
-        return { 
-            generationId: selectedGenerationId, 
-            generationId_in: undefined 
-        };
-    }, [selectedGenerationId, activeGenerationIds]);
+        return { generationId: selectedGenerationId };
+    }, [selectedGenerationId]);
+
+    // tableGenFilter: resolved to numeric IDs for the list users API
+    const tableGenFilter = useMemo(() => {
+        if (selectedGenerationId === 'active_generations') {
+            // Resolve client-side from cached generationList (already fetched)
+            const activeIds = generationList
+                .filter(g => g.isActive === true)
+                .map(g => Number(g.id))
+                .filter(Boolean);
+            return activeIds.length > 0 ? { generationId_in: activeIds } : {};
+        }
+        if (typeof selectedGenerationId === 'number') {
+            return { generationId: selectedGenerationId };
+        }
+        return {};
+    }, [selectedGenerationId, generationList]);
 
     const fetchRoles = async () => {
         try {
@@ -240,13 +239,12 @@ const UserPage = () => {
     };
 
     const getCombinedFilters = () => {
-        const combinedFilters: any = { ...currentGenFilter };
+        const combinedFilters: any = { ...tableGenFilter };
         const isActiveMembersSelected = selectedGenerationId === 'active_members';
         
         // Apply Tab filters
         if (activeTab === 'alumni') {
             combinedFilters.isAlumni = true;
-            combinedFilters.isAlumni_ne = undefined;
             combinedFilters.status = undefined;
             combinedFilters.status_ne = undefined;
             combinedFilters.department = undefined;
@@ -255,7 +253,6 @@ const UserPage = () => {
             combinedFilters.tab = undefined;
         } else if (activeTab === 'all') {
             combinedFilters.isAlumni = false;
-            combinedFilters.isAlumni_ne = undefined;
             combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
             combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
             combinedFilters.department = undefined;
@@ -264,7 +261,6 @@ const UserPage = () => {
             combinedFilters.tab = undefined;
         } else if (activeTab === 'ctv') {
             combinedFilters.isAlumni = false;
-            combinedFilters.isAlumni_ne = undefined;
             combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
             combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
             combinedFilters.department = undefined;
@@ -273,7 +269,6 @@ const UserPage = () => {
             combinedFilters.tab = undefined;
         } else if (activeTab === 'others') {
             combinedFilters.isAlumni = false;
-            combinedFilters.isAlumni_ne = undefined;
             combinedFilters.status = undefined;
             combinedFilters.status_ne = undefined;
             combinedFilters.department = undefined;
@@ -281,7 +276,6 @@ const UserPage = () => {
             combinedFilters.tab = 'others';
         } else {
             combinedFilters.isAlumni = false;
-            combinedFilters.isAlumni_ne = undefined;
             combinedFilters.status = isActiveMembersSelected ? 'active' : undefined;
             combinedFilters.status_ne = isActiveMembersSelected ? undefined : 'dismissed';
             combinedFilters.department = activeTab;
@@ -302,15 +296,15 @@ const UserPage = () => {
         }
     }, [activeTab, selectedGenerationId, generationList]);
 
-    // Fetch stats separately based only on generation filter
+    // Fetch stats separately based only on generation filter (stats API handles 'active_generations' natively)
     useEffect(() => {
-        fetchUserStats(currentGenFilter);
-    }, [currentGenFilter]);
+        fetchUserStats(statsGenFilter);
+    }, [statsGenFilter]);
     
     // Synced refresh helper
     const refreshData = async () => {
         await fetchAll();
-        await fetchUserStats(currentGenFilter);
+        await fetchUserStats(statsGenFilter);
         if (['alumni', 'others'].includes(activeTab)) {
             await fetchCurrentTabStats(getCombinedFilters());
         }
