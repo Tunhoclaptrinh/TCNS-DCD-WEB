@@ -137,7 +137,10 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
        setLocalFilterValues((prev) => {
           const next = { ...prev };
-          delete next[activeKey];
+          // Explicitly set to undefined (or delete) so merging overrides parent filters
+          next[activeKey] = undefined;
+          next[filterKey] = undefined;
+          next[`${filterKey}_in`] = undefined;
           return next;
        });
       setEnabledFilters((prev) => {
@@ -148,7 +151,19 @@ const ExportModal: React.FC<ExportModalProps> = ({
     };
 
     const toggleFilterEnabled = (key: string) => {
-        setEnabledFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+        setEnabledFilters((prev) => {
+          const nextState = !prev[key];
+          if (!nextState) {
+            const activeKey = getActiveFilterKey(key);
+            setLocalFilterValues((p) => ({
+              ...p,
+              [activeKey]: undefined,
+              [key]: undefined,
+              [`${key}_in`]: undefined,
+            }));
+          }
+          return { ...prev, [key]: nextState };
+        });
     };
 
   return (

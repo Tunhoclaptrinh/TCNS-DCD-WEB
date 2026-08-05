@@ -442,8 +442,12 @@ export const useCRUD = (service: any, options: any = {}) => {
                          format 
                      };
                 } else {
-                    // Decide which filters to use: options.filters (from Ad-hoc Export) or current URL params
-                    let baseParams = buildQueryParams(options.filters);
+                    // Merge active table filters with ad-hoc filters from export modal so tab/contextual filters are always enforced
+                    const mergedFilters = typeof options === 'object' && options.filters
+                        ? { ...filters, ...options.filters }
+                        : filters;
+
+                    let baseParams = buildQueryParams(mergedFilters);
 
                     // Otherwise construct params based on scope
                     if (scope === 'all') {
@@ -456,12 +460,8 @@ export const useCRUD = (service: any, options: any = {}) => {
                          const { _page, ...rest } = baseParams as any;
                          params = { ...rest, _limit: limit, _page: 1, format };
                     } else { // scope === 'page'
-                        // Current Page: use exactly what's provided (including pagination if it came from buildQueryParams, or default if ad-hoc)
+                        // Current Page: use exactly what's provided
                         params = { ...baseParams, format };
-                        // If ad-hoc filters were used, they don't have pagination params, so we might need defaults?
-                        // Actually 'page' scope implies "Current visible page". 
-                        // If we changed filters ad-hoc, "Current Page" concept is vague. 
-                        // Let's assume for ad-hoc, "page" means "First Page" unless specified.
                     }
                 }
 
