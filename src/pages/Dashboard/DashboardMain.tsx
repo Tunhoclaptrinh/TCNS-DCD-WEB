@@ -295,7 +295,7 @@ const DashboardPage: React.FC = () => {
                 },
                 {
                   title: 'Vị trí khác',
-                  value: Math.max(0, (stats.global?.total || 0) -
+                  value: Math.max(0, (stats.global?.active || 0) -
                     (['dt', 'tb', 'pb', 'tvb', 'tv', 'ctv'].reduce((sum, p) => sum + (stats.global?.byPosition?.[p] || 0), 0))),
                   icon: <UserOutlined />,
                   valueColor: '#bfbfbf',
