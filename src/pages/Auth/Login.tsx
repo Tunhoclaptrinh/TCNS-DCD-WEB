@@ -7,7 +7,6 @@ import {
   Checkbox,
   Row,
   Typography,
-  Divider,
 } from "antd";
 import {
   UserOutlined,
@@ -15,8 +14,6 @@ import {
   EyeInvisibleOutlined,
   EyeTwoTone,
   PhoneOutlined,
-  FacebookFilled,
-  GoogleCircleFilled,
 } from "@ant-design/icons";
 import { useAppDispatch } from "../../store/hooks";
 import { useNavigate } from "react-router-dom";
@@ -28,7 +25,7 @@ import Background from "@/components/Background";
 const { Text, Paragraph } = Typography;
 
 const AuthPage = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin] = useState(true); // Registration disabled - always show login
   const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -145,7 +142,7 @@ const AuthPage = () => {
       message.success("Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.");
 
       // Switch to login form instead of auto-login
-      setIsLogin(true);
+      // Registration disabled - no action needed
       setLoginEmail(regEmail);
       setLoginPassword("");
 
@@ -163,10 +160,7 @@ const AuthPage = () => {
     }
   };
 
-  const toggleForm = () => {
-    setIsLogin(!isLogin);
-    setErrors({});
-  };
+  // toggleForm removed - registration is disabled
 
   return (
     <Background>
@@ -557,59 +551,8 @@ const AuthPage = () => {
               </motion.div>
             )}
           </AnimatePresence>
-          <Divider style={{ borderColor: "rgba(255,255,255,0.3)" }}>
-            <span style={{ color: "#eee" }}>Hoặc</span>
-          </Divider>
+          {/* Social login & register toggle hidden - registration disabled */}
 
-          {/* SOCIAL LOGIN */}
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              marginBottom: 24,
-              width: "100%",
-            }}
-          >
-            <Button
-              style={{
-                flex: 1,
-                borderRadius: 8,
-                background: "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.25)",
-                color: "#fff",
-              }}
-              disabled
-            >
-              <GoogleCircleFilled style={{ fontSize: 20 }} /> Google
-            </Button>
-
-            <Button
-              style={{
-                flex: 1,
-                borderRadius: 8,
-                background: "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.25)",
-                color: "#fff",
-              }}
-              disabled
-            >
-              <FacebookFilled style={{ fontSize: 20 }} /> Facebook
-            </Button>
-          </div>
-
-          {/* TOGGLE LINK */}
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <Text style={{ color: "#fff" }}>
-              {isLogin ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
-            </Text>
-            <Button
-              type="link"
-              onClick={toggleForm}
-              style={{ color: "#ffcf9e", fontWeight: "bold", padding: 0 }}
-            >
-              {isLogin ? "Đăng ký ngay" : "Đăng nhập"}
-            </Button>
-          </div>
         </Card>
       </div>
     </Background>

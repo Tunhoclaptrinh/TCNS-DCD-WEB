@@ -9,14 +9,14 @@ import {
   Typography,
 } from "antd";
 import {
-  UserOutlined,
   LockOutlined,
-  PhoneOutlined,
   MailOutlined,
+  // UserOutlined,   // Registration disabled
+  // PhoneOutlined,  // Registration disabled
 } from "@ant-design/icons";
 import { useAppDispatch } from "../../store/hooks";
 import { useNavigate, useLocation } from "react-router-dom";
-import { login, register } from "../../store/slices/authSlice";
+import { login /*, register */ } from "../../store/slices/authSlice"; // register disabled
 import logo from "@/assets/images/logo2.png";
 import "./styles.less";
 
@@ -30,11 +30,8 @@ const AuthPage = () => {
   const [activeTab, setActiveTab] = useState("login");
 
   useEffect(() => {
-    if (location.pathname === "/register") {
-      setActiveTab("register");
-    } else {
-      setActiveTab("login");
-    }
+    // Registration disabled - always force login tab
+    setActiveTab("login");
   }, [location.pathname]);
 
   const onFinishLogin = async (values: any) => {
@@ -52,6 +49,7 @@ const AuthPage = () => {
     }
   };
 
+  /* Registration disabled
   const onFinishRegister = async (values: any) => {
     setLoading(true);
     try {
@@ -76,6 +74,7 @@ const AuthPage = () => {
       setLoading(false);
     }
   };
+  */
 
   return (
     <div className="auth-container">
@@ -83,12 +82,11 @@ const AuthPage = () => {
         <div className="auth-header">
           <img src={logo} alt="Logo" />
           <Title level={2}>Chào mừng bạn</Title>
-          <Paragraph>Vui lòng đăng nhập hoặc đăng ký tài khoản</Paragraph>
+          <Paragraph>Vui lòng đăng nhập để tiếp tục</Paragraph>
         </div>
 
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
           centered
           items={[
             {
@@ -136,6 +134,7 @@ const AuthPage = () => {
                 </Form>
               ),
             },
+            /* Registration disabled - tab hidden
             {
               key: "register",
               label: "Đăng ký",
@@ -223,6 +222,7 @@ const AuthPage = () => {
                 </Form>
               ),
             },
+            */
           ]}
         />
       </Card>
