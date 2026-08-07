@@ -20,6 +20,8 @@ import { User, UserStats } from '../../types';
 import { useAccess } from '../../hooks';
 import UsersForm from './components/Form';
 import UsersDetailModal from './components/Detail';
+import PromoteModal from './components/PromoteModal';
+import SyncAlumniModal from './components/SyncAlumniModal';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
 import permissionService from '../../services/permission.service';
@@ -1273,119 +1275,29 @@ const UserPage = () => {
                 }}
             />
 
-            <Modal
-                title="Cập nhật chức vụ"
+            <PromoteModal
                 open={isPromoteModalVisible}
                 onOk={onPromoteOk}
                 onCancel={() => setIsPromoteModalVisible(false)}
-                width={360}
-                centered
-                destroyOnClose
-            >
-                <div style={{ padding: '8px 0' }}>
-                    <div style={{ marginBottom: 12 }}>
-                        Chọn chức vụ mới cho <strong>{promotingUser?.lastName || promotingUser?.firstName ? `${promotingUser?.lastName || ''} ${promotingUser?.firstName || ''}`.trim() : promotingUser?.name}</strong>:
-                    </div>
-                    <Select
-                        style={{ width: '100%', marginBottom: 12 }}
-                        value={targetPosition}
-                        onChange={setTargetPosition}
-                        options={POSITION_LEVELS.map(val => ({
-                            label: POSITION_LABELS[val],
-                            value: val
-                        }))}
-                    />
-                    {['tvb', 'pb', 'tb'].includes(targetPosition) && (
-                        <div style={{ marginTop: 12 }}>
-                            <div style={{ marginBottom: 4 }}>Chọn hoặc nhập tên ban:</div>
-                            <AutoComplete
-                                style={{ width: '100%' }}
-                                placeholder="Chọn hoặc nhập ban mới..."
-                                value={targetDepartment}
-                                onChange={setTargetDepartment}
-                                options={Object.keys(stats?.byDepartment || {})
-                                    .filter(d => d !== '__unassigned__')
-                                    .map(d => ({ value: d }))}
-                                filterOption={(inputValue, option) =>
-                                    String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
-                                }
-                            />
-                        </div>
-                    )}
-                </div>
-            </Modal>
+                promotingUser={promotingUser}
+                targetPosition={targetPosition}
+                setTargetPosition={setTargetPosition}
+                targetDepartment={targetDepartment}
+                setTargetDepartment={setTargetDepartment}
+                stats={stats}
+            />
 
-            <Modal
-                title="Chốt danh sách Cựu thành viên"
+            <SyncAlumniModal
                 open={isAlumniModalVisible}
                 onOk={confirmSyncAlumni}
                 onCancel={() => setIsAlumniModalVisible(false)}
-                width={800}
-                confirmLoading={syncingAlumni}
-                okText="Xác nhận chuyển thành Cựu"
-                cancelText="Hủy"
-            >
-                <div style={{ marginBottom: 16 }}>
-                    Dưới đây là danh sách các thành viên thuộc những Khóa đã ngưng hoạt động. 
-                    Mặc định tất cả sẽ được chuyển sang trạng thái <strong>"Không hoạt động"</strong>. 
-                    Bạn hãy bỏ tích những người vẫn còn đang hoạt động.
-                </div>
-                <DataTable
-                    hideCard
-                    dataSource={potentialAlumni}
-                    columns={[
-                        {
-                            title: 'Tên thành viên',
-                            key: 'fullName',
-                            dataIndex: 'name',
-                            searchable: true,
-                            render: (_, record) => getFullName(record),
-                            sorter: (a, b) => getFullName(a).localeCompare(getFullName(b)),
-                            onFilter: (value, record) => getFullName(record).toLowerCase().includes(String(value).toLowerCase()),
-                        },
-                        {
-                            title: 'Mã SV',
-                            dataIndex: 'studentId',
-                            searchable: true,
-                            sorter: true,
-                        },
-                        {
-                            title: 'Khóa',
-                            key: 'generation',
-                            render: (_, record) => {
-                                const genName = generationList.find(g => g.id === record.generationId)?.name;
-                                return genName ? <Tag color="geekblue">{genName}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>;
-                            },
-                            sorter: (a, b) => (a.generationId ?? 0) - (b.generationId ?? 0),
-                            filters: generationList.map(g => ({ text: g.name, value: g.id })),
-                            onFilter: (value, record) => record.generationId === value,
-                        }
-                    ]}
-                    selectedRowKeys={alumniSelectedIds}
-                    onSelectChange={(keys) => setAlumniSelectedIds(keys as number[])}
-                    batchOperations={true}
-                    batchActions={[
-                        {
-                            key: 'confirm-alumni',
-                            label: 'Xác nhận chuyển thành Cựu',
-                            icon: <CheckCircleOutlined />,
-                            onClick: () => {
-                                confirmSyncAlumni();
-                            }
-                        },
-                        {
-                            key: 'deselect-all',
-                            label: 'Bỏ chọn tất cả',
-                            icon: <StopOutlined />,
-                            onClick: () => setAlumniSelectedIds([])
-                        }
-                    ]}
-                    searchable={true}
-                    searchPlaceholder="Tìm kiếm thành viên..."
-                    pagination={false}
-                    scroll={{ y: 400 }}
-                />
-            </Modal>
+                syncingAlumni={syncingAlumni}
+                potentialAlumni={potentialAlumni}
+                alumniSelectedIds={alumniSelectedIds}
+                setAlumniSelectedIds={(keys) => setAlumniSelectedIds(keys as number[])}
+                generationList={generationList}
+                getFullName={getFullName}
+            />
         </>
     );
 };
