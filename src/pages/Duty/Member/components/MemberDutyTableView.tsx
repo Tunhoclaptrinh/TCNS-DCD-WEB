@@ -201,36 +201,55 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                           onClick={() => { if (slot) openSlotDetail(slot); }}
                         >
                             {(() => {
-                              if (!slot) return showDefaultBoundaries && (
-                                <div className="phantom-slot" style={{ 
-                                  height: '100%', 
-                                  minHeight: '48px', 
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  justifyContent: 'center',
-                                  background: 'rgba(0,0,0,0.02)',
-                                  border: '1px dashed rgba(0,0,0,0.1)'
-                                }}>
-                                  {(() => {
-                                    const max = row.kip?.capacity || row.shift?.capacity || 1;
-                                    return Array.from({ length: max }).map((_, idx) => (
-                                      <div 
-                                        key={idx} 
-                                        style={{ 
-                                          padding: '4px 8px', 
-                                          borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.05)' : 'none',
-                                          fontSize: '13px',
-                                          color: 'rgba(0,0,0,0.15)',
-                                          textAlign: 'center',
-                                          fontWeight: 500
-                                        }}
-                                      >
-                                        ---
-                                      </div>
-                                    ));
-                                  })()}
-                                </div>
-                              );
+                              if (!slot) {
+                                if (showDefaultBoundaries) {
+                                  const max = row.kip?.capacity || row.shift?.capacity || 1;
+                                  return (
+                                    <div className="phantom-slot" style={{ 
+                                      height: '100%', 
+                                      minHeight: '48px', 
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      justifyContent: 'center',
+                                      background: 'rgba(0,0,0,0.02)',
+                                      border: '1px dashed rgba(0,0,0,0.1)'
+                                    }}>
+                                      {Array.from({ length: max }).map((_, idx) => (
+                                        <div 
+                                          key={idx} 
+                                          style={{ 
+                                            padding: '4px 8px', 
+                                            borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.05)' : 'none',
+                                            fontSize: '13px',
+                                            color: 'rgba(0,0,0,0.15)',
+                                            textAlign: 'center',
+                                            fontWeight: 500
+                                          }}
+                                        >
+                                          ---
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div style={{ 
+                                    height: '100%', 
+                                    minHeight: '60px', 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    background: 'repeating-linear-gradient(135deg, #e2e8f0, #e2e8f0 10px, #f1f5f9 10px, #f1f5f9 20px)',
+                                    color: '#64748b',
+                                    userSelect: 'none',
+                                    padding: '4px'
+                                  }}>
+                                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#94a3b8', lineHeight: 1 }}>✕</span>
+                                    <span style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.3px', marginTop: 2 }}>Không có kíp</span>
+                                  </div>
+                                );
+                              }
 
                               const currentUsers = slot.assignedUsers || [];
                               const hasMe = currentUsers.some(u => u.id === currentUserId);

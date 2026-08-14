@@ -288,7 +288,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
       }
       onCancel={onCancel}
       footer={null}
-      width={700}
+      width={900}
     >
       <div className="slot-detail-container" style={{ padding: '0 8px' }}>
         <Row gutter={[24, 24]}>
@@ -359,46 +359,67 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const structure = (slot as any)?.slotStructure || slot?.kip?.slotStructure || (slot as any)?.shift?.slotStructure || [];
                             if (!Array.isArray(structure) || structure.length === 0) return <Text type="secondary" italic style={{ fontSize: 13 }}>Không có yêu cầu cơ cấu đặc biệt</Text>;
                             
-                            return structure.map((item: any, idx: number) => {
-                              const label = item.label || item.positions?.map((p: string) => getPositionInfo(p).name).join('/');
-                              const requiredSlots = item.slots || item.count || 0;
-                              const currentCount = slot?.assignedUsers?.filter(u => {
-                                const uPos = (u.position || '').toLowerCase();
-                                const uPosName = getPositionInfo(uPos).name.toLowerCase();
-                                if (Array.isArray(item.positions)) {
-                                  return item.positions.some((p: string) => {
-                                    const pLower = p.toLowerCase();
-                                    return pLower === uPos || pLower === uPosName;
-                                  });
+                            const currentUserPos = String((currentUserData as any)?.position || '').toLowerCase();
+                            const currentUserRole = String((currentUserData as any)?.role || '').toLowerCase();
+                            const isCurrentUserCTV = currentUserPos === CTV_POSITION || currentUserRole === CTV_POSITION;
+                            const isProtectingTV = (visibilityMode === 'protect_members' || visibilityMode === 'hide_tv_from_ctv' || visibilityMode === 'private_mutual') && isCurrentUserCTV && !isGlobalAdmin;
+
+                            return structure
+                              .filter((item: any) => {
+                                const isOfficialItem = (item.positions || []).some((p: string) => OFFICIAL_POSITIONS.includes(String(p).toLowerCase())) ||
+                                                       (item.label || '').toLowerCase().includes('tv') ||
+                                                       (item.label || '').toLowerCase().includes('thành viên');
+                                if (isProtectingTV && isOfficialItem && privacyMaskType === 'omitted') {
+                                  return false;
                                 }
-                                const itemPos = (item.position || '').toLowerCase();
-                                return uPos === itemPos || uPosName === itemPos;
-                              }).length || 0;
-                              const isMet = currentCount >= requiredSlots;
-                              return (
-                                <div key={idx} style={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  justifyContent: 'space-between',
-                                  padding: '6px 10px',
-                                  background: isMet ? '#f0fdf4' : '#f8fafc',
-                                  borderRadius: 8,
-                                  border: `1px solid ${isMet ? '#dcfce7' : '#e2e8f0'}`
-                                }}>
-                                  <Space>
-                                    <Tag color={isMet ? 'green' : 'blue'} style={{ margin: 0, borderRadius: 4 }}>
-                                      {label}
-                                    </Tag>
-                                    <Text type={isMet ? 'success' : 'secondary'} style={{ fontSize: 12 }}>
-                                      {isMet ? 'Đã đủ' : `Còn thiếu ${requiredSlots - currentCount}`}
+                                return true;
+                              })
+                              .map((item: any, idx: number) => {
+                                const isOfficialItem = (item.positions || []).some((p: string) => OFFICIAL_POSITIONS.includes(String(p).toLowerCase())) ||
+                                                       (item.label || '').toLowerCase().includes('tv') ||
+                                                       (item.label || '').toLowerCase().includes('thành viên');
+                                const isMasked = isProtectingTV && isOfficialItem && privacyMaskType === 'masked';
+
+                                const label = isMasked ? 'Thành viên' : (item.label || item.positions?.map((p: string) => getPositionInfo(p).name).join('/'));
+                                const requiredSlots = item.slots || item.count || 0;
+                                const currentCount = slot?.assignedUsers?.filter(u => {
+                                  const uPos = (u.position || '').toLowerCase();
+                                  const uPosName = getPositionInfo(uPos).name.toLowerCase();
+                                  if (Array.isArray(item.positions)) {
+                                    return item.positions.some((p: string) => {
+                                      const pLower = p.toLowerCase();
+                                      return pLower === uPos || pLower === uPosName;
+                                    });
+                                  }
+                                  const itemPos = (item.position || '').toLowerCase();
+                                  return uPos === itemPos || uPosName === itemPos;
+                                }).length || 0;
+                                
+                                const isMet = currentCount >= requiredSlots;
+                                return (
+                                  <div key={idx} style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    padding: '6px 10px',
+                                    background: isMasked ? '#f8fafc' : (isMet ? '#f0fdf4' : '#f8fafc'),
+                                    borderRadius: 8,
+                                    border: `1px solid ${isMasked ? '#e2e8f0' : (isMet ? '#dcfce7' : '#e2e8f0')}`
+                                  }}>
+                                    <Space>
+                                      <Tag color={isMasked ? 'default' : (isMet ? 'green' : 'blue')} style={{ margin: 0, borderRadius: 4 }}>
+                                        {isMasked ? '🔒 ' + label : label}
+                                      </Tag>
+                                      <Text type={isMasked ? 'secondary' : (isMet ? 'success' : 'secondary')} style={{ fontSize: 12 }}>
+                                        {isMasked ? 'Bảo mật' : (isMet ? 'Đã đủ' : `Còn thiếu ${requiredSlots - currentCount}`)}
+                                      </Text>
+                                    </Space>
+                                    <Text strong style={{ color: isMasked ? '#94a3b8' : (isMet ? '#16a34a' : '#64748b') }}>
+                                      {isMasked ? `*** / ${requiredSlots}` : `${currentCount} / ${requiredSlots}`}
                                     </Text>
-                                  </Space>
-                                  <Text strong style={{ color: isMet ? '#16a34a' : '#64748b' }}>
-                                    {currentCount} / {requiredSlots}
-                                  </Text>
-                                </div>
-                              );
-                            });
+                                  </div>
+                                );
+                              });
                           })()}
                         </div>
                       </div>

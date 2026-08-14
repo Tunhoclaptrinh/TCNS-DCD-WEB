@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Select, InputNumber, Space, Typography } from 'antd';
+import { Modal, Form, Select, InputNumber, Space, Typography, Row, Col } from 'antd';
 import { UserOutlined, TeamOutlined, SolutionOutlined } from '@ant-design/icons';
 import userService from '@/services/user.service';
 import { getUserDisplayName } from '@/utils/formatters';
@@ -140,13 +140,31 @@ const QuotaRuleModal: React.FC<QuotaRuleModalProps> = ({ open, onCancel, onSubmi
           )}
         </Form.Item>
 
-        <Form.Item 
-          name="quota" 
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item 
+              name="cycle" 
+              label={<Text strong>Chu kỳ định mức</Text>} 
+              initialValue="week"
+            >
+              <Select 
+                options={[
+                  { label: '📅 Theo tuần', value: 'week' },
+                  { label: '📆 Theo tháng', value: 'month' },
+                ]}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item 
+              name="quota" 
           label={<Text strong>Định mức (kíp/tuần)</Text>} 
-          rules={[{ required: true, message: 'Vui lòng nhập định mức' }]}
-        >
-          <InputNumber min={0} step={0.5} style={{ width: '100%' }} addonAfter="kíp" />
-        </Form.Item>
+              rules={[{ required: true, message: 'Vui lòng nhập định mức' }]}
+            >
+              <InputNumber min={0} step={0.5} style={{ width: '100%' }} addonAfter="kíp" />
+            </Form.Item>
+          </Col>
+        </Row>
         
         <Text type="secondary" style={{ fontSize: 12 }}>
           * Lưu ý: Quy tắc định mức cụ thể sẽ được ưu tiên hơn định mức chung.

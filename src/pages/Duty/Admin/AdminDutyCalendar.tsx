@@ -392,6 +392,25 @@ const AdminDutyCalendar: React.FC = () => {
     }
   };
 
+  const handleUpdatePeriodConfig = async (values: any) => {
+    try {
+      const start = currentWeek.startOf('isoWeek' as any).format('YYYY-MM-DD');
+      const end = currentWeek.endOf('isoWeek' as any).format('YYYY-MM-DD');
+      const res = await dutyService.updatePeriodConfig({
+        ...values,
+        startDate: start,
+        endDate: end,
+      });
+      if (res.success) {
+        message.success('Đã lưu cấu hình định mức thành công');
+        setIsQuotaModalOpen(false);
+        fetchSchedule();
+      }
+    } catch (err: any) {
+      message.error('Lỗi khi lưu định mức: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
   const handleClearWeek = async () => {
     Modal.confirm({
       title: 'Xác nhận xóa trắng tuần?',
@@ -485,24 +504,6 @@ const AdminDutyCalendar: React.FC = () => {
   }, [templates, assignments, templateGroups, slots, currentWeek, showDefaultBoundaries, manualTemplateGroupId, eventFocusMode]);
 
 
-  const handleUpdatePeriodConfig = async (values: any) => {
-    try {
-      const payload = {
-        ...values,
-        startDate: currentWeek.startOf('isoWeek' as any).toISOString(),
-        endDate: currentWeek.endOf('isoWeek' as any).toISOString()
-      };
-      const res = await dutyService.updatePeriodConfig(payload);
-      if (res.success) {
-        message.success('Đã cập nhật định mức tuần');
-        setIsQuotaModalOpen(false);
-        fetchSchedule();
-      }
-    } catch (err) {
-      message.error('Lỗi cập nhật định mức');
-    }
-  };
-
   const adminMenu = (
     <Menu onClick={({ key }) => {
       if (key === 'setup') setIsSetupModalVisible(true);
@@ -563,11 +564,19 @@ const AdminDutyCalendar: React.FC = () => {
                 {userMetadata && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     {isAdmin ? (
-                      <Tooltip title="Xem và chỉnh sửa cấu hình định mức cho tuần này">
+                      <Tooltip title="Xem và chỉnh sửa cấu hình định mức & quy tắc cho tuần này">
                         <Tag 
                           bordered={false} 
                           style={{ borderRadius: 6, margin: 0, fontWeight: 600, cursor: 'pointer', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '3px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                          onClick={() => setIsSetupModalVisible(true)}
+                          onClick={async () => {
+                            const start = currentWeek.startOf('isoWeek' as any).format('YYYY-MM-DD');
+                            const end = currentWeek.endOf('isoWeek' as any).format('YYYY-MM-DD');
+                            try {
+                              const pcRes = await dutyService.getPeriodConfig(start, end);
+                              if (pcRes.success) setCurrentPeriodConfig(pcRes.data);
+                            } catch {}
+                            setIsQuotaModalOpen(true);
+                          }}
                         >
                           <SolutionOutlined style={{ fontSize: 11, color: '#2563eb' }} />
                           <span>Chi tiết định mức</span>
