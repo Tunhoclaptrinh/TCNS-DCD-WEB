@@ -219,12 +219,11 @@ const AdminDutyCalendar: React.FC = () => {
         <Title level={4} style={{ margin: 0, fontWeight: 600 }}>Lịch trực tuần</Title>
         <Space>
           <Button 
-            icon={<QuestionCircleOutlined />} 
+            icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
             onClick={() => setIsGuideModalOpen(true)}
-            size="small"
             style={{ 
               color: '#595959', 
-              border: '1px solid #d9d9d9',
+              borderColor: '#d9d9d9',
               height: 32 
             }}
           >

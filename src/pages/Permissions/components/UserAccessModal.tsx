@@ -40,7 +40,6 @@ const UserAccessModal: React.FC<UserAccessModalProps> = ({
       okText="Lưu lại"
       cancelText="Hủy"
       width={700}
-      centered
     >
       <Alert
         message="Ghi đè quyền cấp cá nhân"

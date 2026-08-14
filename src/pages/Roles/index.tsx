@@ -39,6 +39,7 @@ const RoleManagement: React.FC = () => {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [targetRole, setTargetRole] = useState<Role | null>(null);
   const [form] = Form.useForm();
+  const [isGuideModalVisible, setIsGuideModalVisible] = useState(false);
 
   const { 
     data: roles, 
@@ -205,9 +206,24 @@ const RoleManagement: React.FC = () => {
 
   return (
     <div className="role-management-v2">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <span style={{ fontSize: 20, fontWeight: 600 }}>Quản lý Vai trò & Phân quyền</span>
+        <Button 
+          variant="ghost" 
+          buttonSize="small" 
+          icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
+          onClick={() => setIsGuideModalVisible(true)} 
+          style={{ 
+            color: '#595959', 
+            border: '1px solid #d9d9d9',
+            height: 32 
+          }}
+        >
+          Hướng dẫn
+        </Button>
+      </div>
+
       <DataTable
-        title="Quản lý Vai trò & Phân quyền"
-        description="Định nghĩa các chức danh và phạm vi quyền hạn trong hệ thống"
         columns={columns}
         dataSource={roles}
         loading={loading}
@@ -239,34 +255,16 @@ const RoleManagement: React.FC = () => {
         onExport={() => exportData('xlsx')}
         // Extra UI
         extra={
-          <Space>
-            <Button 
-              variant="outline" 
-              buttonSize="small"
-              icon={<AppstoreOutlined />} 
-              onClick={() => navigate('/admin/system-config/permissions')}
-              style={{ height: 32 }}
-            >
-              Ma trận Phân quyền
-              <ArrowRightOutlined />
-            </Button>
-            <Button 
-              variant="ghost" 
-              buttonSize="small" 
-              icon={<QuestionCircleOutlined />} 
-              onClick={() => {
-                // Roles guide logic or shared modal
-                message.info('Tính năng hướng dẫn đang được cập nhật cho trang này');
-              }} 
-              style={{ 
-                color: '#595959', 
-                border: '1px solid #d9d9d9',
-                height: 32 
-              }}
-            >
-              Hướng dẫn
-            </Button>
-          </Space>
+          <Button 
+            variant="outline" 
+            buttonSize="small"
+            icon={<AppstoreOutlined />} 
+            onClick={() => navigate('/admin/system-config/permissions')}
+            style={{ height: 32 }}
+          >
+            Ma trận Phân quyền
+            <ArrowRightOutlined />
+          </Button>
         }
         pagination={{ pageSize: 10 }}
         onPaginationChange={handleTableChange}
@@ -285,7 +283,6 @@ const RoleManagement: React.FC = () => {
         loading={loading}
         initialValues={{ isActive: true, permissions: [] }}
         width={500}
-        centered
       >
         <Form.Item
           name="name"
@@ -336,6 +333,34 @@ const RoleManagement: React.FC = () => {
           refresh();
         }}
       />
+
+      <Modal
+        title={
+          <Space>
+            <QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />
+            <span>Hướng dẫn Quản lý Vai trò</span>
+          </Space>
+        }
+        open={isGuideModalVisible}
+        onCancel={() => setIsGuideModalVisible(false)}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '12px 0 4px 0' }}>
+            <Button key="close" variant="primary" buttonSize="small" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 88 }}>
+              Đã hiểu
+            </Button>
+          </div>
+        }
+        width={500}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <p>Trang này giúp bạn quản lý các Vai trò trong hệ thống:</p>
+          <ul style={{ paddingLeft: 20, lineHeight: '2' }}>
+            <li><b>Tạo vai trò:</b> Nhấn "Thêm Mới" để tạo một vai trò nhóm quyền mới cho thành viên.</li>
+            <li><b>Gán quyền hạn:</b> Nhấn vào biểu tượng gán quyền ở cột Thao tác để phân quyền chi tiết từng chức năng cho vai trò.</li>
+            <li><b>Ma trận Phân quyền:</b> Nhấn vào nút "Ma trận Phân quyền" để xem bảng tổng quan ma trận phân quyền hệ thống.</li>
+          </ul>
+        </div>
+      </Modal>
 
       <style dangerouslySetInnerHTML={{ __html: `
         .role-management-v2 .ant-table-thead > tr > th {

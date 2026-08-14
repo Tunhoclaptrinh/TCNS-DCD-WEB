@@ -154,7 +154,6 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
       open={open}
       onCancel={onCancel}
       width={800}
-      centered
       destroyOnClose
       footer={
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
@@ -273,7 +272,6 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
         cancelText="Hủy"
         loading={saving}
         width={600}
-        centered
       >
         <Form.Item name="module" hidden><Input /></Form.Item>
         

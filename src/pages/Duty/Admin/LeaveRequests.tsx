@@ -310,7 +310,7 @@ const LeaveRequestsPage: React.FC = () => {
         <Button
           variant="ghost"
           buttonSize="small"
-          icon={<QuestionCircleOutlined />}
+          icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />}
           onClick={() => setIsGuideModalOpen(true)}
           style={{ 
             color: '#595959',
@@ -487,7 +487,6 @@ const LeaveRequestsPage: React.FC = () => {
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         width={500}
-        centered
         destroyOnClose
         footer={[
           <Button 
@@ -579,7 +578,6 @@ const LeaveRequestsPage: React.FC = () => {
         okText="Xác nhận từ chối"
         cancelText="Hủy"
         okButtonProps={{ danger: true }}
-        centered
       >
         <Form form={rejectForm} layout="vertical">
           <Form.Item

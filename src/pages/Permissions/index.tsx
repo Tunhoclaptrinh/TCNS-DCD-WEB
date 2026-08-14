@@ -347,7 +347,7 @@ const PermissionsPage: React.FC = () => {
             <Button 
               variant="ghost" 
               buttonSize="small" 
-              icon={<QuestionCircleOutlined />} 
+              icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
               onClick={() => setIsGuideModalVisible(true)} 
               style={{ 
                 color: '#595959', 

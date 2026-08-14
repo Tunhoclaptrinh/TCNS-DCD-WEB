@@ -33,7 +33,6 @@ const PermModal: React.FC<PermModalProps> = ({
       okText="Lưu lại"
       cancelText="Hủy"
       width={500}
-      centered
     >
         <Form.Item
           name="name"

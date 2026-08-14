@@ -302,7 +302,7 @@ const MemberCalendar: React.FC = () => {
         <Title level={3} style={{ margin: 0 }}>Lịch trực tuần này</Title>
         <Space>
           <Button 
-            icon={<QuestionCircleOutlined />}
+            icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />}
             onClick={() => {
               Modal.info({
                 title: 'Hướng dẫn sử dụng Lịch trực',
@@ -319,12 +319,9 @@ const MemberCalendar: React.FC = () => {
               });
             }}
             style={{ 
-              borderRadius: 10, 
-              fontWeight: 600,
-              height: 40,
-              background: '#fff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              color: '#595959', 
+              borderColor: '#d9d9d9',
+              height: 32 
             }}
           >
             Hướng dẫn

@@ -52,10 +52,24 @@ const SemestersPage = () => {
       width: 180,
       searchable: true,
       render: (name: string, record: Semester) => (
-        <Space>
-          <span style={{ fontWeight: 600 }}>{name}</span>
-          {record.isCurrent && <Tag color="gold" icon={<StarFilled />}>Hiện tại</Tag>}
-        </Space>
+        <Tooltip title={record.isCurrent ? "Học kỳ hiện tại" : "Xem chi tiết"}>
+          <Text
+            strong
+            style={{ 
+              color: record.isCurrent ? '#faad14' : undefined, 
+              cursor: 'pointer', 
+              transition: 'color 0.2s' 
+            }}
+            onClick={() => {
+              setViewingRecord(record);
+              setIsDetailVisible(true);
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-color)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = record.isCurrent ? '#faad14' : '')}
+          >
+            {name}
+          </Text>
+        </Tooltip>
       )
     },
     {
@@ -97,7 +111,7 @@ const SemestersPage = () => {
     {
       title: "Thao tác",
       key: "actions",
-      width: 150,
+      width: 170,
       fixed: 'right',
       align: 'center',
       render: (_: any, record: Semester) => (
@@ -115,15 +129,26 @@ const SemestersPage = () => {
               <EyeOutlined />
             </Button>
           </Tooltip>
-          {!record.isCurrent && (
-            <Tooltip title="Đặt làm hiện tại">
+          {record.isCurrent ? (
+            <Tooltip title="Học kỳ hiện tại">
+              <Button 
+                variant="ghost" 
+                buttonSize="small" 
+                disabled
+                style={{ color: '#faad14', opacity: 1, cursor: 'default' }} 
+              >
+                <StarFilled style={{ color: '#faad14', fontSize: 16 }} />
+              </Button>
+            </Tooltip>
+          ) : (
+            <Tooltip title="Đặt làm Học kỳ hiện tại">
               <Button 
                 variant="ghost" 
                 buttonSize="small" 
                 style={{ color: '#faad14' }} 
                 onClick={() => handleSetCurrent(record)}
               >
-                <StarOutlined />
+                <StarOutlined style={{ fontSize: 16 }} />
               </Button>
             </Tooltip>
           )}
@@ -206,9 +231,25 @@ const SemestersPage = () => {
   };
 
   return (
-    <>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <span style={{ fontSize: 20, fontWeight: 600 }}>Quản lý Học kỳ</span>
+        <Button 
+          variant="ghost" 
+          buttonSize="small" 
+          icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
+          onClick={() => setIsGuideModalVisible(true)} 
+          style={{ 
+            color: '#595959', 
+            border: '1px solid #d9d9d9',
+            height: 32 
+          }}
+        >
+          Hướng dẫn
+        </Button>
+      </div>
+
       <DataTable
-        title="Quản lý Học kỳ"
         loading={loading}
         columns={columns}
         dataSource={data}
@@ -223,21 +264,6 @@ const SemestersPage = () => {
         searchable={true}
         searchValue={searchTerm}
         onSearch={search}
-        extra={
-          <Button 
-            variant="ghost" 
-            buttonSize="small" 
-            icon={<QuestionCircleOutlined />} 
-            onClick={() => setIsGuideModalVisible(true)} 
-            style={{ 
-              color: '#595959', 
-              border: '1px solid #d9d9d9',
-              height: 32 
-            }}
-          >
-            Hướng dẫn
-          </Button>
-        }
       />
 
       <SemesterForm
@@ -260,18 +286,18 @@ const SemestersPage = () => {
         open={isDetailVisible}
         onCancel={() => setIsDetailVisible(false)}
         footer={
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px 0' }}>
             <Button 
               variant="outline" 
+              buttonSize="small"
               onClick={() => setIsDetailVisible(false)}
-              style={{ minWidth: 100 }}
+              style={{ minWidth: 88 }}
             >
               Đóng
             </Button>
           </div>
         }
         width={500}
-        centered
         destroyOnClose
       >
         {viewingRecord && (
@@ -296,12 +322,13 @@ const SemestersPage = () => {
         }
         open={isGuideModalVisible}
         onCancel={() => setIsGuideModalVisible(false)}
-        footer={[
-          <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button key="close" variant="primary" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 100 }}>Đã hiểu</Button>
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '12px 0 4px 0' }}>
+            <Button key="close" variant="primary" buttonSize="small" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 88 }}>
+              Đã hiểu
+            </Button>
           </div>
-        ]}
-        centered
+        }
       >
         <div style={{ padding: '8px 0' }}>
           <p>Trang này giúp bạn quản lý các Học kỳ trong năm học:</p>
@@ -318,7 +345,7 @@ const SemestersPage = () => {
           </ul>
         </div>
       </Modal>
-    </>
+    </div>
   );
 };
 

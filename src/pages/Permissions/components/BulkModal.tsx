@@ -35,7 +35,6 @@ const BulkModal: React.FC<BulkModalProps> = ({
       okText="Lưu lại"
       cancelText="Hủy"
       width={550}
-      centered
     >
       <Form.Item name="moduleName" label="Tên chức năng (VD: Thiết bị)" rules={[{ required: true }]}>
         <Input placeholder="VD: Quản lý Kho" size="large" />

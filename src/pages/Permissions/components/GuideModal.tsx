@@ -24,18 +24,17 @@ const GuideModal: React.FC<GuideModalProps> = ({ visible, onCancel }) => {
       open={visible}
       onCancel={onCancel}
       footer={
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px 0' }}>
           <Button 
             variant="primary" 
             buttonSize="small" 
             onClick={onCancel}
-            style={{ minWidth: 120 }}
+            style={{ minWidth: 88 }}
           >
             Đã hiểu
           </Button>
         </div>
       }
-      centered
       width={500}
     >
       <div style={{ padding: '8px 0' }}>

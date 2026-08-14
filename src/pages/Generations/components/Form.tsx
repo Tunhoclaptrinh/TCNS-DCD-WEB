@@ -1,9 +1,8 @@
 import React from 'react';
-import { Form, Input, Switch, Divider, Space } from 'antd';
+import { Form, Input, Checkbox, Tooltip, Divider, Space } from 'antd';
 import type { FormInstance } from 'antd';
-import { TeamOutlined, ScheduleOutlined } from '@ant-design/icons';
+import { TeamOutlined, ScheduleOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import FormModal from '../../../components/common/FormModal';
-import Button from '@/components/common/Button';
 
 interface GenerationFormProps {
   open: boolean;
@@ -31,7 +30,6 @@ const GenerationForm: React.FC<GenerationFormProps> = ({
       cancelText="Hủy"
       onOk={onOk}
       onCancel={onCancel}
-      centered
     >
       <div style={{ padding: '0 4px' }}>
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
@@ -54,25 +52,38 @@ const GenerationForm: React.FC<GenerationFormProps> = ({
           <ScheduleOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Trạng thái hệ thống</span>
         </Divider>
 
-        <div style={{ background: '#f9f9f9', padding: 16, borderRadius: 8, marginBottom: 16 }}>
-           <Form.Item 
+        <div style={{ background: '#f9f9f9', padding: '16px 20px', borderRadius: 8, marginBottom: 16 }}>
+          <Form.Item 
             name="isCurrent" 
-            label="Đặt làm Khóa hiện tại" 
             valuePropName="checked"
-            extra="Nếu bật, đây sẽ là khóa mặc định khi thêm thành viên mới. Các khóa khác sẽ tự động bị hủy dấu hiện tại."
+            style={{ marginBottom: 12 }}
           >
-            <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+            <Checkbox>
+              <Space size={6}>
+                <span style={{ fontWeight: 500 }}>Đặt làm Khóa hiện tại</span>
+                <Tooltip title="Nếu bật, đây sẽ là khóa mặc định khi thêm thành viên mới. Các khóa khác sẽ tự động bị hủy dấu hiện tại.">
+                  <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'pointer' }} />
+                </Tooltip>
+              </Space>
+            </Checkbox>
+          </Form.Item>
+
+          <Form.Item 
+            name="isActive" 
+            valuePropName="checked"
+            initialValue={true}
+            style={{ marginBottom: 0 }}
+          >
+            <Checkbox>
+              <Space size={6}>
+                <span style={{ fontWeight: 500 }}>Trạng thái hoạt động (Đang hoạt động)</span>
+                <Tooltip title="Kích hoạt để cho phép gán thành viên vào Khóa/Thế hệ này trong phần quản lý Nhân sự.">
+                  <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'pointer' }} />
+                </Tooltip>
+              </Space>
+            </Checkbox>
           </Form.Item>
         </div>
-
-        <Form.Item 
-          name="isActive" 
-          label="Trạng thái kích hoạt" 
-          valuePropName="checked"
-          initialValue={true}
-        >
-          <Switch checkedChildren="Hoạt động" unCheckedChildren="Khóa" />
-        </Form.Item>
       </div>
     </FormModal>
   );

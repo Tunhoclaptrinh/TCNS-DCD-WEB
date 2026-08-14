@@ -552,9 +552,13 @@ const MeetingsPage = () => {
                 <Button 
                     variant="ghost" 
                     buttonSize="small"
-                    icon={<QuestionCircleOutlined />} 
+                    icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
                     onClick={() => setIsGuideModalVisible(true)}
-                    style={{ border: '1px solid #d9d9d9' }}
+                    style={{ 
+                        color: '#595959', 
+                        border: '1px solid #d9d9d9',
+                        height: 32 
+                    }}
                 >
                     Hướng dẫn
                 </Button>
@@ -741,14 +745,16 @@ const MeetingsPage = () => {
                 open={isGuideModalVisible}
                 onCancel={() => setIsGuideModalVisible(false)}
                 footer={
-                    <Button
-                        variant="primary"
-                        buttonSize="small"
-                        onClick={() => setIsGuideModalVisible(false)}
-                        style={{ minWidth: 100, borderRadius: 8 }}
-                    >
-                        Đã hiểu
-                    </Button>
+                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '12px 0 4px 0' }}>
+                        <Button
+                            variant="primary"
+                            buttonSize="small"
+                            onClick={() => setIsGuideModalVisible(false)}
+                            style={{ minWidth: 88 }}
+                        >
+                            Đã hiểu
+                        </Button>
+                    </div>
                 }
             >
                 <div style={{ padding: '0 10px' }}>

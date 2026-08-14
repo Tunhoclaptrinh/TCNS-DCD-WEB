@@ -61,10 +61,24 @@ const GenerationsPage = () => {
             width: 250,
             searchable: true,
             render: (name: string, record: Generation) => (
-                <Space>
-                    <span style={{ fontWeight: 600 }}>{name}</span>
-                    {record.isCurrent && <Tag color="gold" icon={<StarFilled />}>Hiện tại</Tag>}
-                </Space>
+                <Tooltip title={record.isCurrent ? "Khóa hiện tại" : "Xem chi tiết"}>
+                    <Text
+                        strong
+                        style={{ 
+                            color: record.isCurrent ? '#faad14' : undefined, 
+                            cursor: 'pointer', 
+                            transition: 'color 0.2s' 
+                        }}
+                        onClick={() => {
+                            setViewingRecord(record);
+                            setIsDetailVisible(true);
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary-color)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = record.isCurrent ? '#faad14' : '')}
+                    >
+                        {name}
+                    </Text>
+                </Tooltip>
             )
         },
         {
@@ -95,7 +109,7 @@ const GenerationsPage = () => {
         {
             title: "Thao tác",
             key: "actions",
-            width: 150,
+            width: 170,
             fixed: 'right',
             align: 'center',
             render: (_: any, record: Generation) => (
@@ -113,15 +127,26 @@ const GenerationsPage = () => {
                             <EyeOutlined />
                         </Button>
                     </Tooltip>
-                    {!record.isCurrent && (
-                        <Tooltip title="Đặt làm hiện tại">
+                    {record.isCurrent ? (
+                        <Tooltip title="Khóa hiện tại">
+                            <Button 
+                                variant="ghost" 
+                                buttonSize="small" 
+                                disabled
+                                style={{ color: '#faad14', opacity: 1, cursor: 'default' }} 
+                            >
+                                <StarFilled style={{ color: '#faad14', fontSize: 16 }} />
+                            </Button>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip title="Đặt làm Khóa hiện tại">
                             <Button 
                                 variant="ghost" 
                                 buttonSize="small" 
                                 style={{ color: '#faad14' }} 
                                 onClick={() => handleSetCurrent(record)}
                             >
-                                <StarOutlined />
+                                <StarOutlined style={{ fontSize: 16 }} />
                             </Button>
                         </Tooltip>
                     )}
@@ -226,9 +251,25 @@ const GenerationsPage = () => {
     };
 
     return (
-        <>
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <span style={{ fontSize: 20, fontWeight: 600 }}>Quản lý Khóa/Thế hệ</span>
+                <Button 
+                    variant="ghost" 
+                    buttonSize="small" 
+                    icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
+                    onClick={() => setIsGuideModalVisible(true)} 
+                    style={{ 
+                        color: '#595959', 
+                        border: '1px solid #d9d9d9',
+                        height: 32
+                    }}
+                >
+                    Hướng dẫn
+                </Button>
+            </div>
+
             <DataTable
-                title="Danh sách Thế hệ/Khóa"
                 loading={loading}
                 columns={columns}
                 dataSource={data}
@@ -247,20 +288,6 @@ const GenerationsPage = () => {
                 filterValues={filterValues}
                 onFilterChange={(key: string, value: any) => updateFilters({ [key]: value })}
                 onClearFilters={clearFilters}
-                extra={
-                    <Button 
-                        variant="ghost" 
-                        buttonSize="small" 
-                        icon={<QuestionCircleOutlined />} 
-                        onClick={() => setIsGuideModalVisible(true)} 
-                        style={{ 
-                            color: '#595959', 
-                            border: '1px solid #d9d9d9',
-                        }}
-                    >
-                        Hướng dẫn
-                    </Button>
-                }
             />
 
             <GenerationForm
@@ -283,14 +310,16 @@ const GenerationsPage = () => {
                 open={isDetailVisible}
                 onCancel={() => setIsDetailVisible(false)}
                 footer={
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px 0' }}>
                         <Button 
                             variant="outline" 
                             buttonSize="small" 
                             onClick={() => setIsDetailVisible(false)}
-                            style={{ minWidth: 100 }}
+                            style={{ minWidth: 88 }}
                         >
                             Đóng
                         </Button>
+                    </div>
                 }
                 width={500}
                 destroyOnClose
@@ -315,9 +344,13 @@ const GenerationsPage = () => {
                 }
                 open={isGuideModalVisible}
                 onCancel={() => setIsGuideModalVisible(false)}
-                footer={[
-                    <Button key="close" buttonSize="small" variant="primary" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 100 }}>Đã hiểu</Button>
-                ]}
+                footer={
+                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '12px 0 4px 0' }}>
+                        <Button key="close" variant="primary" buttonSize="small" onClick={() => setIsGuideModalVisible(false)} style={{ minWidth: 88 }}>
+                            Đã hiểu
+                        </Button>
+                    </div>
+                }
             >
                 <div style={{ padding: '8px 0' }}>
                     <p>Trang này giúp bạn quản lý các Khóa/Thế hệ của tổ chức:</p>
@@ -334,7 +367,7 @@ const GenerationsPage = () => {
                     </ul>
                 </div>
             </Modal>
-        </>
+        </div>
     );
 };
 

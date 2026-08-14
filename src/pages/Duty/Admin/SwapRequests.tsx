@@ -335,7 +335,7 @@ const SwapRequestsPage: React.FC = () => {
         <Button
           variant="ghost"
           buttonSize="small"
-          icon={<QuestionCircleOutlined />}
+          icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />}
           onClick={() => setIsGuideModalOpen(true)}
           style={{ 
             color: '#595959',
@@ -523,7 +523,6 @@ const SwapRequestsPage: React.FC = () => {
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         width={700}
-        centered
         destroyOnClose
         footer={[
           <Button 

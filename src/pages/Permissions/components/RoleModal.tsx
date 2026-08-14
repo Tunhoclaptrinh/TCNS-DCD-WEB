@@ -1,9 +1,7 @@
 import React from 'react';
-import { Form, Input, Typography, Space } from 'antd';
+import { Form, Input } from 'antd';
 import FormModal from '@/components/common/FormModal';
 import { TeamOutlined } from '@ant-design/icons';
-
-const { Text } = Typography;
 
 interface RoleModalProps {
   visible: boolean;
@@ -29,7 +27,6 @@ const RoleModal: React.FC<RoleModalProps> = ({
       okText="Tạo vai trò"
       cancelText="Hủy"
       width={500}
-      centered
     >
       <Form.Item
         name="name"

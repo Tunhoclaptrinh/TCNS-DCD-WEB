@@ -1821,15 +1821,12 @@ const DutyManagement = () => {
           <Tag color="blue" bordered={false} style={{ borderRadius: 6, fontWeight: 500 }}>Admin</Tag>
         </Space>
         <Button
-          type="default"
-          icon={<QuestionCircleOutlined />}
+          icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />}
           onClick={() => setIsGuideModalOpen(true)}
           style={{ 
-            borderRadius: 8, 
-            display: 'flex', 
-            alignItems: 'center', 
-            fontWeight: 500,
-            height: 32
+            color: '#595959', 
+            borderColor: '#d9d9d9',
+            height: 32 
           }}
         >
           Hướng dẫn

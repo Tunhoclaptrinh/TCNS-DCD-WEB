@@ -55,7 +55,6 @@ const AuditModal: React.FC<AuditModalProps> = ({
         </div>
       }
       width={650}
-      centered
       destroyOnClose
       className="premium-modal"
     >

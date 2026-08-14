@@ -1,6 +1,6 @@
 import React from 'react';
-import { Form, Input, DatePicker, Checkbox, Space } from 'antd';
-import { CalendarOutlined, BookOutlined } from '@ant-design/icons';
+import { Form, Input, DatePicker, Checkbox, Tooltip, Space } from 'antd';
+import { CalendarOutlined, BookOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import FormModal from '@/components/common/FormModal';
 import dayjs from 'dayjs';
 
@@ -22,14 +22,13 @@ const SemesterForm: React.FC<SemesterFormProps> = ({
   return (
     <FormModal
       open={open}
-      title={
-        <Space>
-          <CalendarOutlined style={{ color: 'var(--primary-color)' }} />
-          <span>{editingId ? 'Chỉnh sửa Học kỳ' : 'Thêm Học kỳ mới'}</span>
-        </Space>
-      }
+      entityName="Học kỳ"
+      isEditing={!!editingId}
+      icon={<CalendarOutlined style={{ color: 'var(--primary-color)' }} />}
       onCancel={onCancel}
       onOk={onOk}
+      okText="Lưu lại"
+      cancelText="Hủy"
       form={form}
       width={600}
     >
@@ -71,9 +70,18 @@ const SemesterForm: React.FC<SemesterFormProps> = ({
         </Form.Item>
       </div>
 
-      <Form.Item name="isCurrent" valuePropName="checked">
-        <Checkbox style={{ color: '#faad14', fontWeight: 600 }}>Đặt làm Học kỳ hiện tại</Checkbox>
-      </Form.Item>
+      <div style={{ background: '#f9f9f9', padding: '14px 16px', borderRadius: 8, marginBottom: 16 }}>
+        <Form.Item name="isCurrent" valuePropName="checked" style={{ marginBottom: 0 }}>
+          <Checkbox>
+            <Space size={6}>
+              <span style={{ fontWeight: 500 }}>Đặt làm Học kỳ hiện tại</span>
+              <Tooltip title="Nếu bật, đây sẽ là học kỳ mặc định cho toàn hệ thống. Các học kỳ khác sẽ tự động bị hủy dấu hiện tại.">
+                <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'pointer' }} />
+              </Tooltip>
+            </Space>
+          </Checkbox>
+        </Form.Item>
+      </div>
 
       <Form.Item name="note" label="Ghi chú">
         <Input.TextArea placeholder="Nhập ghi chú thêm..." rows={2} />
