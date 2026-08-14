@@ -40,6 +40,7 @@ import dutyService, { DutySlot } from '@/services/duty.service';
 import { useAccess } from '@/hooks';
 import LeaveRequestModal from './LeaveRequestModal';
 import SwapRequestModal from './SwapRequestModal';
+import { getUserDisplayName } from '@/utils/formatters';
 
 const { Text, Title } = Typography;
 
@@ -424,7 +425,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const isVisible = checkVisibility(u);
                             const isMe = String(u.id) === String(currentUserId);
                             const existingViolation = slot?.violations?.find((v: any) => String(v.userId) === String(u.id));
-                            const displayName = isVisible ? (u.name || u.fullName || u.username || u.email) : "Nhân sự trực (Bảo mật)";
+                            const displayName = isVisible ? getUserDisplayName(u) : "Nhân sự trực (Bảo mật)";
                             const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
                             const posInfo = getPositionInfo(u.position);
 
@@ -503,9 +504,9 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                           </div>
                           <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Avatar size={16} src={log.performer?.avatar} icon={<UserOutlined />} />
-                            <span style={{ fontSize: 11, color: '#475569' }}>
-                              {log.performer?.name || 'Hệ thống'}
-                            </span>
+                             <span style={{ fontSize: 11, color: '#475569' }}>
+                               {getUserDisplayName(log.performer) || 'Hệ thống'}
+                             </span>
                           </div>
                         </div>
                       </Timeline.Item>

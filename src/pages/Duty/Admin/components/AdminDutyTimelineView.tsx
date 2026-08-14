@@ -4,6 +4,7 @@ import { InfoCircleOutlined, CloseOutlined, SyncOutlined, EditOutlined } from '@
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DutySlot, DutyShift } from '@/services/duty.service';
+import { getUserDisplayName } from '@/utils/formatters';
 
 interface AdminDutyTimelineViewProps {
   now: dayjs.Dayjs;
@@ -300,11 +301,14 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                         </div>
                         <div className="slot-time">{slot.startTime} - {slot.endTime}</div>
                         <div className="slot-users">
-                          {slot.assignedUsers?.map((u: any) => (
-                            <Tooltip key={u.id} title={u.name}>
-                              <Avatar size={18} src={u.avatar} className="user-avatar-mini">{u.name.split(' ').pop()?.charAt(0)}</Avatar>
-                            </Tooltip>
-                          ))}
+                          {slot.assignedUsers?.map((u: any) => {
+                            const displayName = getUserDisplayName(u);
+                            return (
+                              <Tooltip key={u.id} title={displayName}>
+                                <Avatar size={18} src={u.avatar} className="user-avatar-mini">{displayName.split(' ').pop()?.charAt(0)}</Avatar>
+                              </Tooltip>
+                            );
+                          })}
                           {(!slot.assignedUsers || slot.assignedUsers.length === 0) && (
                             <span style={{ fontSize: '0.65rem', color: '#a16207', opacity: 0.7, fontStyle: 'italic' }}>
                               {slot.capacity || slot.kip?.capacity || 0} người

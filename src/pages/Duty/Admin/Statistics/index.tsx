@@ -669,7 +669,7 @@ const StatisticsPage: React.FC = () => {
 
       {/* Modal: Điều chỉnh nhanh */}
       <Modal
-        title={`Điều chỉnh định mức: ${adjustmentModal.user?.name}`}
+        title={`Điều chỉnh định mức: ${getUserDisplayName(adjustmentModal.user)}`}
         open={adjustmentModal.open}
         onCancel={() => setAdjustmentModal({ open: false, user: null, newQuota: 0 })}
         onOk={handleApplyAdjustment}
@@ -683,7 +683,7 @@ const StatisticsPage: React.FC = () => {
 
       {/* Modal: Nhận xét & Thông báo */}
       <Modal
-        title={`Gửi thông báo: ${commentModal.user?.name}`}
+        title={`Gửi thông báo: ${getUserDisplayName(commentModal.user)}`}
         open={commentModal.open}
         onCancel={() => setCommentModal({ ...commentModal, open: false })}
         onOk={() => handleNotify(commentModal.user)}
@@ -782,7 +782,7 @@ const StatisticsPage: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                                   <Text type="secondary" style={{ fontSize: 10 }}>Thực hiện bởi:</Text>
                                   <Avatar size={14} src={item.performer.avatar} icon={<UserOutlined />} />
-                                  <Text strong style={{ fontSize: 10, color: '#8c8c8c' }}>{item.performer.name}</Text>
+                                  <Text strong style={{ fontSize: 10, color: '#8c8c8c' }}>{getUserDisplayName(item.performer)}</Text>
                                 </div>
                               )}
                             </Space>

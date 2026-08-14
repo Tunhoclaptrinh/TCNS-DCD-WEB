@@ -4,6 +4,7 @@ import { CheckCircleOutlined, ClockCircleOutlined, LockOutlined, SyncOutlined } 
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DutySlot, DutyShift } from '@/services/duty.service';
+import { getUserDisplayName } from '@/utils/formatters';
 
 interface MemberDutyTimelineViewProps {
   now: dayjs.Dayjs;
@@ -378,13 +379,16 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
 
                         <div className="slot-users" style={{ display: 'flex', alignItems: 'center', marginTop: 'auto' }}>
                           <Avatar.Group maxCount={3} size="small" maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf', fontSize: 10 }}>
-                            {slot.assignedUsers?.map((u: any) => (
-                              <Tooltip key={u.id} title={u.name}>
-                                <Avatar size={18} src={u.avatar} style={{ border: '1px solid #fff' }}>
-                                  {u.name.split(' ').pop()?.charAt(0)}
-                                </Avatar>
-                              </Tooltip>
-                            ))}
+                             {slot.assignedUsers?.map((u: any) => {
+                               const displayName = getUserDisplayName(u);
+                               return (
+                                 <Tooltip key={u.id} title={displayName}>
+                                   <Avatar size={18} src={u.avatar} style={{ border: '1px solid #fff' }}>
+                                     {displayName.split(' ').pop()?.charAt(0)}
+                                   </Avatar>
+                                 </Tooltip>
+                               );
+                             })}
                           </Avatar.Group>
                           {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 'auto', color: '#94a3b8' }} />}
                         </div>

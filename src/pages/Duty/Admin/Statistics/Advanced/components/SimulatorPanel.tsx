@@ -9,6 +9,8 @@ import {
   UserOutlined
 } from '@ant-design/icons';
 
+import { getUserDisplayName } from '@/utils/formatters';
+
 const { Text } = Typography;
 
 
@@ -121,7 +123,7 @@ const SimulatorPanel: React.FC<SimulatorPanelProps> = ({ params, simulatedData, 
                     <List.Item>
                       <Space>
                         <Avatar size="small" src={u.avatar} icon={<UserOutlined />} />
-                        <Text strong style={{ fontSize: 12 }}>{u.name}</Text>
+                        <Text strong style={{ fontSize: 12 }}>{getUserDisplayName(u)}</Text>
                       </Space>
                       <Tag color="green">{u.totalKips} kíp</Tag>
                     </List.Item>
@@ -139,7 +141,7 @@ const SimulatorPanel: React.FC<SimulatorPanelProps> = ({ params, simulatedData, 
                     <List.Item>
                       <Space>
                         <Avatar size="small" src={u.avatar} icon={<UserOutlined />} />
-                        <Text strong style={{ fontSize: 12 }}>{u.name}</Text>
+                        <Text strong style={{ fontSize: 12 }}>{getUserDisplayName(u)}</Text>
                       </Space>
                       <Tooltip title={`Thiếu ${u.simulatedDeficiency} kíp so với định mức ${u.simulatedQuota}`}>
                         <Tag color="red">-{u.simulatedDeficiency}</Tag>

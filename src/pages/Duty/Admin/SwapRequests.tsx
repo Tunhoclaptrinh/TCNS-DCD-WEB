@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Space, message, Typography, Tag, Modal, Tooltip, Avatar, Tabs, Form, Input, Select, Dropdown, Menu } from 'antd';
 import { 
   CheckCircleOutlined, 
-  CloseCircleOutlined, 
+  CheckOutlined,
+  CloseOutlined,
   QuestionCircleOutlined, 
+  CalendarOutlined,
   UserOutlined, 
   ClockCircleOutlined,
   HistoryOutlined,
@@ -19,6 +21,8 @@ import { Button, TabSwitcher, DataTable } from '@/components/common';
 import StatisticsCard from '@/components/common/StatisticsCard';
 import { useAccess } from '@/hooks/useAccess';
 import UserSelect from '@/pages/Users/components/UserSelect';
+import { getUserDisplayName } from '@/utils/formatters';
+import AdminDutySlotModal from '@/pages/Duty/Admin/components/AdminDutySlotModal';
 
 const { Title, Text } = Typography;
 
@@ -39,6 +43,41 @@ const SwapRequestsPage: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form] = Form.useForm();
+
+  // Slot Detail Modal state
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
+  const [slotModalLoading, setSlotModalLoading] = useState(false);
+
+  const handleOpenSlotModal = async (slotData: any) => {
+    if (!slotData) {
+      message.warning('Không tìm thấy thông tin kíp trực');
+      return;
+    }
+    const slotId = slotData.id || slotData.slotId;
+    setSlotModalLoading(true);
+    try {
+      if (slotId) {
+        const res = await dutyService.getSlotById(slotId);
+        if (res.data) {
+          setSelectedSlot({
+            ...slotData,
+            ...res.data,
+          });
+        } else {
+          setSelectedSlot(slotData);
+        }
+      } else {
+        setSelectedSlot(slotData);
+      }
+      setIsSlotModalOpen(true);
+    } catch (err) {
+      setSelectedSlot(slotData);
+      setIsSlotModalOpen(true);
+    } finally {
+      setSlotModalLoading(false);
+    }
+  };
   
   // Data for selects
   const [users, setUsers] = useState<any[]>([]);
@@ -223,16 +262,58 @@ const SwapRequestsPage: React.FC = () => {
       width: 500,
       render: (_: any, r: any) => {
         const renderSlot = (slot: any, isTarget: boolean) => {
-          if (!slot) return <Text type="secondary" italic>N/A</Text>;
+          const hasSlotInfo = slot && ((slot.shiftName || slot.kipName || slot.shiftLabel) || slot.shiftDate);
+          if (!hasSlotInfo) {
+            return (
+              <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 11, color: '#94a3b8' }}>
+                — Trống —
+              </Text>
+            );
+          }
+
+          let shiftLabel = 'Kíp trực';
+          if (slot.shiftName && slot.kipName) {
+            shiftLabel = `${slot.shiftName} • ${slot.kipName}`;
+          } else if (slot.shiftLabel) {
+            shiftLabel = slot.shiftLabel;
+          } else if (slot.shiftName || slot.kipName) {
+            shiftLabel = slot.shiftName || slot.kipName;
+          }
+          const formattedDate = slot.shiftDate ? dayjs(slot.shiftDate).format('DD/MM (ddd)') : '';
+
           return (
-            <Space direction="vertical" size={0}>
-              <Text strong={isTarget} style={{ fontSize: 12, color: isTarget ? '#1890ff' : 'inherit' }}>
-                {slot.shiftLabel}
-              </Text>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                {dayjs(slot.shiftDate).format('DD/MM')} ({dayjs(slot.shiftDate).format('ddd')})
-              </Text>
-            </Space>
+            <div
+              onClick={() => handleOpenSlotModal(slot)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 6,
+                border: isTarget ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                backgroundColor: isTarget ? '#eff6ff' : '#ffffff',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                display: 'inline-flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+                minWidth: 115,
+                textAlign: 'center'
+              }}
+              className="slot-pill-hover"
+              title="Bấm để xem chi tiết ca trực"
+            >
+              <span style={{ color: isTarget ? '#1d4ed8' : 'var(--primary-color)', fontSize: 12, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                {shiftLabel}
+              </span>
+              {formattedDate && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, lineHeight: 1 }}>
+                  <CalendarOutlined style={{ fontSize: 11, color: isTarget ? '#93c5fd' : '#94a3b8' }} />
+                  <span style={{ fontSize: 11, color: isTarget ? '#3b82f6' : '#64748b', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                    {formattedDate}
+                  </span>
+                </div>
+              )}
+            </div>
           );
         };
 
@@ -241,14 +322,14 @@ const SwapRequestsPage: React.FC = () => {
             <Space direction="vertical" size={0} style={{ minWidth: 150 }}>
               <Space>
                 <Avatar size="small" src={r.requester?.avatar} icon={<UserOutlined />} />
-                <Text strong>{r.requester?.name}</Text>
+                <Text strong>{getUserDisplayName(r.requester)}</Text>
               </Space>
             </Space>
             
-            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f9f9f9', padding: '6px 16px', borderRadius: 8, border: '1px solid #f0f0f0', flex: 1, justifyContent: 'space-between' }}>
-              <div style={{ minWidth: 110 }}>{renderSlot(r.fromSlot, false)}</div>
-              <ArrowRightOutlined style={{ color: 'var(--primary-color)', margin: '0 12px', fontSize: 14 }} />
-              <div style={{ minWidth: 110 }}>{renderSlot(r.toSlot, true)}</div>
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f8fafc', padding: '6px 12px', borderRadius: 8, border: '1px solid #f1f5f9', flex: 1, justifyContent: 'center', gap: 10 }}>
+              {renderSlot(r.fromSlot, false)}
+              <ArrowRightOutlined style={{ color: 'var(--primary-color)', margin: '0 2px', fontSize: 14, flexShrink: 0 }} />
+              {renderSlot(r.toSlot, true)}
             </div>
           </div>
         );
@@ -301,10 +382,10 @@ const SwapRequestsPage: React.FC = () => {
           <Space direction="vertical" size={4}>
             <Tag color={s.color} style={{ margin: 0 }}>{s.text.toUpperCase()}</Tag>
             {r.approver && (
-              <Tooltip title={`Xử lý bởi: ${r.approver.name} lúc ${dayjs(r.updatedAt).format('HH:mm DD/MM')}`}>
+              <Tooltip title={`Xử lý bởi: ${getUserDisplayName(r.approver)} lúc ${dayjs(r.updatedAt).format('HH:mm DD/MM')}`}>
                 <Space size={4}>
                   <Avatar size={16} src={r.approver.avatar} icon={<UserOutlined />} />
-                  <Text type="secondary" style={{ fontSize: 10 }}>{r.approver.name}</Text>
+                  <Text type="secondary" style={{ fontSize: 10 }}>{getUserDisplayName(r.approver)}</Text>
                 </Space>
               </Tooltip>
             )}
@@ -420,7 +501,7 @@ const SwapRequestsPage: React.FC = () => {
                   <Button
                     variant="ghost"
                     buttonSize="small"
-                    icon={<CheckCircleOutlined style={{ fontSize: 16 }} />}
+                    icon={<CheckOutlined style={{ fontSize: 16, fontWeight: 'bold' }} />}
                     style={{ color: (r.status === 'pending' && canApproveSwap) ? '#52c41a' : '#bfbfbf', padding: '4px' }}
                     onClick={() => handleDecide(r.id, 'approved')}
                     disabled={r.status !== 'pending' || !canApproveSwap}
@@ -430,7 +511,7 @@ const SwapRequestsPage: React.FC = () => {
                   <Button
                     variant="ghost"
                     buttonSize="small"
-                    icon={<CloseCircleOutlined style={{ fontSize: 16 }} />}
+                    icon={<CloseOutlined style={{ fontSize: 16, fontWeight: 'bold' }} />}
                     style={{ color: (r.status === 'pending' && canApproveSwap) ? '#ff4d4f' : '#bfbfbf', padding: '4px' }}
                     onClick={() => handleDecide(r.id, 'rejected')}
                     disabled={r.status !== 'pending' || !canApproveSwap}
@@ -637,6 +718,23 @@ const SwapRequestsPage: React.FC = () => {
           </ul>
         </div>
       </Modal>
+
+      {/* Slot Detail Modal */}
+      <AdminDutySlotModal
+        open={isSlotModalOpen}
+        onCancel={() => {
+          setIsSlotModalOpen(false);
+          setSelectedSlot(null);
+        }}
+        onSuccess={() => {
+          setIsSlotModalOpen(false);
+          setSelectedSlot(null);
+          fetchRequests();
+        }}
+        slot={selectedSlot}
+        templates={[]}
+        loading={slotModalLoading}
+      />
     </div>
   );
 };

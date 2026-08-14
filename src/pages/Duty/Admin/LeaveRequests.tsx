@@ -3,6 +3,8 @@ import { Space, message, Typography, Tag, Modal, Tooltip, Tabs, Input, Form, Ava
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
+  CheckOutlined,
+  CloseOutlined,
   QuestionCircleOutlined, 
   CalendarOutlined, 
   UserOutlined,
@@ -18,6 +20,8 @@ import dutyService from '@/services/duty.service';
 import { Button, TabSwitcher, DataTable } from '@/components/common';
 import StatisticsCard from '@/components/common/StatisticsCard';
 import UserSelect from '@/pages/Users/components/UserSelect';
+import { getUserDisplayName } from '@/utils/formatters';
+import AdminDutySlotModal from '@/pages/Duty/Admin/components/AdminDutySlotModal';
 
 const { Title, Text } = Typography;
 
@@ -42,6 +46,41 @@ const LeaveRequestsPage: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form] = Form.useForm();
+
+  // Slot Detail Modal state
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
+  const [slotModalLoading, setSlotModalLoading] = useState(false);
+
+  const handleOpenSlotModal = async (slotData: any) => {
+    if (!slotData) {
+      message.warning('Không tìm thấy thông tin kíp trực');
+      return;
+    }
+    const slotId = slotData.id || slotData.slotId;
+    setSlotModalLoading(true);
+    try {
+      if (slotId) {
+        const res = await dutyService.getSlotById(slotId);
+        if (res.data) {
+          setSelectedSlot({
+            ...slotData,
+            ...res.data,
+          });
+        } else {
+          setSelectedSlot(slotData);
+        }
+      } else {
+        setSelectedSlot(slotData);
+      }
+      setIsSlotModalOpen(true);
+    } catch (err) {
+      setSelectedSlot(slotData);
+      setIsSlotModalOpen(true);
+    } finally {
+      setSlotModalLoading(false);
+    }
+  };
   
   // Data for selects
   const [users, setUsers] = useState<any[]>([]);
@@ -205,13 +244,13 @@ const LeaveRequestsPage: React.FC = () => {
       render: (_: any, r: any) => (
         <Space size="middle">
           <AntdAvatar 
-            src={r.user?.avatar} 
+            src={r.user?.avatar || r.requester?.avatar} 
             icon={<UserOutlined />} 
             style={{ backgroundColor: 'var(--primary-color)', flexShrink: 0 }}
           />
           <Space direction="vertical" size={0}>
-            <Text strong style={{ fontSize: 15 }}>{r.user?.name}</Text>
-            <Text type="secondary" style={{ fontSize: 13 }}>{r.user?.studentId || r.user?.email}</Text>
+            <Text strong style={{ fontSize: 15 }}>{getUserDisplayName(r.user || r.requester || r)}</Text>
+            <Text type="secondary" style={{ fontSize: 13 }}>{(r.user || r.requester)?.studentId || (r.user || r.requester)?.email || ''}</Text>
           </Space>
         </Space>
       )
@@ -219,28 +258,103 @@ const LeaveRequestsPage: React.FC = () => {
     {
       title: 'Chi tiết kíp trực',
       key: 'slot',
-      width: 250,
-      render: (_: any, r: any) => (
-        <Space direction="vertical" size={0}>
-          <Text strong style={{ color: '#1890ff' }}>{r.slot?.shiftLabel}</Text>
-          <Space size={8} style={{ marginTop: 4 }}>
-            <CalendarOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {dayjs(r.slot?.shiftDate).format('dddd, DD/MM/YYYY')}
+      width: 220,
+      render: (_: any, r: any) => {
+        const slot = r.slot || {};
+        const hasSlotInfo = (slot.shiftName || slot.kipName || slot.shiftLabel) || slot.shiftDate;
+        
+        if (!hasSlotInfo) {
+          return (
+            <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13, color: '#94a3b8' }}>
+              — Trống —
             </Text>
-          </Space>
-        </Space>
-      )
+          );
+        }
+
+        let shiftLabel = 'Kíp trực';
+        if (slot.shiftName && slot.kipName) {
+          shiftLabel = `${slot.shiftName} • ${slot.kipName}`;
+        } else if (slot.shiftLabel) {
+          shiftLabel = slot.shiftLabel;
+        } else if (slot.shiftName || slot.kipName) {
+          shiftLabel = slot.shiftName || slot.kipName;
+        }
+        const formattedDate = slot.shiftDate ? dayjs(slot.shiftDate).format('dddd, DD/MM/YYYY') : 'Chưa xếp ngày';
+
+        return (
+          <div
+            onClick={() => handleOpenSlotModal(slot)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              border: '1px solid rgba(139, 29, 29, 0.15)',
+              backgroundColor: 'rgba(139, 29, 29, 0.03)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              display: 'inline-flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+              maxWidth: 210,
+              textAlign: 'center'
+            }}
+            className="slot-pill-hover"
+            title="Bấm để xem chi tiết ca trực"
+          >
+            <span style={{ color: 'var(--primary-color)', fontSize: 12, fontWeight: 600, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {shiftLabel}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, lineHeight: 1 }}>
+              <CalendarOutlined style={{ fontSize: 11, color: '#94a3b8' }} />
+              <span style={{ fontSize: 11, color: '#64748b', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                {formattedDate}
+              </span>
+            </div>
+          </div>
+        );
+      }
     },
     {
       title: 'Khung giờ',
       key: 'time',
-      width: 150,
-      render: (_: any, r: any) => (
-        <Tag color="cyan" icon={<ClockCircleOutlined />}>
-          {r.slot?.startTime} - {r.slot?.endTime}
-        </Tag>
-      )
+      width: 140,
+      render: (_: any, r: any) => {
+        const slot = r.slot || {};
+        const startTime = slot.startTime || r.startTime || '';
+        const endTime = slot.endTime || r.endTime || '';
+        const hasTime = startTime && endTime;
+
+        if (!hasTime) {
+          return (
+            <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13, color: '#94a3b8' }}>
+              —
+            </Text>
+          );
+        }
+
+        return (
+          <Tag 
+            bordered={false}
+            style={{ 
+              fontSize: 11, 
+              padding: '2px 8px', 
+              borderRadius: 6,
+              fontWeight: 600,
+              backgroundColor: '#f1f5f9',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              margin: 0
+            }}
+          >
+            <ClockCircleOutlined style={{ fontSize: 10, color: 'var(--primary-color)' }} />
+            <span>{`${startTime} - ${endTime}`}</span>
+          </Tag>
+        );
+      }
     },
     {
       title: 'Lý do & Ghi chú',
@@ -276,10 +390,10 @@ const LeaveRequestsPage: React.FC = () => {
           <Space direction="vertical" size={4}>
             <Tag color={color} style={{ margin: 0 }}>{text.toUpperCase()}</Tag>
             {r.approver && (
-              <Tooltip title={`Xử lý bởi: ${r.approver.name} lúc ${dayjs(r.updatedAt).format('HH:mm DD/MM')}`}>
+              <Tooltip title={`Xử lý bởi: ${getUserDisplayName(r.approver)} lúc ${dayjs(r.updatedAt).format('HH:mm DD/MM')}`}>
                 <Space size={4}>
                   <AntdAvatar size={16} src={r.approver.avatar} icon={<UserOutlined />} />
-                  <Text type="secondary" style={{ fontSize: 10 }}>{r.approver.name}</Text>
+                  <Text type="secondary" style={{ fontSize: 10 }}>{getUserDisplayName(r.approver)}</Text>
                 </Space>
               </Tooltip>
             )}
@@ -399,7 +513,7 @@ const LeaveRequestsPage: React.FC = () => {
               <Button
                 variant="ghost"
                 buttonSize="small"
-                icon={<CheckCircleOutlined style={{ fontSize: 16 }} />}
+                icon={<CheckOutlined style={{ fontSize: 16, fontWeight: 'bold' }} />}
                 style={{ color: r.status === 'pending' ? '#52c41a' : '#bfbfbf', padding: '4px' }}
                 onClick={() => handleResolve(r.id, 'approved')}
                 disabled={r.status !== 'pending'}
@@ -409,7 +523,7 @@ const LeaveRequestsPage: React.FC = () => {
               <Button
                 variant="ghost"
                 buttonSize="small"
-                icon={<CloseCircleOutlined style={{ fontSize: 16 }} />}
+                icon={<CloseOutlined style={{ fontSize: 16, fontWeight: 'bold' }} />}
                 style={{ color: r.status === 'pending' ? '#ff4d4f' : '#bfbfbf', padding: '4px' }}
                 onClick={() => openRejectModal(r.id)}
                 disabled={r.status !== 'pending'}
@@ -622,6 +736,23 @@ const LeaveRequestsPage: React.FC = () => {
           </ul>
         </div>
       </Modal>
+
+      {/* Slot Detail Modal */}
+      <AdminDutySlotModal
+        open={isSlotModalOpen}
+        onCancel={() => {
+          setIsSlotModalOpen(false);
+          setSelectedSlot(null);
+        }}
+        onSuccess={() => {
+          setIsSlotModalOpen(false);
+          setSelectedSlot(null);
+          fetchRequests();
+        }}
+        slot={selectedSlot}
+        templates={[]}
+        loading={slotModalLoading}
+      />
     </div>
   );
 };

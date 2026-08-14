@@ -118,6 +118,14 @@ class DutyService {
   }
 
   /**
+   * Get slot by ID
+   */
+  async getSlotById(slotId: number): Promise<BaseApiResponse<DutySlot>> {
+    const response = await apiClient.get<BaseApiResponse<DutySlot>>(`/duty/slots/${slotId}`);
+    return response;
+  }
+
+  /**
    * Update duty slot (Lock/Unlock etc)
    */
   async updateSlot(slotId: number, data: Partial<DutySlot>): Promise<BaseApiResponse<DutySlot>> {

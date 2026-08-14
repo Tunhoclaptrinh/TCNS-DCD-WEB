@@ -4,6 +4,7 @@ import { ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, SwapOutl
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
 import { Button } from '@/components/common';
+import { getUserDisplayName } from '@/utils/formatters';
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -54,7 +55,7 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
       render: (_: any, record: any) => (
         <Space>
           <Avatar size="small" src={record.user?.avatar} />
-          <Text>{record.user?.name || 'N/A'}</Text>
+          <Text>{getUserDisplayName(record.user)}</Text>
         </Space>
       )
     },
@@ -87,7 +88,7 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
         return (
           <Space>
             <Avatar size="small" src={u?.avatar} />
-            <Text>{u?.name || 'N/A'}</Text>
+            <Text>{getUserDisplayName(u)}</Text>
           </Space>
         );
       }

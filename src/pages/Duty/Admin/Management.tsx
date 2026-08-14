@@ -17,6 +17,8 @@ import {
   SolutionOutlined,
   ArrowDownOutlined,
   CheckCircleOutlined,
+  ClockCircleOutlined,
+  SaveOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -25,7 +27,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import dutyService, { DutyShift } from '@/services/duty.service';
-import { DataTable, StatisticsCard, TabSwitcher } from '@/components/common';
+import { DataTable, StatisticsCard, TabSwitcher, Button as CommonButton } from '@/components/common';
 import ShiftTemplateModal from './components/ShiftTemplateModal';
 import GroupModal from './components/GroupModal';
 import KipModal from './components/KipModal';
@@ -975,8 +977,28 @@ const DutyManagement = () => {
               key: 'time',
               width: 180,
               render: (_, r: any) => (
-                <Tag color={r.kipId ? "processing" : "error"} style={{ borderRadius: 6, padding: '4px 12px', fontSize: '14px', fontWeight: 600 }}>
-                  {r.startTime} - {r.endTime}
+                <Tag 
+                  bordered={false}
+                  onClick={(e) => { e.stopPropagation(); openSlotEdit(r); }}
+                  style={{ 
+                    borderRadius: 6, 
+                    padding: '4px 12px', 
+                    fontSize: '13px', 
+                    fontWeight: 600,
+                    backgroundColor: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s ease'
+                  }}
+                  className="slot-pill-hover"
+                  title="Bấm để chỉnh sửa ca trực"
+                >
+                  <ClockCircleOutlined style={{ fontSize: 11, color: '#2563eb' }} />
+                  <span>{r.startTime} - {r.endTime}</span>
                 </Tag>
               )
             },
@@ -984,10 +1006,14 @@ const DutyManagement = () => {
               title: 'Ca & Kíp',
               dataIndex: 'shiftLabel',
               key: 'label',
-              render: (val) => (
-                <Space direction="vertical" size={0}>
+              render: (val, r: any) => (
+                <div 
+                  onClick={(e) => { e.stopPropagation(); openSlotEdit(r); }}
+                  style={{ cursor: 'pointer', display: 'inline-block' }}
+                  title="Bấm để chỉnh sửa ca trực"
+                >
                   <Text strong style={{ color: '#1e293b' }}>{val}</Text>
-                </Space>
+                </div>
               )
             },
             {
@@ -1008,14 +1034,14 @@ const DutyManagement = () => {
               width: 150,
               align: 'center',
               render: (_, r: any) => (
-                <Space>
+                <Space onClick={(e) => e.stopPropagation()}>
                   <Tooltip title={r.status === 'locked' ? 'Mở khóa' : 'Khóa ca'}>
                     <Button
                       type="text"
                       size="small"
                       shape="circle"
                       icon={r.status === 'locked' ? <LockOutlined /> : <UnlockOutlined />}
-                      onClick={() => toggleSlotStatus(r)}
+                      onClick={(e) => { e.stopPropagation(); toggleSlotStatus(r); }}
                     />
                   </Tooltip>
                   <Tooltip title="Chỉnh sửa">
@@ -1025,7 +1051,7 @@ const DutyManagement = () => {
                       shape="circle"
                       icon={<EditOutlined />}
                       style={{ color: 'var(--primary-color)' }}
-                      onClick={() => openSlotEdit(r)}
+                      onClick={(e) => { e.stopPropagation(); openSlotEdit(r); }}
                     />
                   </Tooltip>
                   <Popconfirm
@@ -1040,12 +1066,16 @@ const DutyManagement = () => {
                     okButtonProps={{ danger: true }}
                     icon={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
                   >
-                    <Button type="text" size="small" shape="circle" danger icon={<DeleteOutlined />} />
+                    <Button type="text" size="small" shape="circle" danger icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
                   </Popconfirm>
                 </Space>
               )
             }
           ]}
+          onRow={(record: any) => ({
+            onClick: () => openSlotEdit(record),
+            style: { cursor: 'pointer' }
+          })}
         />
       )
     },
@@ -1269,10 +1299,11 @@ const DutyManagement = () => {
                 <QuestionCircleOutlined style={{ color: '#94a3b8', fontSize: 14 }} />
               </Tooltip>
             </Space>
-            <Button
-              type="primary"
+            <CommonButton
+              variant="primary"
+              buttonSize="small"
               icon={<ScheduleOutlined />}
-              style={{ borderRadius: 8, fontWeight: 600, padding: '0 16px', background: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
+              style={{ borderRadius: 8, fontWeight: 600, padding: '0 16px', height: 32 }}
               onClick={() => {
                 coordinationForm.setFieldsValue({ templateId: currentTemplateId });
                 setActiveTab('2');
@@ -1280,7 +1311,7 @@ const DutyManagement = () => {
               disabled={!currentTemplateId}
             >
               Áp dụng Bản mẫu sang Lập lịch
-            </Button>
+            </CommonButton>
           </div>
 
           <div style={{ 
@@ -1438,9 +1469,15 @@ const DutyManagement = () => {
                           }
                         >
                           <Tag 
-                            color="processing" 
                             bordered={false} 
-                            style={{ borderRadius: 6, padding: '2px 10px', cursor: 'pointer' }}
+                            style={{ 
+                              borderRadius: 6, 
+                              padding: '2px 10px', 
+                              cursor: 'pointer',
+                              backgroundColor: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe'
+                            }}
                           >
                             <Space size={4}>
                               <SettingOutlined />
@@ -1500,7 +1537,18 @@ const DutyManagement = () => {
                             {s.startTime} - {s.endTime}
                           </Tag>
                           {s.daysOfWeek && s.daysOfWeek.length < 7 && (
-                            <Tag color="processing" style={{ borderRadius: 6, padding: '0 8px', height: 24, lineHeight: '22px', fontSize: '12px' }}>
+                            <Tag 
+                              bordered={false} 
+                              style={{ 
+                                borderRadius: 6, 
+                                padding: '2px 10px', 
+                                fontSize: '12px', 
+                                fontWeight: 600,
+                                backgroundColor: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe'
+                              }}
+                            >
                               {formatDaysCompact(s.daysOfWeek)}
                             </Tag>
                           )}
@@ -1780,30 +1828,36 @@ const DutyManagement = () => {
             <Divider style={{ margin: '24px 0' }} />
 
             <Alert
-              message={<span style={{ fontWeight: 600 }}>Hướng dẫn Cấu hình Hệ thống</span>}
+              message={<span style={{ fontWeight: 600, color: '#1e293b', fontSize: 14 }}>Hướng dẫn Cấu hình Hệ thống</span>}
               description={
-                <div style={{ marginTop: 8, fontSize: 13 }}>
-                  <p>1. <b>Giới hạn tuần:</b> Dùng để kiểm soát khối lượng công việc của thành viên.</p>
-                  <p>2. <b>Thứ tự ưu tiên:</b> Cá nhân {'>'} Chức danh {'>'} Nhóm vai trò {'>'} Mặc định.</p>
-                  <p>3. <b>Chính sách Hủy kíp:</b> Chế độ "Chặt chẽ" ngăn rút tên khi kíp đã đủ người.</p>
+                <div style={{ marginTop: 8, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
+                  <p style={{ margin: '4px 0' }}>1. <b>Giới hạn tuần:</b> Dùng để kiểm soát khối lượng công việc của thành viên.</p>
+                  <p style={{ margin: '4px 0' }}>2. <b>Thứ tự ưu tiên:</b> Cá nhân {'>'} Chức danh {'>'} Nhóm vai trò {'>'} Mặc định.</p>
+                  <p style={{ margin: '4px 0' }}>3. <b>Chính sách Hủy kíp:</b> Chế độ "Chặt chẽ" ngăn rút tên khi kíp đã đủ người.</p>
                 </div>
               }
               type="info"
               showIcon
-              style={{ marginBottom: 32, borderRadius: 8 }}
+              style={{ 
+                marginBottom: 28, 
+                borderRadius: 8, 
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                padding: '16px 20px'
+              }}
             />
 
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <Button 
-                type="primary" 
+              <CommonButton 
+                variant="primary" 
+                buttonSize="small"
                 htmlType="submit" 
                 loading={settingsLoading} 
-                icon={<SettingOutlined />} 
-                size="large"
-                style={{ borderRadius: 8, padding: '0 40px', fontWeight: 600 }}
+                icon={<SaveOutlined />} 
+                style={{ minWidth: 88 }}
               >
-                Lưu cấu hình hệ thống
-              </Button>
+                Lưu lại
+              </CommonButton>
             </div>
           </Form>
         </div>
@@ -1910,7 +1964,15 @@ const DutyManagement = () => {
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
           <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button key="close" type="default" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120, borderColor: 'var(--primary-color)', color: 'var(--primary-color)', fontWeight: 600 }}>Đã hiểu</Button>
+            <CommonButton 
+              key="close" 
+              variant="primary" 
+              buttonSize="medium" 
+              onClick={() => setIsGuideModalOpen(false)} 
+              style={{ minWidth: 120, height: 36 }}
+            >
+              Đã hiểu
+            </CommonButton>
           </div>
         ]}
         width={600}
@@ -1930,11 +1992,17 @@ const DutyManagement = () => {
             </li>
           </ul>
           <Alert
-            message="Công nghệ Snapshot-Independent"
-            description="Sau khi dập khuôn, lịch trực sẽ được lưu dưới dạng các bản ghi vật lý độc lập. Việc xóa hay sửa bản mẫu sau đó sẽ không làm mất dữ liệu lịch đã tạo."
+            message={<span style={{ fontWeight: 600, color: '#1e293b' }}>Công nghệ Snapshot-Independent</span>}
+            description={<span style={{ color: '#475569', fontSize: 13 }}>Sau khi dập khuôn, lịch trực sẽ được lưu dưới dạng các bản ghi vật lý độc lập. Việc xóa hay sửa bản mẫu sau đó sẽ không làm mất dữ liệu lịch đã tạo.</span>}
             type="info"
             showIcon
-            style={{ marginTop: 16, borderRadius: 12 }}
+            style={{ 
+              marginTop: 16, 
+              borderRadius: 8, 
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              padding: '12px 16px' 
+            }}
           />
         </div>
       </Modal>
