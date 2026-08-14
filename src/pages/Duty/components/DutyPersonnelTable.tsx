@@ -7,6 +7,7 @@ import { useCRUD } from '@/hooks/useCRUD';
 import userService from '@/services/user.service';
 import { User } from '@/types';
 import { DataTableColumn, FilterConfig } from '@/components/common/DataTable/types';
+import { getUserDisplayName } from '@/utils/formatters';
 
 const { Text } = Typography;
 
@@ -98,9 +99,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       align: 'left',
       render: (_, record) => (
         <Text strong>
-          {record.lastName || record.firstName 
-            ? `${record.lastName || ''} ${record.firstName || ''}`.trim()
-            : record.name}
+          {getUserDisplayName(record)}
         </Text>
       )
     },

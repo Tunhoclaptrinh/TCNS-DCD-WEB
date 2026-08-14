@@ -23,6 +23,7 @@ import PromoteModal from './components/PromoteModal';
 import SyncAlumniModal from './components/SyncAlumniModal';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
+import { getUserDisplayName } from '@/utils/formatters';
 import permissionService from '../../services/permission.service';
 import systemSettingService from '@/services/system-setting.service';
 import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS, USER_FIELD_LABELS, USER_VALUE_MAP, DEPARTMENTS } from '@/constants/user.constants';
@@ -37,7 +38,7 @@ const UserPage = () => {
         return parsed.toLocaleString('vi-VN');
     };
 
-    const getFullName = (u: User) => (u.name || `${u.lastName || ''} ${u.firstName || ''}`).trim();
+    const getFullName = (u: User) => getUserDisplayName(u);
 
     const avatarFallback = `data:image/svg+xml;utf8,${encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="20" fill="#f0f0f0"/><circle cx="20" cy="15" r="6" fill="#bfbfbf"/><path d="M8 33c2.5-5 7-8 12-8s9.5 3 12 8" fill="#bfbfbf"/></svg>'
@@ -464,7 +465,7 @@ const UserPage = () => {
             icon: <StopOutlined style={{ color: '#ff4d4f' }} />,
             content: (
                 <div style={{ marginTop: 16 }}>
-                    <p>Cảnh báo: Bạn đang thực hiện khai trừ <strong>{record.name}</strong>. Thành viên này sẽ bị chuyển trạng thái vĩnh viễn sang KHAI TRỪ.</p>
+                    <p>Cảnh báo: Bạn đang thực hiện khai trừ <strong>{getUserDisplayName(record)}</strong>. Thành viên này sẽ bị chuyển trạng thái vĩnh viễn sang KHAI TRỪ.</p>
                     <div style={{ marginTop: 12 }}>
                         <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Lý do khai trừ (bắt buộc):</label>
                         <Input.TextArea 
@@ -550,7 +551,7 @@ const UserPage = () => {
             ellipsis: true,
             align: 'left',
             render: (_: any, record: User) => {
-                const name = record.lastName || record.firstName ? `${record.lastName || ''} ${record.firstName || ''}`.trim() : record.name;
+                const name = getUserDisplayName(record);
                 return (
                     <Typography.Link 
                         onClick={() => openView(record)} 

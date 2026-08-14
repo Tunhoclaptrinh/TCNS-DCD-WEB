@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getUserDisplayName } from '@/utils/formatters';
 import { Modal, Typography, Space, List, Avatar, Tag, Select, message, Divider, Segmented } from 'antd';
 import { 
     TeamOutlined, UserOutlined, CheckCircleOutlined, 
@@ -80,7 +81,7 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
         const absent = Object.values(localAttendance).filter(s => s === 'absent').length;
         const lateUsers = record.participantIds
             .filter(id => localAttendance[id] === 'late')
-            .map(id => users.find(u => String(u.id) === String(id))?.name || `Thành viên #${id}`);
+            .map(id => getUserDisplayName(users.find(u => String(u.id) === String(id))));
 
         Modal.confirm({
             title: 'Xác nhận lưu điểm danh',
@@ -252,7 +253,7 @@ const MeetingAttendanceModal: React.FC<MeetingAttendanceModalProps> = ({
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                                 <Text style={{ fontSize: 13, fontWeight: 600 }}>
-                                                    {user?.name || `Thành viên #${userId}`}
+                                                    {getUserDisplayName(user)}
                                                 </Text>
                                                 {user?.studentId && (
                                                     <Text type="secondary" style={{ fontSize: 12 }}>

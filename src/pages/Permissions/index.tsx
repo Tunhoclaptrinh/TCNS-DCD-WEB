@@ -13,8 +13,9 @@ import {
   Form,
   Tag,
   Empty,
-  Input,
-  Tooltip
+  Tooltip,
+  Dropdown,
+  Select
 } from 'antd';
 import { 
   SafetyCertificateOutlined, 
@@ -24,8 +25,9 @@ import {
   SolutionOutlined,
   UserAddOutlined,
   QuestionCircleOutlined,
-  SearchOutlined,
-  
+  DownOutlined,
+  AppstoreOutlined,
+  FolderOutlined
 } from '@ant-design/icons';
 
 // Services
@@ -50,7 +52,7 @@ import { useAccess } from '@/hooks/useAccess';
 import { formatDateTime } from '@/utils/formatters';
 import './styles.less';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { Panel } = Collapse;
 
 const PermissionsPage: React.FC = () => {
@@ -116,43 +118,132 @@ const PermissionsPage: React.FC = () => {
     }
   }, []);
 
-  // Filtered Groups for Search
+  // Filtered Groups for Search (by Action or Module)
   const filteredGroups = useMemo(() => {
     if (!searchText) return permissionGroups;
+
+    // Direct Module filter
+    if (searchText.startsWith('module:')) {
+      const targetCat = searchText.replace('module:', '');
+      return permissionGroups.filter(g => g.category === targetCat || g.moduleName === targetCat);
+    }
+
     const lowerSearch = searchText.toLowerCase();
-    return permissionGroups.map(group => ({
-      ...group,
-      actions: group.actions.filter((a: any) => 
-        a.name.toLowerCase().includes(lowerSearch) || 
-        a.key.toLowerCase().includes(lowerSearch)
-      )
-    })).filter(group => group.actions.length > 0);
+    return permissionGroups.map(group => {
+      const moduleMatch = (group.moduleName || group.category || '').toLowerCase().includes(lowerSearch);
+      if (moduleMatch) return group;
+
+      return {
+        ...group,
+        actions: group.actions.filter((a: any) => 
+          a.name.toLowerCase().includes(lowerSearch) || 
+          a.key.toLowerCase().includes(lowerSearch)
+        )
+      };
+    }).filter(group => group.actions.length > 0);
   }, [permissionGroups, searchText]);
+
+  // Options for Search Select dropdown (Grouped by Module & Actions)
+  const permissionSelectOptions = useMemo(() => {
+    const result: any[] = [];
+
+    // Group 1: Module Level Quick Selection
+    const moduleOptions: any[] = [];
+    permissionGroups.forEach(group => {
+      const moduleName = group.moduleName || group.category || 'Khác';
+      moduleOptions.push({
+        value: `module:${group.category}`,
+        searchValue: `module ${moduleName} ${group.category}`.toLowerCase(),
+        label: (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
+            <span><FolderOutlined style={{ marginRight: 6, color: 'var(--primary-color)' }} />Tất cả trong Module: {moduleName}</span>
+            <Tag color="blue" style={{ margin: 0, fontSize: 10 }}>{group.actions.length} hành động</Tag>
+          </div>
+        )
+      });
+    });
+
+    if (moduleOptions.length > 0) {
+      result.push({
+        label: <span style={{ color: 'var(--primary-color)', fontWeight: 700, fontSize: 11 }}>DANH MỤC MODULES</span>,
+        options: moduleOptions
+      });
+    }
+
+    // Group 2: Actions grouped by Module
+    permissionGroups.forEach(group => {
+      const moduleName = group.moduleName || group.category || 'Khác';
+      const actionOptions = group.actions.map((a: any) => ({
+        value: a.key,
+        searchValue: `${a.name} ${a.key} ${moduleName}`.toLowerCase(),
+        label: (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 6 }}>
+            <span>{a.name} <span style={{ color: '#8c8c8c', fontSize: 11 }}>({a.key})</span></span>
+            <Tag style={{ margin: 0, fontSize: 10 }}>{moduleName}</Tag>
+          </div>
+        )
+      }));
+
+      if (actionOptions.length > 0) {
+        result.push({
+          label: <span style={{ fontWeight: 600, color: '#595959', fontSize: 11 }}>HÀNH ĐỘNG: {moduleName.toUpperCase()}</span>,
+          options: actionOptions
+        });
+      }
+    });
+
+    return result;
+  }, [permissionGroups]);
 
   // Audited Users
   const auditedUsers = useMemo(() => {
     if (!selectedAuditId) return [];
+
     if (auditType === 'role') {
-      return users.filter(u => u.roleIds?.includes(selectedAuditId));
-    } else if (auditType === 'permission') {
+      const targetRole = roles.find(r => r.id === selectedAuditId || r.key === selectedAuditId);
+      const roleId = targetRole ? targetRole.id : selectedAuditId;
+      const roleKey = targetRole ? targetRole.key : selectedAuditId;
+
+      return users.filter(u => 
+        u.roleIds?.includes(roleId) || 
+        u.roleId === roleId || 
+        u.role?.id === roleId ||
+        (roleKey && u.role?.key === roleKey)
+      );
+    } 
+
+    if (auditType === 'permission') {
       return users.filter(u => {
-        const userRoles = roles.filter(r => u.roleIds?.includes(r.id));
+        const userRoles = roles.filter(r => 
+          u.roleIds?.includes(r.id) || u.roleId === r.id || u.role?.id === r.id
+        );
         const hasFromRole = userRoles.some(r => r.permissions?.includes('*') || r.permissions?.includes(selectedAuditId));
         const isExtra = u.customPermissions?.extra?.includes(selectedAuditId);
         const isDenied = u.customPermissions?.denied?.includes(selectedAuditId);
         return (hasFromRole || isExtra) && !isDenied;
       });
-    } else if (auditType === 'module') {
-      const group = permissionGroups.find(g => g.category === selectedAuditId);
+    } 
+
+    if (auditType === 'module') {
+      const group = permissionGroups.find(g => g.category === selectedAuditId || g.moduleName === selectedAuditId || g.name === selectedAuditId);
       if (!group) return [];
       const moduleActions = group.actions.map((a: any) => a.key) || [];
+
       return users.filter(u => {
-        const userRoles = roles.filter(r => u.roleIds?.includes(r.id));
-        const hasModuleFromRole = userRoles.some(r => r.permissions?.includes('*') || r.permissions?.some((p: string) => moduleActions.includes(p)));
+        const userRoles = roles.filter(r => 
+          u.roleIds?.includes(r.id) || u.roleId === r.id || u.role?.id === r.id
+        );
+        const hasModuleFromRole = userRoles.some(r => 
+          r.permissions?.includes('*') || 
+          r.permissions?.some((p: string) => moduleActions.includes(p))
+        );
         const hasModuleFromExtra = u.customPermissions?.extra?.some((p: string) => moduleActions.includes(p));
-        return hasModuleFromRole || hasModuleFromExtra;
+        const isDeniedModule = u.customPermissions?.denied?.some((p: string) => moduleActions.includes(p));
+
+        return (hasModuleFromRole || hasModuleFromExtra) && !isDeniedModule;
       });
     }
+
     return [];
   }, [users, auditType, selectedAuditId, roles, permissionGroups]);
 
@@ -271,69 +362,74 @@ const PermissionsPage: React.FC = () => {
   return (
     <div className="permissions-matrix-page">
       {/* Header */}
-      <div className="page-header-wrapper" style={{ marginBottom: 24 }}>
+      <div className="page-header-wrapper" style={{ marginBottom: 16 }}>
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
-          <Col xs={24} md={8}>
-            <Title level={2} style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>
-              <SafetyCertificateOutlined style={{ marginRight: 12, color: 'var(--primary-color)' }} />
+          <Col xs={24} md={10}>
+            <span style={{ fontSize: 20, fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>
+              <SafetyCertificateOutlined style={{ marginRight: 10, color: 'var(--primary-color)' }} />
               Phân quyền hệ thống
-            </Title>
-            <Text type="secondary">Quản lý ma trận vai trò, hành động và kiểm soát truy cập chi tiết</Text>
+            </span>
           </Col>
-          <Col xs={24} md={16} style={{ textAlign: 'right' }}>
+          <Col xs={24} md={14} style={{ textAlign: 'right' }}>
             <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <Input 
-                placeholder="Tìm hành động..." 
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: 220, height: 32 }}
-                allowClear
-                prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-              />
-              
-              <div style={{ display: 'flex', gap: 8 }}>
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: 'add-perm',
+                      icon: <PlusOutlined style={{ color: 'var(--primary-color)' }} />,
+                      label: 'Thêm hành động mới',
+                      onClick: () => { setEditingPerm(null); pForm.resetFields(); setIsPermModalVisible(true); },
+                    },
+                    {
+                      key: 'add-role',
+                      icon: <UserAddOutlined />,
+                      label: 'Thêm vai trò mới',
+                      onClick: () => { rForm.resetFields(); setIsRoleModalVisible(true); },
+                    },
+                    {
+                      key: 'bulk-crud',
+                      icon: <ThunderboltOutlined style={{ color: '#722ed1' }} />,
+                      label: 'Tạo nhanh CRUD (Module)',
+                      onClick: () => setIsBulkModalVisible(true),
+                    },
+                    {
+                      type: 'divider',
+                    },
+                    {
+                      key: 'toggle-view',
+                      icon: viewMode === 'unified' ? <BlockOutlined /> : <ThunderboltOutlined />,
+                      label: viewMode === 'unified' ? 'Chuyển sang Giao diện Cũ' : 'Chuyển sang Giao diện Mới',
+                      onClick: () => setViewMode(viewMode === 'unified' ? 'collapse' : 'unified'),
+                    },
+                  ],
+                }}
+                trigger={['click']}
+                placement="bottomRight"
+              >
                 <Button 
                   variant="outline" 
                   buttonSize="small" 
-                  icon={viewMode === 'unified' ? <BlockOutlined /> : <ThunderboltOutlined />} 
-                  onClick={() => setViewMode(viewMode === 'unified' ? 'collapse' : 'unified')}
-                  style={{ height: 32, color: '#1890ff', borderColor: '#1890ff' }}
+                  icon={<AppstoreOutlined style={{ color: 'var(--primary-color)' }} />}
+                  style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                 >
-                  {viewMode === 'unified' ? 'Giao diện Cũ' : 'Giao diện Mới'}
+                  Chức năng <DownOutlined style={{ fontSize: 10 }} />
                 </Button>
+              </Dropdown>
 
-                <Access permission="system:permissions:edit" behavior="disable">
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Button 
-                      variant="outline" 
-                      buttonSize="small" 
-                      icon={<ThunderboltOutlined />} 
-                      onClick={() => setIsBulkModalVisible(true)} 
-                      style={{ color: '#722ed1', borderColor: '#d3adf7', height: 32 }}
-                    >
-                      Tạo CRUD
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      buttonSize="small" 
-                      icon={<UserAddOutlined />} 
-                      onClick={() => { rForm.resetFields(); setIsRoleModalVisible(true); }} 
-                      style={{ height: 32 }}
-                    >
-                      Thêm vai trò
-                    </Button>
-                    <Button 
-                      variant="primary" 
-                      buttonSize="small" 
-                      icon={<PlusOutlined />} 
-                      onClick={() => { setEditingPerm(null); pForm.resetFields(); setIsPermModalVisible(true); }} 
-                      style={{ height: 32 }}
-                    >
-                      Thêm hành động
-                    </Button>
-                  </div>
-                </Access>
-              </div>
+              <Button 
+                variant="ghost" 
+                buttonSize="small" 
+                icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
+                onClick={() => setIsGuideModalVisible(true)} 
+                style={{ 
+                  color: '#595959', 
+                  border: '1px solid #d9d9d9',
+                  height: 32 
+                }}
+              >
+                Hướng dẫn
+              </Button>
             </div>
           </Col>
         </Row>
@@ -344,19 +440,20 @@ const PermissionsPage: React.FC = () => {
           activeKey={activeTab}
           onChange={setActiveTab}
           tabBarExtraContent={
-            <Button 
-              variant="ghost" 
-              buttonSize="small" 
-              icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />} 
-              onClick={() => setIsGuideModalVisible(true)} 
-              style={{ 
-                color: '#595959', 
-                border: '1px solid #d9d9d9',
-                height: 32 
-              }}
-            >
-              Hướng dẫn
-            </Button>
+            <Select
+              showSearch
+              allowClear
+              placeholder="Tìm kiếm hoặc chọn nhanh hành động..."
+              value={searchText || undefined}
+              onChange={(val) => setSearchText(val || '')}
+              onSearch={(val) => setSearchText(val || '')}
+              filterOption={(input, option) =>
+                (option?.searchValue ?? '').includes(input.toLowerCase())
+              }
+              options={permissionSelectOptions}
+              style={{ width: 360, height: 32 }}
+              size="small"
+            />
           }
           items={[
             {

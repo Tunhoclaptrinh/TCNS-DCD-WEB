@@ -18,11 +18,12 @@ import {
     FileTextOutlined,
     PlusOutlined
 } from '@ant-design/icons';
+import { getUserDisplayName } from '@/utils/formatters';
 import './MeetingMinutesModal.less';
 import { Meeting } from '@/services/meeting.service';
 import { User } from '@/types';
 import TinyEditor from '@/components/common/TinyEditor';
-import { UserSelect } from '@/components/common';
+import UserSelect from '@/pages/Users/components/UserSelect';
 import MemberSelectionModal from './MemberSelectionModal';
 import dayjs from 'dayjs';
 
@@ -326,7 +327,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
                                     <div key={id} className="attendance-item">
                                         <Space size={4}>
                                             <Avatar size={18} src={user?.avatar} icon={<UserOutlined />} style={{ border: '1px solid #f0f0f0' }} />
-                                            <Text style={{ fontSize: 13, color: '#374151' }}>{user?.name || `TV #${id}`}</Text>
+                                            <Text style={{ fontSize: 13, color: '#374151' }}>{getUserDisplayName(user)}</Text>
                                         </Space>
                                         {(index < arr.length - 1 || otherChairpersons.length > 0) && <span className="comma">,</span>}
                                     </div>
@@ -419,7 +420,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
                                     <div key={id} className="attendance-item">
                                         <Space size={4}>
                                             <Avatar size={18} src={user?.avatar} icon={<UserOutlined />} style={{ border: '1px solid #f0f0f0' }} />
-                                            <Text style={{ fontSize: 13, color: '#374151' }}>{user?.name || `TV #${id}`}</Text>
+                                            <Text style={{ fontSize: 13, color: '#374151' }}>{getUserDisplayName(user)}</Text>
                                         </Space>
                                         {(index < arr.length - 1 || otherSecretaries.length > 0) && <span className="comma">,</span>}
                                     </div>
@@ -511,7 +512,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
                                         <Space size={4}>
                                             <Avatar size={18} src={user?.avatar} icon={<UserOutlined />} style={{ border: '1px solid #f0f0f0' }} />
                                             <Text style={{ fontSize: 13, color: '#374151' }}>
-                                                {user?.name || `TV #${id}`}
+                                                {getUserDisplayName(user)}
                                                 {isLate && <Text type="warning" style={{ fontSize: 11, marginLeft: 2 }}>(m)</Text>}
                                             </Text>
                                         </Space>
@@ -611,7 +612,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
                                     <div key={id} className="attendance-item">
                                         <Space size={4}>
                                             <Avatar size={18} src={user?.avatar} icon={<UserOutlined />} style={{ border: '1px solid #f0f0f0' }} />
-                                            <Text style={{ fontSize: 13, color: '#374151' }}>{user?.name || `TV #${id}`}</Text>
+                                            <Text style={{ fontSize: 13, color: '#374151' }}>{getUserDisplayName(user)}</Text>
                                         </Space>
                                         {(index < arr.length - 1 || otherAbsent.length > 0) && <span className="comma">,</span>}
                                     </div>
@@ -723,7 +724,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
                                         avatar={<Avatar src={editor?.avatar} icon={<UserOutlined />} />}
                                         title={
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                                <Text strong>{editor?.name || `Thành viên #${item.userId}`}</Text>
+                                                <Text strong>{getUserDisplayName(editor)}</Text>
                                                 <Tag color={item.action.includes('Nộp') ? 'success' : 'warning'} style={{ margin: 0, borderRadius: 4, fontSize: 10 }}>
                                                     {item.action}
                                                 </Tag>

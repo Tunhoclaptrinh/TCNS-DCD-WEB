@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, Row, Col, Avatar, Typography, Progress, Tabs, Card, List, Space, Tag, Empty, Statistic } from 'antd';
 import { UserOutlined, WarningOutlined } from '@ant-design/icons';
+import { getUserDisplayName } from '@/utils/formatters';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -31,7 +32,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ open, user, onCancel 
               <Avatar size={100} src={user.avatar} icon={<UserOutlined />} className="modal-avatar" />
             </Col>
             <Col flex="auto">
-              <Title level={3} style={{ margin: 0 }}>{user.name}</Title>
+              <Title level={3} style={{ margin: 0 }}>{getUserDisplayName(user)}</Title>
               <Text type="secondary" style={{ fontSize: 16 }}>{user.studentId} • {user.position}</Text>
               <div style={{ marginTop: 12 }}>
                 <span className={`status-tag ${user.isWarning ? 'error' : 'success'}`}>

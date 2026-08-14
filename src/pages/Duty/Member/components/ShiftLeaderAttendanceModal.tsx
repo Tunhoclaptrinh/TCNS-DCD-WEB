@@ -25,12 +25,12 @@ import {
   CalendarOutlined,
   UserOutlined,
   TeamOutlined,
-  ThunderboltOutlined,
-  SearchOutlined
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutySlot } from '@/services/duty.service';
-import userService from '@/services/user.service';
+import { getUserDisplayName } from '@/utils/formatters';
+import UserSelect from '@/pages/Users/components/UserSelect';
 import { Button } from '@/components/common';
 import FormModal from '@/components/common/FormModal';
 
@@ -50,8 +50,6 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
   slot
 }) => {
   const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [userOptions, setUserOptions] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
@@ -88,27 +86,7 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
     }
   }, [slot]);
 
-  const handleSearchUser = async (value: string) => {
-    if (!value || value.length < 2) {
-      setUserOptions([]);
-      return;
-    }
-    setSearching(true);
-    try {
-      const res = await userService.publicSearch(value, { limit: 10 });
-      if (res.success && res.data) {
-        setUserOptions(res.data.map((u: any) => ({
-          label: `${u.name || u.fullName} (${u.studentId || u.username || 'N/A'})`,
-          value: u.id,
-          user: u
-        })));
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearching(false);
-    }
-  };
+
 
   const markAttendance = async (userId: number) => {
     if (!slot) return;
@@ -118,7 +96,6 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
       if (res.success) {
         message.success(res.message || 'Cập nhật điểm danh thành công');
         setSelectedUser(null);
-        setUserOptions([]);
         onSuccess();
       }
     } catch (err: any) {
@@ -222,18 +199,11 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
           Điểm danh nhân sự bổ sung (không có trong lịch)
         </Text>
         <Space.Compact style={{ width: '100%' }}>
-          <Select
-            showSearch
+          <UserSelect
             placeholder="Gõ tên hoặc mã nhân sự để tìm kiếm..."
-            filterOption={false}
-            onSearch={handleSearchUser}
-            onChange={setSelectedUser}
-            loading={searching}
-            style={{ flex: 1 }}
-            options={userOptions}
             value={selectedUser}
-            allowClear
-            suffixIcon={<SearchOutlined />}
+            onChange={setSelectedUser}
+            style={{ flex: 1 }}
           />
           <AntButton 
             type="primary" 
@@ -286,7 +256,7 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                     />
                     <div style={{ marginLeft: 16, flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Text strong style={{ fontSize: 15 }}>{u.name || u.fullName || u.username}</Text>
+                        <Text strong style={{ fontSize: 15 }}>{getUserDisplayName(u)}</Text>
                         {getPositionTag(u.position)}
                         {isLeader && <Tag color="warning" icon={<ThunderboltOutlined />}>Quản lý kíp</Tag>}
                         {!u.isAssigned && <Tag color="purple">Bổ sung</Tag>}

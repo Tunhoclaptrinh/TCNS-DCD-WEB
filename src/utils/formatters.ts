@@ -51,3 +51,40 @@ export const capitalizeFirst = (str: string | null | undefined): string => {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
 };
+
+export const getUserDisplayName = (user: any): string => {
+    if (!user) return 'Thành viên';
+
+    // 1. Prioritize Họ và tên đệm + Tên (lastName + firstName)
+    if (user.lastName || user.firstName) {
+        const fullName = `${user.lastName || ''} ${user.firstName || ''}`.trim();
+        if (fullName) return fullName;
+    }
+
+    // 2. fullName property if non-email
+    if (user.fullName && typeof user.fullName === 'string' && user.fullName.trim() && !user.fullName.includes('@')) {
+        return user.fullName.trim();
+    }
+
+    // 3. displayName property if non-email
+    if (user.displayName && typeof user.displayName === 'string' && user.displayName.trim() && !user.displayName.includes('@')) {
+        return user.displayName.trim();
+    }
+
+    // 4. name property if non-email
+    if (user.name && typeof user.name === 'string' && user.name.trim() && !user.name.includes('@')) {
+        return user.name.trim();
+    }
+
+    // 5. username property if non-email
+    if (user.username && typeof user.username === 'string' && user.username.trim() && !user.username.includes('@')) {
+        return user.username.trim();
+    }
+
+    // 6. Fallbacks to name, username, or email
+    if (user.name && typeof user.name === 'string' && user.name.trim()) return user.name.trim();
+    if (user.username && typeof user.username === 'string' && user.username.trim()) return user.username.trim();
+    if (user.email && typeof user.email === 'string' && user.email.trim()) return user.email.trim();
+
+    return 'Thành viên';
+};

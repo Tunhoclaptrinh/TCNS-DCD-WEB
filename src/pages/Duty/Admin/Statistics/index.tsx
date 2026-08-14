@@ -31,7 +31,8 @@ import { generationService } from '@/services/generation.service';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import isoWeek from 'dayjs/plugin/isoWeek';
-import { StatisticsCard, DataTable } from '@/components/common';
+import { DataTable, StatisticsCard } from '@/components/common';
+import { getUserDisplayName } from '@/utils/formatters';
 import UsersDetailModal from '@/pages/Users/components/Detail';
 import MatrixViewModal from './components/MatrixViewModal';
 import QuotaSettingsModal from './components/QuotaSettingsModal';
@@ -704,7 +705,7 @@ const StatisticsPage: React.FC = () => {
             <div style={{ display: 'flex', gap: 20, marginBottom: 24, alignItems: 'center' }}>
               <Avatar size={64} src={detailModal.user.avatar} icon={<UserOutlined />} />
               <div>
-                <Title level={4} style={{ margin: 0 }}>{detailModal.user.name}</Title>
+                <Title level={4} style={{ margin: 0 }}>{getUserDisplayName(detailModal.user)}</Title>
                 <Text type="secondary">{detailModal.user.studentId} | {detailModal.user.department}</Text>
               </div>
             </div>

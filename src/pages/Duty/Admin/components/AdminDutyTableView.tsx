@@ -3,6 +3,7 @@ import { Modal, Space, Tag, Button, Typography, Tooltip } from 'antd';
 import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DutySlot, DutyShift } from '@/services/duty.service';
+import { getUserDisplayName } from '@/utils/formatters';
 
 interface AdminDutyTableViewProps {
   loading: boolean;
@@ -272,7 +273,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                         }
 
                                         return (
-                                          <Tooltip key={idx} title={user.name}>
+                                          <Tooltip key={idx} title={getUserDisplayName(user)}>
                                             <div 
                                               className="stacked-user"
                                               style={{ 
@@ -306,7 +307,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                                   fontWeight: 'inherit'
                                                 }}
                                               >
-                                                {user.name}
+                                                {getUserDisplayName(user)}
                                               </Typography.Text>
                                             </div>
                                           </Tooltip>

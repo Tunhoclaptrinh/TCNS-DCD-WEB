@@ -14,6 +14,7 @@ import PenaltySettingsModal from './PenaltySettingsModal';
 import dayjs from 'dayjs';
 import { Button } from 'antd';
 import { SettingOutlined } from '@ant-design/icons';
+import { getUserDisplayName } from '@/utils/formatters';
 
 const { Text } = Typography;
 
@@ -102,7 +103,7 @@ const RewardPenaltiesPage = () => {
       width: 250,
       render: (_, record: RewardPenaltyEntry) => (
         <Space direction="vertical" size={0}>
-          <Text strong>{record.user?.name || `ID: ${record.userId}`}</Text>
+          <Text strong>{getUserDisplayName(record.user) || `ID: ${record.userId}`}</Text>
           {record.user?.position && (
             <Text type="secondary" style={{ fontSize: '12px' }}>
               {record.user.position.toUpperCase()}

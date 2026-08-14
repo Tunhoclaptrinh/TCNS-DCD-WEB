@@ -81,7 +81,7 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
                     />
                   </Tooltip>
                 )}
-                <Tooltip title="Xem danh sách người dùng trong module này">
+                <Tooltip title="Xem danh sách TV trong module này">
                   <Button 
                     variant="ghost" 
                     buttonSize="small" 
@@ -108,7 +108,7 @@ const MatrixTable: React.FC<MatrixTableProps> = ({
                     {
                       key: 'audit',
                       icon: <UserOutlined />,
-                      label: 'Danh sách người',
+                      label: 'Danh sách TV',
                       onClick: () => onAudit('permission', record.key)
                     },
                     {

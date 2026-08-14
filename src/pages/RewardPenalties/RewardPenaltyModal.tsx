@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import rewardPenaltyService, { RewardPenaltyEntry } from '@/services/reward-penalty.service';
 import userService from '@/services/user.service';
 import { FormModal } from '@/components/common';
+import UserSelect from '@/pages/Users/components/UserSelect';
 
 interface RewardPenaltyModalProps {
   open: boolean;
@@ -86,15 +87,7 @@ const RewardPenaltyModal: React.FC<RewardPenaltyModalProps> = ({
         label="Thành viên"
         rules={[{ required: true, message: 'Vui lòng chọn thành viên' }]}
       >
-        <Select
-          showSearch
-          placeholder="Chọn thành viên"
-          optionFilterProp="children"
-          filterOption={(input, option) =>
-            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-          }
-          options={users.map((u) => ({ label: u.name, value: u.id }))}
-        />
+        <UserSelect users={users} placeholder="Chọn thành viên" />
       </Form.Item>
 
       <Form.Item

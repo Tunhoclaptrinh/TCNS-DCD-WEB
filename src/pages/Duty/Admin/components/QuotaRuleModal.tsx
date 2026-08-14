@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Form, Select, InputNumber, Space, Typography } from 'antd';
 import { UserOutlined, TeamOutlined, SolutionOutlined } from '@ant-design/icons';
 import userService from '@/services/user.service';
+import { getUserDisplayName } from '@/utils/formatters';
 
 const { Text } = Typography;
 
@@ -68,7 +69,7 @@ const QuotaRuleModal: React.FC<QuotaRuleModalProps> = ({ open, onCancel, onSubmi
   const getTargetOptions = () => {
     switch (type) {
       case 'user':
-        return users.map(u => ({ label: `${u.name} (${u.studentId})`, value: u.studentId || u.id }));
+        return users.map(u => ({ label: `${getUserDisplayName(u)} (${u.studentId || u.username || 'N/A'})`, value: u.studentId || u.id }));
       case 'position':
         return [
           { label: 'Trưởng ban (TB)', value: 'tb' },

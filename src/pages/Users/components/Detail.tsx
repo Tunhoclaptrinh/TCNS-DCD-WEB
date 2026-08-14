@@ -3,7 +3,7 @@ import { RiseOutlined, StopOutlined } from '@ant-design/icons';
 import Button from '../../../components/common/Button';
 import Access from '@/components/common/Access';
 import { User } from '../../../types';
-import { formatDate } from '../../../utils/formatters';
+import { formatDate, getUserDisplayName } from '../../../utils/formatters';
 
 const { Text, Link } = Typography;
 
@@ -89,7 +89,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
           />
           <div>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#262626' }}>
-              {user.lastName || user.firstName ? `${user.lastName || ''} ${user.firstName || ''}`.trim() : user.name || '--'}
+              {getUserDisplayName(user)}
             </div>
             <Space direction="vertical" size={0}>
                <Typography.Text copyable={{ text: user.email }}>
@@ -111,8 +111,11 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
           </div>
         </div>
 
-        <Divider orientation="left" style={{ fontSize: 14 }}>Thông tin cơ bản</Divider>
+        <Divider orientation="left" style={{ fontSize: 14 }}>Thông tin cá nhân & Danh tính</Divider>
         <Descriptions column={2} bordered size="small">
+          <Descriptions.Item label="Họ và tên đệm">{user.lastName || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Tên">{user.firstName || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Tên người dùng">{(user as any).username || user.name || '--'}</Descriptions.Item>
           <Descriptions.Item label="Mã SV">{user.studentId || '--'}</Descriptions.Item>
           <Descriptions.Item label="Mã lớp">{user.classId || '--'}</Descriptions.Item>
           <Descriptions.Item label="Khóa/Thế hệ">
@@ -122,7 +125,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
           <Descriptions.Item label="Giới tính">
             {user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : 'Khác'}
           </Descriptions.Item>
-          <Descriptions.Item label="Quê quán">{user.hometown || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Quê quán" span={2}>{user.hometown || '--'}</Descriptions.Item>
         </Descriptions>
 
         <Divider orientation="left" style={{ fontSize: 14 }}>Liên hệ & Tổ chức</Divider>
@@ -152,7 +155,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
         </Descriptions>
 
         <div style={{ marginTop: 16, textAlign: 'right', fontSize: 11, color: '#bfbfbf' }}>
-          ID: {user.id} • Tạo ngày: {formatDateTime(user.createdAt)}
+          ID: <Text strong style={{color:'var(--primary-color)'}} >{user.id || '--'}</Text> • Ngày tạo: {formatDateTime(user.createdAt)}
         </div>
       </div>
     </Modal>

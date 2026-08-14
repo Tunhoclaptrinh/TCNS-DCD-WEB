@@ -11,6 +11,7 @@ import { User } from '@/types';
 import { DataTableColumn } from '@/components/common/DataTable/types';
 import { useCRUD } from '@/hooks/useCRUD';
 import { POSITION_LABELS, POSITION_FILTERS, DEPARTMENT_FILTERS } from '@/constants/user.constants';
+import { getUserDisplayName } from '@/utils/formatters';
 
 interface MeetingMemberPickerProps {
   value?: number[];
@@ -52,7 +53,7 @@ export const MeetingMemberTable: React.FC<{
       render: (_, record) => (
         <Space style={{marginLeft: 8}}>
           <Avatar src={record.avatar} icon={<UserOutlined />} size="small" />
-          <Text strong style={{ fontSize: 13 }}>{record.name}</Text>
+          <Text strong style={{ fontSize: 13 }}>{getUserDisplayName(record)}</Text>
         </Space>
       ),
     },
@@ -238,7 +239,7 @@ const MeetingMemberPicker: React.FC<MeetingMemberPickerProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 8 }}>
                   <Avatar size={24} icon={<UserOutlined />} src={userDetail?.avatar} />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <Text strong style={{ fontSize: 13 }}>{userDetail?.name || `Thành viên #${id}`}</Text>
+                    <Text strong style={{ fontSize: 13 }}>{getUserDisplayName(userDetail) || `Thành viên #${id}`}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {userDetail?.studentId ? `(${userDetail.studentId})` : ''}
                     </Text>

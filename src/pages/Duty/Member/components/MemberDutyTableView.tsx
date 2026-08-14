@@ -3,6 +3,7 @@ import { Space, Tag, Button, Tooltip, Typography } from 'antd';
 import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DutySlot, DutyShift } from '@/services/duty.service';
+import { getUserDisplayName } from '@/utils/formatters';
 
 interface MemberDutyTableViewProps {
   templates: DutyShift[];
@@ -279,8 +280,9 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                                         );
                                       }
 
+                                      const displayName = getUserDisplayName(user);
                                       return (
-                                        <Tooltip key={idx} title={`${user.name}${isMe ? ' (Tôi)' : ''}`}>
+                                        <Tooltip key={idx} title={`${displayName}${isMe ? ' (Tôi)' : ''}`}>
                                           <div 
                                             className={`stacked-user ${isMe ? 'is-me' : ''}`}
                                             style={{ 
@@ -303,7 +305,7 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                                                 fontWeight: 'inherit'
                                               }}
                                             >
-                                              {user.name}
+                                              {displayName}
                                             </Typography.Text>
                                           </div>
                                         </Tooltip>
