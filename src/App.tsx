@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useLayoutEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useRoutes, useNavigate } from "react-router-dom";
 import { ConfigProvider, theme as antdTheme, App as AntApp } from "antd";
@@ -15,11 +15,28 @@ const App: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const routing = useRoutes(routes);
+  const [dynamicPrimary, setDynamicPrimary] = useState<string>("#8b1d1d");
 
   const { isInitialized, loading } = useSelector(
     (state: RootState) => state.auth,
   );
   const { theme: uiTheme } = useSelector((state: RootState) => state.ui);
+
+  // Dynamically resolve --primary-color from CSS root styles
+  useLayoutEffect(() => {
+    const readCssColor = () => {
+      const computed = getComputedStyle(document.documentElement)
+        .getPropertyValue("--primary-color")
+        .trim();
+      if (computed && computed !== dynamicPrimary) {
+        setDynamicPrimary(computed);
+      }
+    };
+    readCssColor();
+    const observer = new MutationObserver(readCssColor);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
+    return () => observer.disconnect();
+  }, [dynamicPrimary]);
 
   // Initialize Auth on Mount
   useEffect(() => {
@@ -46,6 +63,9 @@ const App: React.FC = () => {
     return <Loading fullScreen message="Đang khởi tạo..." />;
   }
 
+  const primaryColor = dynamicPrimary;
+  const controlOutline = "color-mix(in srgb, var(--primary-color) 20%, transparent)";
+
   return (
     <ErrorBoundary>
       <ConfigProvider
@@ -56,12 +76,14 @@ const App: React.FC = () => {
               ? antdTheme.darkAlgorithm
               : antdTheme.defaultAlgorithm,
           token: {
-            // Lotus Pink Theme
-            colorPrimary: "var(--primary-color)",
+            // Theme Colors
+            colorPrimary: primaryColor,
+            colorLink: primaryColor,
+            controlOutline: controlOutline,
             colorSuccess: "#22C55E",
             colorWarning: "#F97316",
             colorError: "#EF4444",
-            colorInfo: "#3B82F6",
+            colorInfo: primaryColor,
 
             // Border & Radius
             borderRadius: 8,
@@ -83,25 +105,40 @@ const App: React.FC = () => {
               fontSize: 14,
               borderRadius: 8,
               primaryColor: "#FFFFFF",
+              colorPrimary: primaryColor,
             },
             Input: {
               controlHeight: 32,
               fontSize: 14,
               borderRadius: 8,
+              activeBorderColor: primaryColor,
+              hoverBorderColor: primaryColor,
+              activeShadow: `0 0 0 2px ${controlOutline}`,
             },
             Select: {
               controlHeight: 32,
               fontSize: 14,
               borderRadius: 8,
+              activeBorderColor: primaryColor,
+              hoverBorderColor: primaryColor,
             },
             DatePicker: {
               controlHeight: 32,
               fontSize: 14,
               borderRadius: 8,
+              activeBorderColor: primaryColor,
+              hoverBorderColor: primaryColor,
+            },
+            InputNumber: {
+              controlHeight: 32,
+              fontSize: 14,
+              borderRadius: 8,
+              activeBorderColor: primaryColor,
+              hoverBorderColor: primaryColor,
             },
             Descriptions: {
               labelBg: "#fafafa",
-              titleColor: "var(--primary-color)",
+              titleColor: primaryColor,
               fontSize: 14,
               paddingXS: 8,
             },
