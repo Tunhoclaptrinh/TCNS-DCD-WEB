@@ -65,7 +65,7 @@ export const adminMenu: IMenuItem[] = [
             {
                 key: 'duty-swaps',
                 path: '/admin/duty/swaps',
-                name: 'Đổi kíp',
+                name: 'Duyệt Đổi kíp',
                 accessFilter: ['duty:approve_swap'],
             },
         ]
