@@ -21,7 +21,7 @@ import {
   ArrowRightOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons';
-import { DataTable, Button, StatisticsCard, Access } from '@/components/common';
+import { DataTable, Button, StatisticsCard, Access, FormModal } from '@/components/common';
 import { DataTableColumn, FilterConfig } from '@/components/common/DataTable/types';
 import roleService, { Role } from '@/services/role.service';
 import { useCRUD } from '@/hooks/useCRUD';
@@ -272,85 +272,56 @@ const RoleManagement: React.FC = () => {
         onPaginationChange={handleTableChange}
       />
 
-      <Modal
-        title={
-          <div style={{ textAlign: 'left', width: '100%' }}>
-            <Space>
-              <SafetyOutlined style={{ color: 'var(--primary-color)' }} />
-              <Text strong style={{ fontSize: 18 }}>
-                {editingRole ? "Cập nhật vai trò" : "Thêm vai trò mới"}
-              </Text>
-            </Space>
-          </div>
-        }
+      <FormModal
         open={isModalVisible}
+        entityName="Vai trò"
+        isEditing={!!editingRole}
+        icon={<SafetyOutlined style={{ color: 'var(--primary-color)' }} />}
+        form={form}
         onCancel={() => setIsModalVisible(false)}
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsModalVisible(false)}
-              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
-            >
-              Hủy
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={() => form.submit()}
-              loading={loading}
-              style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
-            >
-              {editingRole ? "Lưu thay đổi" : "Tạo vai trò"}
-            </Button>
-          </div>
-        }
-        destroyOnClose
-        centered
+        onOk={onFinish}
+        okText="Lưu lại"
+        cancelText="Hủy"
+        loading={loading}
+        initialValues={{ isActive: true, permissions: [] }}
         width={500}
+        centered
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={onFinish}
-          initialValues={{ isActive: true, permissions: [] }}
-          style={{ marginTop: 16 }}
+        <Form.Item
+          name="name"
+          label="Tên vai trò"
+          rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}
         >
-          <Form.Item
-            name="name"
-            label="Tên vai trò"
-            rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}
-          >
-            <Input placeholder="VD: Ban Truyền thông, Đội trưởng..." size="large" />
-          </Form.Item>
+          <Input placeholder="VD: Ban Truyền thông, Đội trưởng..." size="large" />
+        </Form.Item>
 
-          <Form.Item
-            name="key"
-            label="Mã định danh (Key)"
-            rules={[
-              { required: true, message: 'Vui lòng nhập mã key' },
-              { pattern: /^[a-z0-9_]+$/, message: 'Chữ thường, số và dấu gạch dưới' }
-            ]}
-            extra="Dùng để kiểm tra quyền trong code (vd: ns_specialist)"
-          >
-            <Input placeholder="vd: truyen_thong" disabled={!!editingRole && editingRole.key === 'admin'} size="large" />
-          </Form.Item>
+        <Form.Item
+          name="key"
+          label="Mã định danh (Key)"
+          rules={[
+            { required: true, message: 'Vui lòng nhập mã key' },
+            { pattern: /^[a-z0-9_]+$/, message: 'Chữ thường, số và dấu gạch dưới' }
+          ]}
+          extra="Dùng để kiểm tra quyền trong code (vd: ns_specialist)"
+        >
+          <Input placeholder="vd: truyen_thong" disabled={!!editingRole && editingRole.key === 'admin'} size="large" />
+        </Form.Item>
 
-          <Form.Item
-            name="description"
-            label="Mô tả"
-          >
-            <Input.TextArea rows={3} placeholder="Nhiệm vụ hoặc phạm vi của vai trò này..." />
-          </Form.Item>
+        <Form.Item
+          name="description"
+          label="Mô tả"
+        >
+          <Input.TextArea rows={3} placeholder="Nhiệm vụ hoặc phạm vi của vai trò này..." />
+        </Form.Item>
 
-          <Form.Item
-            name="isActive"
-            label="Trạng thái hoạt động"
-            valuePropName="checked"
-          >
-            <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
-          </Form.Item>
-        </Form>
-      </Modal>
+        <Form.Item
+          name="isActive"
+          label="Trạng thái hoạt động"
+          valuePropName="checked"
+        >
+          <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+        </Form.Item>
+      </FormModal>
 
       <RolePermissionModal
         open={isPermModalVisible}

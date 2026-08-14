@@ -23,6 +23,7 @@ import {
 import roleService, { Role } from '@/services/role.service';
 import permissionService from '@/services/permission.service';
 import Button from '@/components/common/Button';
+import FormModal from '@/components/common/FormModal';
 import { useAccess } from '@/hooks/useAccess';
 
 const { Panel } = Collapse;
@@ -159,17 +160,19 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
           <Button 
             variant="outline" 
+            buttonSize="medium"
             onClick={onCancel}
-            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            style={{ minWidth: 100 }}
           >
             Hủy
           </Button>
           <Button 
             variant="primary" 
+            buttonSize="medium"
             loading={saving} 
             onClick={handleSave}
             disabled={role?.key === 'admin'}
-            style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            style={{ minWidth: 120 }}
           >
             Lưu thay đổi
           </Button>
@@ -251,70 +254,48 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
       </Spin>
 
       {/* Quick Add Permission Modal */}
-      <Modal
+      <FormModal
+        open={isPermModalVisible}
         title={
           <div style={{ textAlign: 'left', width: '100%' }}>
             <Space>
               <PlusOutlined style={{ color: 'var(--primary-color)' }} />
               <Text strong style={{ fontSize: 18 }}>
-                Thêm hành động mới: {currentModule}
+                Thêm mới hành động: {currentModule}
               </Text>
             </Space>
           </div>
         }
-        open={isPermModalVisible}
+        form={permForm}
         onCancel={() => setIsPermModalVisible(false)}
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsPermModalVisible(false)}
-              style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
-            >
-              Hủy
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={() => permForm.submit()}
-              loading={saving}
-              style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
-            >
-              Tạo hành động
-            </Button>
-          </div>
-        }
+        onOk={handleCreatePermission}
+        okText="Lưu lại"
+        cancelText="Hủy"
+        loading={saving}
         width={600}
         centered
-        destroyOnClose
       >
-        <Form
-          form={permForm}
-          layout="vertical"
-          onFinish={handleCreatePermission}
-          style={{ marginTop: 16 }}
+        <Form.Item name="module" hidden><Input /></Form.Item>
+        
+        <Form.Item
+          name="name"
+          label="Tên hành động"
+          rules={[{ required: true, message: 'Nhập tên hành động' }]}
         >
-          <Form.Item name="module" hidden><Input /></Form.Item>
-          
-          <Form.Item
-            name="name"
-            label="Tên hành động"
-            rules={[{ required: true, message: 'Nhập tên hành động' }]}
-          >
-            <Input placeholder="VD: Gửi thông báo, In báo cáo..." size="large" />
-          </Form.Item>
+          <Input placeholder="VD: Gửi thông báo, In báo cáo..." size="large" />
+        </Form.Item>
 
-          <Form.Item
-            name="key"
-            label="Mã định danh (Key)"
-            rules={[
-              { required: true, message: 'Nhập mã key' },
-              { pattern: /^[a-z0-9_:]+$/, message: 'vd: module:action' }
-            ]}
-          >
-            <Input placeholder="vd: documents:print" size="large" />
-          </Form.Item>
-        </Form>
-      </Modal>
+        <Form.Item
+          name="key"
+          label="Mã định danh (Key)"
+          rules={[
+            { required: true, message: 'Nhập mã key' },
+            { pattern: /^[a-z0-9_:]+$/, message: 'vd: module:action' }
+          ]}
+        >
+          <Input placeholder="vd: documents:print" size="large" />
+        </Form.Item>
+      </FormModal>
     </Modal>
   );
 };

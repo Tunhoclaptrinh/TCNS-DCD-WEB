@@ -1,6 +1,6 @@
 import React from 'react';
-import { Modal, Form, Input, Checkbox, Space, Typography } from 'antd';
-import { Button } from '@/components/common';
+import { Form, Input, Checkbox, Space, Typography } from 'antd';
+import FormModal from '@/components/common/FormModal';
 import { ThunderboltOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -19,7 +19,8 @@ const BulkModal: React.FC<BulkModalProps> = ({
   form
 }) => {
   return (
-    <Modal
+    <FormModal
+      open={visible}
       title={
         <div style={{ textAlign: 'left', width: '100%' }}>
           <Space>
@@ -28,54 +29,30 @@ const BulkModal: React.FC<BulkModalProps> = ({
           </Space>
         </div>
       }
-      open={visible}
+      form={form}
       onCancel={onCancel}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
-          <Button 
-            variant="outline" 
-            onClick={onCancel}
-            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
-          >
-            Hủy
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={() => form.submit()}
-            style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
-          >
-            Tạo ngay
-          </Button>
-        </div>
-      }
+      onOk={onFinish}
+      okText="Lưu lại"
+      cancelText="Hủy"
       width={550}
       centered
-      destroyOnClose
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onFinish}
-        initialValues={{ actions: ['list', 'read', 'create', 'update', 'delete'] }}
-        style={{ marginTop: 16 }}
-      >
-        <Form.Item name="moduleName" label="Tên chức năng (VD: Thiết bị)" rules={[{ required: true }]}>
-          <Input placeholder="VD: Quản lý Kho" size="large" />
-        </Form.Item>
-        <Form.Item name="moduleKey" label="Mã Module (VD: devices)" rules={[{ required: true }]}>
-          <Input placeholder="vd: files" size="large" />
-        </Form.Item>
-        <Form.Item name="actions" label="Các hành động cần tạo">
-          <Checkbox.Group options={[
-            { label: 'Xem danh sách', value: 'list' },
-            { label: 'Xem chi tiết', value: 'read' },
-            { label: 'Thêm mới', value: 'create' },
-            { label: 'Cập nhật', value: 'update' },
-            { label: 'Xóa', value: 'delete' },
-          ]} />
-        </Form.Item>
-      </Form>
-    </Modal>
+      <Form.Item name="moduleName" label="Tên chức năng (VD: Thiết bị)" rules={[{ required: true }]}>
+        <Input placeholder="VD: Quản lý Kho" size="large" />
+      </Form.Item>
+      <Form.Item name="moduleKey" label="Mã Module (VD: devices)" rules={[{ required: true }]}>
+        <Input placeholder="vd: files" size="large" />
+      </Form.Item>
+      <Form.Item name="actions" label="Các hành động cần tạo">
+        <Checkbox.Group options={[
+          { label: 'Xem danh sách', value: 'list' },
+          { label: 'Xem chi tiết', value: 'read' },
+          { label: 'Thêm mới', value: 'create' },
+          { label: 'Cập nhật', value: 'update' },
+          { label: 'Xóa', value: 'delete' },
+        ]} />
+      </Form.Item>
+    </FormModal>
   );
 };
 

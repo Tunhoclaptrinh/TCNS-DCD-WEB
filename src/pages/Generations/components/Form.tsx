@@ -23,36 +23,14 @@ const GenerationForm: React.FC<GenerationFormProps> = ({
   return (
     <FormModal
       open={open}
-      title={
-        <div style={{ textAlign: 'left', width: '100%' }}>
-          <Space>
-            <TeamOutlined style={{ color: 'var(--primary-color)' }} />
-            <span style={{ fontWeight: 600, fontSize: 18 }}>
-              {editingId ? 'Cập nhật Khóa/Thế hệ' : 'Thêm mới Khóa/Thế hệ'}
-            </span>
-          </Space>
-        </div>
-      }
+      entityName="Khóa/Thế hệ"
+      isEditing={!!editingId}
+      icon={<TeamOutlined style={{ color: 'var(--primary-color)' }} />}
       form={form}
+      okText="Lưu lại"
+      cancelText="Hủy"
+      onOk={onOk}
       onCancel={onCancel}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
-          <Button 
-            variant="outline" 
-            onClick={onCancel}
-            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
-          >
-            Hủy
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={onOk}
-            style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
-          >
-            Lưu lại
-          </Button>
-        </div>
-      }
       centered
     >
       <div style={{ padding: '0 4px' }}>

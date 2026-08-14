@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Form, Spin } from 'antd';
+import { Modal, Form, Spin, Space } from 'antd';
 import { FormModalProps } from './types';
 import Button from '../Button';
 
@@ -12,8 +12,11 @@ const FormModal: React.FC<FormModalProps> = ({
   open = false,
   onCancel,
   onOk,
-  title = 'Form',
+  title,
   width = 600,
+  entityName,
+  isEditing,
+  icon,
 
   // Form props
   form,
@@ -39,6 +42,17 @@ const FormModal: React.FC<FormModalProps> = ({
 }) => {
   const [internalLoading, setInternalLoading] = React.useState(false);
   const isSpinning = loading || internalLoading;
+
+  const modalTitle = title || (entityName ? (
+    <div style={{ textAlign: 'left', width: '100%' }}>
+      <Space>
+        {icon}
+        <span style={{ fontWeight: 600, fontSize: 18 }}>
+          {isEditing ? `Chỉnh sửa ${entityName}` : `Thêm mới ${entityName}`}
+        </span>
+      </Space>
+    </div>
+  ) : 'Form');
 
   const handleOk = async () => {
     try {
@@ -88,7 +102,7 @@ const FormModal: React.FC<FormModalProps> = ({
 
   return (
     <Modal
-      title={title}
+      title={modalTitle}
       open={open}
       onCancel={handleCancel}
       onOk={handleOk}

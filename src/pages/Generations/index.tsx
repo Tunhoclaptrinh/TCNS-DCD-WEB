@@ -287,7 +287,7 @@ const GenerationsPage = () => {
                             variant="outline" 
                             buttonSize="small" 
                             onClick={() => setIsDetailVisible(false)}
-                            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+                            style={{ minWidth: 100 }}
                         >
                             Đóng
                         </Button>

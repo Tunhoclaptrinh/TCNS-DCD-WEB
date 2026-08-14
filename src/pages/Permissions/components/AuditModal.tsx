@@ -48,7 +48,7 @@ const AuditModal: React.FC<AuditModalProps> = ({
           <Button 
             variant="outline" 
             onClick={onCancel}
-            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
+            style={{ minWidth: 100 }}
           >
             Đóng
           </Button>

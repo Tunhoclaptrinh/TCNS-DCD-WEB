@@ -153,7 +153,8 @@ const UsersForm: React.FC<UsersFormProps> = ({
   return (
     <FormModal
       open={open}
-      title={editingId ? 'Cập nhật thành viên' : 'Thêm mới thành viên'}
+      entityName="thành viên"
+      isEditing={!!editingId}
       onCancel={onCancel}
       onOk={onOk}
       form={form}

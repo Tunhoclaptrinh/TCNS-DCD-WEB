@@ -29,7 +29,7 @@ const GuideModal: React.FC<GuideModalProps> = ({ visible, onCancel }) => {
             variant="primary" 
             buttonSize="small" 
             onClick={onCancel}
-            style={{ minWidth: 120, background: '#8b1d1d', borderColor: '#8b1d1d' }}
+            style={{ minWidth: 120 }}
           >
             Đã hiểu
           </Button>

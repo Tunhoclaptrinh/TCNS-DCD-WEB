@@ -1,6 +1,6 @@
 import React from 'react';
-import { Modal, Form, Input, Select, Divider, Typography } from 'antd';
-import { Button } from '@/components/common';
+import { Form, Input, Select, Divider, Typography } from 'antd';
+import FormModal from '@/components/common/FormModal';
 import { Permission } from '@/services/permission.service';
 
 const { Text } = Typography;
@@ -23,44 +23,18 @@ const PermModal: React.FC<PermModalProps> = ({
   form
 }) => {
   return (
-    <Modal
-      title={
-        <div style={{ textAlign: 'left', width: '100%' }}>
-          <Text strong style={{ fontSize: 18 }}>
-            {editingPerm ? "Cập nhật quyền hạn" : "Thêm quyền hạn mới"}
-          </Text>
-        </div>
-      }
+    <FormModal
       open={visible}
+      entityName="Quyền hạn"
+      isEditing={!!editingPerm}
+      form={form}
       onCancel={onCancel}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 0' }}>
-          <Button 
-            variant="outline" 
-            onClick={onCancel}
-            style={{ minWidth: 100, color: '#8b1d1d', borderColor: '#8b1d1d' }}
-          >
-            Hủy
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={() => form.submit()}
-            style={{ minWidth: 120 }}
-          >
-            {editingPerm ? "Lưu lại" : "Tạo ngay"}
-          </Button>
-        </div>
-      }
+      onOk={onSave}
+      okText="Lưu lại"
+      cancelText="Hủy"
       width={500}
       centered
-      destroyOnClose
     >
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onSave}
-        style={{ marginTop: 16 }}
-      >
         <Form.Item
           name="name"
           label="Tên hành động / Quyền hạn"
@@ -107,8 +81,7 @@ const PermModal: React.FC<PermModalProps> = ({
         <Form.Item name="description" label="Mô tả">
           <Input.TextArea rows={3} placeholder="Mô tả tác vụ này cho phép làm gì..." />
         </Form.Item>
-      </Form>
-    </Modal>
+    </FormModal>
   );
 };
 

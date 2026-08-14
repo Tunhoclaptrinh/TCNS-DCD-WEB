@@ -318,7 +318,7 @@ const PermissionsPage: React.FC = () => {
                       buttonSize="small" 
                       icon={<UserAddOutlined />} 
                       onClick={() => { rForm.resetFields(); setIsRoleModalVisible(true); }} 
-                      style={{ color: '#8b1d1d', borderColor: '#8b1d1d', height: 32 }}
+                      style={{ height: 32 }}
                     >
                       Thêm vai trò
                     </Button>
@@ -327,7 +327,7 @@ const PermissionsPage: React.FC = () => {
                       buttonSize="small" 
                       icon={<PlusOutlined />} 
                       onClick={() => { setEditingPerm(null); pForm.resetFields(); setIsPermModalVisible(true); }} 
-                      style={{ background: '#8b1d1d', borderColor: '#8b1d1d', height: 32 }}
+                      style={{ height: 32 }}
                     >
                       Thêm hành động
                     </Button>

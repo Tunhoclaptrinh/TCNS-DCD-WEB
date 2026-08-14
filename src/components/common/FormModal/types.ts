@@ -13,4 +13,7 @@ export interface FormModalProps extends ModalProps {
     preserve?: boolean;
     onValuesChange?: (changedValues: any, allValues: any) => void;
     size?: 'small' | 'middle' | 'large';
+    entityName?: string;
+    isEditing?: boolean;
+    icon?: ReactNode;
 }
