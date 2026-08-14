@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Modal, Space, Button, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Tag, DatePicker, Radio } from 'antd';
+import { Card, Modal, Space, Button, message, Typography, Select, Tooltip, Spin, Switch, Dropdown, Menu, Alert, Segmented, Tag, DatePicker, Radio, Divider } from 'antd';
 import {
   LeftOutlined,
   RightOutlined,
@@ -111,6 +111,7 @@ const AdminDutyCalendar: React.FC = () => {
   const [manualTemplateGroupId, setManualTemplateGroupId] = useState<string | null>(null);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]); // For table view co-axial
+  const [filterRowCollapsed, setFilterRowCollapsed] = useState(false);
   const [userMetadata, setUserMetadata] = useState<{ weeklyQuota: number, registeredKips: number, limitMode: string } | null>(null);
   const [currentPeriodConfig, setCurrentPeriodConfig] = useState<any>(null);
 
@@ -510,109 +511,86 @@ const AdminDutyCalendar: React.FC = () => {
       <Card
         className="duty-calendar-card"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
-                <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
-                <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '11px', fontWeight: 600 }}>H.tại</Button>
-                <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px', whiteSpace: 'nowrap' }}>
-                  Tuần {currentWeek.format('ww')}
-                </Title>
-                <Text type="secondary" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</Text>
-              </div>
-
-              {userMetadata && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
-                  {isAdmin ? (
-                    <Tooltip title="Xem và chỉnh sửa cấu hình định mức cho tuần này">
-                      <Tag 
-                        bordered={false} 
-                        color="blue" 
-                        style={{ borderRadius: 6, margin: 0, fontWeight: 600, cursor: 'pointer' }}
-                        onClick={() => setIsSetupModalVisible(true)}
-                      >
-                        <Space size={4}>
-                          <SolutionOutlined style={{ fontSize: 12 }} />
-                          <span>Xem chi tiết định mức</span>
-                        </Space>
-                      </Tag>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip title={`Định mức đăng ký tuần của bạn: ${userMetadata.weeklyQuota} kíp`}>
-                      <Tag bordered={false} color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} style={{ borderRadius: 6, margin: 0, fontWeight: 600 }}>
-                        Định mức: {userMetadata.registeredKips} / {userMetadata.weeklyQuota}
-                      </Tag>
-                    </Tooltip>
-                  )}
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 0, padding: '6px 0' }}>
+            {/* Hàng 1: Điều hướng + Thao tác */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              {/* Trái: Điều hướng & Ngày tháng & Định mức */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="week-nav-group" style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '3px 4px', borderRadius: 8, gap: 2 }}>
+                  <Button icon={<LeftOutlined style={{ fontSize: 11 }} />} type="text" size="small" onClick={handlePrevWeek} style={{ height: 26, width: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
+                  <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600, height: 26, padding: '0 10px', borderRadius: 6, color: '#334155' }}>Hôm nay</Button>
+                  <Button icon={<RightOutlined style={{ fontSize: 11 }} />} type="text" size="small" onClick={handleNextWeek} style={{ height: 26, width: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
                 </div>
-              )}
-              
-              <Select
-                value={viewMode}
-                onChange={setViewMode}
-                bordered={false}
-                options={[
-                  { label: <Space size={4}><CalendarOutlined /><span>Lịch</span></Space>, value: 'calendar' },
-                  { label: <Space size={4}><UnorderedListOutlined /><span>Bảng</span></Space>, value: 'table' }
-                ]}
-                style={{ width: 95, fontWeight: 600 }}
-              />
-            </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Segmented 
-                options={[
-                  { label: 'Chuẩn', value: 'off' },
-                  { label: viewMode === 'table' ? 'Tất cả' : 'Ca + Sự kiện', value: 'overlap' },
-                  { label: 'Sự kiện', value: 'all' }
-                ]}
-                value={eventFocusMode}
-                onChange={(v: any) => setEventFocusMode(v)}
-              />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px', whiteSpace: 'nowrap' }}>
+                    Tuần {currentWeek.format('ww')}
+                  </Title>
+                  <Text type="secondary" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</Text>
+                </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Tooltip title="Hiện bản mẫu">
-                  <Switch 
-                    checked={showDefaultBoundaries} 
-                    onChange={(checked) => {
-                      setShowDefaultBoundaries(checked);
-                      if (!checked) setManualTemplateGroupId(null);
-                    }}
+                {userMetadata && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {isAdmin ? (
+                      <Tooltip title="Xem và chỉnh sửa cấu hình định mức cho tuần này">
+                        <Tag 
+                          bordered={false} 
+                          style={{ borderRadius: 6, margin: 0, fontWeight: 600, cursor: 'pointer', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '3px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          onClick={() => setIsSetupModalVisible(true)}
+                        >
+                          <SolutionOutlined style={{ fontSize: 11, color: '#2563eb' }} />
+                          <span>Chi tiết định mức</span>
+                        </Tag>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title={`Định mức đăng ký tuần của bạn: ${userMetadata.weeklyQuota} kíp`}>
+                        <Tag bordered={false} color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} style={{ borderRadius: 6, margin: 0, fontWeight: 600, fontSize: 12, padding: '3px 10px' }}>
+                          Định mức: {userMetadata.registeredKips} / {userMetadata.weeklyQuota}
+                        </Tag>
+                      </Tooltip>
+                    )}
+                  </div>
+                )}
+              {/* Inline segmented khi thu gọn hàng 2 */}
+              {filterRowCollapsed && (
+                <>
+                  <Divider type="vertical" style={{ height: 20, margin: '0 4px' }} />
+                  <Segmented
+                    options={[
+                      { label: <Space size={4}><CalendarOutlined style={{ fontSize: 12 }} /><span>Lịch</span></Space>, value: 'calendar' },
+                      { label: <Space size={4}><UnorderedListOutlined style={{ fontSize: 12 }} /><span>Bảng</span></Space>, value: 'table' }
+                    ]}
+                    value={viewMode}
+                    onChange={setViewMode}
+                    style={{ fontWeight: 600, fontSize: 13 }}
                   />
-                </Tooltip>
-                
-                <Select
-                  placeholder="Lọc mẫu"
-                  value={manualTemplateGroupId}
-                  onChange={setManualTemplateGroupId}
-                  dropdownMatchSelectWidth={false}
-                  style={{ 
-                    width: 100, 
-                    opacity: showDefaultBoundaries ? 1 : 0.5,
-                    pointerEvents: showDefaultBoundaries ? 'auto' : 'none',
-                  }}
-                  disabled={!showDefaultBoundaries}
-                  allowClear
-                  options={[
-                    ...templateGroups.map(g => ({
-                      label: g.name,
-                      value: String(g.id)
-                    }))
-                  ]}
-                />
+                  <Divider type="vertical" style={{ height: 20, margin: '0 4px' }} />
+                  <Segmented
+                    options={[
+                      { label: 'Chuẩn', value: 'off' },
+                      { label: viewMode === 'table' ? 'Tất cả' : 'Ca + Sự kiện', value: 'overlap' },
+                      { label: 'Sự kiện', value: 'all' }
+                    ]}
+                    value={eventFocusMode}
+                    onChange={(v: any) => setEventFocusMode(v)}
+                    style={{ fontSize: 13 }}
+                  />
+                </>
+              )}
               </div>
 
-              <Space size={6}>
+              {/* Phải: Thao tác & Quản trị */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Tooltip title="Tải lại">
                   <Button 
-                    icon={<SyncOutlined spin={loading} />} 
+                    icon={<SyncOutlined spin={loading} style={{ fontSize: 13 }} />} 
                     onClick={fetchSchedule} 
                     loading={loading}
+                    size="small"
+                    style={{ borderRadius: 7, height: 30, width: 30, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                   />
                 </Tooltip>
+
                 <Dropdown
                   overlay={
                     <Menu onClick={({ key }) => {
@@ -651,20 +629,106 @@ const AdminDutyCalendar: React.FC = () => {
                   placement="bottomRight"
                 >
                   <Tooltip title="Tải về Excel">
-                    <Button icon={<CloudDownloadOutlined />} />
+                    <Button icon={<CloudDownloadOutlined style={{ fontSize: 13 }} />} size="small" style={{ borderRadius: 7, height: 30, width: 30, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
                   </Tooltip>
                 </Dropdown>
-                
-                <Dropdown overlay={adminMenu} placement="bottomRight">
-                  <Button type="primary" className="hifi-button">
-                    Quản trị <DownOutlined />
-                  </Button>
-                </Dropdown>
-              </Space>
+
+                {isAdmin && (
+                  <Dropdown overlay={adminMenu} placement="bottomRight">
+                    <CommonButton variant="primary" buttonSize="small" icon={<SettingOutlined style={{ fontSize: 12 }} />} style={{ borderRadius: 7, height: 30, padding: '0 14px', fontSize: 13, fontWeight: 600 }}>
+                      Quản trị <DownOutlined style={{ fontSize: 9 }} />
+                    </CommonButton>
+                  </Dropdown>
+                )}
+
+                <Tooltip title={filterRowCollapsed ? 'Mở rộng bộ lọc' : 'Thu gọn bộ lọc'}>
+                  <div
+                    onClick={() => setFilterRowCollapsed(v => !v)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 28,
+                      height: 26,
+                      borderRadius: 20,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      transition: 'all 0.2s ease',
+                      backgroundColor: filterRowCollapsed ? '#eff6ff' : '#f1f5f9',
+                      color: filterRowCollapsed ? '#2563eb' : '#94a3b8',
+                      border: `1px solid ${filterRowCollapsed ? '#bfdbfe' : '#e2e8f0'}`,
+                      boxShadow: filterRowCollapsed ? '0 1px 4px rgba(37,99,235,0.12)' : 'none',
+                    }}
+                  >
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      transition: 'transform 0.25s ease',
+                      transform: filterRowCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+                    }}>
+                      <DownOutlined style={{ fontSize: 10 }} />
+                    </span>
+                  </div>
+                </Tooltip>
+              </div>
             </div>
+
+            {/* Hàng 2: Chế độ xem & Bộ lọc – ẩn khi thu gọn */}
+            {!filterRowCollapsed && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 10, paddingTop: 10, borderTop: '1px solid #f0f0f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Segmented 
+                    options={[
+                      { label: <Space size={4}><CalendarOutlined style={{ fontSize: 12 }} /><span>Lịch</span></Space>, value: 'calendar' },
+                      { label: <Space size={4}><UnorderedListOutlined style={{ fontSize: 12 }} /><span>Bảng</span></Space>, value: 'table' }
+                    ]}
+                    value={viewMode}
+                    onChange={setViewMode}
+                    style={{ fontWeight: 600, fontSize: 13 }}
+                  />
+                  <Divider type="vertical" style={{ height: 16, margin: '0 2px' }} />
+                  <Segmented 
+                    options={[
+                      { label: 'Chuẩn', value: 'off' },
+                      { label: viewMode === 'table' ? 'Tất cả' : 'Ca + Sự kiện', value: 'overlap' },
+                      { label: 'Sự kiện', value: 'all' }
+                    ]}
+                    value={eventFocusMode}
+                    onChange={(v: any) => setEventFocusMode(v)}
+                    style={{ fontSize: 13 }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', padding: '4px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <Tooltip title="Bật/Tắt hiển thị bản mẫu">
+                    <Switch 
+                      size="small"
+                      checked={showDefaultBoundaries} 
+                      onChange={(checked) => {
+                        setShowDefaultBoundaries(checked);
+                        if (!checked) setManualTemplateGroupId(null);
+                      }}
+                    />
+                  </Tooltip>
+                  <Text style={{ fontSize: 13, fontWeight: 500, color: showDefaultBoundaries ? '#475569' : '#94a3b8' }}>Hiện khung mẫu</Text>
+                  <Select
+                    placeholder="Chọn kíp mẫu"
+                    value={manualTemplateGroupId}
+                    onChange={setManualTemplateGroupId}
+                    dropdownMatchSelectWidth={false}
+                    bordered={false}
+                    size="small"
+                    style={{ width: 120, fontSize: 13, opacity: showDefaultBoundaries ? 1 : 0.5, pointerEvents: showDefaultBoundaries ? 'auto' : 'none' }}
+                    disabled={!showDefaultBoundaries}
+                    allowClear
+                    options={templateGroups.map(g => ({ label: g.name, value: String(g.id) }))}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         }
-        bodyStyle={{ padding: 0 }}
+        styles={{ header: { padding: '0 12px' }, body: { padding: 0 } }}
       >
         <Spin spinning={loading}>
           {showDefaultBoundaries && relevantTemplates.length === 0 && (

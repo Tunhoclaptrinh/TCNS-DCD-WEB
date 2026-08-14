@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useLayoutEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
+import { useAppSelector } from "./store/hooks";
 import { useRoutes, useNavigate } from "react-router-dom";
 import { ConfigProvider, theme as antdTheme, App as AntApp } from "antd";
 import viVN from "antd/locale/vi_VN";
 import { forceLogout, initializeAuth } from "./store/slices/authSlice";
-import { RootState } from "./store";
 import routes from "./routes/routes.config";
 import Loading from "./components/common/Loading";
 import ErrorBoundary from "./components/common/ErrorBoundary";
@@ -17,10 +17,8 @@ const App: React.FC = () => {
   const routing = useRoutes(routes);
   const [dynamicPrimary, setDynamicPrimary] = useState<string>("#8b1d1d");
 
-  const { isInitialized, loading } = useSelector(
-    (state: RootState) => state.auth,
-  );
-  const { theme: uiTheme } = useSelector((state: RootState) => state.ui);
+  const { isInitialized, loading } = useAppSelector((state) => state.auth);
+  const { theme: uiTheme } = useAppSelector((state) => state.ui);
 
   // Dynamically resolve --primary-color from CSS root styles
   useLayoutEffect(() => {
