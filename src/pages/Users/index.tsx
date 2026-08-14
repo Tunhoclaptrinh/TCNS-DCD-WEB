@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import dayjs from 'dayjs';
-import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, AutoComplete, Input, Typography } from 'antd';
+import { Tabs, Form, Image, Switch, Tag, Dropdown, Menu, Modal, message, Space, Tooltip, Select, Input, Typography } from 'antd';
 import { 
-    CheckCircleOutlined, 
     RiseOutlined, 
     StopOutlined, 
     EditOutlined, 
@@ -25,6 +24,7 @@ import SyncAlumniModal from './components/SyncAlumniModal';
 import generationService, { Generation } from '../../services/generation.service';
 import roleService, { Role } from '../../services/role.service';
 import permissionService from '../../services/permission.service';
+import systemSettingService from '@/services/system-setting.service';
 import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS, USER_FIELD_LABELS, USER_VALUE_MAP, DEPARTMENTS } from '@/constants/user.constants';
 
 // Dynamic department options will be derived from stats
@@ -135,6 +135,7 @@ const UserPage = () => {
     const [generationList, setGenerationList] = useState<Generation[]>([]);
     const [roleList, setRoleList] = useState<Role[]>([]);
     const [permissionList, setPermissionList] = useState<any[]>([]);
+    const [departmentConfigs, setDepartmentConfigs] = useState<any[]>([]);
     const [selectedGenerationId, setSelectedGenerationId] = useState<number | 'active_members' | 'active_generations' | 'all' | undefined>('active_members');
     const previousGenerationId = useRef<number | 'active_members' | 'active_generations' | 'all' | undefined>('active_members');
     // statsGenFilter: passed directly to stats API (backend handles 'active_generations' natively)
@@ -194,6 +195,17 @@ const UserPage = () => {
         }
     };
 
+    const fetchDepartmentConfigs = async () => {
+        try {
+            const res = await systemSettingService.getByKey('DEPARTMENT_CONFIGS');
+            if (res && res.value) {
+                setDepartmentConfigs(JSON.parse(res.value));
+            }
+        } catch (error) {
+            console.error('Failed to fetch department configs:', error);
+        }
+    };
+
     useEffect(() => {
         // generations: cần settings:view (tất cả role từ member trở lên đều có)
         if (hasPermission('settings:view')) {
@@ -207,6 +219,9 @@ const UserPage = () => {
         if (hasPermission('system:permissions:view')) {
             fetchPermissions();
         }
+        
+        // Luôn fetch config phòng ban cho form
+        fetchDepartmentConfigs();
     }, []);
 
     // Fetch stats for building Tabs
@@ -1131,7 +1146,7 @@ const UserPage = () => {
                             { label: 'Toàn bộ Đội', key: 'all' },
                             ...(Object.keys(stats?.byDepartment || {}).length > 0 
                                 ? Object.keys(stats.byDepartment).filter((d: string) => d !== '__unassigned__')
-                                : DEPARTMENTS.filter((d: string) => d !== 'Khác'))
+                                : (departmentConfigs.length > 0 ? departmentConfigs.map(d => d.name) : DEPARTMENTS).filter((d: string) => d !== 'Khác'))
                                 .map((dept: string) => ({ 
                                     label: `Ban ${dept}`, 
                                     key: dept 
@@ -1258,7 +1273,11 @@ const UserPage = () => {
                 generations={generationList}
                 roles={roleList}
                 permissions={permissionList}
-                departments={Object.keys(stats?.byDepartment || {}).filter(d => d !== '__unassigned__')}
+                departmentConfigs={departmentConfigs}
+                departments={Array.from(new Set([
+                    ...(departmentConfigs.length > 0 ? departmentConfigs.map(d => d.name) : DEPARTMENTS), 
+                    ...Object.keys(stats?.byDepartment || {}).filter(d => d !== '__unassigned__')
+                ]))}
             />
 
             <UsersDetailModal

@@ -27,6 +27,7 @@ interface UsersFormProps {
   generations: { id: number; name: string }[];
   roles: { id: number; name: string; key?: string; permissions?: string[] }[];
   permissions: { id: number; name: string; key: string; module: string }[];
+  departmentConfigs: any[];
   departments: string[];
 }
 
@@ -50,6 +51,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
   generations,
   roles,
   permissions,
+  departmentConfigs,
   departments,
 }) => {
   const { hasPermission } = useAccess();
@@ -86,33 +88,43 @@ const UsersForm: React.FC<UsersFormProps> = ({
       .map(p => ({ label: `${p.name} (${p.key})`, value: p.key }));
   }, [permissions, rolePermissionsSet]);
 
-  // Mapping logic for auto-sync (Duplicate of backend logic for instant UI feedback)
+  // Mapping logic for auto-sync using departmentConfigs
   const getSuggestedRoles = (pos: string, dept?: string): number[] => {
     if (!pos) return [];
-    const findRoleId = (key: string) => roles.find(r => (r as any).key === key)?.id || null;
     
-    switch (pos) {
-      case 'dt':
-        return [findRoleId('admin')].filter(Boolean) as number[];
-      case 'tb':
-        return dept === 'Nhân sự' 
-          ? [findRoleId('ns_leader')].filter(Boolean) as number[]
-          : [findRoleId('other_leader')].filter(Boolean) as number[];
-      case 'pb':
-        return dept === 'Nhân sự' 
-          ? [findRoleId('ns_sub_leader')].filter(Boolean) as number[]
-          : [findRoleId('other_sub_leader')].filter(Boolean) as number[];
-      case 'tvb':
-        return dept === 'Nhân sự' 
-          ? [findRoleId('ns_specialist')].filter(Boolean) as number[]
-          : [roles.find(r => (r as any).key === 'member')?.id].filter(Boolean) as number[];
-      case 'tv':
-        return [roles.find(r => (r as any).key === 'member')?.id].filter(Boolean) as number[];
-      case 'ctv':
-        return [roles.find(r => (r as any).key === 'ctv')?.id].filter(Boolean) as number[];
-      default:
-        return [];
+    // Admin override check (hardcoded rule)
+    if (pos === 'dt') {
+      const adminRole = roles.find(r => (r as any).key === 'admin');
+      return adminRole ? [adminRole.id] : [];
     }
+
+    // Default roles that don't depend on department
+    if (pos === 'ctv') {
+      const ctvRole = roles.find(r => (r as any).key === 'ctv');
+      return ctvRole ? [ctvRole.id] : [];
+    }
+
+    if (pos === 'tv') {
+      const memberRole = roles.find(r => (r as any).key === 'member');
+      return memberRole ? [memberRole.id] : [];
+    }
+
+    // If position needs a department (tb, pb, tvb)
+    if (['tb', 'pb', 'tvb'].includes(pos) && dept && departmentConfigs && departmentConfigs.length > 0) {
+      // Find the config for this department
+      const config = departmentConfigs.find((c: any) => c.name === dept) || departmentConfigs.find((c: any) => c.id === 'khac');
+      if (config && config.roles && config.roles[pos]) {
+        // config.roles[pos] should be an array of role keys
+        const mappedRoleKeys = Array.isArray(config.roles[pos]) ? config.roles[pos] : [config.roles[pos]];
+        
+        return mappedRoleKeys.map((key: string) => {
+          const role = roles.find(r => (r as any).key === key);
+          return role ? role.id : null;
+        }).filter(Boolean) as number[];
+      }
+    }
+
+    return [];
   };
 
   const handlePositionChange = (value: string) => {
@@ -359,7 +371,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
                 allowClear 
                 onChange={handleDepartmentChange}
                 options={departments.map(d => ({ value: d }))}
-                disabled={!canEditOrg}
+                disabled={!canEditOrg || !isDeptApplicable}
                 filterOption={(inputValue: string, option: any) =>
                   String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
                 }

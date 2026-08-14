@@ -3,6 +3,8 @@ import { Form, Input, message, Spin, Typography, Collapse, Select, Row, Col } fr
 import { SaveOutlined } from '@ant-design/icons';
 import axiosInstance from '@/config/axios.config';
 import { Button as CustomButton } from '@/components/common';
+import roleService, { Role } from '@/services/role.service';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -10,10 +12,23 @@ const SystemSettingsPage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [roleList, setRoleList] = useState<Role[]>([]);
 
   useEffect(() => {
     fetchSettings();
+    fetchRoles();
   }, []);
+
+  const fetchRoles = async () => {
+    try {
+      const res = await roleService.getAll({ limit: 100 });
+      if (res.success && res.data) {
+        setRoleList(res.data);
+      }
+    } catch (error) {
+      console.error('Fetch roles error:', error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -24,10 +39,14 @@ const SystemSettingsPage: React.FC = () => {
         const settings: Record<string, any> = {};
         dataList.forEach((s: any) => {
           if (s.key) {
-            settings[s.key] = s.value;
+            let val = s.value;
+            if (s.key === 'DEPARTMENT_CONFIGS') {
+              try { val = JSON.parse(s.value); } catch(e) {}
+            }
+            settings[s.key] = val;
             // Map case variations
             const upperKey = String(s.key).toUpperCase().replace(/([A-Z])/g, '_$1').replace(/^_/, '');
-            settings[upperKey] = s.value;
+            settings[upperKey] = val;
           }
         });
         form.setFieldsValue(settings);
@@ -45,6 +64,12 @@ const SystemSettingsPage: React.FC = () => {
       await form.validateFields(fieldNames);
       setSavingKey(sectionKey);
       const allValues = form.getFieldsValue(fieldNames);
+      
+      // Serialize arrays/objects to JSON strings for specific keys
+      if (allValues.DEPARTMENT_CONFIGS && typeof allValues.DEPARTMENT_CONFIGS === 'object') {
+         allValues.DEPARTMENT_CONFIGS = JSON.stringify(allValues.DEPARTMENT_CONFIGS);
+      }
+
       const res = await axiosInstance.post('/system-settings/bulk', allValues);
       if (res.success || res.data?.success) {
         message.success(res.message || res.data?.message || 'Cập nhật cài đặt thành công');
@@ -166,6 +191,123 @@ const SystemSettingsPage: React.FC = () => {
                         style={{ minWidth: 88 }}
                       >
                         Lưu lại
+                      </CustomButton>
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'department_configs',
+                label: <Text strong>Phòng Ban & Phân Quyền (RBAC)</Text>,
+                children: (
+                  <div>
+                    {/* Fixed Executive Block */}
+                    <div style={{ marginBottom: 24, padding: 16, border: '1px solid #1677ff', backgroundColor: '#e6f4ff', borderRadius: 8 }}>
+                      <Row gutter={16}>
+                        <Col span={8}>
+                          <Form.Item label="Đơn vị (Hệ thống)" style={{ marginBottom: 0 }}>
+                            <Input value="Ban Điều Hành / Đội trưởng" disabled />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item label="Mã Ban (ID)" style={{ marginBottom: 0 }}>
+                            <Input value="executive" disabled />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          <Text type="secondary" italic>(Cố định - Không thể xóa)</Text>
+                        </Col>
+                      </Row>
+                      <Row gutter={16} style={{ marginTop: 16 }}>
+                        <Col span={24}>
+                          <Form.Item label="Vai trò - Đội trưởng" style={{ marginBottom: 0 }}>
+                            <Select mode="multiple" disabled value={['admin']} options={[{ label: 'ADMIN (Đội trưởng) (admin)', value: 'admin' }]} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+
+                    <Form.List name="DEPARTMENT_CONFIGS">
+                      {(fields, { add, remove }) => (
+                        <>
+                          {fields.map(({ key, name, ...restField }) => (
+                            <div key={key} style={{ marginBottom: 24, padding: 16, border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                              <Row gutter={16}>
+                                <Col span={8}>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'name']}
+                                    label="Tên Phòng Ban"
+                                    rules={[{ required: true, message: 'Nhập tên ban' }]}
+                                  >
+                                    <Input placeholder="Ví dụ: Nhân sự" />
+                                  </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'id']}
+                                    label="Mã Ban (ID)"
+                                    rules={[{ required: true, message: 'Nhập ID' }]}
+                                  >
+                                    <Input placeholder="Ví dụ: nhan-su" />
+                                  </Form.Item>
+                                </Col>
+                                <Col span={8} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                  <CustomButton variant="danger" onClick={() => remove(name)} icon={<DeleteOutlined />}>Xóa Ban</CustomButton>
+                                </Col>
+                              </Row>
+
+                              <Row gutter={16}>
+                                <Col span={8}>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'roles', 'tb']}
+                                    label="Vai trò - Trưởng ban"
+                                  >
+                                    <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
+                                  </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'roles', 'pb']}
+                                    label="Vai trò - Phó ban"
+                                  >
+                                    <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
+                                  </Form.Item>
+                                </Col>
+                                <Col span={8}>
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'roles', 'tvb']}
+                                    label="Vai trò - Thành viên ban"
+                                  >
+                                    <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
+                                  </Form.Item>
+                                </Col>
+                              </Row>
+                            </div>
+                          ))}
+                          <Form.Item>
+                            <CustomButton onClick={() => add()} block icon={<PlusOutlined />}>
+                              Thêm Phòng Ban
+                            </CustomButton>
+                          </Form.Item>
+                        </>
+                      )}
+                    </Form.List>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                      <CustomButton 
+                        variant="primary"
+                        buttonSize="small"
+                        icon={<SaveOutlined />} 
+                        loading={savingKey === 'department_configs'}
+                        onClick={() => saveSection('department_configs', ['DEPARTMENT_CONFIGS'])}
+                        style={{ minWidth: 88 }}
+                      >
+                        Lưu cấu hình
                       </CustomButton>
                     </div>
                   </div>

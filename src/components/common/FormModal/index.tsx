@@ -37,11 +37,19 @@ const FormModal: React.FC<FormModalProps> = ({
 
   ...modalProps
 }) => {
+  const [internalLoading, setInternalLoading] = React.useState(false);
+  const isSpinning = loading || internalLoading;
+
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
       if (onOk) {
-        await onOk(values);
+        setInternalLoading(true);
+        try {
+          await onOk(values);
+        } finally {
+          setInternalLoading(false);
+        }
       }
     } catch (error) {
       console.error('Validation failed:', error);
@@ -61,7 +69,7 @@ const FormModal: React.FC<FormModalProps> = ({
       variant="outline"
       buttonSize="small"
       onClick={handleCancel}
-      disabled={loading}
+      disabled={isSpinning}
       style={{ minWidth: 88 }}
     >
       {cancelText}
@@ -71,7 +79,7 @@ const FormModal: React.FC<FormModalProps> = ({
       variant="primary"
       buttonSize="small"
       onClick={handleOk}
-      loading={loading}
+      loading={isSpinning}
       style={{ minWidth: 88 }}
     >
       {okText}
@@ -87,14 +95,14 @@ const FormModal: React.FC<FormModalProps> = ({
       width={width}
       okText={okText}
       cancelText={cancelText}
-      confirmLoading={loading}
+      confirmLoading={isSpinning}
       centered={centered}
       destroyOnClose={destroyOnClose}
       maskClosable={maskClosable}
       footer={footer === undefined ? defaultFooter : footer}
       {...modalProps}
     >
-      <Spin spinning={loading}>
+      <Spin spinning={isSpinning}>
         <Form
           form={form}
           layout={layout}
