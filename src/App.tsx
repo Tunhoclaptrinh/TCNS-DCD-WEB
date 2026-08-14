@@ -83,7 +83,7 @@ const App: React.FC = () => {
             colorSuccess: "#22C55E",
             colorWarning: "#F97316",
             colorError: "#EF4444",
-            colorInfo: primaryColor,
+            colorInfo: "#0284c7",
 
             // Border & Radius
             borderRadius: 8,
@@ -100,6 +100,15 @@ const App: React.FC = () => {
             margin: 16,
           },
           components: {
+            Alert: {
+              colorInfoBg: "#f8fafc",
+              colorInfoBorder: "#e2e8f0",
+              colorInfoText: "#1e293b",
+            },
+            Tag: {
+              borderRadiusSM: 4,
+              fontSize: 12,
+            },
             Button: {
               controlHeight: 32,
               fontSize: 14,
@@ -145,10 +154,6 @@ const App: React.FC = () => {
             Tabs: {
               titleFontSize: 14,
               horizontalItemPadding: "12px 16px",
-            },
-            Tag: {
-              borderRadiusSM: 4,
-              fontSize: 12,
             },
             Divider: {
               textPaddingInline: 8,

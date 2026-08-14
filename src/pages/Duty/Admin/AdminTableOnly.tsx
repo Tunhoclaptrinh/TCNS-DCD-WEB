@@ -24,6 +24,7 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
+import { Button as CommonButton } from '@/components/common';
 import '../DutyCalendar.less';
 
 import QuickCreateModal from '@/pages/Duty/Admin/components/QuickCreateModal';
@@ -486,7 +487,7 @@ const AdminDutyCalendar: React.FC = () => {
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
           <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+            <CommonButton key="close" variant="primary" buttonSize="medium" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120, height: 36 }}>Đã hiểu</CommonButton>
           </div>
         ]}
         width={600}

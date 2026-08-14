@@ -30,6 +30,7 @@ import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import meetingService from '@/services/meeting.service';
 import userService from '@/services/user.service';
 import { User } from '@/types';
+import { Button as CommonButton } from '@/components/common';
 import '../DutyCalendar.less';
 
 // Child Components
@@ -824,7 +825,9 @@ const AdminDutyCalendar: React.FC = () => {
         open={isGuideModalOpen}
         onCancel={() => setIsGuideModalOpen(false)}
         footer={[
-          <Button key="close" type="primary" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120 }}>Đã hiểu</Button>
+          <div key="footer" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <CommonButton key="close" variant="primary" buttonSize="medium" onClick={() => setIsGuideModalOpen(false)} style={{ minWidth: 120, height: 36 }}>Đã hiểu</CommonButton>
+          </div>
         ]}
         width={600}
         className="premium-modal"
