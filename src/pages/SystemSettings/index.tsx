@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, message, Spin, Typography, Collapse, Select, Row, Col } from 'antd';
+import { Form, Input, message, Spin, Typography, Collapse, Select, Row, Col, Tooltip, Button } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import axiosInstance from '@/config/axios.config';
 import { Button as CustomButton } from '@/components/common';
 import roleService, { Role } from '@/services/role.service';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 
+// Flag khóa không cho sửa/xóa các ban mặc định hệ thống (đổi thành false khi muốn mở khóa)
+const LOCK_DEFAULT_DEPARTMENTS = true;
+const DEFAULT_DEPARTMENT_IDS = ['nhan-su', 'truyen-thong', 'tai-chinh', 'khac'];
 const { Title, Text } = Typography;
 
 const SystemSettingsPage: React.FC = () => {
@@ -232,69 +235,83 @@ const SystemSettingsPage: React.FC = () => {
                     <Form.List name="DEPARTMENT_CONFIGS">
                       {(fields, { add, remove }) => (
                         <>
-                          {fields.map(({ key, name, ...restField }) => (
-                            <div key={key} style={{ marginBottom: 24, padding: 16, border: '1px solid #d9d9d9', borderRadius: 8 }}>
-                              <Row gutter={16}>
-                                <Col span={8}>
-                                  <Form.Item
-                                    {...restField}
-                                    name={[name, 'name']}
-                                    label="Tên Phòng Ban"
-                                    rules={[{ required: true, message: 'Nhập tên ban' }]}
-                                  >
-                                    <Input placeholder="Ví dụ: Nhân sự" />
-                                  </Form.Item>
-                                </Col>
-                                <Col span={8}>
-                                  <Form.Item
-                                    {...restField}
-                                    name={[name, 'id']}
-                                    label="Mã Ban (ID)"
-                                    rules={[{ required: true, message: 'Nhập ID' }]}
-                                  >
-                                    <Input placeholder="Ví dụ: nhan-su" />
-                                  </Form.Item>
-                                </Col>
-                                <Col span={8} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                                  <CustomButton variant="danger" onClick={() => remove(name)} icon={<DeleteOutlined />}>Xóa Ban</CustomButton>
-                                </Col>
-                              </Row>
+                          {fields.map(({ key, name, ...restField }) => {
+                            const itemData = form.getFieldValue(['DEPARTMENT_CONFIGS', name]) || {};
+                            const isDefault = LOCK_DEFAULT_DEPARTMENTS && DEFAULT_DEPARTMENT_IDS.includes(itemData.id);
 
-                              <Row gutter={16}>
-                                <Col span={8}>
-                                  <Form.Item
-                                    {...restField}
-                                    name={[name, 'roles', 'tb']}
-                                    label="Vai trò - Trưởng ban"
-                                  >
-                                    <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
-                                  </Form.Item>
-                                </Col>
-                                <Col span={8}>
-                                  <Form.Item
-                                    {...restField}
-                                    name={[name, 'roles', 'pb']}
-                                    label="Vai trò - Phó ban"
-                                  >
-                                    <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
-                                  </Form.Item>
-                                </Col>
-                                <Col span={8}>
-                                  <Form.Item
-                                    {...restField}
-                                    name={[name, 'roles', 'tvb']}
-                                    label="Vai trò - Thành viên ban"
-                                  >
-                                    <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
-                                  </Form.Item>
-                                </Col>
-                              </Row>
-                            </div>
-                          ))}
+                            return (
+                              <div key={key} style={{ marginBottom: 24, padding: 16, border: '1px solid #d9d9d9', borderRadius: 8, backgroundColor: isDefault ? '#fafafa' : '#ffffff' }}>
+                                <Row gutter={16}>
+                                  <Col span={8}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'name']}
+                                      label="Tên Phòng Ban"
+                                      rules={[{ required: true, message: 'Nhập tên ban' }]}
+                                    >
+                                      <Input placeholder="Ví dụ: Nhân sự" disabled={isDefault} />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={8}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'id']}
+                                      label="Mã Ban (ID)"
+                                      rules={[{ required: true, message: 'Nhập ID' }]}
+                                    >
+                                      <Input placeholder="Ví dụ: nhan-su" disabled={isDefault} />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={8} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                    <Tooltip title={isDefault ? "Ban mặc định hệ thống - Không thể xóa" : "Xóa phòng ban này"}>
+                                      <Button 
+                                        type="text" 
+                                        danger 
+                                        shape="circle" 
+                                        disabled={isDefault}
+                                        icon={<DeleteOutlined style={{ fontSize: 16 }} />} 
+                                        onClick={() => !isDefault && remove(name)} 
+                                      />
+                                    </Tooltip>
+                                  </Col>
+                                </Row>
+
+                                <Row gutter={16}>
+                                  <Col span={8}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'roles', 'tb']}
+                                      label="Vai trò - Trưởng ban"
+                                    >
+                                      <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={8}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'roles', 'pb']}
+                                      label="Vai trò - Phó ban"
+                                    >
+                                      <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={8}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'roles', 'tvb']}
+                                      label="Vai trò - Thành viên ban"
+                                    >
+                                      <Select mode="multiple" placeholder="Chọn vai trò" options={roleList.map(r => ({ label: `${r.name} (${(r as any).key})`, value: (r as any).key }))} />
+                                    </Form.Item>
+                                  </Col>
+                                </Row>
+                              </div>
+                            );
+                          })}
                           <Form.Item>
-                            <CustomButton onClick={() => add()} block icon={<PlusOutlined />}>
+                            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
                               Thêm Phòng Ban
-                            </CustomButton>
+                            </Button>
                           </Form.Item>
                         </>
                       )}
