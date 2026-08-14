@@ -40,12 +40,14 @@ const SystemSettingsPage: React.FC = () => {
         dataList.forEach((s: any) => {
           if (s.key) {
             let val = s.value;
-            if (s.key === 'DEPARTMENT_CONFIGS') {
-              try { val = JSON.parse(s.value); } catch(e) {}
+            if (s.key === 'DEPARTMENT_CONFIGS' || s.key === 'DEPARTMENTCONFIGS') {
+              try { val = typeof s.value === 'string' ? JSON.parse(s.value) : s.value; } catch(e) {}
             }
             settings[s.key] = val;
-            // Map case variations
-            const upperKey = String(s.key).toUpperCase().replace(/([A-Z])/g, '_$1').replace(/^_/, '');
+            if (s.key === 'DEPARTMENTCONFIGS') {
+              settings['DEPARTMENT_CONFIGS'] = val;
+            }
+            const upperKey = String(s.key).replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
             settings[upperKey] = val;
           }
         });

@@ -17,7 +17,7 @@ class SystemSettingService extends BaseService<SystemSetting> {
   async getByKey(key: string): Promise<SystemSetting | null> {
     try {
       const response = await apiClient.get(`${this.endpoint}/key/${key}`);
-      return response.data.data;
+      return response.data ?? response;
     } catch (error: any) {
       if (error.response?.status === 404) return null;
       throw error;

@@ -112,7 +112,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
     // If position needs a department (tb, pb, tvb)
     if (['tb', 'pb', 'tvb'].includes(pos) && dept && departmentConfigs && departmentConfigs.length > 0) {
       // Find the config for this department
-      const config = departmentConfigs.find((c: any) => c.name === dept) || departmentConfigs.find((c: any) => c.id === 'khac');
+      const config = departmentConfigs.find((c: any) => c.name === dept || c.id === dept) || departmentConfigs.find((c: any) => c.id === 'khac');
       if (config && config.roles && config.roles[pos]) {
         // config.roles[pos] should be an array of role keys
         const mappedRoleKeys = Array.isArray(config.roles[pos]) ? config.roles[pos] : [config.roles[pos]];

@@ -199,7 +199,8 @@ const UserPage = () => {
         try {
             const res = await systemSettingService.getByKey('DEPARTMENT_CONFIGS');
             if (res && res.value) {
-                setDepartmentConfigs(JSON.parse(res.value));
+                const parsed = typeof res.value === 'string' ? JSON.parse(res.value) : res.value;
+                setDepartmentConfigs(Array.isArray(parsed) ? parsed : []);
             }
         } catch (error) {
             console.error('Failed to fetch department configs:', error);
@@ -1144,9 +1145,10 @@ const UserPage = () => {
                             { label: 'Cộng tác viên', key: 'ctv' }
                         ] : [
                             { label: 'Toàn bộ Đội', key: 'all' },
-                            ...(Object.keys(stats?.byDepartment || {}).length > 0 
-                                ? Object.keys(stats.byDepartment).filter((d: string) => d !== '__unassigned__')
-                                : (departmentConfigs.length > 0 ? departmentConfigs.map(d => d.name) : DEPARTMENTS).filter((d: string) => d !== 'Khác'))
+                            ...(Array.from(new Set([
+                                ...(departmentConfigs.length > 0 ? departmentConfigs.map(d => d.name) : DEPARTMENTS),
+                                ...Object.keys(stats?.byDepartment || {}).filter((d: string) => d !== '__unassigned__')
+                            ])).filter((d: string) => d !== 'Khác'))
                                 .map((dept: string) => ({ 
                                     label: `Ban ${dept}`, 
                                     key: dept 
