@@ -15,7 +15,8 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
   UnlockOutlined,
-  GlobalOutlined
+  GlobalOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
@@ -46,6 +47,8 @@ const KipModal: React.FC<KipModalProps> = ({
   loading = false,
 }) => {
   const [form] = Form.useForm();
+  const visibilityMode = Form.useWatch(['config', 'visibilityMode'], form);
+  const isPrivacyEnabled = visibilityMode && visibilityMode !== 'public';
 
   React.useEffect(() => {
     if (open) {
@@ -133,38 +136,13 @@ const KipModal: React.FC<KipModalProps> = ({
           <Space size={8}><GlobalOutlined style={{ color: 'var(--primary-color)' }} /><span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Cấu hình Hiển thị & Lịch</span></Space>
         </Divider>
 
-        <Row gutter={[24, 0]}>
+        <Row gutter={[16, 0]}>
           <Col span={8}>
             <Form.Item name="coefficient" label="Hệ số công việc" initialValue={1}>
               <InputNumber min={0.1} step={0.1} style={{ width: '100%' }} placeholder="VD: 1.0" />
             </Form.Item>
           </Col>
           <Col span={16}>
-             <Form.Item 
-              name={['config', 'visibilityMode']} 
-              label="Chế độ bảo mật / Tách lịch"
-              initialValue="public"
-            >
-              <Select
-                placeholder="Chọn chế độ bảo mật"
-                options={[
-                  { 
-                    label: <Space><UnlockOutlined /><span>Công khai (Tất cả thấy nhau)</span></Space>, 
-                    value: 'public' 
-                  },
-                  { 
-                    label: <Space><EyeInvisibleOutlined /><span>Bảo mật song phương (TV & CTV ẩn nhau)</span></Space>, 
-                    value: 'private_mutual' 
-                  },
-                  { 
-                    label: <Space><EyeOutlined /><span>Bảo vệ TV (TV thấy CTV, CTV ẩn TV)</span></Space>, 
-                    value: 'protect_members' 
-                  },
-                ]}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
             <Form.Item 
               name="daysOfWeek" 
               label="Lịch áp dụng riêng" 
@@ -190,6 +168,54 @@ const KipModal: React.FC<KipModalProps> = ({
               />
             </Form.Item>
           </Col>
+        </Row>
+
+        <Row gutter={[16, 0]}>
+          <Col span={isPrivacyEnabled ? 12 : 24}>
+             <Form.Item 
+              name={['config', 'visibilityMode']} 
+              label="Chế độ bảo mật"
+              initialValue="public"
+            >
+              <Select
+                placeholder="Chọn chế độ bảo mật"
+                options={[
+                  { 
+                    label: <Space><UnlockOutlined /><span>Công khai (Tất cả thấy nhau)</span></Space>, 
+                    value: 'public' 
+                  },
+                  { 
+                    label: <Space><EyeInvisibleOutlined /><span>Bảo mật song phương (TV & CTV ẩn nhau)</span></Space>, 
+                    value: 'private_mutual' 
+                  },
+                  { 
+                    label: <Space><EyeOutlined /><span>Bảo vệ TV (TV thấy CTV, CTV ẩn TV)</span></Space>, 
+                    value: 'protect_members' 
+                  },
+                  { 
+                    label: <Space><TeamOutlined /><span>Ẩn toàn bộ (Chỉ thấy bản thân)</span></Space>, 
+                    value: 'hidden_all' 
+                  },
+                ]}
+              />
+            </Form.Item>
+          </Col>
+          {isPrivacyEnabled && (
+            <Col span={12}>
+               <Form.Item 
+                name={['config', 'privacyMaskType']} 
+                label="Kiểu ẩn khi bị che"
+                initialValue="masked"
+              >
+                <Select
+                  options={[
+                    { label: '🎭 Mặt nạ (Hiện *** & Thành viên)', value: 'masked' },
+                    { label: '🚫 Ẩn hoàn toàn khỏi danh sách', value: 'omitted' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          )}
         </Row>
       </div>
     </FormModal>

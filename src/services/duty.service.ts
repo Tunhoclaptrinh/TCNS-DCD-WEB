@@ -529,13 +529,19 @@ class DutyService {
   async exportRangeExcel(options: { 
     weekStart?: string, 
     mode?: 'only_duty' | 'with_meetings' | 'all', 
+    memberFilter?: 'all' | 'tv' | 'ctv',
     startDate?: string, 
     endDate?: string, 
     includeDays?: number[],
     date?: string 
   }) {
+    const params: any = { ...options };
+    if (Array.isArray(options.includeDays)) {
+      params.includeDays = options.includeDays.join(',');
+    }
+
     const response = await apiClient.get(`/duty/week/export`, {
-      params: options,
+      params,
       responseType: 'blob'
     });
     
@@ -548,6 +554,9 @@ class DutyService {
     if (options.date) suffix = `Ngay_${options.date}`;
     else if (options.startDate && options.endDate) suffix = `${options.startDate}_to_${options.endDate}`;
     else if (options.weekStart) suffix = `Tuan_${options.weekStart}`;
+
+    if (options.memberFilter === 'tv') suffix += '_TV';
+    else if (options.memberFilter === 'ctv') suffix += '_CTV';
 
     link.setAttribute('download', `Lich_Truc_${suffix}.xlsx`);
     document.body.appendChild(link);

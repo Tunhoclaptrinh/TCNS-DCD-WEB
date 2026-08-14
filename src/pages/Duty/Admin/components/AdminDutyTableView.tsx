@@ -342,7 +342,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                 })()}
                               </div>
                             ) : (
-                              showDefaultBoundaries && !isPast && isAdmin && (
+                              showDefaultBoundaries && !isPast && isAdmin ? (
                                 <div className="phantom-slot" style={{ 
                                   height: '100%', 
                                   minHeight: '48px', 
@@ -370,6 +370,22 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                       </div>
                                     ));
                                   })()}
+                                </div>
+                              ) : (
+                                <div style={{ 
+                                  height: '100%', 
+                                  minHeight: '60px', 
+                                  display: 'flex', 
+                                  flexDirection: 'column',
+                                  alignItems: 'center', 
+                                  justifyContent: 'center',
+                                  background: 'repeating-linear-gradient(135deg, #e2e8f0, #e2e8f0 10px, #f1f5f9 10px, #f1f5f9 20px)',
+                                  color: '#64748b',
+                                  userSelect: 'none',
+                                  padding: '4px'
+                                }}>
+                                  <span style={{ fontSize: '15px', fontWeight: 800, color: '#94a3b8', lineHeight: 1 }}>✕</span>
+                                  <span style={{ fontSize: '10px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.3px', marginTop: 2 }}>Không có kíp</span>
                                 </div>
                               )
                             )}

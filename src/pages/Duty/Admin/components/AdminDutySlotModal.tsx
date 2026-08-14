@@ -96,6 +96,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             : undefined,
         status: slot.status || 'open',
         visibilityMode: slot.config?.visibilityMode || 'public',
+        privacyMaskType: slot.config?.privacyMaskType || 'masked',
         assignedUserIds: slot.assignedUserIds || [],
         attendedUserIds: slot.attendedUserIds || [],
         slotStructure: slot.slotStructure || (slot as any).kip?.slotStructure || (slot as any).shift?.slotStructure || [],
@@ -106,6 +107,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
   // Auto-increase capacity when assignedUserIds change
   const assignedIds = Form.useWatch('assignedUserIds', form);
+  const visibilityMode = Form.useWatch('visibilityMode', form);
+  const isPrivacyEnabled = visibilityMode && visibilityMode !== 'public';
   useEffect(() => {
     if (assignedIds && Array.isArray(assignedIds) && assignedIds.length > 0) {
       const currentCapacity = form.getFieldValue('capacity') || 0;
@@ -125,7 +128,11 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         shiftDate: targetDateStr,
         startTime: values.timeRange?.[0]?.format('HH:mm'),
         endTime: values.timeRange?.[1]?.format('HH:mm'),
-        config: { ...slot.config, visibilityMode: values.visibilityMode },
+        config: { 
+          ...slot.config, 
+          visibilityMode: values.visibilityMode,
+          privacyMaskType: values.privacyMaskType 
+        },
       };
 
       const res = await dutyService.updateSlot(slot.id, payload);
@@ -468,18 +475,33 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
-          <Col span={8}>
-            <Form.Item name="visibilityMode" label="Bảo mật" initialValue="public">
+        </Row>
+
+        <Row gutter={[24, 0]}>
+          <Col span={isPrivacyEnabled ? 12 : 24}>
+            <Form.Item name="visibilityMode" label="Chế độ bảo mật" initialValue="public">
               <Select
                 options={[
-                  { label: <Space><UnlockOutlined /><span>Công khai</span></Space>, value: 'public' },
-                  { label: <Space><EyeInvisibleOutlined /><span>Song phương</span></Space>, value: 'private_mutual' },
-                  { label: <Space><EyeOutlined /><span>Bảo vệ TV</span></Space>, value: 'protect_members' },
-                  { label: <Space><TeamOutlined /><span>Ẩn toàn bộ</span></Space>, value: 'hidden_all' },
+                  { label: <Space><UnlockOutlined /><span>Công khai (Tất cả thấy nhau)</span></Space>, value: 'public' },
+                  { label: <Space><EyeInvisibleOutlined /><span>Bảo mật song phương (TV & CTV ẩn nhau)</span></Space>, value: 'private_mutual' },
+                  { label: <Space><EyeOutlined /><span>Bảo vệ TV (TV thấy CTV, CTV ẩn TV)</span></Space>, value: 'protect_members' },
+                  { label: <Space><TeamOutlined /><span>Ẩn toàn bộ (Chỉ thấy bản thân)</span></Space>, value: 'hidden_all' },
                 ]}
               />
             </Form.Item>
           </Col>
+          {isPrivacyEnabled && (
+            <Col span={12}>
+              <Form.Item name="privacyMaskType" label="Kiểu ẩn khi bị che" initialValue="masked">
+                <Select
+                  options={[
+                    { label: '🎭 Mặt nạ (Hiện *** & Thành viên)', value: 'masked' },
+                    { label: '🚫 Ẩn hoàn toàn khỏi danh sách', value: 'omitted' },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          )}
         </Row>
 
         <SlotStructureEditor form={form} assignedUsers={selectedUsersCache} />

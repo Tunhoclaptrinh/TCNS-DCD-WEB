@@ -82,6 +82,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const canRegister = hasPermission('duty:register:self');
   const canCancel = hasPermission('duty:update');
   const visibilityMode = slot?.config?.visibilityMode || 'public';
+  const privacyMaskType = slot?.config?.privacyMaskType || 'masked';
   const OFFICIAL_POSITIONS = ['tv', 'tvb', 'pb', 'tb', 'dt'];
   const CTV_POSITION = 'ctv';
   
@@ -122,6 +123,10 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
     const currentUserPos = (currentUserData as any)?.position?.toLowerCase();
     const isCurrentUserOfficial = OFFICIAL_POSITIONS.includes(currentUserPos) || currentUserPos?.startsWith('ns');
     const isCurrentUserCTV = currentUserPos === CTV_POSITION || currentUserPos === 'ctv';
+
+    if (visibilityMode === 'hidden_all') {
+      return false;
+    }
 
     if (visibilityMode === 'private_mutual') {
       if (isCurrentUserOfficial && isTargetCTV) return false;
@@ -418,7 +423,12 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                           dataSource={[
                             ...(slot?.assignedUsers || []),
                             ...(slot?.attendedUsers || []).filter((au: any) => !(slot?.assignedUsers || []).some((as: any) => String(as.id) === String(au.id)))
-                          ]}
+                          ].filter((u: any) => {
+                            if (privacyMaskType === 'omitted') {
+                              return checkVisibility(u);
+                            }
+                            return true;
+                          })}
                           locale={{ emptyText: 'Chưa có người đăng ký' }}
                           renderItem={(u: any, index: number) => {
                             const isAssigned = (slot?.assignedUsers || []).some((as: any) => String(as.id) === String(u.id));

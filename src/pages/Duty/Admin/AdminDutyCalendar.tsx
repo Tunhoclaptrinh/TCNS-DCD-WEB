@@ -12,7 +12,6 @@ import {
   QuestionCircleOutlined,
   UnorderedListOutlined,
   SolutionOutlined,
-  GlobalOutlined,
   LockOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -111,7 +110,25 @@ const AdminDutyCalendar: React.FC = () => {
   const [manualTemplateGroupId, setManualTemplateGroupId] = useState<string | null>(null);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]); // For table view co-axial
-  const [filterRowCollapsed, setFilterRowCollapsed] = useState(false);
+  const [filterRowCollapsed, setFilterRowCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('duty_filter_row_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleFilterRowCollapsed = () => {
+    setFilterRowCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('duty_filter_row_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const [memberTypeFilter, setMemberTypeFilter] = useState<'all' | 'tv' | 'ctv'>('all');
   const [userMetadata, setUserMetadata] = useState<{ weeklyQuota: number, registeredKips: number, limitMode: string } | null>(null);
   const [currentPeriodConfig, setCurrentPeriodConfig] = useState<any>(null);
 
@@ -395,14 +412,28 @@ const AdminDutyCalendar: React.FC = () => {
     });
   };
 
+  const filteredSlots = useMemo(() => {
+    if (memberTypeFilter === 'all') return slots;
+    return slots.map(slot => {
+      const assignedUsers = (slot.assignedUsers || []).filter(u => {
+        const isCTV = String(u?.position || '').toLowerCase() === 'ctv';
+        return memberTypeFilter === 'ctv' ? isCTV : !isCTV;
+      });
+      return {
+        ...slot,
+        assignedUsers
+      };
+    });
+  }, [slots, memberTypeFilter]);
+
   const slotsByDay = useMemo(() =>
-    slots.reduce((acc: Record<string, DutySlot[]>, slot) => {
+    filteredSlots.reduce((acc: Record<string, DutySlot[]>, slot) => {
       const date = dayjs(slot.shiftDate).format('YYYY-MM-DD');
       if (!acc[date]) acc[date] = [];
       acc[date].push(slot);
       return acc;
     }, {}),
-    [slots]
+    [filteredSlots]
   );
 
   const relevantTemplates = useMemo(() => {
@@ -591,47 +622,24 @@ const AdminDutyCalendar: React.FC = () => {
                   />
                 </Tooltip>
 
-                <Dropdown
-                  overlay={
-                    <Menu onClick={({ key }) => {
-                      if (key === 'advanced') {
-                        setIsExportModalVisible(true);
-                      } else if (key.startsWith('day-')) {
-                        const date = key.replace('day-', '');
-                        dutyService.exportRangeExcel({ startDate: date, endDate: date, mode: 'all' });
-                      } else {
-                        dutyService.exportRangeExcel({ weekStart: currentWeek.format('YYYY-MM-DD'), mode: key as any });
-                      }
-                    }}>
-                      <Menu.Item key="only_duty" icon={<SolutionOutlined style={{ color: '#1890ff' }} />}>
-                        <span style={{ color: '#1890ff', fontWeight: 500 }}>Chỉ lịch trực (Tuần)</span>
-                      </Menu.Item>
-                      <Menu.Item key="with_meetings" icon={<CalendarOutlined style={{ color: '#52c41a' }} />}>
-                        <span style={{ color: '#52c41a', fontWeight: 500 }}>Lịch trực & Lịch họp (Tuần)</span>
-                      </Menu.Item>
-                      <Menu.Item key="all" icon={<GlobalOutlined style={{ color: '#722ed1' }} />}>
-                        <span style={{ color: '#722ed1', fontWeight: 500 }}>Toàn bộ (Tuần)</span>
-                      </Menu.Item>
-                      <Menu.Divider />
-                      <Menu.SubMenu key="daily" title="Tải theo ngày cụ thể" icon={<CalendarOutlined />}>
-                        {weekDays.map(day => (
-                          <Menu.Item key={`day-${day.format('YYYY-MM-DD')}`}>
-                            {day.format('dddd (DD/MM)')}
-                          </Menu.Item>
-                        ))}
-                      </Menu.SubMenu>
-                      <Menu.Divider />
-                      <Menu.Item key="advanced" icon={<CloudDownloadOutlined style={{ color: '#fa8c16' }} />}>
-                        <span style={{ color: '#fa8c16', fontWeight: 600 }}>Tùy chọn tải nâng cao...</span>
-                      </Menu.Item>
-                    </Menu>
-                  }
-                  placement="bottomRight"
-                >
-                  <Tooltip title="Tải về Excel">
-                    <Button icon={<CloudDownloadOutlined style={{ fontSize: 13 }} />} size="small" style={{ borderRadius: 7, height: 30, width: 30, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
-                  </Tooltip>
-                </Dropdown>
+                <Tooltip title="Xuất Lịch Trực ra Excel (Tùy chỉnh)">
+                  <Button 
+                    icon={<CloudDownloadOutlined style={{ fontSize: 14, color: '#10b981' }} />} 
+                    onClick={() => setIsExportModalVisible(true)}
+                    size="small" 
+                    style={{ 
+                      borderRadius: 7, 
+                      height: 30, 
+                      width: 30, 
+                      padding: 0, 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      borderColor: '#a7f3d0',
+                      background: '#ecfdf5'
+                    }} 
+                  />
+                </Tooltip>
 
                 {isAdmin && (
                   <Dropdown overlay={adminMenu} placement="bottomRight">
@@ -643,7 +651,7 @@ const AdminDutyCalendar: React.FC = () => {
 
                 <Tooltip title={filterRowCollapsed ? 'Mở rộng bộ lọc' : 'Thu gọn bộ lọc'}>
                   <div
-                    onClick={() => setFilterRowCollapsed(v => !v)}
+                    onClick={toggleFilterRowCollapsed}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -697,6 +705,17 @@ const AdminDutyCalendar: React.FC = () => {
                     onChange={(v: any) => setEventFocusMode(v)}
                     style={{ fontSize: 13 }}
                   />
+                  <Divider type="vertical" style={{ height: 16, margin: '0 2px' }} />
+                  <Segmented 
+                    options={[
+                      { label: 'Tất cả', value: 'all' },
+                      { label: 'Thành viên', value: 'tv' },
+                      { label: 'CTV', value: 'ctv' }
+                    ]}
+                    value={memberTypeFilter}
+                    onChange={(v: any) => setMemberTypeFilter(v)}
+                    style={{ fontSize: 13, fontWeight: 500 }}
+                  />
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', padding: '4px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
@@ -746,7 +765,7 @@ const AdminDutyCalendar: React.FC = () => {
               loading={loading}
               templates={relevantTemplates}
               weekDays={weekDays}
-              slots={slots}
+              slots={filteredSlots}
 
               isAdmin={!!isAdmin}
               openSlotDetail={openSlotDetail}
@@ -976,6 +995,13 @@ const AdminDutyCalendar: React.FC = () => {
         onCancel={() => setIsMinutesViewModalVisible(false)}
         record={selectedMeeting}
         users={users}
+      />
+
+      {/* Export Duty Modal */}
+      <ExportDutyModal
+        open={isExportModalVisible}
+        onCancel={() => setIsExportModalVisible(false)}
+        defaultRange={[currentWeek.startOf('isoWeek'), currentWeek.endOf('isoWeek')]}
       />
     </div>
   );
