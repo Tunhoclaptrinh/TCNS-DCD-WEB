@@ -464,7 +464,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   return <div style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>⚠️ Đã đạt/vượt chỉ tiêu ({count}/{capacity})</div>;
                 }
                 if (count > 0 && count < capacity) {
-                  return <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>ℹ️ Còn trống {capacity - count} chỗ</div>;
+                  return <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>ℹ Còn trống {capacity - count} chỗ</div>;
                 }
                 return null;
               }}

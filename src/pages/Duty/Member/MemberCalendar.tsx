@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Space, message, Typography, Select, Spin, Alert, Segmented, Tooltip, Divider, Modal, Tag } from 'antd';
+import { Card, Button, Space, message, Typography, Spin, Alert, Segmented, Tooltip, Divider, Modal, Tag } from 'antd';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import {
@@ -7,6 +7,10 @@ import {
   RightOutlined,
   SyncOutlined,
   QuestionCircleOutlined,
+  CalendarOutlined,
+  UnorderedListOutlined,
+  CloudDownloadOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -32,6 +36,7 @@ import MemberDutyTimelineView from './components/MemberDutyTimelineView';
 import ShiftLeaderAttendanceModal from './components/ShiftLeaderAttendanceModal';
 import MeetingDetailModal from '@/pages/Meetings/components/MeetingDetailModal';
 import MeetingMinutesViewModal from '@/pages/Meetings/components/MeetingMinutesViewModal';
+import ExportDutyModal from '@/pages/Duty/Admin/components/ExportDutyModal';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -51,6 +56,7 @@ const MemberCalendar: React.FC = () => {
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
   const [isMeetingDetailVisible, setIsMeetingDetailVisible] = useState(false);
   const [isMinutesViewVisible, setIsMinutesViewVisible] = useState(false);
+  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [showDefaultBoundaries] = useState(false);
   const [eventFocusMode, setEventFocusMode] = useState<'off' | 'overlap' | 'all'>('off');
@@ -340,20 +346,39 @@ const MemberCalendar: React.FC = () => {
       <Card
         className="duty-calendar-card"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div className="week-nav-group" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: 8 }}>
-              <Button icon={<LeftOutlined />} type="text" size="small" onClick={handlePrevWeek} />
-              <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600 }}>H.tại</Button>
-              <Button icon={<RightOutlined />} type="text" size="small" onClick={handleNextWeek} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="week-nav-group" style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '3px 4px', borderRadius: 8, gap: 2 }}>
+              <Button icon={<LeftOutlined style={{ fontSize: 11 }} />} type="text" size="small" onClick={handlePrevWeek} style={{ height: 26, width: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
+              <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600, height: 26, padding: '0 10px', borderRadius: 6, color: '#334155' }}>Hôm nay</Button>
+              <Button icon={<RightOutlined style={{ fontSize: 11 }} />} type="text" size="small" onClick={handleNextWeek} style={{ height: 26, width: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
             </div>
-            <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '16px' }}>
-              Tuần {currentWeek.format('ww')} <span style={{ fontWeight: 400, color: '#64748b', fontSize: '14px' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</span>
-            </Title>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '15px', whiteSpace: 'nowrap' }}>
+                Tuần {currentWeek.format('ww')}
+              </Title>
+              <Text type="secondary" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>({currentWeek.format('DD/MM')} - {currentWeek.add(6, 'day').format('DD/MM')})</Text>
+            </div>
+
             {userMetadata && userMetadata.weeklyLimitEnabled !== false && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Tooltip title={`Định mức kíp trực tối thiểu/tuần của bạn: ${userMetadata.weeklyQuota} kíp. Hiện đã đăng ký ${userMetadata.registeredKips} kíp.`}>
-                  <Tag bordered={false} color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} style={{ borderRadius: 6, margin: 0, fontWeight: 600 }}>
-                    Định mức tuần: {userMetadata.registeredKips} / {userMetadata.weeklyQuota}
+                <Tooltip title={`Định mức kíp trực: ${userMetadata.weeklyQuota} kíp. Hiện tại bạn đã đăng ký ${userMetadata.registeredKips} kíp.`}>
+                  <Tag 
+                    bordered={false} 
+                    color={userMetadata.registeredKips >= userMetadata.weeklyQuota ? 'success' : 'processing'} 
+                    style={{ 
+                      borderRadius: 6, 
+                      margin: 0, 
+                      fontWeight: 600, 
+                      fontSize: 12, 
+                      padding: '3px 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <SolutionOutlined style={{ fontSize: 11 }} />
+                    <span>Định mức: {userMetadata.registeredKips} / {userMetadata.weeklyQuota} kíp</span>
                   </Tag>
                 </Tooltip>
               </div>
@@ -361,46 +386,61 @@ const MemberCalendar: React.FC = () => {
           </div>
         }
         extra={
-          <Space size="middle">
-          <Space size="middle" align="center">
-            <Tooltip title="Chế độ hiển thị">
-              <Select
-                value={viewMode}
-                onChange={setViewMode}
-                bordered={false}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Segmented
+              options={[
+                { label: <Space size={4}><CalendarOutlined style={{ fontSize: 12 }} /><span>Lịch</span></Space>, value: 'calendar' },
+                { label: <Space size={4}><UnorderedListOutlined style={{ fontSize: 12 }} /><span>Bảng</span></Space>, value: 'table' }
+              ]}
+              value={viewMode}
+              onChange={setViewMode}
+              style={{ fontWeight: 600, fontSize: 13 }}
+            />
+
+            <Divider type="vertical" style={{ height: 20, margin: '0 4px' }} />
+
+            <Segmented
+              options={[
+                { label: 'Chuẩn', value: 'off' },
+                { label: viewMode === 'table' ? 'Tất cả' : 'Ca + Sự kiện', value: 'overlap' },
+                { label: 'Sự kiện', value: 'all' }
+              ]}
+              value={eventFocusMode}
+              onChange={(v: any) => setEventFocusMode(v)}
+              style={{ fontSize: 13 }}
+            />
+
+            <Divider type="vertical" style={{ height: 20, margin: '0 4px' }} />
+
+            <Tooltip title="Tải lại">
+              <Button 
+                icon={<SyncOutlined spin={loading} style={{ fontSize: 13 }} />} 
+                onClick={fetchSchedule} 
+                loading={loading}
                 size="small"
-                options={[
-                  { label: 'Lịch', value: 'calendar' },
-                  { label: 'Bảng', value: 'table' }
-                ]}
-                style={{ width: 80, fontWeight: 600 }}
+                style={{ borderRadius: 7, height: 30, width: 30, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               />
             </Tooltip>
 
-            <Divider type="vertical" style={{ height: 16, borderColor: '#e2e8f0' }} />
-
-            <Space size={4}>
-              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Chế độ xem</span>
-              <Segmented 
-                size="small"
-                options={[
-                  { label: 'Bình thường', value: 'off' },
-                  { label: viewMode === 'table' ? 'Tất cả' : 'Sự kiện + Ca', value: 'overlap' },
-                  { label: 'Chỉ Sự kiện', value: 'all' }
-                ]}
-                value={eventFocusMode}
-                onChange={(v: any) => setEventFocusMode(v)}
+            <Tooltip title="Xuất Lịch Trực ra Excel (Tùy chỉnh)">
+              <Button 
+                icon={<CloudDownloadOutlined style={{ fontSize: 14, color: '#10b981' }} />} 
+                onClick={() => setIsExportModalVisible(true)}
+                size="small" 
+                style={{ 
+                  borderRadius: 7, 
+                  height: 30, 
+                  width: 30, 
+                  padding: 0, 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  borderColor: '#a7f3d0',
+                  background: '#ecfdf5'
+                }} 
               />
-            </Space>
-            
-            </Space>
-            <Button 
-              icon={<SyncOutlined spin={loading} />} 
-              onClick={fetchSchedule} 
-              loading={loading} 
-              disabled={loading}
-            />
-          </Space>
+            </Tooltip>
+          </div>
         }
         bodyStyle={{ padding: 0 }}
       >
@@ -496,6 +536,12 @@ const MemberCalendar: React.FC = () => {
         onCancel={() => setIsMinutesViewVisible(false)}
         record={selectedMeeting}
         users={users}
+      />
+
+      <ExportDutyModal
+        open={isExportModalVisible}
+        onCancel={() => setIsExportModalVisible(false)}
+        defaultRange={[currentWeek.startOf('isoWeek' as any), currentWeek.endOf('isoWeek' as any)]}
       />
     </div>
   );

@@ -334,7 +334,9 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         <Text type="secondary" style={{ fontSize: 12 }}>SỐ KÍP ĐƯỢC TÍNH</Text>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                           <ThunderboltOutlined style={{ color: '#d97706' }} />
-                          <span style={{ fontWeight: 600, color: '#d97706' }}>{(slot as any)?.coefficient || 1} kíp</span>
+                          <span style={{ fontWeight: 600, color: '#d97706' }}>
+                            {(slot as any)?.coefficient ?? (slot as any)?.kip?.coefficient ?? (slot as any)?.shift?.coefficient ?? 1} kíp
+                          </span>
                         </div>
                       </div>
 
@@ -359,25 +361,40 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const structure = (slot as any)?.slotStructure || slot?.kip?.slotStructure || (slot as any)?.shift?.slotStructure || [];
                             if (!Array.isArray(structure) || structure.length === 0) return <Text type="secondary" italic style={{ fontSize: 13 }}>Không có yêu cầu cơ cấu đặc biệt</Text>;
                             
-                            const currentUserPos = String((currentUserData as any)?.position || '').toLowerCase();
-                            const currentUserRole = String((currentUserData as any)?.role || '').toLowerCase();
+                            const currentUserPos = String((currentUserData as any)?.position || '').toLowerCase().trim();
+                            const currentUserRole = String((currentUserData as any)?.role || '').toLowerCase().trim();
                             const isCurrentUserCTV = currentUserPos === CTV_POSITION || currentUserRole === CTV_POSITION;
                             const isProtectingTV = (visibilityMode === 'protect_members' || visibilityMode === 'hide_tv_from_ctv' || visibilityMode === 'private_mutual') && isCurrentUserCTV && !isGlobalAdmin;
 
                             return structure
                               .filter((item: any) => {
-                                const isOfficialItem = (item.positions || []).some((p: string) => OFFICIAL_POSITIONS.includes(String(p).toLowerCase())) ||
-                                                       (item.label || '').toLowerCase().includes('tv') ||
-                                                       (item.label || '').toLowerCase().includes('thành viên');
+                                const labelStr = String(item.label || '').toLowerCase().trim();
+                                const posList = (item.positions || []).map((p: any) => String(p).toLowerCase().trim());
+                                const isCTVItem = posList.includes('ctv') || posList.includes('ctc') || labelStr === 'ctv' || labelStr.includes('cộng tác viên');
+                                const isOfficialItem = !isCTVItem && (
+                                  posList.some((p: string) => OFFICIAL_POSITIONS.includes(p)) ||
+                                  labelStr === 'tv' ||
+                                  labelStr === 'tvb' ||
+                                  labelStr.includes('thành viên') ||
+                                  labelStr.includes('ban')
+                                );
+
                                 if (isProtectingTV && isOfficialItem && privacyMaskType === 'omitted') {
                                   return false;
                                 }
                                 return true;
                               })
                               .map((item: any, idx: number) => {
-                                const isOfficialItem = (item.positions || []).some((p: string) => OFFICIAL_POSITIONS.includes(String(p).toLowerCase())) ||
-                                                       (item.label || '').toLowerCase().includes('tv') ||
-                                                       (item.label || '').toLowerCase().includes('thành viên');
+                                const labelStr = String(item.label || '').toLowerCase().trim();
+                                const posList = (item.positions || []).map((p: any) => String(p).toLowerCase().trim());
+                                const isCTVItem = posList.includes('ctv') || posList.includes('ctc') || labelStr === 'ctv' || labelStr.includes('cộng tác viên');
+                                const isOfficialItem = !isCTVItem && (
+                                  posList.some((p: string) => OFFICIAL_POSITIONS.includes(p)) ||
+                                  labelStr === 'tv' ||
+                                  labelStr === 'tvb' ||
+                                  labelStr.includes('thành viên') ||
+                                  labelStr.includes('ban')
+                                );
                                 const isMasked = isProtectingTV && isOfficialItem && privacyMaskType === 'masked';
 
                                 const label = isMasked ? 'Thành viên' : (item.label || item.positions?.map((p: string) => getPositionInfo(p).name).join('/'));
@@ -401,20 +418,32 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     justifyContent: 'space-between',
-                                    padding: '6px 10px',
+                                    padding: '8px 12px',
                                     background: isMasked ? '#f8fafc' : (isMet ? '#f0fdf4' : '#f8fafc'),
                                     borderRadius: 8,
                                     border: `1px solid ${isMasked ? '#e2e8f0' : (isMet ? '#dcfce7' : '#e2e8f0')}`
                                   }}>
-                                    <Space>
-                                      <Tag color={isMasked ? 'default' : (isMet ? 'green' : 'blue')} style={{ margin: 0, borderRadius: 4 }}>
-                                        {isMasked ? '🔒 ' + label : label}
+                                    <Space size={8}>
+                                      <Tag 
+                                        color={isMasked ? 'default' : (isMet ? 'green' : 'blue')} 
+                                        style={{ 
+                                          margin: 0, 
+                                          borderRadius: 4, 
+                                          display: 'inline-flex', 
+                                          alignItems: 'center', 
+                                          gap: 4,
+                                          fontWeight: 600,
+                                          padding: '2px 8px'
+                                        }}
+                                      >
+                                        {isMasked && <LockOutlined style={{ fontSize: 11 }} />}
+                                        <span>{label}</span>
                                       </Tag>
                                       <Text type={isMasked ? 'secondary' : (isMet ? 'success' : 'secondary')} style={{ fontSize: 12 }}>
                                         {isMasked ? 'Bảo mật' : (isMet ? 'Đã đủ' : `Còn thiếu ${requiredSlots - currentCount}`)}
                                       </Text>
                                     </Space>
-                                    <Text strong style={{ color: isMasked ? '#94a3b8' : (isMet ? '#16a34a' : '#64748b') }}>
+                                    <Text strong style={{ color: isMasked ? '#94a3b8' : (isMet ? '#16a34a' : '#64748b'), fontSize: 13 }}>
                                       {isMasked ? `*** / ${requiredSlots}` : `${currentCount} / ${requiredSlots}`}
                                     </Text>
                                   </div>
@@ -434,11 +463,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                       )}
 
 
-                      <Divider orientation="left" style={{ marginTop: 24 }}>
+                      <Divider orientation="left" style={{ marginTop: 20, marginBottom: 12 }}>
                         <TeamOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách đăng ký ({registeredCount})</span>
                       </Divider>
                       
-                      <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                         <List
                           size="small"
                           dataSource={[
@@ -457,31 +486,62 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const isMe = String(u.id) === String(currentUserId);
                             const existingViolation = slot?.violations?.find((v: any) => String(v.userId) === String(u.id));
                             const displayName = isVisible ? getUserDisplayName(u) : "Nhân sự trực (Bảo mật)";
-                            const displaySub = isVisible ? u.email : "Thông tin được ẩn theo cấu hình kíp";
+                            const displaySub = isVisible ? (u.email || u.studentId || '') : "Thông tin được ẩn theo cấu hình kíp";
                             const posInfo = getPositionInfo(u.position);
 
                             return (
                               <List.Item
-                                actions={[]}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: 8,
+                                  marginBottom: 6,
+                                  background: isMe ? '#fdf2f8' : '#fafafa',
+                                  border: isMe ? '1px solid #fbcfe8' : '1px solid #f1f5f9',
+                                }}
                               >
-                                <List.Item.Meta
-                                  avatar={<Avatar src={isVisible ? u.avatar : undefined} icon={<UserOutlined />} style={{ backgroundColor: isSpecialEvent ? '#f5f3ff' : '#fdf2f8', color: themeColor }} />}
-                                  title={
-                                    <Space size={8} style={{ width: '100%' , justifyContent: 'space-between' }}>
-                                      <span style={{ fontWeight: 600 }}>{displayName}</span>
-                                      {isMe && <Tag color="magenta" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Bạn</Tag>}
-                                       {isVisible && (
-                                        <Tag color={posInfo.color} style={{ fontSize: '10px', borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
-                                          {posInfo.name}
-                                        </Tag>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 12 }}>
+                                  <Space size={10} style={{ minWidth: 0, flex: 1 }}>
+                                    <Avatar 
+                                      src={isVisible ? u.avatar : undefined} 
+                                      icon={<UserOutlined />} 
+                                      style={{ 
+                                        backgroundColor: isMe ? '#ec4899' : (isSpecialEvent ? '#8b5cf6' : themeColor), 
+                                        color: '#fff',
+                                        flexShrink: 0 
+                                      }} 
+                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                      <Space size={6} wrap>
+                                        <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{displayName}</span>
+                                        {isMe && <Tag color="magenta" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Bạn</Tag>}
+                                        {(index === 0 && !isMe) && <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Quản lý kíp</Tag>}
+                                        {!isAssigned && <Tag color="orange" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Ngoài kíp</Tag>}
+                                        {existingViolation && <Tag color="error" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
+                                      </Space>
+                                      {displaySub && (
+                                        <Text type="secondary" style={{ fontSize: 11, marginTop: 2 }} ellipsis>
+                                          {displaySub}
+                                        </Text>
                                       )}
-                                      {!isAssigned && <Tag color="orange" style={{ fontSize: 9, borderRadius: 4, margin: 0 }}>Ngoài kíp</Tag>}
-                                      {(index === 0 && !isMe) && <Tag color="gold" style={{ fontSize: 9, borderRadius: 4 }}>Quản lý kíp</Tag>}
-                                      {existingViolation && <Tag color="error" style={{ fontSize: 9, borderRadius: 4 }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
-                                    </Space>
-                                  }
-                                  description={displaySub}
-                                />
+                                    </div>
+                                  </Space>
+
+                                  {isVisible && posInfo && (
+                                    <Tag 
+                                      color={posInfo.color} 
+                                      style={{ 
+                                        fontSize: 11, 
+                                        borderRadius: 6, 
+                                        margin: 0, 
+                                        padding: '2px 8px', 
+                                        fontWeight: 500,
+                                        flexShrink: 0
+                                      }}
+                                    >
+                                      {posInfo.name}
+                                    </Tag>
+                                  )}
+                                </div>
                               </List.Item>
                             );
                           }}
