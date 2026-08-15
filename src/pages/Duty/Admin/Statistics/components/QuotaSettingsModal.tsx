@@ -228,16 +228,16 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
         </div>
 
         {/* Advanced Rules Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <Space>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+          <Space wrap>
             <GroupOutlined style={{ color: '#3b82f6', fontSize: 16 }} />
             <Text strong style={{ fontSize: 14, color: '#334155' }}>QUY TẮC ƯU TIÊN CHI TIẾT</Text>
           </Space>
-          <Space>
+          <Space wrap style={{ maxWidth: '100%' }}>
             <Select 
               placeholder="Kế thừa từ Bản mẫu..." 
               size="middle" 
-              style={{ width: 220 }}
+              style={{ width: 220, maxWidth: '100%' }}
               suffixIcon={<DownloadOutlined />}
               onChange={handleImportTemplate}
               options={templateGroups.map(g => ({ label: g.name, value: g.id }))}

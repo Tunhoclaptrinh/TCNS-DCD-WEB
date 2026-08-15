@@ -92,7 +92,7 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
   }, [templates]);
 
   return (
-    <div className="matrix-view-container" style={{ overflowX: 'auto' }}>
+    <div className="matrix-view-container filter-collapsed">
       <table className="matrix-table excel-style" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
         <thead>
           <tr>

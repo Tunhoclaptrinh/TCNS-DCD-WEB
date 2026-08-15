@@ -38,9 +38,13 @@ import MeetingDetailModal from '@/pages/Meetings/components/MeetingDetailModal';
 import MeetingMinutesViewModal from '@/pages/Meetings/components/MeetingMinutesViewModal';
 import ExportDutyModal from '@/pages/Duty/Admin/components/ExportDutyModal';
 
+import { useAccess } from '@/hooks';
+
 const { Title, Paragraph, Text } = Typography;
 
 const MemberCalendar: React.FC = () => {
+  const { hasPermission } = useAccess();
+  const canExportDuty = hasPermission('duty:export');
   const { user } = useSelector((state: RootState) => state.auth);
   const currentUserId = user?.id;
 
@@ -308,9 +312,9 @@ const MemberCalendar: React.FC = () => {
   );
 
   return (
-    <div className="duty-calendar-container" style={{ padding: '0 8px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <Title level={3} style={{ margin: 0 }}>Lịch trực tuần này</Title>
+    <div className="duty-calendar-container" >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Title level={4} style={{ margin: 0 }}>Lịch trực tuần này</Title>
         <Space>
           <Button 
             icon={<QuestionCircleOutlined style={{ color: 'var(--primary-color)' }} />}
@@ -341,17 +345,17 @@ const MemberCalendar: React.FC = () => {
       </div>
 
       <Alert 
-        message={<Text style={{ fontSize: 13, color: '#0369a1' }}><strong>Lưu ý:</strong> Mọi thay đổi (hủy/đổi) cần thực hiện sớm nhất có thể. Kíp đã khóa không thể tự ý thay đổi.</Text>}
+        message={<Text style={{ fontSize: 12, color: '#0369a1' }}><strong>Lưu ý:</strong> Mọi thay đổi (hủy/đổi) cần thực hiện sớm nhất có thể. Kíp đã khóa không thể tự ý thay đổi.</Text>}
         type="info"
         showIcon
         closable
-        style={{ marginBottom: 16, borderRadius: 8, backgroundColor: '#f0f9ff', border: '1px solid #e0f2fe', padding: '8px 12px' }}
+        style={{ marginBottom: 12, borderRadius: 8, backgroundColor: '#f0f9ff', border: '1px solid #e0f2fe', padding: '8px 12px' }}
       />
 
       <Card
         className="duty-calendar-card"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div className="week-nav-group" style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '3px 4px', borderRadius: 8, gap: 2 }}>
               <Button icon={<LeftOutlined style={{ fontSize: 11 }} />} type="text" size="small" onClick={handlePrevWeek} style={{ height: 26, width: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
               <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600, height: 26, padding: '0 10px', borderRadius: 6, color: '#334155' }}>Hôm nay</Button>
@@ -391,7 +395,7 @@ const MemberCalendar: React.FC = () => {
           </div>
         }
         extra={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Segmented
               options={[
                 { label: <Space size={4}><CalendarOutlined style={{ fontSize: 12 }} /><span>Lịch</span></Space>, value: 'calendar' },
@@ -427,24 +431,26 @@ const MemberCalendar: React.FC = () => {
               />
             </Tooltip>
 
-            <Tooltip title="Xuất Lịch Trực ra Excel (Tùy chỉnh)">
-              <Button 
-                icon={<CloudDownloadOutlined style={{ fontSize: 14, color: '#10b981' }} />} 
-                onClick={() => setIsExportModalVisible(true)}
-                size="small" 
-                style={{ 
-                  borderRadius: 7, 
-                  height: 30, 
-                  width: 30, 
-                  padding: 0, 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  borderColor: '#a7f3d0',
-                  background: '#ecfdf5'
-                }} 
-              />
-            </Tooltip>
+            {canExportDuty && (
+              <Tooltip title="Xuất Lịch Trực ra Excel (Tùy chỉnh)">
+                <Button 
+                  icon={<CloudDownloadOutlined style={{ fontSize: 14, color: '#10b981' }} />} 
+                  onClick={() => setIsExportModalVisible(true)}
+                  size="small" 
+                  style={{ 
+                    borderRadius: 7, 
+                    height: 30, 
+                    width: 30, 
+                    padding: 0, 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderColor: '#a7f3d0',
+                    background: '#ecfdf5'
+                  }} 
+                />
+              </Tooltip>
+            )}
           </div>
         }
         bodyStyle={{ padding: 0 }}
@@ -484,6 +490,7 @@ const MemberCalendar: React.FC = () => {
               openAttendanceModal={openAttendanceModal}
               onSelfCheckIn={handleSelfCheckIn}
               eventFocusMode={eventFocusMode}
+              filterRowCollapsed={true}
               meetings={meetings}
               settings={dutySettings}
               onViewMeeting={(m) => {

@@ -54,6 +54,7 @@ const AdminDutyCalendar: React.FC = () => {
   const { hasPermission, user } = useAccess();
   const isAdmin = useMemo(() => hasPermission('duty:manage') || user?.permissions?.includes('*'), [hasPermission, user]);
   const canEditSubmitted = useMemo(() => hasPermission('meeting:minutes:edit_submitted') || isAdmin, [hasPermission, isAdmin]);
+  const canExportDuty = useMemo(() => hasPermission('duty:export') || isAdmin, [hasPermission, isAdmin]);
   const currentUserId = user?.id;
 
   const [loading, setLoading] = useState(false);
@@ -545,9 +546,9 @@ const AdminDutyCalendar: React.FC = () => {
         title={
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 0, padding: '6px 0' }}>
             {/* Hàng 1: Điều hướng + Thao tác */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px 12px' }}>
               {/* Trái: Điều hướng & Ngày tháng & Định mức */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <div className="week-nav-group" style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '3px 4px', borderRadius: 8, gap: 2 }}>
                   <Button icon={<LeftOutlined style={{ fontSize: 11 }} />} type="text" size="small" onClick={handlePrevWeek} style={{ height: 26, width: 26, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
                   <Button type="text" size="small" onClick={handleToday} style={{ fontSize: '12px', fontWeight: 600, height: 26, padding: '0 10px', borderRadius: 6, color: '#334155' }}>Hôm nay</Button>
@@ -620,7 +621,7 @@ const AdminDutyCalendar: React.FC = () => {
               </div>
 
               {/* Phải: Thao tác & Quản trị */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <Tooltip title="Tải lại">
                   <Button 
                     icon={<SyncOutlined spin={loading} style={{ fontSize: 13 }} />} 
@@ -631,24 +632,26 @@ const AdminDutyCalendar: React.FC = () => {
                   />
                 </Tooltip>
 
-                <Tooltip title="Xuất Lịch Trực ra Excel (Tùy chỉnh)">
-                  <Button 
-                    icon={<CloudDownloadOutlined style={{ fontSize: 14, color: '#10b981' }} />} 
-                    onClick={() => setIsExportModalVisible(true)}
-                    size="small" 
-                    style={{ 
-                      borderRadius: 7, 
-                      height: 30, 
-                      width: 30, 
-                      padding: 0, 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      borderColor: '#a7f3d0',
-                      background: '#ecfdf5'
-                    }} 
-                  />
-                </Tooltip>
+                {canExportDuty && (
+                  <Tooltip title="Xuất Lịch Trực ra Excel (Tùy chỉnh)">
+                    <Button 
+                      icon={<CloudDownloadOutlined style={{ fontSize: 14, color: '#10b981' }} />} 
+                      onClick={() => setIsExportModalVisible(true)}
+                      size="small" 
+                      style={{ 
+                        borderRadius: 7, 
+                        height: 30, 
+                        width: 30, 
+                        padding: 0, 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        borderColor: '#a7f3d0',
+                        background: '#ecfdf5'
+                      }} 
+                    />
+                  </Tooltip>
+                )}
 
                 {isAdmin && (
                   <Dropdown overlay={adminMenu} placement="bottomRight">
@@ -692,8 +695,8 @@ const AdminDutyCalendar: React.FC = () => {
 
             {/* Hàng 2: Chế độ xem & Bộ lọc – ẩn khi thu gọn */}
             {!filterRowCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 10, paddingTop: 10, borderTop: '1px solid #f0f0f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginTop: 10, paddingTop: 10, borderTop: '1px solid #f0f0f0', flexWrap: 'wrap', gap: '8px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <Segmented 
                     options={[
                       { label: <Space size={4}><CalendarOutlined style={{ fontSize: 12 }} /><span>Lịch</span></Space>, value: 'calendar' },
@@ -810,6 +813,7 @@ const AdminDutyCalendar: React.FC = () => {
               handleRemoveShiftFromDay={handleRemoveShiftFromDay}
               eventFocusMode={eventFocusMode}
               meetings={meetings}
+              filterRowCollapsed={filterRowCollapsed}
               onViewMeeting={(m) => {
                 setSelectedMeeting(m);
                 const myConfirm = m.confirmations?.find((c: any) => String(c.userId) === String(currentUserId));

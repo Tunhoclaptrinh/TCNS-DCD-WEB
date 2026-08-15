@@ -37,6 +37,7 @@ class RoleService extends BaseService<Role> {
         category: 'Lịch trực',
         actions: [
           { key: 'duty:view', name: 'Xem lịch trực' },
+          { key: 'duty:export', name: 'Xuất lịch trực Excel' },
           { key: 'duty:register', name: 'Đăng ký ca trực' },
           { key: 'duty:update', name: 'Cập nhật ca trực' },
           { key: 'duty:manage', name: 'Quản lý/Xếp lịch' },

@@ -90,8 +90,12 @@ const ExportDutyModal: React.FC<ExportDutyModalProps> = ({ open, onCancel, defau
       });
       message.success('Đang khởi tạo tệp Excel tải về...');
       onCancel();
-    } catch (err) {
-      message.error('Lỗi khi xuất dữ liệu');
+    } catch (err: any) {
+      if (err?.response?.status === 403 || err?.statusCode === 403 || err?.status === 403) {
+        message.error('Bạn không có quyền xuất lịch trực ra file Excel');
+      } else {
+        message.error('Lỗi khi xuất dữ liệu Excel');
+      }
     } finally {
       setLoading(false);
     }
@@ -187,9 +191,9 @@ const ExportDutyModal: React.FC<ExportDutyModalProps> = ({ open, onCancel, defau
           <Col span={24}>
             <Form.Item 
               label={
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                  <Space><ScheduleOutlined /><span>Các ngày trong tuần muốn xuất</span></Space>
-                  <Space size={4}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                  <Space wrap><ScheduleOutlined /><span>Các ngày trong tuần muốn xuất</span></Space>
+                  <Space size={4} wrap>
                     <Button size="small" type="link" onClick={() => handleDayPreset('all')}>Tất cả</Button>
                     <span style={{ color: '#d9d9d9' }}>|</span>
                     <Button size="small" type="link" onClick={() => handleDayPreset('weekdays')}>Ngày thường</Button>
@@ -202,23 +206,23 @@ const ExportDutyModal: React.FC<ExportDutyModalProps> = ({ open, onCancel, defau
             >
               <Checkbox.Group style={{ width: '100%' }}>
                 <Row gutter={[8, 8]}>
-                  <Col span={3}><Checkbox value={1}>Thứ 2</Checkbox></Col>
-                  <Col span={3}><Checkbox value={2}>Thứ 3</Checkbox></Col>
-                  <Col span={3}><Checkbox value={3}>Thứ 4</Checkbox></Col>
-                  <Col span={3}><Checkbox value={4}>Thứ 5</Checkbox></Col>
-                  <Col span={3}><Checkbox value={5}>Thứ 6</Checkbox></Col>
-                  <Col span={4}><Checkbox value={6}><span style={{ color: '#e11d48' }}>Thứ 7</span></Checkbox></Col>
-                  <Col span={5}><Checkbox value={0}><span style={{ color: '#e11d48' }}>Chủ nhật</span></Checkbox></Col>
+                  <Col xs={12} sm={8} md={3}><Checkbox value={1}>Thứ 2</Checkbox></Col>
+                  <Col xs={12} sm={8} md={3}><Checkbox value={2}>Thứ 3</Checkbox></Col>
+                  <Col xs={12} sm={8} md={3}><Checkbox value={3}>Thứ 4</Checkbox></Col>
+                  <Col xs={12} sm={8} md={3}><Checkbox value={4}>Thứ 5</Checkbox></Col>
+                  <Col xs={12} sm={8} md={3}><Checkbox value={5}>Thứ 6</Checkbox></Col>
+                  <Col xs={12} sm={8} md={4}><Checkbox value={6}><span style={{ color: '#e11d48' }}>Thứ 7</span></Checkbox></Col>
+                  <Col xs={12} sm={8} md={5}><Checkbox value={0}><span style={{ color: '#e11d48' }}>Chủ nhật</span></Checkbox></Col>
                 </Row>
               </Checkbox.Group>
             </Form.Item>
           </Col>
 
           {/* 3. Đối tượng thành viên */}
-          <Col span={12}>
+          <Col xs={24} sm={12}>
             <Form.Item 
               name="memberFilter" 
-              label={<Space><TeamOutlined /><span>Đối tượng thành viên</span></Space>}
+              label={<Space wrap><TeamOutlined /><span>Đối tượng thành viên</span></Space>}
             >
               <Select
                 options={[
@@ -231,10 +235,10 @@ const ExportDutyModal: React.FC<ExportDutyModalProps> = ({ open, onCancel, defau
           </Col>
 
           {/* 4. Chế độ dữ liệu */}
-          <Col span={12}>
+          <Col xs={24} sm={12}>
             <Form.Item 
               name="mode" 
-              label={<Space><FileTextOutlined /><span>Nội dung cần tải</span></Space>}
+              label={<Space wrap><FileTextOutlined /><span>Nội dung cần tải</span></Space>}
             >
               <Select 
                 options={[
@@ -250,15 +254,15 @@ const ExportDutyModal: React.FC<ExportDutyModalProps> = ({ open, onCancel, defau
           <Col span={24}>
             <Card 
               size="small" 
-              title={<Space><InfoCircleOutlined style={{ color: '#1677ff' }} /><span>Tóm tắt thông số xuất file Excel</span></Space>}
+              title={<Space wrap><InfoCircleOutlined style={{ color: '#1677ff' }} /><span>Tóm tắt thông số xuất file Excel</span></Space>}
               style={{ background: '#f8fafc', borderColor: '#e2e8f0', marginTop: 4 }}
               styles={{ body: { padding: '12px 16px' } }}
             >
               <Descriptions 
                 size="small" 
-                column={2}
+                column={{ xs: 1, sm: 2 }}
                 colon={true}
-                labelStyle={{ color: '#64748b', fontWeight: 500, whiteSpace: 'nowrap' }}
+                labelStyle={{ color: '#64748b', fontWeight: 500 }}
                 contentStyle={{ fontWeight: 600, color: '#1e293b' }}
               >
                 <Descriptions.Item label={<Space size={4}><CalendarOutlined style={{ color: '#64748b' }} /><span>Thời gian</span></Space>}>

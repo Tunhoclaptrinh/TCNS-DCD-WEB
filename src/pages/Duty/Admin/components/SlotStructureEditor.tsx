@@ -84,8 +84,8 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({
                     position: 'relative'
                   }}
                 >
-                  <Row gutter={24} align="top">
-                    <Col span={7}>
+                  <Row gutter={[12, 12]} align="top">
+                    <Col xs={24} sm={7}>
                       <Form.Item
                         {...restField}
                         name={[name, 'label']}
@@ -95,7 +95,7 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({
                         <Input placeholder="Tên nhóm (VD: CTV, TV...)" />
                       </Form.Item>
                     </Col>
-                    <Col span={4}>
+                    <Col xs={10} sm={4}>
                       <Form.Item
                         {...restField}
                         name={[name, 'slots']}
@@ -119,7 +119,7 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({
                         </div>
                       )}
                     </Col>
-                    <Col span={11}>
+                    <Col xs={12} sm={11}>
                       <Form.Item
                         {...restField}
                         name={[name, 'positions']}
@@ -134,7 +134,7 @@ const SlotStructureEditor: React.FC<SlotStructureEditorProps> = ({
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={2}>
+                    <Col xs={2} sm={2} style={{ textAlign: 'right' }}>
                       <Button 
                         variant="ghost" 
                         icon={<DeleteOutlined style={{ color: '#ff4d4f' }} />} 

@@ -33,9 +33,13 @@ import SetupWeekModal from '@/pages/Duty/Admin/components/SetupWeekModal';
 import AssignTemplateModal from '@/pages/Duty/Admin/components/AssignTemplateModal';
 import ExportDutyModal from '@/pages/Duty/Admin/components/ExportDutyModal';
 
+import { useAccess } from '@/hooks';
+
 const { Title, Text } = Typography;
 
 const AdminDutyCalendar: React.FC = () => {
+  const { hasPermission } = useAccess();
+  const canExportDuty = hasPermission('duty:export');
   const isAdmin = true;
 
   const [loading, setLoading] = useState(false);
@@ -252,47 +256,49 @@ const AdminDutyCalendar: React.FC = () => {
               <Tooltip title="Tải lại dữ liệu">
                 <Button icon={<SyncOutlined />} onClick={fetchSchedule} loading={loading} size="small" />
               </Tooltip>
-              <Dropdown
-                overlay={
-                  <Menu onClick={({ key }) => {
-                    if (key === 'advanced') {
-                      setIsExportModalVisible(true);
-                    } else if (key.startsWith('day-')) {
-                      const date = key.replace('day-', '');
-                      dutyService.exportRangeExcel({ startDate: date, endDate: date, mode: 'all' });
-                    } else {
-                      dutyService.exportRangeExcel({ weekStart: currentWeek.format('YYYY-MM-DD'), mode: key as any });
-                    }
-                  }}>
-                    <Menu.Item key="only_duty" icon={<SolutionOutlined style={{ color: '#1890ff' }} />}>
-                      <span style={{ color: '#1890ff', fontWeight: 500 }}>Chỉ lịch trực (Tuần)</span>
-                    </Menu.Item>
-                    <Menu.Item key="with_meetings" icon={<CalendarOutlined style={{ color: '#52c41a' }} />}>
-                      <span style={{ color: '#52c41a', fontWeight: 500 }}>Lịch trực & Lịch họp (Tuần)</span>
-                    </Menu.Item>
-                    <Menu.Item key="all" icon={<GlobalOutlined style={{ color: '#722ed1' }} />}>
-                      <span style={{ color: '#722ed1', fontWeight: 500 }}>Toàn bộ (Tuần)</span>
-                    </Menu.Item>
-                    <Menu.Divider />
-                    <Menu.SubMenu key="daily" title="Tải theo ngày cụ thể" icon={<CalendarOutlined />}>
-                      {weekDays.map(day => (
-                        <Menu.Item key={`day-${day.format('YYYY-MM-DD')}`}>
-                          {day.format('dddd (DD/MM)')}
-                        </Menu.Item>
-                      ))}
-                    </Menu.SubMenu>
-                    <Menu.Divider />
-                    <Menu.Item key="advanced" icon={<CloudDownloadOutlined style={{ color: '#fa8c16' }} />}>
-                      <span style={{ color: '#fa8c16', fontWeight: 600 }}>Tùy chọn tải nâng cao...</span>
-                    </Menu.Item>
-                  </Menu>
-                }
-                placement="bottomRight"
-              >
-                <Tooltip title="Xuất dữ liệu Excel">
-                  <Button icon={<CloudDownloadOutlined />} size="small" />
-                </Tooltip>
-              </Dropdown>
+              {canExportDuty && (
+                <Dropdown
+                  overlay={
+                    <Menu onClick={({ key }) => {
+                      if (key === 'advanced') {
+                        setIsExportModalVisible(true);
+                      } else if (key.startsWith('day-')) {
+                        const date = key.replace('day-', '');
+                        dutyService.exportRangeExcel({ startDate: date, endDate: date, mode: 'all' });
+                      } else {
+                        dutyService.exportRangeExcel({ weekStart: currentWeek.format('YYYY-MM-DD'), mode: key as any });
+                      }
+                    }}>
+                      <Menu.Item key="only_duty" icon={<SolutionOutlined style={{ color: '#1890ff' }} />}>
+                        <span style={{ color: '#1890ff', fontWeight: 500 }}>Chỉ lịch trực (Tuần)</span>
+                      </Menu.Item>
+                      <Menu.Item key="with_meetings" icon={<CalendarOutlined style={{ color: '#52c41a' }} />}>
+                        <span style={{ color: '#52c41a', fontWeight: 500 }}>Lịch trực & Lịch họp (Tuần)</span>
+                      </Menu.Item>
+                      <Menu.Item key="all" icon={<GlobalOutlined style={{ color: '#722ed1' }} />}>
+                        <span style={{ color: '#722ed1', fontWeight: 500 }}>Toàn bộ (Tuần)</span>
+                      </Menu.Item>
+                      <Menu.Divider />
+                      <Menu.SubMenu key="daily" title="Tải theo ngày cụ thể" icon={<CalendarOutlined />}>
+                        {weekDays.map(day => (
+                          <Menu.Item key={`day-${day.format('YYYY-MM-DD')}`}>
+                            {day.format('dddd (DD/MM)')}
+                          </Menu.Item>
+                        ))}
+                      </Menu.SubMenu>
+                      <Menu.Divider />
+                      <Menu.Item key="advanced" icon={<CloudDownloadOutlined style={{ color: '#fa8c16' }} />}>
+                        <span style={{ color: '#fa8c16', fontWeight: 600 }}>Tùy chọn tải nâng cao...</span>
+                      </Menu.Item>
+                    </Menu>
+                  }
+                  placement="bottomRight"
+                >
+                  <Tooltip title="Xuất dữ liệu Excel">
+                    <Button icon={<CloudDownloadOutlined />} size="small" />
+                  </Tooltip>
+                </Dropdown>
+              )}
               
               <Dropdown overlay={adminMenu} placement="bottomRight">
                 <Button type="primary" size="small">
@@ -305,7 +311,7 @@ const AdminDutyCalendar: React.FC = () => {
         bodyStyle={{ padding: 0 }}
       >
         <Spin spinning={loading}>
-          <div className="matrix-view-container" style={{ overflowX: 'auto' }}>
+          <div className="matrix-view-container">
             <table className="matrix-table excel-style" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
               <thead>
                 <tr>

@@ -22,6 +22,7 @@ export const useAccess = () => {
         
         // Duty (alias để tương thích)
         'duty:view': ['duty:view', 'duty:view:all'],
+        'duty:export': ['duty:export', 'duty:view', 'duty:manage'],
 
         // Meetings
         'meeting:view':   ['meeting:view'],

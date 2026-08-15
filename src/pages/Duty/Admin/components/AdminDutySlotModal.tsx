@@ -590,18 +590,18 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           <ThunderboltOutlined /> <span className="duty-divider-label">Thông số Kíp trực</span>
         </Divider>
 
-        <Row gutter={[16, 0]}>
-          <Col span={10}>
+        <Row gutter={[16, 12]}>
+          <Col xs={24} sm={10}>
             <Form.Item label="Tên Kíp" name="shiftLabel" rules={[{ required: true }]}>
               <Input placeholder="Tên hiển thị..." />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Form.Item label="Ngày trực" name="shiftDate" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} placeholder="Chọn ngày" format="DD/MM/YYYY" />
             </Form.Item>
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={6}>
             <Form.Item label="Trạng thái" name="status" rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
               <Select placeholder="Chọn trạng thái">
                 <Select.Option value="open">
@@ -615,8 +615,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           </Col>
         </Row>
 
-        <Row gutter={[16, 0]}>
-          <Col span={10}>
+        <Row gutter={[16, 12]}>
+          <Col xs={24} sm={10}>
             <Form.Item 
               label="Khung giờ" 
               name="timeRange" 
@@ -679,7 +679,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Form.Item label="Chỉ tiêu (người)" name="capacity" rules={[{ required: true }]} style={{ marginBottom: 0 }}>
               <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
@@ -704,15 +704,15 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               }}
             </Form.Item>
           </Col>
-          <Col span={6}>
+          <Col xs={24} sm={6}>
             <Form.Item label="Hệ số kíp" name="coefficient" rules={[{ required: true }]}>
               <InputNumber min={0.25} step={0.25} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
         </Row>
 
-        <Row gutter={[16, 0]}>
-          <Col span={isPrivacyEnabled ? 12 : 24}>
+        <Row gutter={[16, 12]}>
+          <Col xs={24} sm={isPrivacyEnabled ? 12 : 24}>
             <Form.Item name="visibilityMode" label="Chế độ bảo mật" initialValue="public">
               <Select
                 options={[
@@ -725,7 +725,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             </Form.Item>
           </Col>
           {isPrivacyEnabled && (
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="privacyMaskType" label="Kiểu ẩn khi bị che" initialValue="masked">
                 <Select
                   options={[
@@ -1132,61 +1132,63 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                             </div>
                           </div>
 
-                          <div className="duty-attendee-action">
-                            <Tooltip title={userViolations.length > 0 ? `Xem / Thêm lỗi (${userViolations.length})` : "Ghi lỗi vi phạm"}>
-                              <AntButton 
-                                type="text"
-                                size="small" 
-                                shape="circle" 
-                                className={`duty-warning-btn ${userViolations.length > 0 ? 'has-violations' : ''}`}
-                                icon={<WarningOutlined style={{ fontSize: 18 }} />} 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setViolationUser(userDetail);
-                                  violationForm.resetFields();
-                                  setIsViolationModalOpen(true);
-                                }} 
-                              />
-                            </Tooltip>
-                          </div>
-
-                          <div className="duty-attendee-action">
-                            {!isAssigned && isAttended ? (
-                              <Popconfirm
-                                title="Gỡ điểm danh bổ sung?"
-                                description={`Nhân sự "${getUserDisplayName(userDetail)}" sẽ được gỡ khỏi danh sách trực.`}
-                                okText="Gỡ khỏi kíp"
-                                cancelText="Hủy"
-                                okButtonProps={{ danger: true, size: 'small' }}
-                                cancelButtonProps={{ size: 'small' }}
-                                placement="topRight"
-                                onConfirm={(e) => {
-                                  e?.stopPropagation();
-                                  handleRemoveSupplementary(id);
-                                }}
-                              >
-                                <Tooltip title="Bấm để gỡ điểm danh bổ sung">
-                                  <div 
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="duty-check-circle is-checked"
-                                  >
-                                    <CheckOutlined style={{ color: '#fff', fontSize: 12, fontWeight: 800 }} />
-                                  </div>
-                                </Tooltip>
-                              </Popconfirm>
-                            ) : (
-                              <Tooltip title={isAttended ? "Bấm để hủy điểm danh" : "Bấm để điểm danh"}>
-                                <div 
+                          <div className="duty-attendee-actions-box">
+                            <div className="duty-attendee-action">
+                              <Tooltip title={userViolations.length > 0 ? `Xem / Thêm lỗi (${userViolations.length})` : "Ghi lỗi vi phạm"}>
+                                <AntButton 
+                                  type="text"
+                                  size="small" 
+                                  shape="circle" 
+                                  className={`duty-warning-btn ${userViolations.length > 0 ? 'has-violations' : ''}`}
+                                  icon={<WarningOutlined style={{ fontSize: 18 }} />} 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleToggleAttendance(id, !isAttended);
-                                  }}
-                                  className={`duty-check-circle ${isAttended ? 'is-checked' : ''}`}
-                                >
-                                  <CheckOutlined style={{ color: isAttended ? '#fff' : '#cbd5e1', fontSize: 12, fontWeight: 800 }} />
-                                </div>
+                                    setViolationUser(userDetail);
+                                    violationForm.resetFields();
+                                    setIsViolationModalOpen(true);
+                                  }} 
+                                />
                               </Tooltip>
-                            )}
+                            </div>
+
+                            <div className="duty-attendee-action">
+                              {!isAssigned && isAttended ? (
+                                <Popconfirm
+                                  title="Gỡ điểm danh bổ sung?"
+                                  description={`Nhân sự "${getUserDisplayName(userDetail)}" sẽ được gỡ khỏi danh sách trực.`}
+                                  okText="Gỡ khỏi kíp"
+                                  cancelText="Hủy"
+                                  okButtonProps={{ danger: true, size: 'small' }}
+                                  cancelButtonProps={{ size: 'small' }}
+                                  placement="topRight"
+                                  onConfirm={(e) => {
+                                    e?.stopPropagation();
+                                    handleRemoveSupplementary(id);
+                                  }}
+                                >
+                                  <Tooltip title="Bấm để gỡ điểm danh bổ sung">
+                                    <div 
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="duty-check-circle is-checked"
+                                    >
+                                      <CheckOutlined style={{ color: '#fff', fontSize: 12, fontWeight: 800 }} />
+                                    </div>
+                                  </Tooltip>
+                                </Popconfirm>
+                              ) : (
+                                <Tooltip title={isAttended ? "Bấm để hủy điểm danh" : "Bấm để điểm danh"}>
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleAttendance(id, !isAttended);
+                                    }}
+                                    className={`duty-check-circle ${isAttended ? 'is-checked' : ''}`}
+                                  >
+                                    <CheckOutlined style={{ color: isAttended ? '#fff' : '#cbd5e1', fontSize: 12, fontWeight: 800 }} />
+                                  </div>
+                                </Tooltip>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>

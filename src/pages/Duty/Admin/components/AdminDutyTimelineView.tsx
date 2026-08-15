@@ -22,10 +22,11 @@ interface AdminDutyTimelineViewProps {
   eventFocusMode: 'off' | 'overlap' | 'all';
   meetings?: any[];
   onViewMeeting?: (meeting: any) => void;
+  filterRowCollapsed?: boolean;
 }
 
 const START_HOUR = 5;
-const END_HOUR = 24;
+const END_HOUR = 23;
 const PX_PER_HOUR = 60;
 
 const getTimeTop = (timeStr: string | undefined) => {
@@ -58,7 +59,8 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
   handleRemoveShiftFromDay,
   eventFocusMode,
   meetings,
-  onViewMeeting
+  onViewMeeting,
+  filterRowCollapsed = false
 }) => {
 
 
@@ -69,7 +71,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
     : null;
 
   return (
-    <div className="duty-calendar-pro">
+    <div className={`duty-calendar-pro ${filterRowCollapsed ? 'filter-collapsed' : 'filter-expanded'}`}>
       <div className="calendar-header">
         <div className="header-axis-spacer" />
         {weekDays.map((d, idx) => {
@@ -100,7 +102,7 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
               <span>{String(START_HOUR + i).padStart(2, '0')}:00</span>
             </div>
           ))}
-          <div className="axis-hour"><span>24:00</span></div>
+          <div className="axis-hour"><span>22:30</span></div>
           {redLineTop !== null && (
             <div className="current-time-line axis-indicator" style={{ top: `${redLineTop}px` }}>
               <span className="time-label" style={{ 
