@@ -16,6 +16,7 @@ export interface FilterConfig {
     defaultOperator?: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'not_like' | 'in' | 'nin' | 'ilike'; // Default operator
     colSpan?: number; // Grid span (default 12 or 24)
     hidden?: boolean; // If true, hides from FilterBuilder
+    disabled?: boolean; // If true, locks the filter (cannot be un-checked, deleted, or value changed)
 }
 
 /**

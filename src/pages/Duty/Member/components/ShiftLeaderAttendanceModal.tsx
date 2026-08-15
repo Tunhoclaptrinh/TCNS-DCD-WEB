@@ -16,7 +16,8 @@ import {
   Form, 
   Empty, 
   Tooltip,
-  Popconfirm
+  Popconfirm,
+  Popover
 } from 'antd';
 import { 
   CheckCircleOutlined, 
@@ -24,7 +25,9 @@ import {
   WarningOutlined, 
   CalendarOutlined,
   UserOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  FileTextOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService, { DutySlot } from '@/services/duty.service';
@@ -33,6 +36,7 @@ import UserSelect from '@/pages/Users/components/UserSelect';
 import { Button } from '@/components/common';
 import FormModal from '@/components/common/FormModal';
 import { VIOLATION_TYPE_OPTIONS, getViolationTypeLabel } from '@/pages/Duty/Admin/components/AdminDutySlotModal';
+import '../../DutyModal.less';
 
 const { Text, Title } = Typography;
 
@@ -268,23 +272,14 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
       width={800}
       centered
       title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 32 }}>
+        <div className="duty-modal-header-row">
           <Space size={12}>
-            <div style={{ 
-              width: 40, 
-              height: 40, 
-              borderRadius: 10, 
-              background: '#e0e7ff', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              color: '#4f46e5'
-            }}>
+            <div className="duty-modal-header-icon-box">
               <CheckCircleOutlined style={{ fontSize: 22 }} />
             </div>
             <div>
-              <Title level={4} style={{ margin: 0, fontSize: '1.15rem' }}>Quản lý kíp trực & Điểm danh</Title>
-              <Text type="secondary" style={{ fontSize: '0.8rem' }}>
+              <Title level={4} className="duty-modal-header-text">Quản lý kíp trực & Điểm danh</Title>
+              <Text type="secondary" className="duty-modal-header-hint">
                 <CalendarOutlined style={{ marginRight: 4 }} />
                 {currentSlot ? dayjs(currentSlot.shiftDate).format('dddd, DD/MM/YYYY') : ''} • {currentSlot?.startTime} - {currentSlot?.endTime}
               </Text>
@@ -299,8 +294,8 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
       <Divider style={{ margin: '16px 0' }} />
 
       {/* Add supplementary user */}
-      <div style={{ background: '#f8fafc', padding: 12, borderRadius: 10, marginBottom: 20, border: '1px dashed #cbd5e1' }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="duty-slot-info-box">
+        <div className="duty-slot-info-label">
           <UsergroupAddOutlined style={{ color: '#6366f1' }} />
           <span>Thêm nhân sự trực bổ sung ngoài lịch</span>
         </div>
@@ -343,12 +338,12 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
       </div>
 
       {/* User list */}
-      <div style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: 4 }}>
-        {allUsers.length === 0 ? (
-          <Empty description="Không có nhân sự nào trong kíp trực này" style={{ padding: '32px 0' }} />
-        ) : (
-          <Row gutter={[12, 12]}>
-            {allUsers.map((u: any) => {
+      <div className="duty-slot-modal-container">
+        <div className="duty-slot-attendee-list">
+          {allUsers.length === 0 ? (
+            <Empty description="Không có nhân sự nào trong kíp trực này" style={{ padding: '32px 0' }} />
+          ) : (
+            allUsers.map((u: any) => {
               const isAttended = u.isAttended;
               const isAssigned = u.isAssigned;
               const userViolations = currentSlot?.violations?.filter((v: any) => String(v.userId) === String(u.id)) || [];
@@ -357,76 +352,153 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
               const userCoeff = overrideVal !== undefined && overrideVal !== null ? overrideVal : defaultSlotCoeff;
               const isOverridden = overrideVal !== undefined && overrideVal !== null && overrideVal !== defaultSlotCoeff;
 
+              const popoverViolationList = (
+                <div className="duty-popover-violation-list" onClick={(e) => e.stopPropagation()}>
+                  <div className="duty-popover-title">
+                    Tất cả lỗi vi phạm ({userViolations.length}):
+                  </div>
+                  <div className="duty-popover-items-col">
+                    {userViolations.map((v: any) => (
+                      <div key={v.id} className="duty-popover-violation-item">
+                        <div className="duty-popover-item-row">
+                          <span className="popover-item-name">
+                            {getViolationTypeLabel(v.type, violationTypeOptions)} (x{v.coefficient})
+                          </span>
+                          {v.createdAt && (
+                            <span className="popover-item-time">
+                              {dayjs(v.createdAt).format('HH:mm DD/MM')}
+                            </span>
+                          )}
+                        </div>
+                        {v.note && <div className="duty-popover-item-note"><FileTextOutlined style={{ marginRight: 4, fontSize: 11 }} />{v.note}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+
               return (
-                <Col span={24} key={u.id}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderRadius: 10,
-                    background: isAttended ? '#f0fdf4' : '#fff',
-                    border: `1px solid ${isAttended ? '#86efac' : '#e2e8f0'}`,
-                    transition: 'all 0.2s',
-                    boxShadow: isAttended ? '0 1px 3px rgba(34, 197, 94, 0.1)' : '0 1px 2px rgba(0,0,0,0.02)'
-                  }}>
-                    <Space size={12}>
+                <div 
+                  key={u.id}
+                  className={`duty-slot-attendee-card ${isAttended ? 'is-attended' : ''}`}
+                >
+                  <div className="duty-slot-attendee-left">
+                    {/* 1. Identity Box: Avatar + Name + MSV */}
+                    <div className="duty-attendee-identity-box">
                       <Avatar 
                         src={u.avatar} 
                         icon={<UserOutlined />} 
-                        size={42} 
-                        style={{ border: isAttended ? '2px solid #22c55e' : '2px solid #cbd5e1' }}
+                        size={40} 
+                        className={`duty-attendee-avatar ${isAttended ? 'is-attended' : ''}`}
                       />
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <Text strong style={{ fontSize: '0.95rem' }}>{getUserDisplayName(u)}</Text>
-                          {getPositionTag(u.position)}
-                          {!isAssigned && (
-                            <Tag color="purple" style={{ fontSize: '10px', margin: 0, fontWeight: 600 }}>
-                              BỔ SUNG
-                            </Tag>
-                          )}
-                          {isOverridden && (
-                            <Tag color="gold" style={{ fontSize: '10px', margin: 0 }}>
-                              {userCoeff} kíp
-                            </Tag>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span>MSV: {u.studentId || 'Chưa cập nhật'}</span>
-                          {userViolations.map((v: any) => (
-                            <Tooltip
-                              key={v.id}
-                              title={
-                                <div>
-                                  <div style={{ fontWeight: 600 }}>{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
-                                  {v.note ? (
-                                    <div style={{ marginTop: 2 }}>📝 <b>Ghi chú:</b> {v.note}</div>
-                                  ) : (
-                                    <div style={{ marginTop: 2, color: '#cbd5e1' }}>Không có ghi chú thêm</div>
-                                  )}
-                                  {v.createdAt && (
-                                    <div style={{ marginTop: 2, fontSize: 10, color: '#94a3b8' }}>
-                                      🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
-                                    </div>
-                                  )}
-                                </div>
-                              }
-                            >
-                              <Tag
-                                color="error"
-                                style={{ fontSize: '10px', margin: 0, display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer' }}
-                              >
-                                {getViolationTypeLabel(v.type, violationTypeOptions)} (x{v.coefficient})
-                              </Tag>
-                            </Tooltip>
-                          ))}
+                      <div className="duty-attendee-identity-text">
+                        <Tooltip title={getUserDisplayName(u)} placement="topLeft">
+                          <div className="duty-attendee-name">
+                            {getUserDisplayName(u)}
+                          </div>
+                        </Tooltip>
+                        <div className="duty-attendee-msv">
+                          MSV: {u.studentId || 'Chưa cập nhật'}
                         </div>
                       </div>
-                    </Space>
+                    </div>
 
-                    <Space size={8}>
-                      <Tooltip title="Chỉnh sửa số kíp được tính riêng cho nhân sự này">
+                    {/* 2. Middle Box: Tags & Violations */}
+                    <div className="duty-attendee-middle-box">
+                      <div className="duty-attendee-tags-row">
+                        {getPositionTag(u.position)}
+                        {isAssigned ? (
+                          <Tag color="blue" className="duty-badge-tag">
+                            Theo lịch
+                          </Tag>
+                        ) : (
+                          <Tag color="purple" className="duty-badge-tag is-leader">
+                            BỔ SUNG
+                          </Tag>
+                        )}
+                        {isOverridden && (
+                          <Tag color="gold" className="duty-badge-tag">
+                            {userCoeff} kíp
+                          </Tag>
+                        )}
+                      </div>
+
+                      {userViolations.length > 0 && (
+                        <div className="duty-attendee-violations-row">
+                          {userViolations.length <= 2 ? (
+                            userViolations.map((v: any) => (
+                              <Tooltip
+                                key={v.id}
+                                title={
+                                  <div>
+                                    <div className="duty-tooltip-title">{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
+                                    {v.note ? (
+                                      <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Ghi chú:</b> {v.note}</div>
+                                    ) : (
+                                      <div className="duty-tooltip-note-empty">Không có ghi chú thêm</div>
+                                    )}
+                                    {v.createdAt && (
+                                      <div className="duty-tooltip-time">
+                                        <ClockCircleOutlined style={{ marginRight: 4 }} />{dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
+                                      </div>
+                                    )}
+                                  </div>
+                                }
+                              >
+                                <Tag color="error" className="duty-badge-tag">
+                                  {getViolationTypeLabel(v.type, violationTypeOptions)} (x{v.coefficient})
+                                </Tag>
+                              </Tooltip>
+                            ))
+                          ) : (
+                            <>
+                              <Tooltip
+                                key={userViolations[0].id}
+                                title={
+                                  <div>
+                                    <div className="duty-tooltip-title">{getViolationTypeLabel(userViolations[0].type, violationTypeOptions)} (Hệ số: x{userViolations[0].coefficient})</div>
+                                    {userViolations[0].note ? (
+                                      <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Ghi chú:</b> {userViolations[0].note}</div>
+                                    ) : (
+                                      <div className="duty-tooltip-note-empty">Không có ghi chú thêm</div>
+                                    )}
+                                    {userViolations[0].createdAt && (
+                                      <div className="duty-tooltip-time">
+                                        <ClockCircleOutlined style={{ marginRight: 4 }} />{dayjs(userViolations[0].createdAt).format('DD/MM/YYYY HH:mm')}
+                                      </div>
+                                    )}
+                                  </div>
+                                }
+                              >
+                                <Tag color="error" className="duty-badge-tag">
+                                  {getViolationTypeLabel(userViolations[0].type, violationTypeOptions)} (x{userViolations[0].coefficient})
+                                </Tag>
+                              </Tooltip>
+                              <Popover 
+                                content={popoverViolationList} 
+                                trigger={['hover', 'click']} 
+                                mouseLeaveDelay={0.35}
+                                mouseEnterDelay={0.05}
+                                placement="bottomLeft"
+                              >
+                                <Tag 
+                                  color="default" 
+                                  className="duty-badge-more"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  +{userViolations.length - 1} khác
+                                </Tag>
+                              </Popover>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="duty-slot-attendee-right">
+                    <div className="duty-attendee-coeff">
+                      <Tooltip title={isAttended ? "Hệ số kíp thực tế tính cho nhân sự này" : "Nhân sự chưa điểm danh — hệ số chưa có hiệu lực"}>
                         <InputNumber
                           size="small"
                           min={0}
@@ -434,12 +506,8 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                           step={0.25}
                           value={userCoeff}
                           addonAfter="kíp"
-                          style={{
-                            width: 90,
-                            borderRadius: 6,
-                            borderColor: isOverridden ? '#f59e0b' : '#cbd5e1',
-                            backgroundColor: isOverridden ? '#fffbeb' : '#fff'
-                          }}
+                          disabled={!isAttended}
+                          className={isAttended && isOverridden ? 'duty-coeff-overridden' : ''}
                           onChange={(val) => {
                             const next = { ...overrides };
                             if (val === null || val === undefined || Number(val) === Number(defaultSlotCoeff)) {
@@ -465,52 +533,55 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                           }}
                         />
                       </Tooltip>
+                    </div>
 
+                    <div className="duty-attendee-status">
+                      <span className={`status-text ${isAttended ? 'is-attended' : 'is-not-attended'}`}>
+                        {isAttended ? 'ĐÃ CÓ MẶT' : 'CHƯA ĐIỂM DANH'}
+                      </span>
+                      <div className="status-tags">
+                        {isOverridden && isAttended && <Tag color="gold" className="duty-status-tag-mini">TÙY CHỈNH</Tag>}
+                        {!isAssigned && <Tag color="purple" className="duty-status-tag-mini">BỔ SUNG</Tag>}
+                      </div>
+                    </div>
+
+                    <div className="duty-attendee-action">
+                      <Tooltip title={userViolations.length > 0 ? `Xem / Thêm lỗi (${userViolations.length})` : "Ghi lỗi vi phạm"}>
+                        <AntButton 
+                          type="text"
+                          size="small" 
+                          shape="circle" 
+                          className={`duty-warning-btn ${userViolations.length > 0 ? 'has-violations' : ''}`}
+                          icon={<WarningOutlined style={{ fontSize: 18 }} />} 
+                          onClick={() => {
+                            setViolationUser(u);
+                            violationForm.resetFields();
+                            setIsViolationModalOpen(true);
+                          }} 
+                        />
+                      </Tooltip>
+                    </div>
+
+                    <div className="duty-attendee-action">
                       <Tooltip title={isAttended ? "Đã điểm danh" : "Bấm để điểm danh"}>
                         <div 
                           onClick={() => markAttendance(u.id, userCoeff)}
-                          style={{ 
-                            width: 36, 
-                            height: 36, 
-                            borderRadius: '50%', 
-                            background: isAttended ? '#10b981' : '#fff',
-                            border: `2px solid ${isAttended ? '#10b981' : '#e2e8f0'}`,
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: isAttended ? '0 2px 8px rgba(16, 185, 129, 0.4)' : 'none'
-                          }}
+                          className={`duty-check-circle ${isAttended ? 'is-checked' : ''}`}
+                          style={{ cursor: loading ? 'not-allowed' : 'pointer' }}
                         >
-                          <CheckCircleOutlined style={{ color: isAttended ? '#fff' : '#e2e8f0', fontSize: 18 }} />
+                          <CheckCircleOutlined style={{ color: isAttended ? '#fff' : '#cbd5e1', fontSize: 16 }} />
                         </div>
                       </Tooltip>
-
-                      <AntButton 
-                        icon={<WarningOutlined />} 
-                        danger 
-                        type={userViolations.length > 0 ? "primary" : "text"}
-                        style={userViolations.length > 0 ? { background: '#ef4444', borderColor: '#ef4444' } : {}}
-                        onClick={() => {
-                          setViolationUser(u);
-                          violationForm.resetFields();
-                          violationForm.setFieldsValue({ coefficient: 1, types: [] });
-                          setIsViolationModalOpen(true);
-                        }}
-                      >
-                        {userViolations.length > 0 ? `Lỗi (${userViolations.length})` : 'Báo lỗi'}
-                      </AntButton>
-                    </Space>
+                    </div>
                   </div>
-                </Col>
+                </div>
               );
-            })}
-          </Row>
-        )}
+            })
+          )}
+        </div>
       </div>
 
-      <div style={{ marginTop: 32, textAlign: 'right' }}>
+      <div className="duty-done-row">
         <Button variant="primary" onClick={onCancel} style={{ padding: '0 32px' }}>Hoàn tất điểm danh</Button>
       </div>
 
@@ -529,6 +600,21 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
         okText="Ghi nhận lỗi"
         width={480}
       >
+        <div className="duty-violation-modal-user-header" style={{ textAlign: 'center', marginBottom: 20 }}>
+          <Avatar size={64} src={violationUser?.avatar} icon={<UserOutlined />} />
+          <Title level={5} style={{ marginTop: 10, marginBottom: 2 }}>
+            {getUserDisplayName(violationUser)}
+          </Title>
+          {violationUser?.studentId && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 2 }}>
+              MSV: {violationUser.studentId}
+            </div>
+          )}
+          {violationUser?.email && (
+            <Text type="secondary" style={{ fontSize: 12 }}>{violationUser.email}</Text>
+          )}
+        </div>
+
         <Form.Item name="types" label="Chọn một hoặc nhiều loại lỗi vi phạm" rules={[{ required: true, message: 'Vui lòng chọn ít nhất một loại lỗi' }]}>
           <Select 
             mode="multiple" 
@@ -550,9 +636,9 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
             if (selectedOpts.length === 0) return null;
 
             return (
-              <div style={{ marginBottom: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text strong style={{ fontSize: 13, color: '#334155' }}>
+              <div className="duty-violation-preview-box">
+                <div className="preview-header">
+                  <Text strong className="preview-header-label">
                     Đã chọn {selectedOpts.length} loại lỗi:
                   </Text>
                   {totalEstimatedPenalty > 0 && (
@@ -561,22 +647,19 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                     </Tag>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="preview-list">
                   {selectedOpts.map(opt => {
                     const coeff = Number(opt.defaultCoeff) || 1;
                     const penalty = (Number(opt.defaultPenalty) || 0) * coeff;
                     return (
-                      <div 
-                        key={opt.value || opt.key} 
-                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '4px 8px', background: '#fff', borderRadius: 6, border: '1px solid #f1f5f9' }}
-                      >
+                      <div key={opt.value || opt.key} className="preview-item">
                         <Space size={6}>
                           <span>{opt.rawLabel || opt.label}</span>
                           <Tag color="default" style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '14px' }}>
                             Hệ số: x{coeff}
                           </Tag>
                         </Space>
-                        <span style={{ fontWeight: 600, color: penalty > 0 ? '#ef4444' : '#64748b' }}>
+                        <span className={`preview-item-penalty ${penalty > 0 ? 'has-penalty' : 'no-penalty'}`}>
                           {penalty > 0 ? `-${penalty.toLocaleString('vi-VN')}đ` : 'Theo quy định'}
                         </span>
                       </div>
@@ -592,50 +675,39 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
         </Form.Item>
 
         {currentViolationsOfUser.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Typography.Text strong style={{ fontSize: 13, color: '#ef4444' }}>
+          <div className="duty-recorded-violations">
+            <div className="recorded-violations-header">
+              <Typography.Text strong className="recorded-violations-label">
                 Các lỗi đã ghi nhận ({currentViolationsOfUser.length}):
               </Typography.Text>
               <AntButton danger type="link" size="small" onClick={handleDeleteAllViolations}>
                 Xóa tất cả lỗi
               </AntButton>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+            <div className="recorded-violations-list">
               {currentViolationsOfUser.map((v: any) => (
                 <Tooltip
                   key={v.id}
                   title={
                     <div>
-                      <div style={{ fontWeight: 600 }}>{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
+                      <div className="duty-tooltip-title">{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
                       {v.note ? (
-                        <div style={{ marginTop: 2 }}>📝 <b>Ghi chú:</b> {v.note}</div>
+                        <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Ghi chú:</b> {v.note}</div>
                       ) : (
-                        <div style={{ marginTop: 2, color: '#cbd5e1' }}>Không có ghi chú thêm</div>
+                        <div className="duty-tooltip-note-empty">Không có ghi chú thêm</div>
                       )}
                       {v.createdAt && (
-                        <div style={{ marginTop: 2, fontSize: 10, color: '#94a3b8' }}>
-                          🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
+                        <div className="duty-tooltip-time">
+                          <ClockCircleOutlined style={{ marginRight: 4 }} />{dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
                         </div>
                       )}
                     </div>
                   }
                 >
-                  <div 
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '6px 10px',
-                      background: '#fef2f2',
-                      borderRadius: 6,
-                      border: '1px solid #fee2e2',
-                      cursor: 'help'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontWeight: 600, fontSize: 12, color: '#991b1b' }}>
+                  <div className="recorded-violation-item">
+                    <div className="recorded-violation-info">
+                      <div className="recorded-violation-name-row">
+                        <span className="recorded-violation-name">
                           {getViolationTypeLabel(v.type, violationTypeOptions)}
                         </span>
                         <Tag color="red" style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '14px' }}>
@@ -643,7 +715,7 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                         </Tag>
                       </div>
                       {v.note && (
-                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                        <div className="recorded-violation-note">
                           📝 {v.note}
                         </div>
                       )}

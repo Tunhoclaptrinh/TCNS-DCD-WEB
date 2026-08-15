@@ -19,6 +19,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   SaveOutlined,
+  DollarOutlined,
+  FlagOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -118,23 +120,34 @@ const DutyManagement = () => {
   }, [slotFilterWeek]);
 
 
+  useEffect(() => {
+    fetchDutySettings();
+  }, [activeTab]);
+
   const fetchDutySettings = async () => {
     try {
-      const res = await dutyService.getSettings();
-      if (res.success && res.data) {
-        settingsForm.setFieldsValue({
-          ...res.data,
-          weeklyLimitEnabled: !!res.data.weeklyLimitEnabled,
-          violationTypes: Array.isArray(res.data.violationTypes) && res.data.violationTypes.length > 0
-            ? res.data.violationTypes
+      const res = await dutyService.getDutySettings();
+      const data = res?.data || (res as any);
+      if (data) {
+        const fields = {
+          weeklyLimitEnabled: data.weeklyLimitEnabled ?? true,
+          weeklyKipLimit: data.weeklyKipLimit ?? 2,
+          allowUnregisterWhenFull: data.allowUnregisterWhenFull ?? false,
+          selfCheckInBeforeMinutes: data.selfCheckInBeforeMinutes ?? 15,
+          defaultQuota: data.defaultQuota ?? 4,
+          kipPrice: data.kipPrice ?? 0,
+          allowedIpRanges: Array.isArray(data.allowedIpRanges) ? data.allowedIpRanges.join(', ') : (data.allowedIpRanges || ''),
+          violationTypes: Array.isArray(data.violationTypes) && data.violationTypes.length > 0
+            ? data.violationTypes
             : DEFAULT_VIOLATION_TYPES,
-          allowedIpRanges: Array.isArray(res.data.allowedIpRanges) 
-            ? res.data.allowedIpRanges.join(', ') 
-            : res.data.allowedIpRanges,
-        });
+        };
+        settingsForm.setFieldsValue(fields);
+        setTimeout(() => {
+          settingsForm.setFieldsValue(fields);
+        }, 50);
       }
     } catch (err) {
-      console.error('Lỗi tải cấu hình');
+      console.error('Lỗi tải cấu hình kíp:', err);
     }
   };
 
@@ -148,16 +161,22 @@ const DutyManagement = () => {
   };
 
   const handleUpdateSettings = async (values: any) => {
-    console.log('[Management] Updating settings with values:', values);
     setSettingsLoading(true);
     try {
-      const res = await dutyService.updateSettings(values);
-      if (res.success) {
+      const payload = { ...values };
+      if (typeof payload.allowedIpRanges === 'string') {
+        payload.allowedIpRanges = payload.allowedIpRanges
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+      }
+      const res = await dutyService.updateDutySettings(payload);
+      if (res.success || (res as any)?.data) {
         message.success('Đã cập nhật cấu hình hệ thống');
         fetchDutySettings();
       }
-    } catch (err) {
-      message.error('Lỗi khi cập nhật cấu hình');
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi cập nhật cấu hình');
     } finally {
       setSettingsLoading(false);
     }
@@ -1713,19 +1732,21 @@ const DutyManagement = () => {
                   }
                   style={{ height: '100%', borderRadius: 12 }}
                 >
-                  <div style={{ marginBottom: 16 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      Kiểm soát định mức đăng ký kíp trực của thành viên theo từng tuần.
-                    </Text>
+                  <div style={{ marginBottom: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Kiểm soát số kíp trực tối đa mỗi thành viên được đăng ký trong 1 tuần.</Text>
                   </div>
-                  <div style={{ padding: '12px 16px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                    <Space align="start">
-                      <InfoCircleOutlined style={{ color: '#3b82f6', marginTop: 3 }} />
-                      <Text style={{ fontSize: 12, color: '#475569' }}>
-                        Để thiết lập giới hạn cho từng tuần cụ thể, vui lòng sử dụng menu <b>"Quản trị tuần"</b>.
-                      </Text>
-                    </Space>
-                  </div>
+                  <Form.Item name="weeklyKipLimit" label={<span style={{ fontSize: 12, fontWeight: 600 }}>Số kíp trực tối đa / tuần</span>} style={{ marginBottom: 12 }}>
+                    <InputNumber 
+                      min={0} 
+                      max={50} 
+                      addonAfter="kíp / tuần" 
+                      style={{ width: '100%', borderRadius: 8 }} 
+                      placeholder="Mặc định: 2"
+                    />
+                  </Form.Item>
+                  <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                    * Áp dụng khi bật giới hạn tuần (nhập 0 để không giới hạn).
+                  </Text>
                 </Card>
               </Col>
 
@@ -1775,82 +1796,71 @@ const DutyManagement = () => {
 
               <Col xs={24} lg={12}>
                 <Card 
-                  title={<Space><ExclamationCircleOutlined /> Quy định Phạt (Tự động)</Space>}
-                  style={{ height: '100%', borderRadius: 12, border: '1px solid #fee2e2' }}
-                  headStyle={{ background: '#fffcfc' }}
+                  title={<Space><ClockCircleOutlined /> Mở Tự điểm danh trước ca</Space>}
+                  style={{ height: '100%', borderRadius: 12 }}
                 >
-                  <Row gutter={16}>
-                    <Col span={12}>
-                      <Form.Item 
-                        name="penaltyAbsentNoPermission" 
-                        label={<span style={{ fontSize: 12 }}>Vắng không phép</span>}
-                        rules={[{ required: true, message: 'Nhập số tiền' }]}
-                      >
-                        <InputNumber 
-                          min={0} step={5000} 
-                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          style={{ width: '100%', borderRadius: 6 }} 
-                          addonAfter="đ"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item 
-                        name="penaltyAbsentWithPermissionLate" 
-                        label={<span style={{ fontSize: 12 }}>Vắng báo muộn</span>}
-                        rules={[{ required: true, message: 'Nhập số tiền' }]}
-                      >
-                        <InputNumber 
-                          min={0} step={5000} 
-                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          style={{ width: '100%', borderRadius: 6 }} 
-                          addonAfter="đ"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item 
-                        name="penaltyLate" 
-                        label={<span style={{ fontSize: 12 }}>Đi muộn</span>}
-                        rules={[{ required: true, message: 'Nhập số tiền' }]}
-                      >
-                        <InputNumber 
-                          min={0} step={5000} 
-                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          style={{ width: '100%', borderRadius: 6 }} 
-                          addonAfter="đ"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item 
-                        name="penaltyWrongUniform" 
-                        label={<span style={{ fontSize: 12 }}>Sai tác phong / trang phục</span>}
-                        rules={[{ required: true, message: 'Nhập số tiền' }]}
-                      >
-                        <InputNumber 
-                          min={0} step={5000} 
-                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          style={{ width: '100%', borderRadius: 6 }} 
-                          addonAfter="đ"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                      <Form.Item 
-                        name="violationPenaltyRate" 
-                        label={<span style={{ fontSize: 12 }}>Hệ số phạt theo giá kíp (áp dụng cho lỗi khác)</span>}
-                        rules={[{ required: true, message: 'Nhập hệ số' }]}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <InputNumber 
-                          min={0} step={0.5} max={5}
-                          style={{ width: '100%', borderRadius: 6 }} 
-                          addonAfter="lần giá kíp"
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
+                  <div style={{ marginBottom: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Cấu hình số phút được phép tự điểm danh trước khi ca trực bắt đầu.</Text>
+                  </div>
+                  <Form.Item name="selfCheckInBeforeMinutes" style={{ marginBottom: 12 }}>
+                    <InputNumber 
+                      min={0} 
+                      max={9999} 
+                      addonAfter="phút" 
+                      style={{ width: '100%', borderRadius: 8 }} 
+                      placeholder="Mặc định: 15"
+                    />
+                  </Form.Item>
+                  <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                    * Ví dụ: Đặt <b>15</b> nghĩa là thành viên được bấm tự điểm danh từ 15 phút trước giờ bắt đầu kíp cho tới khi kíp kết thúc.
+                  </Text>
+                </Card>
+              </Col>
+
+              <Col xs={24} lg={12}>
+                <Card 
+                  title={<Space><DollarOutlined style={{ color: '#10b981' }} /> Đơn giá tiền trực mặc định</Space>}
+                  style={{ height: '100%', borderRadius: 12 }}
+                >
+                  <div style={{ marginBottom: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Mức thù lao mặc định (VNĐ/kíp) làm giá trị nền (Fallback).</Text>
+                  </div>
+                  <Form.Item name="kipPrice" style={{ marginBottom: 12 }}>
+                    <InputNumber 
+                      min={0} 
+                      step={5000} 
+                      addonAfter="VNĐ" 
+                      style={{ width: '100%', borderRadius: 8 }} 
+                      placeholder="Mặc định: 0"
+                      formatter={(val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    />
+                  </Form.Item>
+                  <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                    * Hệ thống sẽ ưu tiên áp dụng đơn giá riêng theo đợt trực hoặc đối tượng nếu có.
+                  </Text>
+                </Card>
+              </Col>
+
+              <Col xs={24} lg={12}>
+                <Card 
+                  title={<Space><FlagOutlined style={{ color: '#3b82f6' }} /> Định mức kíp tối thiểu mặc định</Space>}
+                  style={{ height: '100%', borderRadius: 12 }}
+                >
+                  <div style={{ marginBottom: 12 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>Số kíp trực tối thiểu mặc định thành viên phải thực hiện (kíp/tháng).</Text>
+                  </div>
+                  <Form.Item name="defaultQuota" style={{ marginBottom: 12 }}>
+                    <InputNumber 
+                      min={0} 
+                      step={0.5} 
+                      addonAfter="kíp / tháng" 
+                      style={{ width: '100%', borderRadius: 8 }} 
+                      placeholder="Mặc định: 4"
+                    />
+                  </Form.Item>
+                  <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                    * Áp dụng khi đối tượng hoặc đợt trực chưa quy định Quota riêng.
+                  </Text>
                 </Card>
               </Col>
             </Row>
@@ -1873,108 +1883,119 @@ const DutyManagement = () => {
               <Form.List name="violationTypes">
                 {(fields, { add, remove }) => (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {fields.map(({ key, name, ...restField }) => (
-                      <div
-                        key={key}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                          padding: '12px 16px',
-                          background: '#f8fafc',
-                          borderRadius: 8,
-                          border: '1px solid #e2e8f0',
-                          flexWrap: 'wrap'
-                        }}
-                      >
-                        <div style={{ flex: 2, minWidth: 160 }}>
-                          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Tên lỗi hiển thị</span>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'label']}
-                            rules={[{ required: true, message: 'Nhập tên lỗi' }]}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <Input placeholder="Tên loại lỗi (VD: Đi muộn)" />
-                          </Form.Item>
-                        </div>
+                    {fields.map(({ key, name, ...restField }) => {
+                      const itemData = settingsForm.getFieldValue(['violationTypes', name]) || {};
+                      const isSystemDefault = ['absent_no_permission', 'late', 'absent_with_permission_late', 'wrong_uniform', 'other'].includes(itemData.key);
 
-                        <div style={{ flex: 1.5, minWidth: 140 }}>
-                          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mã key hệ thống</span>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'key']}
-                            rules={[{ required: true, message: 'Nhập mã key' }]}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <Input placeholder="Mã key (VD: late)" />
-                          </Form.Item>
-                        </div>
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '12px 16px',
+                            background: isSystemDefault ? '#f8fafc' : '#ffffff',
+                            borderRadius: 8,
+                            border: '1px solid #e2e8f0',
+                            flexWrap: 'wrap'
+                          }}
+                        >
+                          <div style={{ flex: 2, minWidth: 160 }}>
+                            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Tên lỗi hiển thị</span>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'label']}
+                              rules={[{ required: true, message: 'Nhập tên lỗi' }]}
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Input placeholder="Tên loại lỗi (VD: Đi muộn)" />
+                            </Form.Item>
+                          </div>
 
-                        <div style={{ flex: 1.5, minWidth: 130 }}>
-                          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mức phạt mặc định</span>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'defaultPenalty']}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <InputNumber
-                              min={0}
-                              step={5000}
-                              formatter={val => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              addonAfter="đ"
-                              style={{ width: '100%' }}
-                              placeholder="Tiền phạt"
-                            />
-                          </Form.Item>
-                        </div>
+                          <div style={{ flex: 1.5, minWidth: 140 }}>
+                            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mã key hệ thống</span>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'key']}
+                              rules={[{ required: true, message: 'Nhập mã key' }]}
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Input placeholder="Mã key (VD: late)" disabled={isSystemDefault} />
+                            </Form.Item>
+                          </div>
 
-                        <div style={{ width: 100 }}>
-                          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Hệ số</span>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'defaultCoeff']}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <InputNumber
-                              min={0.1}
-                              max={5}
-                              step={0.5}
-                              addonAfter="x"
-                              style={{ width: '100%' }}
-                              placeholder="Hệ số"
-                            />
-                          </Form.Item>
-                        </div>
+                          <div style={{ flex: 1.5, minWidth: 130 }}>
+                            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mức phạt mặc định</span>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'defaultPenalty']}
+                              style={{ marginBottom: 0 }}
+                            >
+                              <InputNumber
+                                min={0}
+                                step={5000}
+                                formatter={val => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                addonAfter="đ"
+                                style={{ width: '100%' }}
+                                placeholder="Tiền phạt"
+                              />
+                            </Form.Item>
+                          </div>
 
-                        <div style={{ flex: 3, minWidth: 200 }}>
-                          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mô tả quy định vi phạm</span>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'description']}
-                            style={{ marginBottom: 0 }}
-                          >
-                            <Input placeholder="Mô tả chi tiết vi phạm..." />
-                          </Form.Item>
-                        </div>
+                          <div style={{ width: 100 }}>
+                            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Hệ số</span>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'defaultCoeff']}
+                              style={{ marginBottom: 0 }}
+                            >
+                              <InputNumber
+                                min={0.1}
+                                max={5}
+                                step={0.5}
+                                addonAfter="x"
+                                style={{ width: '100%' }}
+                                placeholder="Hệ số"
+                              />
+                            </Form.Item>
+                          </div>
 
-                        <div style={{ paddingTop: 20 }}>
-                          <Popconfirm
-                            title="Xóa loại vi phạm này?"
-                            description="Bạn có chắc chắn muốn gỡ loại vi phạm này khỏi danh mục?"
-                            onConfirm={() => remove(name)}
-                            okText="Xóa"
-                            cancelText="Hủy"
-                          >
-                            <Button
-                              type="text"
-                              danger
-                              icon={<DeleteOutlined />}
-                            />
-                          </Popconfirm>
+                          <div style={{ flex: 3, minWidth: 200 }}>
+                            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mô tả quy định vi phạm</span>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'description']}
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Input placeholder="Mô tả chi tiết vi phạm..." />
+                            </Form.Item>
+                          </div>
+
+                          <div style={{ paddingTop: 20 }}>
+                            <Tooltip title={isSystemDefault ? "Lỗi mặc định hệ thống - Chỉ cho phép chỉnh sửa thông số, không thể xóa" : "Xóa loại lỗi này"}>
+                              <span>
+                                <Popconfirm
+                                  title="Xóa loại vi phạm này?"
+                                  description="Bạn có chắc chắn muốn gỡ loại vi phạm này khỏi danh mục?"
+                                  onConfirm={() => !isSystemDefault && remove(name)}
+                                  okText="Xóa"
+                                  cancelText="Hủy"
+                                  disabled={isSystemDefault}
+                                >
+                                  <Button
+                                    type="text"
+                                    danger
+                                    disabled={isSystemDefault}
+                                    icon={<DeleteOutlined />}
+                                  />
+                                </Popconfirm>
+                              </span>
+                            </Tooltip>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     <Button
                       type="dashed"

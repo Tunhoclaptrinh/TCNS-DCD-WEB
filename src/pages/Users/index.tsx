@@ -629,6 +629,9 @@ const UserPage = () => {
             key: "department",
             width: 150,
             resizable: true,
+            filters: departmentConfigs.length > 0
+                ? departmentConfigs.map((d: any) => ({ text: d.name, value: d.name }))
+                : DEPARTMENTS.map(d => ({ text: d, value: d })),
             render: (dept: string) => dept ? <Tag color="blue">{dept}</Tag> : <span style={{ color: '#bfbfbf' }}>--</span>
         },
         {

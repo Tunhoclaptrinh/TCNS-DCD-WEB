@@ -1,0 +1,810 @@
+@import '../../styles/variables.less';
+
+/* Duty Slot Modal & Attendance Modals Styles */
+
+/* ─── Modal container ─────────────────────── */
+.duty-slot-modal-container {
+  padding: 0 4px;
+}
+
+/* ─── Parent shift banner ─────────────────── */
+.duty-slot-parent-banner {
+  padding: 12px 18px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  &.is-special {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #bfdbfe;
+  }
+
+  &.is-normal {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+  }
+
+  .duty-slot-banner-date-badge {
+    color: white;
+    width: 42px;
+    height: 42px;
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &.is-special { background: #3b82f6; }
+    &.is-normal  { background: #475569; }
+
+    .date-badge-dow {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+
+    .date-badge-day {
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1;
+      margin-top: 1px;
+    }
+  }
+
+  .duty-slot-banner-time {
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 2px;
+
+    &.is-special { color: #2563eb; }
+    &.is-normal  { color: #475569; }
+  }
+}
+
+/* ─── Divider label ───────────────────────── */
+.duty-divider-label {
+  font-size: 13px;
+  margin-left: 8px;
+}
+
+.duty-divider-label-bold {
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 8px; // when used inside <Space>
+}
+
+/* ─── Capacity / quota hint ───────────────── */
+.duty-capacity-hint {
+  font-size: 11px;
+  margin-top: 4px;
+
+  &.is-error    { color: #dc2626; }
+  &.is-warning  { color: #d97706; }
+  &.is-success  { color: #059669; }
+  &.is-info     { color: #2563eb; }
+}
+
+/* ─── Empty attendee state ────────────────── */
+.duty-attendee-empty {
+  padding: 32px 0;
+  text-align: center;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+
+  .ant-typography { font-size: 13px; }
+}
+
+/* ─── Attendee section wrapper ────────────── */
+.duty-slot-attendee-section {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+
+  .duty-slot-attendee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+
+    .duty-attendee-section-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .duty-attendee-section-hint {
+      font-size: 12px;
+    }
+  }
+}
+
+/* ─── Attendee list ───────────────────────── */
+.duty-slot-attendee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 2px;
+}
+
+/* ─── Single attendee card ────────────────── */
+.duty-slot-attendee-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 68px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+
+  &:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  &.is-attended {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    box-shadow: 0 1px 4px rgba(34, 197, 94, 0.08);
+
+    &:hover {
+      border-color: #86efac;
+      box-shadow: 0 3px 10px rgba(34, 197, 94, 0.16);
+    }
+  }
+}
+
+/* ─── Left block (identity + middle) ─────── */
+.duty-slot-attendee-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  padding-right: 12px;
+
+  /* Identity box: Avatar + Name + MSV */
+  .duty-attendee-identity-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 220px;
+    flex-shrink: 0;
+
+    .duty-attendee-avatar {
+      flex-shrink: 0;
+      border: 2px solid #cbd5e1;
+      transition: all 0.2s ease;
+
+      &.is-attended {
+        border-color: #22c55e;
+        box-shadow: 0 2px 6px rgba(34, 197, 94, 0.2);
+      }
+    }
+
+    .duty-attendee-identity-text {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+
+      .duty-attendee-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.35;
+      }
+
+      .duty-attendee-msv {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.3;
+        margin-top: 2px;
+      }
+    }
+  }
+
+  /* Middle block: role tags + violation row */
+  .duty-attendee-middle-box {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+
+    .duty-attendee-tags-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+
+      .duty-attendee-dept {
+        font-size: 12px;
+        color: #64748b;
+      }
+    }
+
+    .duty-attendee-violations-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+  }
+}
+
+/* ─── Right block (coeff + status + actions) ─ */
+.duty-slot-attendee-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+
+  .duty-attendee-coeff {
+    width: 102px;
+    flex-shrink: 0;
+
+    .ant-input-number {
+      width: 100%;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+  }
+
+  .duty-attendee-status {
+    width: 110px;
+    height: 38px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    flex-shrink: 0;
+    text-align: right;
+
+    .status-text {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 16px;
+      white-space: nowrap;
+
+      &.is-attended    { color: #16a34a; }
+      &.is-not-attended { color: #64748b; }
+    }
+
+    .status-tags {
+      display: flex;
+      gap: 4px;
+      height: 18px;
+      align-items: center;
+      justify-content: flex-end;
+      margin-top: 2px;
+    }
+  }
+
+  .duty-attendee-action {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Mini status tags inside status column ── */
+.duty-status-tag-mini {
+  font-size: 9px;
+  border: none;
+  margin: 0;
+  padding: 0 3px;
+  line-height: 13px;
+}
+
+/* ─── Check circle button ─────────────────── */
+.duty-check-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    border-color: #94a3b8;
+    transform: scale(1.05);
+  }
+
+  &.is-checked {
+    background: #16a34a;
+    border-color: #16a34a;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+
+    &:hover {
+      background: #15803d;
+      border-color: #15803d;
+    }
+  }
+}
+
+/* ─── Warning / violation icon button ────── */
+.duty-warning-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  padding: 0;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #ef4444;
+    background: #fee2e2;
+  }
+
+  &.has-violations {
+    color: #ef4444;
+  }
+}
+
+/* ─── Popover violation list ─────────────── */
+.duty-popover-violation-list {
+  max-width: 320px;
+  padding: 4px 2px;
+
+  .duty-popover-violation-title {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: #1e293b;
+  }
+
+  .duty-popover-violation-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .duty-popover-violation-item {
+    font-size: 12px;
+    padding: 6px 10px;
+    background: #fef2f2;
+    border-radius: 6px;
+    border: 1px solid #fee2e2;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: #fee2e2;
+    }
+
+    .duty-popover-violation-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+
+      .violation-name {
+        font-weight: 600;
+        color: #dc2626;
+        flex: 1;
+      }
+
+      .violation-time {
+        font-size: 11px;
+        color: #94a3b8;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+    }
+
+    .violation-note {
+      font-size: 11px;
+      color: #475569;
+      margin-top: 3px;
+    }
+  }
+
+  .duty-popover-leave-item {
+    font-size: 12px;
+    padding: 6px 10px;
+    background: #fffbeb;
+    border-radius: 6px;
+    border: 1px solid #fef3c7;
+    color: #92400e;
+    cursor: pointer;
+  }
+
+  .duty-popover-swap-item {
+    font-size: 12px;
+    padding: 6px 10px;
+    background: #eff6ff;
+    border-radius: 6px;
+    border: 1px solid #dbeafe;
+    color: #1e40af;
+    cursor: pointer;
+  }
+}
+
+/* Tag: "+N khác" overflow indicator */
+.duty-badge-more {
+  cursor: pointer;
+  font-size: 11px;
+  margin: 0;
+  padding: 0 6px;
+  line-height: 16px;
+  font-weight: 600;
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  color: #b91c1c !important;
+}
+
+/* ─── Violation modal ─────────────────────── */
+.duty-violation-modal-user-header {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Selected violation preview box */
+.duty-violation-preview-box {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+
+  .preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    .preview-header-label {
+      font-size: 13px;
+      color: #334155;
+    }
+  }
+
+  .preview-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .preview-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: #ffffff;
+    border-radius: 6px;
+    border: 1px solid #f1f5f9;
+
+    .preview-item-penalty {
+      font-weight: 600;
+
+      &.has-penalty    { color: #ef4444; }
+      &.no-penalty     { color: #64748b; }
+    }
+  }
+}
+
+/* Existing recorded violations list */
+.duty-recorded-violations {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+
+  .recorded-violations-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    .recorded-violations-label {
+      font-size: 13px;
+      color: #ef4444;
+    }
+  }
+
+  .recorded-violations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .recorded-violation-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #fef2f2;
+    border-radius: 6px;
+    border: 1px solid #fee2e2;
+    cursor: help;
+
+    .recorded-violation-info {
+      .recorded-violation-name-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .recorded-violation-name {
+          font-weight: 600;
+          font-size: 12px;
+          color: #991b1b;
+        }
+      }
+
+      .recorded-violation-note {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+    }
+  }
+}
+
+/* ─── Shared modal footer ─────────────────── */
+.duty-modal-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* ─── Done button row (ShiftLeader modal) ─── */
+.duty-done-row {
+  margin-top: 32px;
+  text-align: right;
+}
+
+/* ─── ShiftLeader modal header ───────────────────── */
+.duty-modal-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 32px;
+
+  .duty-modal-header-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+    border-radius: 10px;
+    color: white;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .duty-modal-header-text {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .duty-modal-header-hint {
+    font-size: 0.8rem;
+  }
+}
+
+.duty-slot-info-box {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+
+  .duty-slot-info-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+/* ─── Tooltip content inside cards ──────────── */
+.duty-tooltip-title {
+  font-weight: 600;
+}
+
+.duty-tooltip-note {
+  margin-top: 2px;
+}
+
+.duty-tooltip-note-empty {
+  margin-top: 2px;
+  color: #cbd5e1;
+}
+
+.duty-tooltip-time {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* ─── Badge tags in the middle box ──────────── */
+.duty-badge-tag {
+  font-size: 11px;
+  margin: 0;
+  padding: 0 6px;
+  line-height: 18px;
+
+  // Specific overrides that Ant Design doesn't provide through color prop
+  &.is-leader {
+    font-weight: 700;
+  }
+}
+
+/* ─── Popover list title ─────────────────────── */
+.duty-popover-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #1e293b;
+}
+
+.duty-popover-items-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Popover violation row item ─────────────── */
+.duty-popover-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  .popover-item-name {
+    font-weight: 600;
+    color: #dc2626;
+    flex: 1;
+  }
+
+  .popover-item-time {
+    font-size: 11px;
+    color: #94a3b8;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+.duty-popover-item-note {
+  font-size: 11px;
+  color: #475569;
+  margin-top: 3px;
+}
+
+/* ─── InputNumber override color (isOverridden) ─ */
+.duty-coeff-overridden {
+  border-color: #f59e0b !important;
+  background-color: #fffbeb !important;
+}
+
+/* ─── Member Duty Slot Modal Sidebar & Cards ─────────────────── */
+.duty-member-action-sidebar {
+  border-radius: 12px;
+  padding: 12px 14px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &.is-special {
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+  }
+
+  &.is-normal {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  .duty-sidebar-title {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 700;
+
+    &.is-special { color: #1e40af; }
+    &.is-normal  { color: #0f172a; }
+  }
+}
+
+.duty-member-status-box {
+  text-align: center;
+  padding: 10px 12px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+
+  &.is-supplementary {
+    border-color: #e9d5ff;
+    background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+  }
+
+  &.is-assigned {
+    border-color: #dbeafe;
+    background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+  }
+
+  &.is-registered {
+    border-color: #d1fae5;
+    background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+  }
+
+  .status-box-title {
+    font-weight: 700;
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.2px;
+
+    &.is-supplementary { color: #7c3aed; }
+    &.is-assigned      { color: #2563eb; }
+    &.is-registered    { color: #059669; }
+  }
+
+  .status-box-subtitle {
+    font-size: 10px;
+    color: #64748b;
+  }
+
+  .status-box-body {
+    margin-top: 8px;
+  }
+}
+
+.duty-member-action-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.duty-member-btn-hint {
+  font-size: 11px;
+  color: #dc2626;
+  margin-top: -6px;
+  margin-bottom: 4px;
+  padding: 0 4px;
+  text-align: center;
+}
+

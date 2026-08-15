@@ -103,6 +103,7 @@ export interface DutySettings {
   kipPrice?: number;
   quotaRules?: any[];
   allowedIpRanges?: string[] | string;
+  selfCheckInBeforeMinutes?: number;
   penaltyAbsentNoPermission?: number;
   penaltyAbsentWithPermissionLate?: number;
   penaltyLate?: number;
@@ -211,7 +212,7 @@ class DutyService {
   }
 
   async selfCheckIn(slotId: number) {
-    const response = await apiClient.post(`/duty/slots/${slotId}/self-checkin`);
+    const response = await apiClient.post(`/duty/slots/${slotId}/check-in`);
     return response;
   }
 
@@ -475,9 +476,17 @@ class DutyService {
     return response;
   }
 
+  async getDutySettings(): Promise<BaseApiResponse<DutySettings>> {
+    return this.getSettings();
+  }
+
   async updateSettings(data: Partial<DutySettings>): Promise<BaseApiResponse<any>> {
     const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
     return response;
+  }
+
+  async updateDutySettings(data: Partial<DutySettings>): Promise<BaseApiResponse<any>> {
+    return this.updateSettings(data);
   }
 
   async getPeriodConfig(startDate: string, endDate: string): Promise<BaseApiResponse<any>> {

@@ -122,6 +122,11 @@ const MemberCalendar: React.FC = () => {
           setTemplateGroups(gRes.data);
         }
 
+        const sRes = await dutyService.getDutySettings().catch(() => null);
+        if (sRes?.data) {
+          setDutySettings(sRes.data);
+        }
+
         // Fetch Meetings for members
         const mRes = await meetingService.getAll({
           limit: 100,
@@ -480,6 +485,7 @@ const MemberCalendar: React.FC = () => {
               onSelfCheckIn={handleSelfCheckIn}
               eventFocusMode={eventFocusMode}
               meetings={meetings}
+              settings={dutySettings}
               onViewMeeting={(m) => {
                 setSelectedMeeting(m);
                 const myConfirm = m.confirmations?.find((c: any) => String(c.userId) === String(currentUserId));

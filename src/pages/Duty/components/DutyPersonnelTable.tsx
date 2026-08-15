@@ -8,6 +8,9 @@ import userService from '@/services/user.service';
 import { User } from '@/types';
 import { DataTableColumn, FilterConfig } from '@/components/common/DataTable/types';
 import { getUserDisplayName } from '@/utils/formatters';
+import generationService, { Generation } from '@/services/generation.service';
+import systemSettingService from '@/services/system-setting.service';
+import { DEPARTMENTS } from '@/constants/user.constants';
 
 const { Text } = Typography;
 
@@ -28,8 +31,6 @@ export const POSITION_LABELS: Record<string, string> = {
   dt: 'Đội trưởng'
 };
 
-const DEPARTMENT_OPTIONS = ['Tài chính', 'Truyền thông', 'Nhân sự'];
-
 /**
  * Pure Table Component for user selection
  */
@@ -40,6 +41,26 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
   userIds,
 }) => {
   const [showAll, setShowAll] = useState(false);
+  const [generations, setGenerations] = useState<Generation[]>([]);
+  const [departments, setDepartments] = useState<string[]>(DEPARTMENTS);
+
+  useEffect(() => {
+    generationService.getAll().then((res) => {
+      if (res?.data) {
+        setGenerations(Array.isArray(res.data) ? res.data : []);
+      }
+    }).catch(() => {});
+
+    systemSettingService.getByKey('DEPARTMENT_CONFIGS').then((res) => {
+      if (res && res.value) {
+        const parsed = typeof res.value === 'string' ? JSON.parse(res.value) : res.value;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const names = parsed.map((d: any) => d.name).filter(Boolean);
+          if (names.length > 0) setDepartments(names);
+        }
+      }
+    }).catch(() => {});
+  }, []);
 
   const {
     data,
@@ -55,20 +76,22 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
   } = useCRUD(userService, {
     autoFetch: true,
     pageSize: 5,
+    initialFilters: { status: 'active' },
   });
 
-  // Apply userIds filter if provided and not showing all
+  // Apply userIds filter if provided and not showing all; ALWAYS enforce active status
   useEffect(() => {
+    const newFilters: Record<string, any> = { status: 'active' };
     if (userIds && !showAll) {
       if (userIds.length > 0) {
-        updateFilters({ id_in: userIds });
+        newFilters.id_in = userIds;
       } else {
-        updateFilters({ id_in: [-1] });
+        newFilters.id_in = [-1];
       }
     } else {
-      // Clear filter if showing all or no userIds provided
-      updateFilters({ id_in: undefined });
+      newFilters.id_in = undefined;
     }
+    updateFilters(newFilters);
   }, [userIds, showAll]);
 
   const avatarFallback = `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -137,17 +160,93 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       ],
     }] : []),
     {
+      key: "status",
+      label: "Trạng thái thành viên",
+      type: "select" as const,
+      options: [
+        { label: "Đang hoạt động (Mặc định cố định)", value: "active" },
+      ],
+      disabled: true,
+    },
+    {
       key: "department",
-      label: "Ban",
-      type: "select",
-      options: DEPARTMENT_OPTIONS.map(d => ({ label: d, value: d })),
+      label: "Ban / Phòng ban",
+      type: "select" as const,
+      options: departments.map(d => ({ label: d, value: d })),
     },
     {
       key: "position",
       label: "Chức vụ",
-      type: "select",
+      type: "select" as const,
       options: Object.entries(POSITION_LABELS).map(([value, label]) => ({ label, value })),
-    }
+    },
+    {
+      key: "generationId",
+      label: "Khóa Đội / Thế hệ",
+      type: "select" as const,
+      options: generations.map(g => ({ label: g.name, value: g.id })),
+    },
+    {
+      key: "studentId",
+      label: "Mã Sinh Viên (MSV)",
+      type: "input" as const,
+      placeholder: "Nhập mã SV (VD: B21...)",
+    },
+    {
+      key: "course",
+      label: "Khóa học / Niên khóa",
+      type: "input" as const,
+      placeholder: "Nhập khóa (VD: D21, D22...)",
+    },
+    {
+      key: "className",
+      label: "Lớp học",
+      type: "input" as const,
+      placeholder: "Nhập tên lớp...",
+    },
+    {
+      key: "email",
+      label: "Địa chỉ Email",
+      type: "input" as const,
+      placeholder: "Nhập email...",
+    },
+    {
+      key: "phone",
+      label: "Số điện thoại",
+      type: "input" as const,
+      placeholder: "Nhập SĐT...",
+    },
+    {
+      key: "cccd",
+      label: "Số CCCD / CMND",
+      type: "input" as const,
+      placeholder: "Nhập số CCCD...",
+    },
+    {
+      key: "hometown",
+      label: "Quê quán",
+      type: "input" as const,
+      placeholder: "Nhập tỉnh / thành phố...",
+    },
+    {
+      key: "gender",
+      label: "Giới tính",
+      type: "select" as const,
+      options: [
+        { label: "Nam", value: "male" },
+        { label: "Nữ", value: "female" },
+        { label: "Khác", value: "other" },
+      ],
+    },
+    {
+      key: "isActive",
+      label: "Trạng thái tài khoản",
+      type: "select" as const,
+      options: [
+        { label: "Đang Bật", value: true },
+        { label: "Đã Tắt", value: false },
+      ],
+    },
   ];
 
   // Sync filterValues.scope with showAll state
@@ -172,6 +271,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       onSearch={search}
       filters={filterConfig}
       filterValues={{
+        status: 'active',
         ...filterValues,
         scope: showAll ? 'all' : 'shift'
       }}
@@ -185,6 +285,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       onClearFilters={() => {
         clearFilters();
         setShowAll(false);
+        updateFilters({ status: 'active' });
       }}
       onRefresh={() => fetchAll()}
       showActions={false}
@@ -193,24 +294,27 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       onSelectChange={(keys, rows) => onChange?.(keys as number[], rows as User[])}
       size="small"
       scroll={{ y: 300 }}
-      headerContent={userIds ? (
+      headerContent={
         <div style={{ padding: '8px 12px', background: '#eff6ff', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <Space>
+          <Space wrap size={8}>
             <InfoCircleOutlined style={{ color: '#3b82f6' }} />
             <Text style={{ fontSize: 12, color: '#1e40af' }}>
-              {showAll ? "Đang hiển thị toàn bộ thành viên" : `Chỉ hiển thị ${userIds.length} nhân sự thuộc kíp trực này`}
+              {userIds ? (showAll ? "Đang hiển thị toàn bộ thành viên đang hoạt động" : `Chỉ hiển thị ${userIds.length} nhân sự thuộc kíp trực này`) : "Đang lọc danh sách thành viên đang hoạt động"}
             </Text>
+            <Tag color="success" bordered={false} style={{ borderRadius: 6, fontSize: 11, fontWeight: 600 }}>Đang hoạt động (Mặc định)</Tag>
           </Space>
-          <Button 
-            buttonSize="small" 
-            variant={showAll ? "outline" : "primary"}
-            onClick={() => setShowAll(!showAll)}
-            style={{ fontSize: 11, borderRadius: 6 }}
-          >
-            {showAll ? "Lọc theo kíp trực" : "Xem tất cả thành viên"}
-          </Button>
+          {userIds && (
+            <Button 
+              buttonSize="small" 
+              variant={showAll ? "outline" : "primary"}
+              onClick={() => setShowAll(!showAll)}
+              style={{ fontSize: 11, borderRadius: 6 }}
+            >
+              {showAll ? "Lọc theo kíp trực" : "Xem tất cả thành viên"}
+            </Button>
+          )}
         </div>
-      ) : undefined}
+      }
     />
   );
 };
@@ -252,14 +356,14 @@ const DutyPersonnelPicker: React.FC<DutyPersonnelTableProps & {
         icon={icon || <UsergroupAddOutlined style={{ fontSize: 16 }} />} 
         onClick={handleOpen}
         style={{ 
-          height: 36,
+          height: buttonSize === 'small' ? 30 : 36,
           display: 'inline-flex', 
           alignItems: 'center', 
-          gap: 8,
-          borderRadius: 8,
+          gap: 6,
+          borderRadius: 6,
           fontWeight: 600,
-          fontSize: '13px',
-          padding: '0 12px',
+          fontSize: buttonSize === 'small' ? '12px' : '13px',
+          padding: buttonSize === 'small' ? '0 10px' : '0 12px',
           ...(variant === 'primary' ? {
             backgroundColor: '#fff',
             borderColor: '#2563eb',

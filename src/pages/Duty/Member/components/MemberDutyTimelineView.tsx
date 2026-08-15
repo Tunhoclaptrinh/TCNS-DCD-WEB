@@ -20,6 +20,7 @@ interface MemberDutyTimelineViewProps {
   onSelfCheckIn: (slotId: number) => Promise<void>;
   eventFocusMode: 'off' | 'overlap' | 'all';
   meetings?: any[];
+  settings?: any;
   onViewMeeting?: (meeting: any) => void;
 }
 
@@ -56,6 +57,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
   onSelfCheckIn,
   eventFocusMode,
   meetings,
+  settings,
   onViewMeeting
 }) => {
 
@@ -198,7 +200,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                     })
                     .map(slot => {
                     const isPastSlot = isPastDay || (isToday && dayjs(`${dateStr} ${slot.startTime}`).isBefore(now));
-                    const isMySlot = currentUserId && slot.assignedUserIds?.includes(currentUserId);
+                    const isMySlot = currentUserId && slot.assignedUserIds?.some((id: any) => String(id) === String(currentUserId));
                     const isAdminAssigned = currentUserId && (slot as any).config?.adminAssignedUserIds?.includes(currentUserId);
                     const isSpecialEvent = !!slot.isSpecialEvent;
                     
@@ -324,19 +326,20 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                         {/* Dual Action Buttons: Self Check-in vs Management */}
                         {(() => {
                           const uid = currentUserId || 0;
-                          const isAssigned = slot.assignedUserIds?.includes(uid);
-                          const isAttended = slot.attendedUserIds?.includes(uid);
+                          const isAssigned = slot.assignedUserIds?.some((id: any) => String(id) === String(uid));
+                          const isAttended = slot.attendedUserIds?.some((id: any) => String(id) === String(uid));
                           
                           const startTime = dayjs(`${dateStr} ${slot.startTime}`);
                           const endTime = dayjs(`${dateStr} ${slot.endTime}`);
                           const now = dayjs();
                           
-                          const isCheckInWindow = Math.abs(now.diff(startTime, 'minute')) <= 2;
+                          const beforeMins = Math.max(0, Number((settings as any)?.selfCheckInBeforeMinutes ?? 15));
+                          const isActive = now.isAfter(startTime.subtract(beforeMins, 'minute')) && now.isBefore(endTime);
                           const isDuringShift = now.isAfter(startTime) && now.isBefore(endTime);
-                          const isActingLeader = (slot.assignedUserIds?.[0] === uid && isAttended) || ((slot as any).tempLeaderId === uid);
+                          const isActingLeader = (String(slot.assignedUserIds?.[0]) === String(uid) && isAttended) || (String((slot as any).tempLeaderId) === String(uid));
 
-                          // 1. Self Check-in button (For any assigned member in window)
-                          if (isAssigned && !isAttended && isCheckInWindow) {
+                          // 1. Self Check-in button (For any assigned member when shift is active)
+                          if (isAssigned && !isAttended && isActive) {
                             return (
                               <div style={{ marginTop: 4, marginBottom: 4 }}>
                                 <button 

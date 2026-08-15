@@ -126,7 +126,8 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   {/* Checkbox */}
                   <Checkbox
                     checked={isEnabled}
-                    onChange={() => onToggleFilter(filter.key)}
+                    disabled={filter.disabled}
+                    onChange={() => !filter.disabled && onToggleFilter(filter.key)}
                   />
 
                   {/* Field Name (Static) */}
@@ -137,6 +138,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   {filter.operators && (
                     <Select
                       value={currentOp}
+                      disabled={filter.disabled}
                       onChange={(val) => onOperatorChange(filter.key, val)}
                       options={BACKEND_OPERATOR_OPTIONS.filter((op) =>
                         allowedOperators.includes(op.value)
@@ -152,11 +154,12 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                       <Select
                         placeholder={`Chọn giá trị...`}
                         value={filterValues[activeKey]}
+                        disabled={filter.disabled}
                         onChange={(value) =>
-                          onFilterChange(filter.key, value)
+                          !filter.disabled && onFilterChange(filter.key, value)
                         }
                         options={filter.options}
-                        allowClear
+                        allowClear={!filter.disabled}
                         showSearch
                         filterOption={(input, option) =>
                           (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -172,10 +175,11 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                       <Input
                         placeholder={`Nhập giá trị...`}
                         value={filterValues[activeKey]}
+                        disabled={filter.disabled}
                         onChange={(e) =>
-                          onFilterChange(filter.key, e.target.value)
+                          !filter.disabled && onFilterChange(filter.key, e.target.value)
                         }
-                        allowClear
+                        allowClear={!filter.disabled}
                         style={{ width: "100%" }}
                         type={filter.type === "number" ? "number" : "text"}
                         size="middle"
@@ -185,10 +189,11 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                     {filter.type === "date" && (
                         <DatePicker
                             placeholder="Chọn ngày"
+                            disabled={filter.disabled}
                             style={{ width: "100%" }}
                             value={filterValues[activeKey] ? dayjs(filterValues[activeKey]) : null}
                             onChange={(_date, dateString) => {
-                                onFilterChange(filter.key, dateString);
+                                !filter.disabled && onFilterChange(filter.key, dateString);
                             }}
                             size="middle"
                         />
@@ -196,11 +201,12 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   </div>
 
                   {/* Delete Button */}
-                  <Tooltip title="Xóa điều kiện này">
+                  <Tooltip title={filter.disabled ? "Điều kiện mặc định cố định - Không thể xóa" : "Xóa điều kiện này"}>
                     <Button
                         variant="ghost" 
                         danger 
-                        onClick={() => onRemoveFilter(filter.key)}
+                        disabled={filter.disabled}
+                        onClick={() => !filter.disabled && onRemoveFilter(filter.key)}
                         icon={<DeleteOutlined />}
                         buttonSize="small"
                         className="condition-delete-btn"

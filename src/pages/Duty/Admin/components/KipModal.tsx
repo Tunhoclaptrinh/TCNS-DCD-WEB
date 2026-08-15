@@ -88,7 +88,7 @@ const KipModal: React.FC<KipModalProps> = ({
           <Space size={8}><ScheduleOutlined style={{ color: 'var(--primary-color)' }} /><span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Thông tin chi tiết Kíp</span></Space>
         </Divider>
 
-        <Row gutter={[24, 0]}>
+        <Row gutter={[16, 0]}>
           <Col span={12}>
             <Form.Item 
               name="name" 
@@ -209,8 +209,14 @@ const KipModal: React.FC<KipModalProps> = ({
               >
                 <Select
                   options={[
-                    { label: '🎭 Mặt nạ (Hiện *** & Thành viên)', value: 'masked' },
-                    { label: '🚫 Ẩn hoàn toàn khỏi danh sách', value: 'omitted' },
+                    { 
+                      label: <Space><EyeInvisibleOutlined style={{ color: '#3b82f6' }} /><span>Mặt nạ (Hiện *** & Thành viên)</span></Space>, 
+                      value: 'masked' 
+                    },
+                    { 
+                      label: <Space><EyeOutlined style={{ color: '#ef4444' }} /><span>Ẩn hoàn toàn khỏi danh sách</span></Space>, 
+                      value: 'omitted' 
+                    },
                   ]}
                 />
               </Form.Item>

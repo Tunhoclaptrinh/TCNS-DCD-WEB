@@ -14,13 +14,16 @@ import {
   Select,
   Tag,
   Avatar,
-  List,
-  Checkbox,
   Alert,
   Col,
   Tooltip,
   Row,
+  Badge,
   Popconfirm,
+  Popover,
+  Tabs,
+  Timeline,
+  Empty,
 } from 'antd';
 import Button from '@/components/common/Button';
 import {
@@ -28,17 +31,24 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
   UnlockOutlined,
+  LockOutlined,
   TeamOutlined,
   InfoCircleOutlined,
   ClockCircleOutlined,
   EditOutlined,
   CheckCircleOutlined,
+  CheckOutlined,
+  HistoryOutlined,
   UsergroupAddOutlined,
   UserOutlined,
   CloseOutlined,
   DeleteOutlined,
   SaveOutlined,
   WarningOutlined,
+  FileTextOutlined,
+  SwapOutlined,
+  LogoutOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
@@ -46,6 +56,7 @@ import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import DutyPersonnelPicker from '../../components/DutyPersonnelTable';
 import SlotStructureEditor from './SlotStructureEditor';
 import SlotRequestsHistoryModal from '@/pages/Duty/Member/components/SlotRequestsHistoryModal';
+import '../../DutyModal.less';
 
 const { Text, Title } = Typography;
 
@@ -77,6 +88,39 @@ export const getViolationTypeLabel = (type: string, customTypes: any[] = []) => 
     'other': 'Lỗi khác',
   };
   return map[type] || type || 'Vi phạm';
+};
+
+export const getUserDisplayName = (u: any) => {
+  if (!u) return 'Chưa rõ';
+  if (u.lastName || u.firstName) {
+    return `${u.lastName || ''} ${u.firstName || ''}`.trim();
+  }
+  return u.name || u.username || `#${u.id || ''}`;
+};
+
+export const getPositionInfo = (posCode: string) => {
+  const raw = (posCode || '').toLowerCase().trim();
+
+  if (raw === 'admin' || raw.includes('quản trị') || raw === 'dt' || raw.includes('đội trưởng')) {
+    return { name: 'Đội trưởng', color: 'red' };
+  }
+  if (raw === 'tb' || raw === 'nsl' || raw.includes('trưởng ban')) {
+    return { name: 'Trưởng ban', color: 'volcano' };
+  }
+  if (raw === 'pb' || raw === 'nsp' || raw.includes('phó ban')) {
+    return { name: 'Phó ban', color: 'orange' };
+  }
+  if (raw === 'tvb' || raw === 'nss' || raw === 'ns' || raw.includes('thành viên ban') || raw.includes('chuyên viên')) {
+    return { name: 'Thành viên Ban', color: 'blue' };
+  }
+  if (raw === 'ctv' || raw.includes('cộng tác viên')) {
+    return { name: 'Cộng tác viên', color: 'green' };
+  }
+  if (raw === 'tv' || raw.includes('thành viên')) {
+    return { name: 'Thành viên', color: 'cyan' };
+  }
+
+  return { name: posCode || 'Thành viên', color: 'cyan' };
 };
 
 interface AdminDutySlotModalProps {
@@ -153,12 +197,31 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     }
   }, [open, slot, form]);
 
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const fetchLogs = async (slotId: number) => {
+    if (!slotId) return;
+    setLoadingLogs(true);
+    try {
+      const res = await dutyService.getSlotLogs(slotId);
+      if (res.success && Array.isArray(res.data)) {
+        setLogs(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch slot logs:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
   const refreshCurrentSlot = async () => {
     if (!slot?.id) return;
     try {
       const res = await dutyService.getSlot(slot.id);
       if (res.success && res.data) {
         setCurrentSlot(res.data);
+        fetchLogs(slot.id);
       }
     } catch (err) {
       console.error('Failed to refresh slot details:', err);
@@ -194,6 +257,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         attendanceOverrides: currentSlot.attendanceOverrides ? { ...currentSlot.attendanceOverrides } : {},
       });
       if (currentSlot.assignedUsers) updateCache(currentSlot.assignedUsers);
+      fetchLogs(currentSlot.id);
     }
   }, [open, currentSlot, form]);
 
@@ -320,37 +384,19 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     });
   };
 
-  const handleToggleAttendance = (userId: number, checked: boolean, userDetail?: any) => {
-    const assignedIds = form.getFieldValue('assignedUserIds') || [];
-    const isAssigned = assignedIds.includes(userId);
+  const handleRemoveSupplementary = (userId: number) => {
+    const currentAttended = form.getFieldValue('attendedUserIds') || [];
+    const nextAttended = currentAttended.filter((uId: number) => uId !== userId);
+    const currentOverrides = { ...(form.getFieldValue('attendanceOverrides') || {}) };
+    delete currentOverrides[String(userId)];
+    delete currentOverrides[Number(userId)];
+    form.setFieldsValue({
+      attendedUserIds: nextAttended,
+      attendanceOverrides: currentOverrides,
+    });
+  };
 
-    // If unchecking a supplementary member (not assigned in original schedule)
-    if (!checked && !isAssigned) {
-      const userName = userDetail?.lastName || userDetail?.firstName
-        ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim()
-        : userDetail?.name || userDetail?.username || `#${userId}`;
-
-      Modal.confirm({
-        title: 'Xác nhận gỡ điểm danh bổ sung?',
-        content: `Nhân sự "${userName}" là nhân sự điểm danh bổ sung (không có trong lịch phân công ban đầu). Nếu hủy điểm danh, nhân sự này sẽ được gỡ khỏi danh sách trực của kíp này. Bạn có chắc chắn?`,
-        okText: 'Gỡ khỏi kíp',
-        okType: 'danger',
-        cancelText: 'Hủy',
-        onOk: () => {
-          const currentAttended = form.getFieldValue('attendedUserIds') || [];
-          const nextAttended = currentAttended.filter((uId: number) => uId !== userId);
-          const currentOverrides = { ...(form.getFieldValue('attendanceOverrides') || {}) };
-          delete currentOverrides[String(userId)];
-          delete currentOverrides[Number(userId)];
-          form.setFieldsValue({
-            attendedUserIds: nextAttended,
-            attendanceOverrides: currentOverrides,
-          });
-        },
-      });
-      return;
-    }
-
+  const handleToggleAttendance = (userId: number, checked: boolean) => {
     const currentAttended = form.getFieldValue('attendedUserIds') || [];
     const nextAttended = checked
       ? [...new Set([...currentAttended, userId])]
@@ -459,7 +505,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
       width={900}
       okText="Lưu thay đổi"
       footer={
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, width: '100%' }}>
+        <div className="duty-modal-footer">
           {slot?.kipId && (
             <Button 
               variant="danger" 
@@ -479,49 +525,40 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         </div>
       }
     >
-      <div style={{ padding: '0 4px' }}>
-
+      <div className="duty-slot-modal-container">
+        <Tabs
+          defaultActiveKey="info"
+          items={[
+            {
+              key: 'info',
+              label: (
+                <Space>
+                  <ThunderboltOutlined />
+                  <span>Cấu hình & Phân công</span>
+                </Space>
+              ),
+              children: (
+                <>
         {/* Breadcrumb: Ca cha */}
         {parentShift && (
-          <div style={{
-            background: isSpecial
-              ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'
-              : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-            padding: '16px 24px',
-            borderRadius: 16,
-            marginBottom: 24,
-            border: `1px solid ${isSpecial ? '#bfdbfe' : '#e2e8f0'}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px -2px rgba(0,0,0,0.05)',
-          }}>
+          <div className={`duty-slot-parent-banner ${isSpecial ? 'is-special' : 'is-normal'}`}>
             <Space size={14}>
-              <div style={{
-                background: isSpecial ? '#3b82f6' : '#64748b',
-                color: 'white',
-                width: 44,
-                height: 44,
-                borderRadius: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <div style={{ fontSize: '0.6rem', fontWeight: 800 }}>{dayjs(slot?.shiftDate).format('ddd')}</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900, lineHeight: 1 }}>{dayjs(slot?.shiftDate).format('DD')}</div>
+              <div className={`duty-slot-banner-date-badge ${isSpecial ? 'is-special' : 'is-normal'}`}>
+                <div className="date-badge-dow">{dayjs(slot?.shiftDate).format('ddd')}</div>
+                <div className="date-badge-day">{dayjs(slot?.shiftDate).format('DD')}</div>
               </div>
               <div>
-                <Space size={6}>
-                  <Text type="secondary" style={{ fontSize: 11 }}>Thuộc Ca:</Text>
-                  <Text strong style={{ color: isSpecial ? '#1e40af' : '#1e293b' }}>{parentShift.name}</Text>
-                  {isSpecial && <Tag color="blue" style={{ fontSize: 10 }}>SỰ KIỆN</Tag>}
-                </Space>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>Thuộc Ca:</Text>
+                  <Text strong style={{ fontSize: 16, fontWeight: 700, color: isSpecial ? '#1e40af' : '#0f172a' }}>
+                    {parentShift.name}
+                  </Text>
+                  {isSpecial && <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>SỰ KIỆN</Tag>}
+                </div>
                 <div style={{ marginTop: 2 }}>
-                  <Space style={{ color: isSpecial ? '#3b82f6' : '#94a3b8', fontSize: 12 }}>
-                    <ClockCircleOutlined />
-                    <span>{parentShift.startTime} – {parentShift.endTime}</span>
+                  <Space className={`duty-slot-banner-time ${isSpecial ? 'is-special' : 'is-normal'}`} size={6}>
+                    <ClockCircleOutlined style={{ fontSize: 13 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{parentShift.startTime} – {parentShift.endTime}</span>
                   </Space>
                 </div>
               </div>
@@ -537,19 +574,18 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
         {parentShift && (
           <Alert
-            message="Ràng buộc thời gian kíp"
-            description={`Kíp trực phải thuộc khung giờ của ca: ${parentShift.startTime} - ${parentShift.endTime}`}
-            type="info"
+            message={<span><b>Ràng buộc thời gian:</b> Kíp trực phải thuộc khung giờ ca <b>{parentShift.name}</b> ({parentShift.startTime} – {parentShift.endTime})</span>}
+            type="warning"
             showIcon
-            style={{ marginBottom: 24, borderRadius: 12 }}
+            style={{ marginBottom: 16}}
           />
         )}
 
         <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
-          <ThunderboltOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Thông số Kíp trực</span>
+          <ThunderboltOutlined /> <span className="duty-divider-label">Thông số Kíp trực</span>
         </Divider>
 
-        <Row gutter={[24, 0]}>
+        <Row gutter={[16, 0]}>
           <Col span={10}>
             <Form.Item label="Tên Kíp" name="shiftLabel" rules={[{ required: true }]}>
               <Input placeholder="Tên hiển thị..." />
@@ -561,16 +597,20 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             </Form.Item>
           </Col>
           <Col span={6}>
-            <Form.Item label="Trạng thái" name="status">
+            <Form.Item label="Trạng thái" name="status" rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
               <Select placeholder="Chọn trạng thái">
-                <Select.Option value="open">Đang mở</Select.Option>
-                <Select.Option value="locked">Khóa</Select.Option>
+                <Select.Option value="open">
+                  <Space><UnlockOutlined style={{ color: '#16a34a' }} /><span>Đang mở</span></Space>
+                </Select.Option>
+                <Select.Option value="locked">
+                  <Space><LockOutlined style={{ color: '#dc2626' }} /><span>Đã khóa</span></Space>
+                </Select.Option>
               </Select>
             </Form.Item>
           </Col>
         </Row>
 
-        <Row gutter={[24, 0]}>
+        <Row gutter={[16, 0]}>
           <Col span={10}>
             <Form.Item 
               label="Khung giờ" 
@@ -644,16 +684,16 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 const structureTotal = Array.isArray(slotStructure) ? slotStructure.reduce((a: number, c: any) => a + (Number(c?.slots) || 0), 0) : 0;
                 const count = assignedUserIds.length;
                 if (structureTotal > 0 && capacity < structureTotal) {
-                  return <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>⚠️ Chỉ tiêu ({capacity}) nhỏ hơn Cơ cấu ({structureTotal} người).</div>;
+                  return <div className="duty-capacity-hint is-error">⚠️ Chỉ tiêu ({capacity}) nhỏ hơn Cơ cấu ({structureTotal} người).</div>;
                 }
                 if (count > 0 && count >= capacity) {
-                  return <div style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>⚠️ Đã đạt/vượt chỉ tiêu ({count}/{capacity})</div>;
+                  return <div className="duty-capacity-hint is-warning">⚠️ Đã đạt/vượt chỉ tiêu ({count}/{capacity})</div>;
                 }
                 if (count > 0 && count < capacity) {
-                  return <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>ℹ Còn trống {capacity - count} chỗ (Chỉ tiêu: {capacity}{structureTotal > 0 ? ` - Cơ cấu: ${structureTotal}` : ''})</div>;
+                  return <div className="duty-capacity-hint is-success">ℹ Còn trống {capacity - count} chỗ (Chỉ tiêu: {capacity}{structureTotal > 0 ? ` - Cơ cấu: ${structureTotal}` : ''})</div>;
                 }
                 if (structureTotal > 0) {
-                  return <div style={{ fontSize: 11, color: '#2563eb', marginTop: 4 }}>ℹ Đồng bộ theo cơ cấu: {structureTotal} người</div>;
+                  return <div className="duty-capacity-hint is-info">ℹ Đồng bộ theo cơ cấu: {structureTotal} người</div>;
                 }
                 return null;
               }}
@@ -666,7 +706,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           </Col>
         </Row>
 
-        <Row gutter={[24, 0]}>
+        <Row gutter={[16, 0]}>
           <Col span={isPrivacyEnabled ? 12 : 24}>
             <Form.Item name="visibilityMode" label="Chế độ bảo mật" initialValue="public">
               <Select
@@ -684,8 +724,14 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               <Form.Item name="privacyMaskType" label="Kiểu ẩn khi bị che" initialValue="masked">
                 <Select
                   options={[
-                    { label: '🎭 Mặt nạ (Hiện *** & Thành viên)', value: 'masked' },
-                    { label: '🚫 Ẩn hoàn toàn khỏi danh sách', value: 'omitted' },
+                    { 
+                      label: <Space><EyeInvisibleOutlined style={{ color: '#3b82f6' }} /><span>Mặt nạ (Hiện *** & Thành viên)</span></Space>, 
+                      value: 'masked' 
+                    },
+                    { 
+                      label: <Space><EyeOutlined style={{ color: '#ef4444' }} /><span>Ẩn hoàn toàn khỏi danh sách</span></Space>, 
+                      value: 'omitted' 
+                    },
                   ]}
                 />
               </Form.Item>
@@ -709,20 +755,21 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space>
             <TeamOutlined />
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Quản lý nhân sự & Điểm danh</span>
+            <span className="duty-divider-label-bold">Quản lý nhân sự & Điểm danh</span>
           </Space>
         </Divider>
 
-        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div className="duty-slot-attendee-section">
+          <div className="duty-slot-attendee-header">
             <div>
-              <Title level={5} style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Danh sách trực thực tế</Title>
-              <Text type="secondary" style={{ fontSize: 12 }}>Tích chọn để xác nhận nhân sự thực hiện trực.</Text>
+              <Title level={5} className="duty-attendee-section-title">Danh sách trực thực tế</Title>
+              <Text type="secondary" className="duty-attendee-section-hint">Tích chọn để xác nhận nhân sự thực hiện trực.</Text>
             </div>
-            <Space size={12} align="center">
+            <Space size={8} align="center">
               <Form.Item name="assignedUserIds" noStyle>
                 <DutyPersonnelPicker
                   variant="primary"
+                  buttonSize="small"
                   label="Phân công"
                   onChange={(_, rows) => {
                     if (rows) updateCache(rows);
@@ -733,6 +780,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               <Form.Item noStyle>
                 <DutyPersonnelPicker
                   variant="outline"
+                  buttonSize="small"
                   label="ĐD bổ sung"
                   icon={<UsergroupAddOutlined />}
                   hideBadge
@@ -746,39 +794,36 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 />
               </Form.Item>
 
-              <Tooltip title="Tất cả có mặt">
-                <Button
-                  variant="outline"
-                  buttonSize="small"
+              <Tooltip title="Đánh dấu tất cả có mặt">
+                <AntButton
+                  type="text"
+                  shape="circle"
                   onClick={() => {
                     const assigned = form.getFieldValue('assignedUserIds') || [];
                     const currentAttended = form.getFieldValue('attendedUserIds') || [];
-                    // Keep both assigned members and any supplementary members in the attended list
                     const allIds = Array.from(new Set([...assigned, ...currentAttended]));
                     form.setFieldsValue({ attendedUserIds: allIds });
                     message.success('Đã đánh dấu tất cả nhân sự có mặt');
                   }}
-                  icon={<CheckCircleOutlined />}
+                  icon={<CheckCircleOutlined style={{ color: '#16a34a', fontSize: 18 }} />}
                 />
               </Tooltip>
 
-              <Tooltip title="Quét vắng mặt">
-                <Button
-                  variant="danger"
-                  buttonSize="small"
+              <Tooltip title="Quét vắng mặt không phép">
+                <AntButton
+                  type="text"
+                  shape="circle"
                   onClick={handleScanAbsentees}
-                  icon={<WarningOutlined />}
+                  icon={<WarningOutlined style={{ color: '#ef4444', fontSize: 18 }} />}
                 />
               </Tooltip>
 
               <Tooltip title="Xem lịch sử đổi kíp & xin nghỉ">
-                <Button
-                  variant="outline"
-                  buttonSize="small"
+                <AntButton
+                  type="text"
                   shape="circle"
                   onClick={() => setIsRequestsModalVisible(true)}
-                  icon={<ClockCircleOutlined style={{ fontSize: 14 }} />}
-                  style={{ color: '#6366f1', borderColor: '#6366f1' }}
+                  icon={<HistoryOutlined style={{ color: '#6366f1', fontSize: 18 }} />}
                 />
               </Tooltip>
             </Space>
@@ -792,10 +837,17 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
               const formOverrides = getFieldValue('attendanceOverrides') || {};
               const currentSlotCoeff = getFieldValue('coefficient') || 1;
 
+              if (allIds.length === 0) {
+                return (
+                  <div className="duty-attendee-empty">
+                    <Text type="secondary">Chưa có nhân sự nào trong kíp trực này</Text>
+                  </div>
+                );
+              }
+
               return (
-                <List
-                  dataSource={allIds}
-                  renderItem={(id: number) => {
+                <div className="duty-slot-attendee-list">
+                  {allIds.map((id: number) => {
                     const isAssigned = assignedIds.includes(id);
                     const isAttended = attendedIds.includes(id);
                     const userViolations = currentSlot?.violations?.filter((v: any) => String(v.userId) === String(id)) || [];
@@ -811,156 +863,423 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     const overrideVal = formOverrides[String(id)] ?? formOverrides[Number(id)];
                     const userCoeff = overrideVal !== undefined && overrideVal !== null ? overrideVal : defaultSlotCoeff;
                     const isOverridden = overrideVal !== undefined && overrideVal !== null && overrideVal !== defaultSlotCoeff;
+                    const isLeader = (currentSlot?.assignedUserIds || [])[0] === id;
 
-                    return (
-                      <List.Item
-                        onClick={() => handleToggleAttendance(id, !isAttended, userDetail)}
-                        style={{
-                          padding: '10px 16px',
-                          background: isAttended ? '#f0fdf4' : '#fff',
-                          borderRadius: 8,
-                          marginBottom: 8,
-                          border: `1px solid ${isAttended ? '#dcfce7' : '#f1f5f9'}`,
-                          transition: 'all 0.2s',
-                          cursor: 'pointer'
-                        }}
-                        actions={[
-                          <Space size={10} key="actions" align="center">
-                            <Tooltip title="Hệ số kíp thực tế được tính cho nhân sự này">
-                              <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <InputNumber
-                                  size="small"
-                                  min={0}
-                                  step={0.25}
-                                  max={10}
-                                  value={userCoeff}
-                                  addonAfter="kíp"
-                                  style={{
-                                    width: 96,
-                                    borderRadius: 6,
-                                    fontWeight: 600,
-                                    borderColor: isOverridden ? '#f59e0b' : '#cbd5e1',
-                                    backgroundColor: isOverridden ? '#fffbeb' : '#fff'
-                                  }}
-                                  onChange={(val) => {
-                                    const current = form.getFieldValue('attendanceOverrides') || {};
-                                    const nextOverrides = { ...current };
-                                    if (val === null || val === undefined || Number(val) === Number(defaultSlotCoeff)) {
-                                      delete nextOverrides[String(id)];
-                                      delete nextOverrides[Number(id)];
-                                    } else {
-                                      nextOverrides[String(id)] = val;
-                                    }
-                                    form.setFieldsValue({ attendanceOverrides: nextOverrides });
-                                  }}
-                                />
+                    const allBadges: React.ReactNode[] = [];
+                    userViolations.forEach((v: any) => {
+                      allBadges.push(
+                        <Tooltip 
+                          key={`v-${v.id}`} 
+                          title={
+                            <div>
+                              <div className="duty-tooltip-title">{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
+                              {v.note ? (
+                                <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Ghi chú:</b> {v.note}</div>
+                              ) : (
+                                <div className="duty-tooltip-note-empty">Không có ghi chú thêm</div>
+                              )}
+                              {v.createdAt && (
+                                <div className="duty-tooltip-time">
+                                  🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
+                                </div>
+                              )}
+                            </div>
+                          }
+                        >
+                          <Tag color="error" className="duty-badge-tag">
+                            {getViolationTypeLabel(v.type, violationTypeOptions)} (x{v.coefficient})
+                          </Tag>
+                        </Tooltip>
+                      );
+                    });
+
+                    if (leaveReq) {
+                      allBadges.push(
+                        <Tag key="leave" color="warning" className="duty-badge-tag">
+                          Xin nghỉ ({leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})
+                        </Tag>
+                      );
+                    }
+
+                    if (swapReq) {
+                      allBadges.push(
+                        <Tag key="swap" color="processing" className="duty-badge-tag">
+                          Xin đổi ({swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})
+                        </Tag>
+                      );
+                    }
+
+                    const popoverViolationList = (
+                      <div className="duty-popover-violation-list" onClick={(e) => e.stopPropagation()}>
+                        <div className="duty-popover-title">
+                          Tất cả vi phạm & Đơn từ ({allBadges.length}):
+                        </div>
+                        <div className="duty-popover-items-col">
+                          {userViolations.map((v: any) => (
+                            <Tooltip
+                              key={v.id}
+                              placement="right"
+                              title={
+                                <div>
+                                  <div className="duty-tooltip-title">{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
+                                  <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Ghi chú:</b> {v.note || 'Không có ghi chú thêm'}</div>
+                                  {v.createdAt && (
+                                    <div className="duty-tooltip-time">
+                                      <ClockCircleOutlined style={{ marginRight: 4 }} />{dayjs(v.createdAt).format('HH:mm:ss DD/MM/YYYY')}
+                                    </div>
+                                  )}
+                                </div>
+                              }
+                            >
+                              <div className="duty-popover-violation-item">
+                                <div className="duty-popover-item-row">
+                                  <span className="popover-item-name">
+                                    {getViolationTypeLabel(v.type, violationTypeOptions)} (x{v.coefficient})
+                                  </span>
+                                  {v.createdAt && (
+                                    <span className="popover-item-time">
+                                      {dayjs(v.createdAt).format('HH:mm DD/MM')}
+                                    </span>
+                                  )}
+                                </div>
+                                {v.note && <div className="duty-popover-item-note"><FileTextOutlined style={{ marginRight: 4, fontSize: 11 }} />{v.note}</div>}
                               </div>
                             </Tooltip>
-
-                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
-                              <Text strong style={{ fontSize: 12, color: isAttended ? '#16a34a' : '#64748b' }}>
-                                {isAttended ? 'ĐÃ CÓ MẶT' : 'CHƯA ĐIỂM DANH'}
-                              </Text>
-                              <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
-                                {isOverridden && <Tag color="gold" style={{ fontSize: '0.6rem', border: 'none', margin: 0, padding: '0 4px', lineHeight: '14px' }}>TÙY CHỈNH</Tag>}
-                                {!isAssigned && <Tag color="orange" style={{ fontSize: '0.6rem', border: 'none', margin: 0, padding: '0 4px', lineHeight: '14px' }}>BỔ SUNG</Tag>}
+                          ))}
+                          {leaveReq && (
+                            <Tooltip
+                              placement="right"
+                              title={
+                                <div>
+                                  <div className="duty-tooltip-title">Đơn xin nghỉ ca</div>
+                                  <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Lý do:</b> {leaveReq.reason || 'Không có lý do'}</div>
+                                  <div className="duty-tooltip-note">Trạng thái: {leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}</div>
+                                </div>
+                              }
+                            >
+                              <div className="duty-popover-leave-item">
+                                <b>Xin nghỉ:</b> {leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'} {leaveReq.reason ? ` - ${leaveReq.reason}` : ''}
                               </div>
+                            </Tooltip>
+                          )}
+                          {swapReq && (
+                            <Tooltip
+                              placement="right"
+                              title={
+                                <div>
+                                  <div className="duty-tooltip-title">Đơn xin đổi kíp</div>
+                                  <div className="duty-tooltip-note">Trạng thái: {swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}</div>
+                                </div>
+                              }
+                            >
+                              <div className="duty-popover-swap-item">
+                                <b>Xin đổi kíp:</b> {swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
+                              </div>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </div>
+                    );
+
+                    const cardNode = (
+                      <div
+                        key={id}
+                        onClick={() => {
+                          if (isAssigned || !isAttended) {
+                            handleToggleAttendance(id, !isAttended);
+                          }
+                        }}
+                        className={`duty-slot-attendee-card ${isAttended ? 'is-attended' : ''}`}
+                      >
+                        {/* Left Side: Identity Box (Left) + Tags & Violations (Middle) */}
+                        <div className="duty-slot-attendee-left">
+                          {/* 1. Identity Box: Avatar + Name + MSV */}
+                          <div className="duty-attendee-identity-box">
+                            <Avatar 
+                              size={40}
+                              icon={<UserOutlined />} 
+                              src={userDetail?.avatar} 
+                              className={`duty-attendee-avatar ${isAttended ? 'is-attended' : ''}`}
+                            />
+                            <div className="duty-attendee-identity-text">
+                              <Tooltip title={getUserDisplayName(userDetail)} placement="topLeft">
+                                <div className="duty-attendee-name">
+                                  {getUserDisplayName(userDetail)}
+                                </div>
+                              </Tooltip>
+                              <div className="duty-attendee-msv">
+                                MSV: {userDetail?.studentId || 'Chưa rõ MSV'}
+                              </div>
+                              {(() => {
+                                const posInfo = getPositionInfo(userDetail?.position || userDetail?.role);
+                                return posInfo ? (
+                                  <div style={{ marginTop: 2 }}>
+                                    <Tag color={posInfo.color} style={{ fontSize: 10, padding: '0 6px', borderRadius: 4, lineHeight: '18px', fontWeight: 600, margin: 0 }}>
+                                      {posInfo.name}
+                                    </Tag>
+                                  </div>
+                                ) : null;
+                              })()}
                             </div>
+                          </div>
+
+                          {/* 2. Middle Box: Tags & Violations */}
+                          <div className="duty-attendee-middle-box">
+                            <div className="duty-attendee-tags-row">
+                              {isAssigned ? (
+                                <Tag color="blue" className="duty-badge-tag">
+                                  Theo lịch
+                                </Tag>
+                              ) : (
+                                <Tag color="orange" className="duty-badge-tag">
+                                  Ngoài kíp
+                                </Tag>
+                              )}
+                              {userDetail?.department && (
+                                <span className="duty-attendee-dept">
+                                  ({userDetail.department})
+                                </span>
+                              )}
+                            </div>
+
+                            {allBadges.length > 0 && (
+                              <div className="duty-attendee-violations-row">
+                                {allBadges.length <= 2 ? (
+                                  allBadges
+                                ) : (
+                                  <>
+                                    {allBadges.slice(0, 1)}
+                                    <Popover 
+                                      content={popoverViolationList} 
+                                      trigger={['hover', 'click']} 
+                                      mouseLeaveDelay={0.35}
+                                      mouseEnterDelay={0.05}
+                                      placement="bottomLeft"
+                                    >
+                                      <Tag 
+                                        color="default" 
+                                        className="duty-badge-more"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        +{allBadges.length - 1} khác
+                                      </Tag>
+                                    </Popover>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right Side: Inputs & Actions (Strict horizontal alignment) */}
+                        <div className="duty-slot-attendee-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="duty-attendee-coeff">
+                            <Tooltip title="Hệ số kíp thực tế được tính cho nhân sự này">
+                              <InputNumber
+                                size="small"
+                                min={0}
+                                step={0.25}
+                                max={10}
+                                value={userCoeff}
+                                addonAfter="kíp"
+                                className={isOverridden ? 'duty-coeff-overridden' : ''}
+                                onChange={(val) => {
+                                  const current = form.getFieldValue('attendanceOverrides') || {};
+                                  const nextOverrides = { ...current };
+                                  if (val === null || val === undefined || Number(val) === Number(defaultSlotCoeff)) {
+                                    delete nextOverrides[String(id)];
+                                    delete nextOverrides[Number(id)];
+                                  } else {
+                                    nextOverrides[String(id)] = val;
+                                  }
+                                  form.setFieldsValue({ attendanceOverrides: nextOverrides });
+                                }}
+                              />
+                            </Tooltip>
+                          </div>
+
+                          <div className="duty-attendee-status">
+                            {(() => {
+                              const attendanceInfo = (slot as any)?.attendanceData?.[String(id)] || (slot as any)?.attendanceData?.[Number(id)];
+                              const checkInTimeStr = attendanceInfo?.time ? dayjs(attendanceInfo.time).format('HH:mm:ss DD/MM/YYYY') : null;
+                              const methodLabel = attendanceInfo?.method === 'admin' ? ' (Admin điểm danh)' : attendanceInfo?.method === 'leader' ? ' (Quản lý kíp điểm danh)' : attendanceInfo?.method === 'self_checkin' ? ' (Tự điểm danh)' : '';
+
+                              if (isAttended) {
+                                return (
+                                  <Tooltip title={checkInTimeStr ? `Đã điểm danh lúc: ${checkInTimeStr}${methodLabel}` : 'Đã điểm danh có mặt'}>
+                                    <span className="status-text is-attended" style={{ color: '#16a34a', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                      <CheckCircleOutlined /> ĐÃ CÓ MẶT
+                                    </span>
+                                  </Tooltip>
+                                );
+                              }
+
+                              return (
+                                <span className="status-text is-not-attended" style={{ color: '#94a3b8' }}>
+                                  CHƯA ĐIỂM DANH
+                                </span>
+                              );
+                            })()}
+                            <div className="status-tags">
+                              {isOverridden && <Tag color="gold" className="duty-status-tag-mini">TÙY CHỈNH</Tag>}
+                              {!isAssigned && <Tag color="orange" className="duty-status-tag-mini">BỔ SUNG</Tag>}
+                            </div>
+                          </div>
+
+                          <div className="duty-attendee-action">
                             <Tooltip title={userViolations.length > 0 ? `Xem / Thêm lỗi (${userViolations.length})` : "Ghi lỗi vi phạm"}>
-                              <Button 
-                                variant={userViolations.length > 0 ? "danger" : "secondary"} 
-                                buttonSize="small" 
+                              <AntButton 
+                                type="text"
+                                size="small" 
                                 shape="circle" 
-                                style={userViolations.length > 0 ? { background: '#ef4444', borderColor: '#ef4444', color: '#fff' } : {}}
-                                icon={<WarningOutlined />} 
+                                className={`duty-warning-btn ${userViolations.length > 0 ? 'has-violations' : ''}`}
+                                icon={<WarningOutlined style={{ fontSize: 18 }} />} 
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setViolationUser(userDetail);
                                   violationForm.resetFields();
-                                  violationForm.setFieldsValue({ coefficient: 1, types: [] });
                                   setIsViolationModalOpen(true);
                                 }} 
                               />
                             </Tooltip>
-                            <Checkbox
-                                checked={isAttended}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleAttendance(id, e.target.checked, userDetail);
+                          </div>
+
+                          <div className="duty-attendee-action">
+                            {!isAssigned && isAttended ? (
+                              <Popconfirm
+                                title="Gỡ điểm danh bổ sung?"
+                                description={`Nhân sự "${getUserDisplayName(userDetail)}" sẽ được gỡ khỏi danh sách trực.`}
+                                okText="Gỡ khỏi kíp"
+                                cancelText="Hủy"
+                                okButtonProps={{ danger: true, size: 'small' }}
+                                cancelButtonProps={{ size: 'small' }}
+                                placement="topRight"
+                                onConfirm={(e) => {
+                                  e?.stopPropagation();
+                                  handleRemoveSupplementary(id);
                                 }}
-                                style={{ transform: 'scale(1.2)' }}
-                              />
-                          </Space>,
-                        ]}
-                      >
-                        <List.Item.Meta
-                          avatar={<Avatar icon={<UserOutlined />} src={userDetail?.avatar} />}
-                          title={
-                            <Space>
-                              <Text strong={isAttended}>
-                                {userDetail?.lastName || userDetail?.firstName
-                                  ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim()
-                                  : userDetail?.name || userDetail?.username || `#${id}`}
-                              </Text>
-                              {(currentSlot?.assignedUserIds || []).indexOf(id) === 0 && (
-                                <div style={{ color: '#8b1d1d', fontSize: '11px', fontWeight: 600 }}>
-                                  - Quản lý kíp
-                                </div>
-                              )}
-                            </Space>
-                          }
-                          description={
-                            <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }} wrap>
-                              <Text type="secondary">{userDetail?.studentId || 'Chưa rõ MSV'}</Text>
-                              {isAssigned
-                                ? <Tag color="blue" style={{ fontSize: '0.6rem' }}>Theo lịch</Tag>
-                                : <Text type="warning">Ngoài kíp</Text>}
-                              {userViolations.map((v: any) => (
-                                <Tooltip 
-                                  key={v.id} 
-                                  title={
-                                    <div>
-                                      <div style={{ fontWeight: 600 }}>{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
-                                      {v.note ? (
-                                        <div style={{ marginTop: 2 }}>📝 <b>Ghi chú:</b> {v.note}</div>
-                                      ) : (
-                                        <div style={{ marginTop: 2, color: '#cbd5e1' }}>Không có ghi chú thêm</div>
-                                      )}
-                                      {v.createdAt && (
-                                        <div style={{ marginTop: 2, fontSize: 10, color: '#94a3b8' }}>
-                                          🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
-                                        </div>
-                                      )}
-                                    </div>
-                                  }
-                                >
-                                  <Tag color="error" style={{ fontSize: '0.6rem', cursor: 'pointer' }}>
-                                    {getViolationTypeLabel(v.type, violationTypeOptions)} (x{v.coefficient})
-                                  </Tag>
+                              >
+                                <Tooltip title="Bấm để gỡ điểm danh bổ sung">
+                                  <div 
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="duty-check-circle is-checked"
+                                  >
+                                    <CheckOutlined style={{ color: '#fff', fontSize: 12, fontWeight: 800 }} />
+                                  </div>
                                 </Tooltip>
-                              ))}
-                              {leaveReq && <Tag color="warning" style={{ fontSize: '0.6rem' }}>Xin nghỉ ({leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})</Tag>}
-                              {swapReq && <Tag color="processing" style={{ fontSize: '0.6rem' }}>Xin đổi ({swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})</Tag>}
-                            </Space>
-                          }
-                        />
-                      </List.Item>
+                              </Popconfirm>
+                            ) : (
+                              <Tooltip title={isAttended ? "Bấm để hủy điểm danh" : "Bấm để điểm danh"}>
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleAttendance(id, !isAttended);
+                                  }}
+                                  className={`duty-check-circle ${isAttended ? 'is-checked' : ''}`}
+                                >
+                                  <CheckOutlined style={{ color: isAttended ? '#fff' : '#cbd5e1', fontSize: 12, fontWeight: 800 }} />
+                                </div>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     );
-                  }}
-                  locale={{ emptyText: <div style={{ padding: '20px 0', textAlign: 'center' }}>Chưa có nhân sự nào</div> }}
-                />
+
+                    return isLeader ? (
+                      <Badge.Ribbon 
+                        key={id} 
+                        text={
+                          <Tooltip title="Quản lý kíp" placement="top">
+                            <span style={{ cursor: 'pointer' }}>Qlk</span>
+                          </Tooltip>
+                        } 
+                        color="red" 
+                        placement="start"
+                      >
+                        {cardNode}
+                      </Badge.Ribbon>
+                    ) : (
+                      <React.Fragment key={id}>
+                        {cardNode}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
               );
             }}
           </Form.Item>
         </div>
 
         <Divider orientation="left" style={{ marginTop: 24 }}>
-          <InfoCircleOutlined /> <span style={{ fontSize: 13, marginLeft: 8 }}>Ghi chú quản trị</span>
+          <InfoCircleOutlined /> <span className="duty-divider-label">Ghi chú quản trị</span>
         </Divider>
 
         <Form.Item name="note" noStyle>
           <Input.TextArea size="small" placeholder="Thông tin thêm..." rows={2} />
         </Form.Item>
+                </>
+              )
+            },
+            {
+              key: 'history',
+              label: (
+                <Space>
+                  <HistoryOutlined />
+                  <span>Lịch sử hoạt động ({logs.length})</span>
+                </Space>
+              ),
+              children: (
+                <div style={{ padding: '16px 8px', maxHeight: 500, overflowY: 'auto' }}>
+                  {loadingLogs ? (
+                    <div style={{ textAlign: 'center', padding: '24px' }}>
+                      <SyncOutlined spin style={{ fontSize: 22, color: '#3b82f6' }} />
+                      <div style={{ marginTop: 8, color: '#64748b' }}>Đang tải lịch sử kíp trực...</div>
+                    </div>
+                  ) : logs.length === 0 ? (
+                    <Empty description="Chưa có lịch sử hoạt động nào trong kíp này" style={{ padding: '32px 0' }} />
+                  ) : (
+                    <Timeline mode="left">
+                      {logs.map((log: any, idx: number) => {
+                        const isTransfer = log.action === 'transfer' || log.action === 'swap';
+                        const isRegister = log.action === 'register';
+                        const isCancel = log.action === 'cancel';
+                        const isLeave = log.action === 'leave';
+                        const isAttendance = log.action === 'attendance';
+                        
+                        let color = 'blue';
+                        let icon = <InfoCircleOutlined />;
+                        if (isTransfer) { color = 'purple'; icon = <SwapOutlined />; }
+                        if (isRegister) { color = 'green'; icon = <CheckCircleOutlined />; }
+                        if (isCancel || isLeave) { color = 'red'; icon = <LogoutOutlined />; }
+                        if (isAttendance) { color = 'gold'; icon = <CheckCircleOutlined />; }
+
+                        return (
+                          <Timeline.Item key={idx} color={color} dot={icon}>
+                            <div style={{ fontSize: 12 }}>
+                              <div style={{ fontWeight: 600, color: '#1e293b' }}>
+                                {log.details || log.description || (log.action === 'register' ? 'Đăng ký kíp trực' : (log.action === 'cancel' ? 'Hủy đăng ký kíp' : 'Hoạt động kíp'))}
+                              </div>
+                              <div style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>
+                                🕒 {dayjs(log.createdAt).format('HH:mm:ss - DD/MM/YYYY')}
+                              </div>
+                              <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Avatar size={18} src={log.performer?.avatar} icon={<UserOutlined />} />
+                                <span style={{ fontSize: 11, color: '#475569', fontWeight: 500 }}>
+                                  {getUserDisplayName(log.performer) || 'Hệ thống'}
+                                </span>
+                              </div>
+                            </div>
+                          </Timeline.Item>
+                        );
+                      })}
+                    </Timeline>
+                  )}
+                </div>
+              )
+            }
+          ]}
+        />
       </div>
 
       {/* Violation Modal for Admin */}
@@ -973,14 +1292,19 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         okText="Ghi nhận lỗi"
         width={480}
       >
-        <div style={{ marginBottom: 16, textAlign: 'center' }}>
+        <div className="duty-violation-modal-user-header" style={{ textAlign: 'center', marginBottom: 20 }}>
           <Avatar size={64} src={violationUser?.avatar} icon={<UserOutlined />} />
-          <Title level={5} style={{ marginTop: 12, marginBottom: 4 }}>
-            {violationUser?.lastName || violationUser?.firstName
-              ? `${violationUser.lastName || ''} ${violationUser.firstName || ''}`.trim()
-              : violationUser?.name || violationUser?.username || 'Nhân sự'}
+          <Title level={5} style={{ marginTop: 10, marginBottom: 2 }}>
+            {getUserDisplayName(violationUser)}
           </Title>
-          <Text type="secondary">{violationUser?.email}</Text>
+          {violationUser?.studentId && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 2 }}>
+              MSV: {violationUser.studentId}
+            </div>
+          )}
+          {violationUser?.email && (
+            <Text type="secondary" style={{ fontSize: 12 }}>{violationUser.email}</Text>
+          )}
         </div>
 
         <Form.Item name="types" label="Chọn một hoặc nhiều loại lỗi vi phạm" rules={[{ required: true, message: 'Vui lòng chọn ít nhất một loại lỗi' }]}>
@@ -1004,9 +1328,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             if (selectedOpts.length === 0) return null;
 
             return (
-              <div style={{ marginBottom: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text strong style={{ fontSize: 13, color: '#334155' }}>
+              <div className="duty-violation-preview-box">
+                <div className="preview-header">
+                  <Text strong className="preview-header-label">
                     Đã chọn {selectedOpts.length} loại lỗi:
                   </Text>
                   {totalEstimatedPenalty > 0 && (
@@ -1015,22 +1339,19 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     </Tag>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="preview-list">
                   {selectedOpts.map(opt => {
                     const coeff = Number(opt.defaultCoeff) || 1;
                     const penalty = (Number(opt.defaultPenalty) || 0) * coeff;
                     return (
-                      <div 
-                        key={opt.value || opt.key} 
-                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '4px 8px', background: '#fff', borderRadius: 6, border: '1px solid #f1f5f9' }}
-                      >
+                      <div key={opt.value || opt.key} className="preview-item">
                         <Space size={6}>
                           <span>{opt.rawLabel || opt.label}</span>
                           <Tag color="default" style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '14px' }}>
                             Hệ số: x{coeff}
                           </Tag>
                         </Space>
-                        <span style={{ fontWeight: 600, color: penalty > 0 ? '#ef4444' : '#64748b' }}>
+                        <span className={`preview-item-penalty ${penalty > 0 ? 'has-penalty' : 'no-penalty'}`}>
                           {penalty > 0 ? `-${penalty.toLocaleString('vi-VN')}đ` : 'Theo quy định'}
                         </span>
                       </div>
@@ -1050,16 +1371,16 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           const userViolations = currentSlot?.violations?.filter((v: any) => String(v.userId) === String(violationUser?.id)) || [];
           if (userViolations.length === 0) return null;
           return (
-            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text strong style={{ fontSize: 13, color: '#ef4444' }}>
+            <div className="duty-recorded-violations">
+              <div className="recorded-violations-header">
+                <Text strong className="recorded-violations-label">
                   Các lỗi đã ghi nhận ({userViolations.length}):
                 </Text>
                 <AntButton danger type="link" size="small" onClick={handleDeleteAllViolations}>
                   Xóa tất cả lỗi
                 </AntButton>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+              <div className="recorded-violations-list">
                 {userViolations.map((v: any) => (
                   <Tooltip
                     key={v.id}
@@ -1067,33 +1388,22 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                       <div>
                         <div style={{ fontWeight: 600 }}>{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
                         {v.note ? (
-                          <div style={{ marginTop: 2 }}>📝 <b>Ghi chú:</b> {v.note}</div>
+                          <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Ghi chú:</b> {v.note}</div>
                         ) : (
-                          <div style={{ marginTop: 2, color: '#cbd5e1' }}>Không có ghi chú thêm</div>
+                          <div className="duty-tooltip-note-empty">Không có ghi chú thêm</div>
                         )}
                         {v.createdAt && (
-                          <div style={{ marginTop: 2, fontSize: 10, color: '#94a3b8' }}>
-                            🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
+                          <div className="duty-tooltip-time">
+                            <ClockCircleOutlined style={{ marginRight: 4 }} />{dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
                           </div>
                         )}
                       </div>
                     }
                   >
-                    <div 
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '6px 10px',
-                        background: '#fef2f2',
-                        borderRadius: 6,
-                        border: '1px solid #fee2e2',
-                        cursor: 'help'
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontWeight: 600, fontSize: 12, color: '#991b1b' }}>
+                    <div className="recorded-violation-item">
+                      <div className="recorded-violation-info">
+                        <div className="recorded-violation-name-row">
+                          <span className="recorded-violation-name">
                             {getViolationTypeLabel(v.type, violationTypeOptions)}
                           </span>
                           <Tag color="red" style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '14px' }}>
@@ -1101,8 +1411,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                           </Tag>
                         </div>
                         {v.note && (
-                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                            📝 {v.note}
+                          <div className="recorded-violation-note">
+                            <FileTextOutlined style={{ marginRight: 4, fontSize: 11 }} />{v.note}
                           </div>
                         )}
                       </div>
