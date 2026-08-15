@@ -94,6 +94,37 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
 
   const markAttendance = async (userId: number, customCoeff?: number) => {
     if (!slot) return;
+    const targetUser = allUsers.find(u => u.id === userId);
+    const isSupplementary = targetUser && !targetUser.isAssigned;
+    const isCurrentlyAttended = targetUser?.isAttended;
+
+    // If unchecking a supplementary member
+    if (isCurrentlyAttended && isSupplementary) {
+      Modal.confirm({
+        title: 'Xác nhận gỡ nhân sự bổ sung?',
+        content: `Nhân sự "${getUserDisplayName(targetUser)}" là nhân sự trực bổ sung. Nếu hủy điểm danh, nhân sự này sẽ được gỡ khỏi kíp trực. Bạn có chắc chắn?`,
+        okText: 'Gỡ khỏi kíp',
+        okType: 'danger',
+        cancelText: 'Hủy',
+        onOk: async () => {
+          setLoading(true);
+          try {
+            const res = await dutyService.leaderMarkAttendance(slot.id, userId, customCoeff);
+            if (res.success) {
+              message.success(res.message || 'Đã gỡ điểm danh nhân sự bổ sung');
+              setSelectedUser(null);
+              onSuccess();
+            }
+          } catch (err: any) {
+            message.error(err.response?.data?.message || 'Lỗi khi điểm danh');
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await dutyService.leaderMarkAttendance(slot.id, userId, customCoeff);

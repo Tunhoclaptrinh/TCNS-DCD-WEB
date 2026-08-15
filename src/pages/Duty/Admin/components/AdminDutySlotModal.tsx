@@ -89,6 +89,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     if (open && slot) {
       form.setFieldsValue({
         ...slot,
+        coefficient: Number(slot.coefficient ?? (slot as any).kip?.coefficient ?? (slot as any).shift?.coefficient ?? 1),
         shiftDate: dayjs(slot.shiftDate),
         timeRange:
           slot.startTime && slot.endTime
@@ -123,9 +124,15 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     if (!slot) return;
     setLoading(true);
     try {
+      const allFormValues = form.getFieldsValue(true);
       const targetDateStr = values.shiftDate.format('YYYY-MM-DD');
       const payload = {
+        ...allFormValues,
         ...values,
+        assignedUserIds: allFormValues.assignedUserIds || [],
+        attendedUserIds: allFormValues.attendedUserIds || [],
+        attendanceOverrides: allFormValues.attendanceOverrides || {},
+        slotStructure: allFormValues.slotStructure || [],
         shiftDate: targetDateStr,
         startTime: values.timeRange?.[0]?.format('HH:mm'),
         endTime: values.timeRange?.[1]?.format('HH:mm'),
@@ -171,7 +178,37 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     }
   };
 
-  const handleToggleAttendance = (userId: number, checked: boolean) => {
+  const handleToggleAttendance = (userId: number, checked: boolean, userDetail?: any) => {
+    const assignedIds = form.getFieldValue('assignedUserIds') || [];
+    const isAssigned = assignedIds.includes(userId);
+
+    // If unchecking a supplementary member (not assigned in original schedule)
+    if (!checked && !isAssigned) {
+      const userName = userDetail?.lastName || userDetail?.firstName
+        ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim()
+        : userDetail?.name || userDetail?.username || `#${userId}`;
+
+      Modal.confirm({
+        title: 'Xác nhận gỡ điểm danh bổ sung?',
+        content: `Nhân sự "${userName}" là nhân sự điểm danh bổ sung (không có trong lịch phân công ban đầu). Nếu hủy điểm danh, nhân sự này sẽ được gỡ khỏi danh sách trực của kíp này. Bạn có chắc chắn?`,
+        okText: 'Gỡ khỏi kíp',
+        okType: 'danger',
+        cancelText: 'Hủy',
+        onOk: () => {
+          const currentAttended = form.getFieldValue('attendedUserIds') || [];
+          const nextAttended = currentAttended.filter((uId: number) => uId !== userId);
+          const currentOverrides = { ...(form.getFieldValue('attendanceOverrides') || {}) };
+          delete currentOverrides[String(userId)];
+          delete currentOverrides[Number(userId)];
+          form.setFieldsValue({
+            attendedUserIds: nextAttended,
+            attendanceOverrides: currentOverrides,
+          });
+        },
+      });
+      return;
+    }
+
     const currentAttended = form.getFieldValue('attendedUserIds') || [];
     const nextAttended = checked
       ? [...new Set([...currentAttended, userId])]
@@ -472,8 +509,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             </Form.Item>
           </Col>
           <Col span={6}>
-            <Form.Item label="Hệ số kíp" name="coefficient" initialValue={1} rules={[{ required: true }]}>
-              <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
+            <Form.Item label="Hệ số kíp" name="coefficient" rules={[{ required: true }]}>
+              <InputNumber min={0.25} step={0.25} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
         </Row>
@@ -607,7 +644,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
                     return (
                       <List.Item
-                        onClick={() => handleToggleAttendance(id, !isAttended)}
+                        onClick={() => handleToggleAttendance(id, !isAttended, userDetail)}
                         style={{
                           padding: '10px 16px',
                           background: isAttended ? '#f0fdf4' : '#fff',
@@ -686,7 +723,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                                 checked={isAttended}
                                 onChange={(e) => {
                                   e.stopPropagation();
-                                  handleToggleAttendance(id, e.target.checked);
+                                  handleToggleAttendance(id, e.target.checked, userDetail);
                                 }}
                                 style={{ transform: 'scale(1.2)' }}
                               />
