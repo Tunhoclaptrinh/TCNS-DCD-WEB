@@ -92,6 +92,26 @@ export interface DutyDay {
   shiftTemplateIds?: number[];
 }
 
+export interface DutySettings {
+  id?: any;
+  weeklyLimitEnabled?: boolean;
+  weeklyKipLimit?: number;
+  allowUnregisterWhenFull?: boolean;
+  currentGeneration?: string;
+  generations?: string[];
+  defaultQuota?: number;
+  kipPrice?: number;
+  quotaRules?: any[];
+  allowedIpRanges?: string[] | string;
+  penaltyAbsentNoPermission?: number;
+  penaltyAbsentWithPermissionLate?: number;
+  penaltyLate?: number;
+  penaltyWrongUniform?: number;
+  violationPenaltyRate?: number;
+  violationTypes?: any[];
+  updatedAt?: string;
+}
+
 class DutyService {
   /**
    * Get weekly schedule
@@ -125,6 +145,10 @@ class DutyService {
   async getSlotById(slotId: number): Promise<BaseApiResponse<DutySlot>> {
     const response = await apiClient.get<BaseApiResponse<DutySlot>>(`/duty/slots/${slotId}`);
     return response;
+  }
+
+  async getSlot(slotId: number): Promise<BaseApiResponse<DutySlot>> {
+    return this.getSlotById(slotId);
   }
 
   /**
@@ -173,9 +197,16 @@ class DutyService {
   /**
    * Report a violation for a user in a slot
    */
-  async reportViolation(data: { slotId: number; userId: number; type: string; coefficient: number; note?: string }) {
+  async reportViolation(data: { slotId: number; userId: number; type?: string; types?: string[]; coefficient?: number; note?: string; violationId?: number }): Promise<BaseApiResponse<any>> {
     const { slotId, ...payload } = data;
-    const response = await apiClient.post(`/duty/slots/${slotId}/violation`, payload);
+    const response = await apiClient.post<BaseApiResponse<any>>(`/duty/slots/${slotId}/violation`, payload);
+    return response;
+  }
+
+  async deleteViolation(slotId: number, userId: number, violationId?: number): Promise<BaseApiResponse<any>> {
+    const response = await apiClient.delete<BaseApiResponse<any>>(`/duty/slots/${slotId}/violation/${userId}`, {
+      params: violationId ? { violationId } : undefined,
+    });
     return response;
   }
 
@@ -439,33 +470,12 @@ class DutyService {
     return response;
   }
 
-  async getSettings(): Promise<BaseApiResponse<{ 
-    id: any; 
-    weeklyLimitEnabled: boolean,
-    weeklyKipLimit: number, 
-    allowUnregisterWhenFull: boolean, 
-    currentGeneration: string, 
-    generations: string[],
-    defaultQuota: number,
-    kipPrice: number,
-    quotaRules: any[],
-    allowedIpRanges: string[]
-  }>> {
-    const response = await apiClient.get<BaseApiResponse<any>>("/duty/settings");
+  async getSettings(): Promise<BaseApiResponse<DutySettings>> {
+    const response = await apiClient.get<BaseApiResponse<DutySettings>>("/duty/settings");
     return response;
   }
 
-  async updateSettings(data: { 
-    weeklyLimitEnabled?: boolean,
-    weeklyKipLimit?: number, 
-    allowUnregisterWhenFull?: boolean, 
-    currentGeneration?: string, 
-    generations?: string[],
-    defaultQuota?: number,
-    kipPrice?: number,
-    quotaRules?: any[],
-    allowedIpRanges?: string | string[]
-  }): Promise<BaseApiResponse<any>> {
+  async updateSettings(data: Partial<DutySettings>): Promise<BaseApiResponse<any>> {
     const response = await apiClient.put<BaseApiResponse<any>>("/duty/settings", data);
     return response;
   }

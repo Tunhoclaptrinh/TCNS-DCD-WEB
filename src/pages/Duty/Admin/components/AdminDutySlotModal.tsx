@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
+  Button as AntButton,
   Space,
   Divider,
   Typography,
@@ -19,6 +20,7 @@ import {
   Col,
   Tooltip,
   Row,
+  Popconfirm,
 } from 'antd';
 import Button from '@/components/common/Button';
 import {
@@ -47,6 +49,36 @@ import SlotRequestsHistoryModal from '@/pages/Duty/Member/components/SlotRequest
 
 const { Text, Title } = Typography;
 
+export const DEFAULT_VIOLATION_TYPES = [
+  { key: 'absent_no_permission', label: 'Vắng mặt không phép', defaultPenalty: 50000, defaultCoeff: 1, description: 'Không có mặt tại kíp trực và không có đơn xin phép' },
+  { key: 'late', label: 'Đi muộn', defaultPenalty: 10000, defaultCoeff: 1, description: 'Có mặt muộn sau giờ bắt đầu ca trực quy định' },
+  { key: 'absent_with_permission_late', label: 'Báo muộn', defaultPenalty: 20000, defaultCoeff: 1, description: 'Xin nghỉ hoặc báo vắng sau hạn quy định' },
+  { key: 'wrong_uniform', label: 'Sai tác phong / trang phục', defaultPenalty: 10000, defaultCoeff: 1, description: 'Không mặc đồng phục hoặc vi phạm tác phong' },
+  { key: 'other', label: 'Khác (Ghi chú chi tiết)', defaultPenalty: 0, defaultCoeff: 1, description: 'Các vi phạm phát sinh khác ghi nhận theo ca' },
+];
+
+export const VIOLATION_TYPE_OPTIONS = DEFAULT_VIOLATION_TYPES.map(vt => ({
+  value: vt.key,
+  label: `${vt.label}${vt.defaultPenalty ? ` (${Number(vt.defaultPenalty).toLocaleString('vi-VN')}đ)` : ''}`,
+  rawLabel: vt.label,
+  defaultPenalty: vt.defaultPenalty,
+  defaultCoeff: vt.defaultCoeff,
+}));
+
+export const getViolationTypeLabel = (type: string, customTypes: any[] = []) => {
+  const custom = customTypes.find(ct => (ct.key || ct.value) === type);
+  if (custom) return custom.rawLabel || custom.label;
+
+  const map: Record<string, string> = {
+    'absent_no_permission': 'Vắng mặt không phép',
+    'late': 'Đi muộn',
+    'absent_with_permission_late': 'Báo muộn',
+    'wrong_uniform': 'Sai tác phong',
+    'other': 'Lỗi khác',
+  };
+  return map[type] || type || 'Vi phạm';
+};
+
 interface AdminDutySlotModalProps {
   open: boolean;
   onCancel: () => void;
@@ -70,12 +102,38 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedUsersCache, setSelectedUsersCache] = useState<any[]>([]);
+  const [currentSlot, setCurrentSlot] = useState<DutySlot | null>(slot);
+  const [violationTypeOptions, setViolationTypeOptions] = useState<any[]>(VIOLATION_TYPE_OPTIONS);
 
   // Violation Management
   const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
   const [violationUser, setViolationUser] = useState<any>(null);
   const [violationForm] = Form.useForm();
   const [isRequestsModalVisible, setIsRequestsModalVisible] = useState(false);
+
+  useEffect(() => {
+    const loadViolationTypes = async () => {
+      try {
+        const res = await dutyService.getSettings();
+        if (res.success && res.data?.violationTypes && Array.isArray(res.data.violationTypes) && res.data.violationTypes.length > 0) {
+          setViolationTypeOptions(
+            res.data.violationTypes.map((vt: any) => ({
+              value: vt.key,
+              label: `${vt.label}${vt.defaultPenalty ? ` (${Number(vt.defaultPenalty).toLocaleString('vi-VN')}đ)` : ''}`,
+              rawLabel: vt.label,
+              defaultPenalty: vt.defaultPenalty,
+              defaultCoeff: vt.defaultCoeff,
+            }))
+          );
+        }
+      } catch (err) {
+        // Fallback to default
+      }
+    };
+    if (open) {
+      loadViolationTypes();
+    }
+  }, [open]);
 
   const updateCache = (rows: any[]) => {
     setSelectedUsersCache(prev => {
@@ -86,35 +144,58 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   };
 
   useEffect(() => {
-    if (open && slot) {
-      const structure = slot.slotStructure || (slot as any).kip?.slotStructure || (slot as any).shift?.slotStructure || [];
+    if (!open) {
+      form.resetFields();
+      setCurrentSlot(null);
+    } else if (open && slot) {
+      form.resetFields();
+      setCurrentSlot(slot);
+    }
+  }, [open, slot, form]);
+
+  const refreshCurrentSlot = async () => {
+    if (!slot?.id) return;
+    try {
+      const res = await dutyService.getSlot(slot.id);
+      if (res.success && res.data) {
+        setCurrentSlot(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh slot details:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (open && currentSlot) {
+      form.resetFields();
+      const structure = currentSlot.slotStructure || (currentSlot as any).kip?.slotStructure || (currentSlot as any).shift?.slotStructure || [];
       const structureTotal = Array.isArray(structure) ? structure.reduce((acc: number, c: any) => acc + (Number(c?.slots) || 0), 0) : 0;
       const initialCapacity = Math.max(
-        Number(slot.capacity ?? (slot as any).kip?.capacity ?? 1),
+        Number(currentSlot.capacity ?? (currentSlot as any).kip?.capacity ?? 1),
         structureTotal,
-        (slot.assignedUserIds || []).length
+        (currentSlot.assignedUserIds || []).length
       );
 
       form.setFieldsValue({
-        ...slot,
+        ...currentSlot,
         capacity: initialCapacity,
-        coefficient: Number(slot.coefficient ?? (slot as any).kip?.coefficient ?? (slot as any).shift?.coefficient ?? 1),
-        shiftDate: dayjs(slot.shiftDate),
+        coefficient: Number(currentSlot.coefficient ?? (currentSlot as any).kip?.coefficient ?? (currentSlot as any).shift?.coefficient ?? 1),
+        shiftDate: dayjs(currentSlot.shiftDate),
         timeRange:
-          slot.startTime && slot.endTime
-            ? [dayjs(slot.startTime, 'HH:mm'), dayjs(slot.endTime, 'HH:mm')]
+          currentSlot.startTime && currentSlot.endTime
+            ? [dayjs(currentSlot.startTime, 'HH:mm'), dayjs(currentSlot.endTime, 'HH:mm')]
             : undefined,
-        status: slot.status || 'open',
-        visibilityMode: slot.config?.visibilityMode || 'public',
-        privacyMaskType: slot.config?.privacyMaskType || 'masked',
-        assignedUserIds: slot.assignedUserIds || [],
-        attendedUserIds: slot.attendedUserIds || [],
-        slotStructure: slot.slotStructure || (slot as any).kip?.slotStructure || (slot as any).shift?.slotStructure || [],
-        attendanceOverrides: slot.attendanceOverrides || {},
+        status: currentSlot.status || 'open',
+        visibilityMode: currentSlot.config?.visibilityMode || 'public',
+        privacyMaskType: currentSlot.config?.privacyMaskType || 'masked',
+        assignedUserIds: currentSlot.assignedUserIds || [],
+        attendedUserIds: currentSlot.attendedUserIds || [],
+        slotStructure: currentSlot.slotStructure || (currentSlot as any).kip?.slotStructure || (currentSlot as any).shift?.slotStructure || [],
+        attendanceOverrides: currentSlot.attendanceOverrides ? { ...currentSlot.attendanceOverrides } : {},
       });
-      if (slot.assignedUsers) updateCache(slot.assignedUsers);
+      if (currentSlot.assignedUsers) updateCache(currentSlot.assignedUsers);
     }
-  }, [open, slot, form]);
+  }, [open, currentSlot, form]);
 
   // Auto-increase capacity when assignedUserIds change
   const assignedIds = Form.useWatch('assignedUserIds', form);
@@ -130,7 +211,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   }, [assignedIds, form]);
 
   const handleSubmit = async (values: any) => {
-    if (!slot) return;
+    if (!currentSlot) return;
     setLoading(true);
     try {
       const allFormValues = form.getFieldsValue(true);
@@ -146,13 +227,13 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         startTime: values.timeRange?.[0]?.format('HH:mm'),
         endTime: values.timeRange?.[1]?.format('HH:mm'),
         config: { 
-          ...slot.config, 
+          ...currentSlot.config, 
           visibilityMode: values.visibilityMode,
           privacyMaskType: values.privacyMaskType 
         },
       };
 
-      const res = await dutyService.updateSlot(slot.id, payload);
+      const res = await dutyService.updateSlot(currentSlot.id, payload);
       if (res.success) {
         message.success('Cập nhật kíp trực thành công. Thông báo đã được gửi đến các thành viên.');
         onSuccess();
@@ -166,18 +247,25 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   };
 
   const handleReportViolation = async (values: any) => {
-    if (!slot || !violationUser) return;
+    if (!currentSlot || !violationUser) return;
     setLoading(true);
     try {
+      const types = Array.isArray(values.types) ? values.types : (values.types ? [values.types] : []);
+      if (types.length === 0) {
+        message.warning('Vui lòng chọn ít nhất một loại lỗi');
+        setLoading(false);
+        return;
+      }
       const res = await dutyService.reportViolation({
-        slotId: slot.id,
+        slotId: currentSlot.id,
         userId: violationUser.id,
-        ...values
+        types: types,
+        note: values.note ?? ''
       });
       if (res.success) {
-        message.success(`Đã ghi nhận lỗi cho ${violationUser.name || violationUser.fullName}`);
-        setIsViolationModalOpen(false);
+        message.success(`Đã ghi nhận lỗi cho ${violationUser.name || violationUser.fullName || 'nhân sự'}`);
         violationForm.resetFields();
+        await refreshCurrentSlot();
         onSuccess();
       }
     } catch (err: any) {
@@ -185,6 +273,51 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteSingleViolation = async (violationId: number) => {
+    if (!currentSlot || !violationUser) return;
+    setLoading(true);
+    try {
+      const res = await dutyService.deleteViolation(currentSlot.id, violationUser.id, violationId);
+      if (res.success) {
+        message.success('Đã gỡ lỗi vi phạm thành công');
+        await refreshCurrentSlot();
+        onSuccess();
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi gỡ vi phạm');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAllViolations = async () => {
+    if (!currentSlot || !violationUser) return;
+    Modal.confirm({
+      title: 'Xác nhận gỡ tất cả vi phạm?',
+      content: `Bạn có chắc chắn muốn xóa toàn bộ bản ghi vi phạm của "${violationUser.lastName || violationUser.firstName ? `${violationUser.lastName || ''} ${violationUser.firstName || ''}`.trim() : violationUser.name || 'nhân sự này'}"? Khoản phạt liên kết trong hệ thống cũng sẽ được tự động xóa.`,
+      okText: 'Xóa tất cả',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        setLoading(true);
+        try {
+          const res = await dutyService.deleteViolation(currentSlot.id, violationUser.id);
+          if (res.success) {
+            message.success('Đã gỡ toàn bộ vi phạm thành công');
+            setIsViolationModalOpen(false);
+            violationForm.resetFields();
+            await refreshCurrentSlot();
+            onSuccess();
+          }
+        } catch (err: any) {
+          message.error(err.response?.data?.message || 'Lỗi khi gỡ vi phạm');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleToggleAttendance = (userId: number, checked: boolean, userDetail?: any) => {
@@ -253,7 +386,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   };
 
   const handleScanAbsentees = () => {
-    if (!slot) return;
+    if (!currentSlot) return;
     const assignedIds = form.getFieldValue('assignedUserIds') || [];
     const attendedIds = form.getFieldValue('attendedUserIds') || [];
 
@@ -262,9 +395,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     
     // Filter out those with approved leave
     const unexcusedAbsentees = absentees.filter((id: number) => {
-      const hasApprovedLeave = slot.leaveRequests?.some(r => String(r.userId) === String(id) && r.status === 'approved');
-      const hasApprovedSwap = slot.swapRequests?.some(r => String(r.fromSlotId) === String(slot.id) && String(r.userId) === String(id) && r.status === 'approved');
-      const alreadyHasViolation = slot.violations?.some(v => String(v.userId) === String(id));
+      const hasApprovedLeave = currentSlot.leaveRequests?.some(r => String(r.userId) === String(id) && r.status === 'approved');
+      const hasApprovedSwap = currentSlot.swapRequests?.some(r => String(r.fromSlotId) === String(currentSlot.id) && String(r.userId) === String(id) && r.status === 'approved');
+      const alreadyHasViolation = currentSlot.violations?.some(v => String(v.userId) === String(id));
       return !hasApprovedLeave && !hasApprovedSwap && !alreadyHasViolation;
     });
 
@@ -282,14 +415,15 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         try {
           await Promise.all(unexcusedAbsentees.map((id: number) => 
             dutyService.reportViolation({
-              slotId: slot.id,
+              slotId: currentSlot.id,
               userId: id,
-              type: 'Vắng mặt không phép',
+              type: 'absent_no_permission',
               coefficient: 1,
               note: 'Hệ thống tự động ghi nhận vắng mặt'
             })
           ));
           message.success(`Đã ghi lỗi cho ${unexcusedAbsentees.length} nhân sự.`);
+          await refreshCurrentSlot();
           onSuccess();
         } catch (err) {
           message.error('Lỗi khi ghi lỗi hàng loạt');
@@ -312,6 +446,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     <FormModal
       open={open}
       form={form}
+      destroyOnClose
       title={
         <Space>
           <ThunderboltOutlined />
@@ -663,13 +798,13 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   renderItem={(id: number) => {
                     const isAssigned = assignedIds.includes(id);
                     const isAttended = attendedIds.includes(id);
-                    const existingViolation = slot?.violations?.find((v: any) => String(v.userId) === String(id));
-                    const leaveReq = slot?.leaveRequests?.find((r: any) => String(r.userId) === String(id));
-                    const swapReq = slot?.swapRequests?.find((r: any) => String(r.userId) === String(id));
+                    const userViolations = currentSlot?.violations?.filter((v: any) => String(v.userId) === String(id)) || [];
+                    const leaveReq = currentSlot?.leaveRequests?.find((r: any) => String(r.userId) === String(id));
+                    const swapReq = currentSlot?.swapRequests?.find((r: any) => String(r.userId) === String(id));
                     
                     const userDetail =
-                      (slot?.assignedUsers || []).find((u: any) => u && String(u.id) === String(id)) ||
-                      (slot?.attendedUsers || []).find((u: any) => u && String(u.id) === String(id)) ||
+                      (currentSlot?.assignedUsers || []).find((u: any) => u && String(u.id) === String(id)) ||
+                      (currentSlot?.attendedUsers || []).find((u: any) => u && String(u.id) === String(id)) ||
                       selectedUsersCache.find((u: any) => u && String(u.id) === String(id));
 
                     const defaultSlotCoeff = currentSlotCoeff;
@@ -710,8 +845,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                                   onChange={(val) => {
                                     const current = form.getFieldValue('attendanceOverrides') || {};
                                     const nextOverrides = { ...current };
-                                    if (val === null || val === undefined) {
+                                    if (val === null || val === undefined || Number(val) === Number(defaultSlotCoeff)) {
                                       delete nextOverrides[String(id)];
+                                      delete nextOverrides[Number(id)];
                                     } else {
                                       nextOverrides[String(id)] = val;
                                     }
@@ -730,26 +866,18 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                                 {!isAssigned && <Tag color="orange" style={{ fontSize: '0.6rem', border: 'none', margin: 0, padding: '0 4px', lineHeight: '14px' }}>BỔ SUNG</Tag>}
                               </div>
                             </div>
-                            <Tooltip title={existingViolation ? "Sửa lỗi vi phạm" : "Ghi lỗi vi phạm"}>
+                            <Tooltip title={userViolations.length > 0 ? `Xem / Thêm lỗi (${userViolations.length})` : "Ghi lỗi vi phạm"}>
                               <Button 
-                                variant={existingViolation ? "primary" : "danger"} 
+                                variant={userViolations.length > 0 ? "danger" : "secondary"} 
                                 buttonSize="small" 
                                 shape="circle" 
-                                style={existingViolation ? { background: '#f59e0b', borderColor: '#f59e0b' } : {}}
+                                style={userViolations.length > 0 ? { background: '#ef4444', borderColor: '#ef4444', color: '#fff' } : {}}
                                 icon={<WarningOutlined />} 
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setViolationUser(userDetail);
-                                  if (existingViolation) {
-                                    violationForm.setFieldsValue({
-                                      type: existingViolation.type,
-                                      coefficient: existingViolation.coefficient,
-                                      note: existingViolation.note
-                                    });
-                                  } else {
-                                    violationForm.resetFields();
-                                    violationForm.setFieldsValue({ coefficient: 1 });
-                                  }
+                                  violationForm.resetFields();
+                                  violationForm.setFieldsValue({ coefficient: 1, types: [] });
                                   setIsViolationModalOpen(true);
                                 }} 
                               />
@@ -774,7 +902,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                                   ? `${userDetail.lastName || ''} ${userDetail.firstName || ''}`.trim()
                                   : userDetail?.name || userDetail?.username || `#${id}`}
                               </Text>
-                              {(slot?.assignedUserIds || []).indexOf(id) === 0 && (
+                              {(currentSlot?.assignedUserIds || []).indexOf(id) === 0 && (
                                 <div style={{ color: '#8b1d1d', fontSize: '11px', fontWeight: 600 }}>
                                   - Quản lý kíp
                                 </div>
@@ -782,12 +910,35 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                             </Space>
                           }
                           description={
-                            <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }}>
+                            <Space split={<Divider type="vertical" />} style={{ fontSize: 11 }} wrap>
                               <Text type="secondary">{userDetail?.studentId || 'Chưa rõ MSV'}</Text>
                               {isAssigned
                                 ? <Tag color="blue" style={{ fontSize: '0.6rem' }}>Theo lịch</Tag>
                                 : <Text type="warning">Ngoài kíp</Text>}
-                              {existingViolation && <Tag color="error" style={{ fontSize: '0.6rem' }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
+                              {userViolations.map((v: any) => (
+                                <Tooltip 
+                                  key={v.id} 
+                                  title={
+                                    <div>
+                                      <div style={{ fontWeight: 600 }}>{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
+                                      {v.note ? (
+                                        <div style={{ marginTop: 2 }}>📝 <b>Ghi chú:</b> {v.note}</div>
+                                      ) : (
+                                        <div style={{ marginTop: 2, color: '#cbd5e1' }}>Không có ghi chú thêm</div>
+                                      )}
+                                      {v.createdAt && (
+                                        <div style={{ marginTop: 2, fontSize: 10, color: '#94a3b8' }}>
+                                          🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
+                                        </div>
+                                      )}
+                                    </div>
+                                  }
+                                >
+                                  <Tag color="error" style={{ fontSize: '0.6rem', cursor: 'pointer' }}>
+                                    {getViolationTypeLabel(v.type, violationTypeOptions)} (x{v.coefficient})
+                                  </Tag>
+                                </Tooltip>
+                              ))}
                               {leaveReq && <Tag color="warning" style={{ fontSize: '0.6rem' }}>Xin nghỉ ({leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})</Tag>}
                               {swapReq && <Tag color="processing" style={{ fontSize: '0.6rem' }}>Xin đổi ({swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})</Tag>}
                             </Space>
@@ -818,8 +969,9 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         form={violationForm} 
         title={<Space><WarningOutlined style={{ color: '#ef4444' }} /> <span>Ghi nhận vi phạm</span></Space>} 
         onCancel={() => setIsViolationModalOpen(false)} 
-        onOk={handleReportViolation} 
-        width={400}
+        onOk={handleReportViolation}
+        okText="Ghi nhận lỗi"
+        width={480}
       >
         <div style={{ marginBottom: 16, textAlign: 'center' }}>
           <Avatar size={64} src={violationUser?.avatar} icon={<UserOutlined />} />
@@ -831,22 +983,144 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           <Text type="secondary">{violationUser?.email}</Text>
         </div>
 
-        <Form.Item name="type" label="Loại lỗi" rules={[{ required: true }]}>
-          <Select placeholder="Chọn loại lỗi vi phạm">
-            <Select.Option value="Vắng mặt không phép">Vắng mặt không phép</Select.Option>
-            <Select.Option value="Đi muộn">Đi muộn</Select.Option>
-            <Select.Option value="Sai tác phong">Sai tác phong</Select.Option>
-            <Select.Option value="Khác">Khác (Ghi chú chi tiết)</Select.Option>
-          </Select>
+        <Form.Item name="types" label="Chọn một hoặc nhiều loại lỗi vi phạm" rules={[{ required: true, message: 'Vui lòng chọn ít nhất một loại lỗi' }]}>
+          <Select 
+            mode="multiple" 
+            placeholder="Chọn một hoặc nhiều loại lỗi vi phạm..." 
+            options={violationTypeOptions} 
+            allowClear
+          />
         </Form.Item>
 
-        <Form.Item name="coefficient" label="Hệ số lỗi" initialValue={1} rules={[{ required: true }]}>
-          <InputNumber min={0.1} max={5} step={0.5} style={{ width: '100%' }} />
+        <Form.Item 
+          noStyle 
+          shouldUpdate={(prev, curr) => prev.types !== curr.types}
+        >
+          {({ getFieldValue }) => {
+            const selectedKeys: string[] = getFieldValue('types') || [];
+            const selectedOpts = selectedKeys.map(k => violationTypeOptions.find(o => (o.value || o.key) === k)).filter(Boolean);
+            const totalEstimatedPenalty = selectedOpts.reduce((acc, opt) => acc + ((Number(opt?.defaultPenalty) || 0) * (Number(opt?.defaultCoeff) || 1)), 0);
+
+            if (selectedOpts.length === 0) return null;
+
+            return (
+              <div style={{ marginBottom: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text strong style={{ fontSize: 13, color: '#334155' }}>
+                    Đã chọn {selectedOpts.length} loại lỗi:
+                  </Text>
+                  {totalEstimatedPenalty > 0 && (
+                    <Tag color="red" style={{ fontSize: 12, fontWeight: 700, margin: 0, padding: '2px 8px' }}>
+                      Tổng phạt dự kiến: -{totalEstimatedPenalty.toLocaleString('vi-VN')}đ
+                    </Tag>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {selectedOpts.map(opt => {
+                    const coeff = Number(opt.defaultCoeff) || 1;
+                    const penalty = (Number(opt.defaultPenalty) || 0) * coeff;
+                    return (
+                      <div 
+                        key={opt.value || opt.key} 
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '4px 8px', background: '#fff', borderRadius: 6, border: '1px solid #f1f5f9' }}
+                      >
+                        <Space size={6}>
+                          <span>{opt.rawLabel || opt.label}</span>
+                          <Tag color="default" style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '14px' }}>
+                            Hệ số: x{coeff}
+                          </Tag>
+                        </Space>
+                        <span style={{ fontWeight: 600, color: penalty > 0 ? '#ef4444' : '#64748b' }}>
+                          {penalty > 0 ? `-${penalty.toLocaleString('vi-VN')}đ` : 'Theo quy định'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }}
         </Form.Item>
 
         <Form.Item name="note" label="Ghi chú chi tiết">
-          <Input.TextArea placeholder="Nhập chi tiết vi phạm..." rows={3} />
+          <Input.TextArea placeholder="Nhập chi tiết vi phạm (nếu có)..." rows={2} />
         </Form.Item>
+
+        {(() => {
+          const userViolations = currentSlot?.violations?.filter((v: any) => String(v.userId) === String(violationUser?.id)) || [];
+          if (userViolations.length === 0) return null;
+          return (
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text strong style={{ fontSize: 13, color: '#ef4444' }}>
+                  Các lỗi đã ghi nhận ({userViolations.length}):
+                </Text>
+                <AntButton danger type="link" size="small" onClick={handleDeleteAllViolations}>
+                  Xóa tất cả lỗi
+                </AntButton>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+                {userViolations.map((v: any) => (
+                  <Tooltip
+                    key={v.id}
+                    title={
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{getViolationTypeLabel(v.type, violationTypeOptions)} (Hệ số: x{v.coefficient})</div>
+                        {v.note ? (
+                          <div style={{ marginTop: 2 }}>📝 <b>Ghi chú:</b> {v.note}</div>
+                        ) : (
+                          <div style={{ marginTop: 2, color: '#cbd5e1' }}>Không có ghi chú thêm</div>
+                        )}
+                        {v.createdAt && (
+                          <div style={{ marginTop: 2, fontSize: 10, color: '#94a3b8' }}>
+                            🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
+                          </div>
+                        )}
+                      </div>
+                    }
+                  >
+                    <div 
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 10px',
+                        background: '#fef2f2',
+                        borderRadius: 6,
+                        border: '1px solid #fee2e2',
+                        cursor: 'help'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 600, fontSize: 12, color: '#991b1b' }}>
+                            {getViolationTypeLabel(v.type, violationTypeOptions)}
+                          </span>
+                          <Tag color="red" style={{ fontSize: 10, margin: 0, padding: '0 4px', lineHeight: '14px' }}>
+                            x{v.coefficient}
+                          </Tag>
+                        </div>
+                        {v.note && (
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                            📝 {v.note}
+                          </div>
+                        )}
+                      </div>
+                      <Popconfirm
+                        title="Xác nhận xóa lỗi này?"
+                        onConfirm={() => handleDeleteSingleViolation(v.id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                      >
+                        <AntButton type="text" danger size="small" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
+                      </Popconfirm>
+                    </div>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </FormModal>
     </FormModal>
 

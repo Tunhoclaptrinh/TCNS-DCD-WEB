@@ -15,6 +15,7 @@ import {
   Button as AntButton,
   Tabs,
   Timeline,
+  Tooltip,
 } from 'antd';
 import { 
   SyncOutlined,
@@ -38,6 +39,7 @@ import FormModal from '@/components/common/FormModal';
 import Button from '@/components/common/Button';
 import dutyService, { DutySlot } from '@/services/duty.service';
 import { useAccess } from '@/hooks';
+import { getViolationTypeLabel } from '@/pages/Duty/Admin/components/AdminDutySlotModal';
 import LeaveRequestModal from './LeaveRequestModal';
 import SwapRequestModal from './SwapRequestModal';
 import { getUserDisplayName } from '@/utils/formatters';
@@ -555,7 +557,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const isLeader = (String(slot?.assignedUserIds?.[0]) === String(u.id)) || (String(slot?.tempLeaderId) === String(u.id));
                             const isVisible = checkVisibility(u);
                             const isMe = String(u.id) === String(currentUserId);
-                            const existingViolation = slot?.violations?.find((v: any) => String(v.userId) === String(u.id));
+                            const userViolations = slot?.violations?.filter((v: any) => String(v.userId) === String(u.id)) || [];
                             const displayName = isVisible ? getUserDisplayName(u) : "Nhân sự trực (Bảo mật)";
                             const displaySub = isVisible ? (u.email || u.studentId || '') : "Thông tin được ẩn theo cấu hình kíp";
                             const posInfo = getPositionInfo(u.position);
@@ -609,7 +611,30 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                             ⚡ {userOverriddenCoeff} kíp (Tính riêng)
                                           </Tag>
                                         )}
-                                        {existingViolation && <Tag color="error" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
+                                        {userViolations.map((v: any) => (
+                                          <Tooltip
+                                            key={v.id}
+                                            title={
+                                              <div>
+                                                <div style={{ fontWeight: 600 }}>{getViolationTypeLabel(v.type)} (Hệ số: x{v.coefficient})</div>
+                                                {v.note ? (
+                                                  <div style={{ marginTop: 2 }}>📝 <b>Ghi chú:</b> {v.note}</div>
+                                                ) : (
+                                                  <div style={{ marginTop: 2, color: '#cbd5e1' }}>Không có ghi chú thêm</div>
+                                                )}
+                                                {v.createdAt && (
+                                                  <div style={{ marginTop: 2, fontSize: 10, color: '#94a3b8' }}>
+                                                    🕒 {dayjs(v.createdAt).format('DD/MM/YYYY HH:mm')}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            }
+                                          >
+                                            <Tag color="error" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px', cursor: 'pointer' }}>
+                                              {getViolationTypeLabel(v.type)} (x{v.coefficient})
+                                            </Tag>
+                                          </Tooltip>
+                                        ))}
                                       </Space>
                                       {displaySub && (
                                         <Text type="secondary" style={{ fontSize: 11, marginTop: 2 }} ellipsis>

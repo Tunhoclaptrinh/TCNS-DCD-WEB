@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, message, Spin, Typography, Collapse, Select, Row, Col, Tooltip, Button } from 'antd';
+import { Form, Input, message, Spin, Typography, Collapse, Select, Row, Col, Tooltip, Button, InputNumber } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import axiosInstance from '@/config/axios.config';
 import { Button as CustomButton } from '@/components/common';
 import roleService, { Role } from '@/services/role.service';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { DEFAULT_VIOLATION_TYPES } from '@/pages/Duty/Admin/components/AdminDutySlotModal';
 
 // Flag khóa không cho sửa/xóa các ban mặc định hệ thống (đổi thành false khi muốn mở khóa)
 const LOCK_DEFAULT_DEPARTMENTS = true;
@@ -43,7 +44,7 @@ const SystemSettingsPage: React.FC = () => {
         dataList.forEach((s: any) => {
           if (s.key) {
             let val = s.value;
-            if (s.key === 'DEPARTMENT_CONFIGS' || s.key === 'DEPARTMENTCONFIGS') {
+            if (s.key === 'DEPARTMENT_CONFIGS' || s.key === 'DEPARTMENTCONFIGS' || s.key === 'DUTY_VIOLATION_TYPES') {
               try { val = typeof s.value === 'string' ? JSON.parse(s.value) : s.value; } catch(e) {}
             }
             settings[s.key] = val;
@@ -54,7 +55,16 @@ const SystemSettingsPage: React.FC = () => {
             settings[upperKey] = val;
           }
         });
+
+        if (!settings.DUTY_VIOLATION_TYPES || !Array.isArray(settings.DUTY_VIOLATION_TYPES) || settings.DUTY_VIOLATION_TYPES.length === 0) {
+          settings.DUTY_VIOLATION_TYPES = DEFAULT_VIOLATION_TYPES;
+        }
+
         form.setFieldsValue(settings);
+      } else {
+        form.setFieldsValue({
+          DUTY_VIOLATION_TYPES: DEFAULT_VIOLATION_TYPES,
+        });
       }
     } catch (error) {
       console.error('Fetch settings error:', error);
@@ -74,10 +84,14 @@ const SystemSettingsPage: React.FC = () => {
       if (allValues.DEPARTMENT_CONFIGS && typeof allValues.DEPARTMENT_CONFIGS === 'object') {
          allValues.DEPARTMENT_CONFIGS = JSON.stringify(allValues.DEPARTMENT_CONFIGS);
       }
+      if (allValues.DUTY_VIOLATION_TYPES && typeof allValues.DUTY_VIOLATION_TYPES === 'object') {
+         allValues.DUTY_VIOLATION_TYPES = JSON.stringify(allValues.DUTY_VIOLATION_TYPES);
+      }
 
-      const res = await axiosInstance.post('/system-settings/bulk', allValues);
-      if (res.success || res.data?.success) {
-        message.success(res.message || res.data?.message || 'Cập nhật cài đặt thành công');
+      const res: any = await axiosInstance.post('/system-settings/bulk', allValues);
+      if (res?.success || res?.data?.success) {
+        message.success(res?.message || res?.data?.message || 'Cập nhật cài đặt thành công');
+        await fetchSettings();
       }
     } catch (error: any) {
       if (error?.errorFields) return; // Validation error
@@ -324,6 +338,143 @@ const SystemSettingsPage: React.FC = () => {
                         icon={<SaveOutlined />} 
                         loading={savingKey === 'department_configs'}
                         onClick={() => saveSection('department_configs', ['DEPARTMENT_CONFIGS'])}
+                        style={{ minWidth: 88 }}
+                      >
+                        Lưu cấu hình
+                      </CustomButton>
+                    </div>
+                  </div>
+                )
+              },
+              {
+                key: 'duty_violation_types',
+                label: <Text strong>Danh mục Loại lỗi Vi phạm & Mức phạt Ca trực</Text>,
+                children: (
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginBottom: 16 }}>
+                      Danh mục này quy định các loại lỗi vi phạm trực nhật, hệ số và mức phạt mặc định được nạp động vào các modal điểm danh & ghi nhận lỗi.
+                    </Text>
+
+                    <Form.List name="DUTY_VIOLATION_TYPES">
+                      {(fields, { add, remove }) => (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {fields.map(({ key, name, ...restField }) => (
+                            <div
+                              key={key}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
+                                padding: '12px 16px',
+                                background: '#f8fafc',
+                                borderRadius: 8,
+                                border: '1px solid #e2e8f0',
+                                flexWrap: 'wrap'
+                              }}
+                            >
+                              <div style={{ flex: 2, minWidth: 160 }}>
+                                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Tên lỗi hiển thị</span>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'label']}
+                                  rules={[{ required: true, message: 'Nhập tên lỗi' }]}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Input placeholder="Tên loại lỗi (VD: Đi muộn)" />
+                                </Form.Item>
+                              </div>
+
+                              <div style={{ flex: 1.5, minWidth: 140 }}>
+                                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mã key hệ thống</span>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'key']}
+                                  rules={[{ required: true, message: 'Nhập mã key' }]}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Input placeholder="Mã key (VD: late)" />
+                                </Form.Item>
+                              </div>
+
+                              <div style={{ flex: 1.5, minWidth: 130 }}>
+                                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mức phạt mặc định</span>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'defaultPenalty']}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <InputNumber
+                                    min={0}
+                                    step={5000}
+                                    formatter={val => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                    addonAfter="đ"
+                                    style={{ width: '100%' }}
+                                    placeholder="Tiền phạt"
+                                  />
+                                </Form.Item>
+                              </div>
+
+                              <div style={{ width: 100 }}>
+                                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Hệ số</span>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'defaultCoeff']}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <InputNumber
+                                    min={0.1}
+                                    max={5}
+                                    step={0.5}
+                                    addonAfter="x"
+                                    style={{ width: '100%' }}
+                                    placeholder="Hệ số"
+                                  />
+                                </Form.Item>
+                              </div>
+
+                              <div style={{ flex: 3, minWidth: 200 }}>
+                                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>Mô tả quy định vi phạm</span>
+                                <Form.Item
+                                  {...restField}
+                                  name={[name, 'description']}
+                                  style={{ marginBottom: 0 }}
+                                >
+                                  <Input placeholder="Mô tả chi tiết vi phạm..." />
+                                </Form.Item>
+                              </div>
+
+                              <div style={{ paddingTop: 20 }}>
+                                <Tooltip title="Xóa loại lỗi này">
+                                  <Button
+                                    type="text"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => remove(name)}
+                                  />
+                                </Tooltip>
+                              </div>
+                            </div>
+                          ))}
+
+                          <Button
+                            type="dashed"
+                            onClick={() => add({ key: `custom_${Date.now()}`, label: 'Lỗi vi phạm mới', defaultPenalty: 10000, defaultCoeff: 1, description: '' })}
+                            block
+                            icon={<PlusOutlined />}
+                          >
+                            Thêm Loại Lỗi Vi Phạm
+                          </Button>
+                        </div>
+                      )}
+                    </Form.List>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
+                      <CustomButton 
+                        variant="primary"
+                        buttonSize="small"
+                        icon={<SaveOutlined />} 
+                        loading={savingKey === 'duty_violation_types'}
+                        onClick={() => saveSection('duty_violation_types', ['DUTY_VIOLATION_TYPES'])}
                         style={{ minWidth: 88 }}
                       >
                         Lưu cấu hình
