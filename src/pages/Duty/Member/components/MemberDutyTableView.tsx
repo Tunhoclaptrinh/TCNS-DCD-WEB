@@ -251,11 +251,13 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                                 );
                               }
 
-                              const currentUsers = slot.assignedUsers || [];
-                              const hasMe = currentUsers.some(u => u.id === currentUserId);
+                              const assignedUsers = slot.assignedUsers || [];
+                              const attendedUsers = slot.attendedUsers || [];
+                              const allUsers = [...assignedUsers, ...attendedUsers.filter(u => !assignedUsers.some(a => a.id === u.id))];
+                              const hasMe = allUsers.some(u => u.id === currentUserId);
                               const isSpecialRow = group.originalShift.isSpecialEvent;
                               const isAssigned = slot.status === 'locked' || isSpecialRow;
-                              const max = slot.capacity || row.kip?.capacity || 1;
+                              const max = Math.max(slot.capacity || row.kip?.capacity || 1, allUsers.length);
 
                               return (
                                 <div className={`slot-container ${isSpecialRow ? 'special-slot' : 'normal-slot'} ${hasMe ? 'has-me' : ''}`} style={{ 
@@ -278,9 +280,10 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                                 }}>
                                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                     {Array.from({ length: max }).map((_, idx) => {
-                                      const user = currentUsers[idx];
+                                      const user = allUsers[idx];
                                       const isFirst = idx === 0;
                                       const isMe = user && user.id === currentUserId;
+                                      const isSupp = user && !assignedUsers.some(a => a.id === user.id);
 
                                       if (!user) {
                                         return (
@@ -301,18 +304,18 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
 
                                       const displayName = getUserDisplayName(user);
                                       return (
-                                        <Tooltip key={idx} title={`${displayName}${isMe ? ' (Tôi)' : ''}`}>
+                                        <Tooltip key={idx} title={`${displayName}${isMe ? ' (Tôi)' : ''}${isSupp ? ' [Bổ sung]' : ''}`}>
                                           <div 
                                             className={`stacked-user ${isMe ? 'is-me' : ''}`}
                                             style={{ 
                                               padding: '4px 8px', 
                                               borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
                                               fontSize: '12px',
-                                              color: isFirst ? '#dc2626' : (isMe ? '#b91c1c' : '#1e293b'),
+                                              color: isFirst ? '#dc2626' : (isMe ? '#b91c1c' : (isSupp ? '#7c3aed' : '#1e293b')),
                                               textAlign: 'center',
                                               fontWeight: isFirst || isMe ? 700 : 500,
                                               transition: 'all 0.2s',
-                                              background: isMe ? 'rgba(220, 38, 38, 0.05)' : 'transparent'
+                                              background: isMe ? 'rgba(220, 38, 38, 0.05)' : (isSupp ? 'rgba(124, 58, 237, 0.05)' : 'transparent')
                                             }}
                                           >
                                             <Typography.Text 
@@ -320,11 +323,11 @@ const MemberDutyTableView: React.FC<MemberDutyTableViewProps> = ({
                                               style={{ 
                                                 width: '100%', 
                                                 fontSize: 'inherit', 
-                                                color: 'inherit',
+                                                color: 'inherit', 
                                                 fontWeight: 'inherit'
                                               }}
                                             >
-                                              {displayName}
+                                              {displayName} {isSupp && <span style={{ fontSize: 10, color: '#7c3aed' }}>(BS)</span>}
                                             </Typography.Text>
                                           </div>
                                         </Tooltip>

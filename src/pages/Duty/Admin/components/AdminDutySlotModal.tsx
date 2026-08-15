@@ -87,8 +87,17 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
   useEffect(() => {
     if (open && slot) {
+      const structure = slot.slotStructure || (slot as any).kip?.slotStructure || (slot as any).shift?.slotStructure || [];
+      const structureTotal = Array.isArray(structure) ? structure.reduce((acc: number, c: any) => acc + (Number(c?.slots) || 0), 0) : 0;
+      const initialCapacity = Math.max(
+        Number(slot.capacity ?? (slot as any).kip?.capacity ?? 1),
+        structureTotal,
+        (slot.assignedUserIds || []).length
+      );
+
       form.setFieldsValue({
         ...slot,
+        capacity: initialCapacity,
         coefficient: Number(slot.coefficient ?? (slot as any).kip?.coefficient ?? (slot as any).shift?.coefficient ?? 1),
         shiftDate: dayjs(slot.shiftDate),
         timeRange:
@@ -494,15 +503,22 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             <Form.Item label="Chỉ tiêu (người)" name="capacity" rules={[{ required: true }]} style={{ marginBottom: 0 }}>
               <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.assignedUserIds !== curr.assignedUserIds || prev.capacity !== curr.capacity}>
+            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.assignedUserIds !== curr.assignedUserIds || prev.capacity !== curr.capacity || prev.slotStructure !== curr.slotStructure}>
               {({ getFieldsValue }) => {
-                const { assignedUserIds = [], capacity = 0 } = getFieldsValue();
+                const { assignedUserIds = [], capacity = 0, slotStructure = [] } = getFieldsValue();
+                const structureTotal = Array.isArray(slotStructure) ? slotStructure.reduce((a: number, c: any) => a + (Number(c?.slots) || 0), 0) : 0;
                 const count = assignedUserIds.length;
+                if (structureTotal > 0 && capacity < structureTotal) {
+                  return <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>⚠️ Chỉ tiêu ({capacity}) nhỏ hơn Cơ cấu ({structureTotal} người).</div>;
+                }
                 if (count > 0 && count >= capacity) {
                   return <div style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>⚠️ Đã đạt/vượt chỉ tiêu ({count}/{capacity})</div>;
                 }
                 if (count > 0 && count < capacity) {
-                  return <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>ℹ Còn trống {capacity - count} chỗ</div>;
+                  return <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>ℹ Còn trống {capacity - count} chỗ (Chỉ tiêu: {capacity}{structureTotal > 0 ? ` - Cơ cấu: ${structureTotal}` : ''})</div>;
+                }
+                if (structureTotal > 0) {
+                  return <div style={{ fontSize: 11, color: '#2563eb', marginTop: 4 }}>ℹ Đồng bộ theo cơ cấu: {structureTotal} người</div>;
                 }
                 return null;
               }}
@@ -542,7 +558,18 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           )}
         </Row>
 
-        <SlotStructureEditor form={form} assignedUsers={selectedUsersCache} />
+        <SlotStructureEditor 
+          form={form} 
+          assignedUsers={selectedUsersCache} 
+          onTotalChange={(total) => {
+            if (total > 0) {
+              const currentCap = form.getFieldValue('capacity') || 0;
+              if (total > currentCap) {
+                form.setFieldsValue({ capacity: total });
+              }
+            }
+          }}
+        />
 
         <Divider orientation="left" style={{ marginTop: 16, marginBottom: 16 }}>
           <Space>
@@ -568,13 +595,17 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 />
               </Form.Item>
 
-              <Form.Item name="attendedUserIds" noStyle>
+              <Form.Item noStyle>
                 <DutyPersonnelPicker
                   variant="outline"
                   label="ĐD bổ sung"
                   icon={<UsergroupAddOutlined />}
                   hideBadge
-                  onChange={(_, rows) => {
+                  value={form.getFieldValue('attendedUserIds') || []}
+                  onChange={(selectedIds, rows) => {
+                    const currentAttended = form.getFieldValue('attendedUserIds') || [];
+                    const merged = Array.from(new Set([...currentAttended, ...(selectedIds || [])]));
+                    form.setFieldsValue({ attendedUserIds: merged });
                     if (rows) updateCache(rows);
                   }}
                 />
@@ -586,7 +617,11 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                   buttonSize="small"
                   onClick={() => {
                     const assigned = form.getFieldValue('assignedUserIds') || [];
-                    form.setFieldsValue({ attendedUserIds: assigned });
+                    const currentAttended = form.getFieldValue('attendedUserIds') || [];
+                    // Keep both assigned members and any supplementary members in the attended list
+                    const allIds = Array.from(new Set([...assigned, ...currentAttended]));
+                    form.setFieldsValue({ attendedUserIds: allIds });
+                    message.success('Đã đánh dấu tất cả nhân sự có mặt');
                   }}
                   icon={<CheckCircleOutlined />}
                 />

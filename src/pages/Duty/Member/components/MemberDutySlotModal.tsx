@@ -259,11 +259,20 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
     }
   };
 
+  const isAttendedMe = Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.some(id => String(id) === String(currentUserId));
   const isUserRegistered = Array.isArray(slot?.assignedUserIds) 
     ? slot?.assignedUserIds.some(id => String(id) === String(currentUserId)) 
     : false;
+  const isSupplementaryMe = isAttendedMe && !isUserRegistered;
+  const isInThisSlot = isUserRegistered || isAttendedMe;
 
-    
+  const baseSlotCoeff = Number((slot as any)?.coefficient ?? (slot as any)?.kip?.coefficient ?? (slot as any)?.shift?.coefficient ?? 1);
+  const myPersonalCoeff = currentUserId && (slot as any)?.attendanceOverrides?.[String(currentUserId)] !== undefined
+    ? Number((slot as any)?.attendanceOverrides?.[String(currentUserId)])
+    : null;
+  const myEarnedCoeff = myPersonalCoeff !== null ? myPersonalCoeff : baseSlotCoeff;
+  const isCustomCoeff = myPersonalCoeff !== null && myPersonalCoeff !== baseSlotCoeff;
+
   const registeredCount = Array.isArray(slot?.assignedUserIds) ? slot?.assignedUserIds.length : 0;
   const capacity = slot?.capacity || slot?.kip?.capacity || 0;
   const isFull = registeredCount >= capacity;
@@ -330,29 +339,55 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         </Col>
                       </Row>
 
-                      <div style={{ marginBottom: 16 }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>SỐ KÍP ĐƯỢC TÍNH</Text>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                          <ThunderboltOutlined style={{ color: '#d97706' }} />
-                          {(() => {
-                            const baseSlotCoeff = Number((slot as any)?.coefficient ?? (slot as any)?.kip?.coefficient ?? (slot as any)?.shift?.coefficient ?? 1);
-                            const myPersonalCoeff = currentUserId && (slot as any)?.attendanceOverrides?.[String(currentUserId)] !== undefined
-                              ? Number((slot as any)?.attendanceOverrides?.[String(currentUserId)])
-                              : null;
-                            const isCustom = myPersonalCoeff !== null && myPersonalCoeff !== baseSlotCoeff;
-                            return (
-                              <>
-                                <span style={{ fontWeight: 600, color: '#d97706' }}>
-                                  {isCustom ? `${myPersonalCoeff} kíp` : `${baseSlotCoeff} kíp`}
+                      {/* Personal Result Card */}
+                      {isInThisSlot && (
+                        <div style={{ 
+                          marginBottom: 16, 
+                          padding: '12px 16px', 
+                          background: isAttendedMe ? '#f0fdf4' : '#fffbeb', 
+                          border: `1px solid ${isAttendedMe ? '#bbf7d0' : '#fde68a'}`,
+                          borderRadius: 10,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <Text type="secondary" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: isAttendedMe ? '#15803d' : '#b45309' }}>
+                                Kết quả trực của bạn
+                              </Text>
+                              <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <ThunderboltOutlined style={{ color: isAttendedMe ? '#16a34a' : '#d97706', fontSize: 16 }} />
+                                <span style={{ fontWeight: 700, fontSize: 15, color: isAttendedMe ? '#15803d' : '#b45309' }}>
+                                  {myEarnedCoeff} kíp
                                 </span>
-                                {isCustom && (
+                                {isCustomCoeff && (
                                   <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, fontWeight: 600 }}>
-                                    Tính riêng: {myPersonalCoeff} kíp
+                                    Tính riêng: {myEarnedCoeff} kíp
                                   </Tag>
                                 )}
-                              </>
-                            );
-                          })()}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              {isAttendedMe ? (
+                                <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontWeight: 600, padding: '3px 8px', fontSize: 12 }}>
+                                  {isSupplementaryMe ? 'ĐÃ ĐIỂM DANH BỔ SUNG' : 'ĐÃ ĐIỂM DANH'}
+                                </Tag>
+                              ) : (
+                                <Tag color="warning" style={{ fontWeight: 600, padding: '3px 8px', fontSize: 12 }}>
+                                  CHƯA ĐIỂM DANH
+                                </Tag>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: 16 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>HỆ SỐ KÍP GỐC CỦA CA</Text>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                          <ThunderboltOutlined style={{ color: '#64748b' }} />
+                          <span style={{ fontWeight: 600, color: '#334155' }}>
+                            {baseSlotCoeff} kíp
+                          </span>
                         </div>
                       </div>
 
@@ -479,11 +514,28 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                       )}
 
 
-                      <Divider orientation="left" style={{ marginTop: 20, marginBottom: 12 }}>
-                        <TeamOutlined style={{ color: themeColor }} /> <span style={{ fontSize: 13, marginLeft: 8 }}>Danh sách đăng ký ({registeredCount})</span>
-                      </Divider>
+                      {(() => {
+                        const assignedList = slot?.assignedUsers || [];
+                        const attendedList = slot?.attendedUsers || [];
+                        const supplementaryList = attendedList.filter((au: any) => !assignedList.some((as: any) => String(as.id) === String(au.id)));
+                        const totalPersonnelCount = assignedList.length + supplementaryList.length;
+
+                        return (
+                          <Divider orientation="left" style={{ marginTop: 20, marginBottom: 12 }}>
+                            <TeamOutlined style={{ color: themeColor }} /> 
+                            <span style={{ fontSize: 13, marginLeft: 8, fontWeight: 600 }}>
+                              Danh sách nhân sự trực ({totalPersonnelCount})
+                            </span>
+                            {supplementaryList.length > 0 && (
+                              <Tag color="purple" style={{ fontSize: 10, borderRadius: 4, marginLeft: 8, fontWeight: 600 }}>
+                                +{supplementaryList.length} bổ sung
+                              </Tag>
+                            )}
+                          </Divider>
+                        );
+                      })()}
                       
-                      <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+                      <div style={{ maxHeight: 280, overflowY: 'auto' }}>
                         <List
                           size="small"
                           dataSource={[
@@ -495,9 +547,12 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             }
                             return true;
                           })}
-                          locale={{ emptyText: 'Chưa có người đăng ký' }}
-                          renderItem={(u: any, index: number) => {
+                          locale={{ emptyText: 'Chưa có nhân sự nào trong kíp trực' }}
+                          renderItem={(u: any) => {
                             const isAssigned = (slot?.assignedUsers || []).some((as: any) => String(as.id) === String(u.id));
+                            const isAdminAssignedUser = (slot as any)?.config?.adminAssignedUserIds?.some((id: any) => String(id) === String(u.id));
+                            const isAttended = Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.some((id: any) => String(id) === String(u.id));
+                            const isLeader = (String(slot?.assignedUserIds?.[0]) === String(u.id)) || (String(slot?.tempLeaderId) === String(u.id));
                             const isVisible = checkVisibility(u);
                             const isMe = String(u.id) === String(currentUserId);
                             const existingViolation = slot?.violations?.find((v: any) => String(v.userId) === String(u.id));
@@ -511,11 +566,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             return (
                               <List.Item
                                 style={{
-                                  padding: '8px 12px',
-                                  borderRadius: 8,
-                                  marginBottom: 6,
-                                  background: isMe ? '#fdf2f8' : '#fafafa',
-                                  border: isMe ? '1px solid #fbcfe8' : '1px solid #f1f5f9',
+                                  padding: '10px 14px',
+                                  borderRadius: 10,
+                                  marginBottom: 8,
+                                  background: isMe ? '#fdf2f8' : (isAttended ? '#f0fdf4' : '#fafafa'),
+                                  border: isMe ? '1px solid #fbcfe8' : (isAttended ? '1px solid #dcfce7' : '1px solid #f1f5f9'),
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 12 }}>
@@ -524,7 +579,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                       src={isVisible ? u.avatar : undefined} 
                                       icon={<UserOutlined />} 
                                       style={{ 
-                                        backgroundColor: isMe ? '#ec4899' : (isSpecialEvent ? '#8b5cf6' : themeColor), 
+                                        backgroundColor: isMe ? '#ec4899' : (isLeader ? '#f59e0b' : (isSpecialEvent ? '#8b5cf6' : themeColor)), 
                                         color: '#fff',
                                         flexShrink: 0 
                                       }} 
@@ -532,14 +587,28 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                     <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                       <Space size={6} wrap>
                                         <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{displayName}</span>
-                                        {isMe && <Tag color="magenta" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Bạn</Tag>}
+                                        {isMe && <Tag color="magenta" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>Bạn</Tag>}
+                                        {isLeader && <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>Quản lý kíp</Tag>}
+                                        
+                                        {!isAssigned ? (
+                                          <Tag color="purple" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>Điểm danh bổ sung</Tag>
+                                        ) : isAdminAssignedUser ? (
+                                          <Tag color="blue" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Được phân công</Tag>
+                                        ) : (
+                                          <Tag color="cyan" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Đã đăng ký</Tag>
+                                        )}
+
+                                        {isAttended ? (
+                                          <Tag color="green" icon={<CheckCircleOutlined />} style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>Đã có mặt</Tag>
+                                        ) : (
+                                          <Tag color="default" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Chưa điểm danh</Tag>
+                                        )}
+
                                         {hasCustomCoeff && isVisible && (
-                                          <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
-                                            ⚡ {userOverriddenCoeff} kíp
+                                          <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px', fontWeight: 600 }}>
+                                            ⚡ {userOverriddenCoeff} kíp (Tính riêng)
                                           </Tag>
                                         )}
-                                        {(index === 0 && !isMe) && <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Quản lý kíp</Tag>}
-                                        {!isAssigned && <Tag color="orange" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Ngoài kíp</Tag>}
                                         {existingViolation && <Tag color="error" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}
                                       </Space>
                                       {displaySub && (
@@ -650,7 +719,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
               <Title level={5} style={{ marginTop: 0, marginBottom: 12, color: themeText }}>Thao tác</Title>
               
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                {!isUserRegistered ? (
+                {!isInThisSlot ? (
                   <Button 
                     variant="primary" 
                     fullWidth 
@@ -668,16 +737,16 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         padding: '12px', 
                         background: '#fff', 
                         borderRadius: 12, 
-                        border: `1px solid ${isAssigned ? '#dbeafe' : '#d1fae5'}`,
+                        border: `1px solid ${isSupplementaryMe ? '#e9d5ff' : (isAssigned ? '#dbeafe' : '#d1fae5')}`,
                         marginBottom: 12,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
                     }}>
                         <Space direction="vertical" size={2}>
-                          <Text strong style={{ color: isAssigned ? '#2563eb' : '#059669', display: 'block', fontSize: 13 }}>
-                            BẠN {isAssigned ? 'ĐƯỢC PHÂN CÔNG' : 'ĐÃ TỰ ĐĂNG KÝ'} KÍP NÀY
+                          <Text strong style={{ color: isSupplementaryMe ? '#7c3aed' : (isAssigned ? '#2563eb' : '#059669'), display: 'block', fontSize: 13 }}>
+                            {isSupplementaryMe ? 'BẠN ĐƯỢC ĐIỂM DANH BỔ SUNG' : (isAssigned ? 'BẠN ĐƯỢC PHÂN CÔNG' : 'BẠN ĐÃ TỰ ĐĂNG KÝ')}
                           </Text>
                           <Text type="secondary" style={{ fontSize: 11 }}>
-                            {isAssigned ? 'Trạng thái: Chính thức' : 'Trạng thái: Đăng ký cá nhân'}
+                            {isSupplementaryMe ? 'Trực bổ sung ngoài kíp' : (isAssigned ? 'Trạng thái: Chính thức' : 'Trạng thái: Đăng ký cá nhân')}
                           </Text>
                         </Space>
                         
@@ -689,7 +758,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                               const slotStart = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.startTime}`);
                               const slotEnd = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.endTime}`);
                               const isActive = now.isAfter(slotStart.subtract(15, 'minute')) && now.isBefore(slotEnd);
-                              const isAttended = Array.isArray(slot.attendedUserIds) && slot.attendedUserIds.includes(currentUserId);
+                              const isAttended = isAttendedMe;
                               const isPast = now.isAfter(slotEnd);
                               const isCheckInWindow = Math.abs(now.diff(slotStart, 'minute')) <= 2;
                               const isDuringShift = now.isAfter(slotStart) && now.isBefore(slotEnd);
@@ -698,8 +767,13 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                                      (String(currentUserId) === String(slot.tempLeaderId));
 
                               if (isAttended) return (
-                                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                                  <Tag color="green" icon={<CheckCircleOutlined />} style={{ margin: 0 }}>Đã điểm danh</Tag>
+                                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                                  <Tag color="green" icon={<CheckCircleOutlined />} style={{ margin: 0, fontWeight: 600, padding: '2px 8px' }}>
+                                    {isSupplementaryMe ? 'Đã điểm danh (Bổ sung)' : 'Đã điểm danh có mặt'}
+                                  </Tag>
+                                  <div style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>
+                                    ⚡ Được tính: {myEarnedCoeff} kíp {isCustomCoeff && '(Tùy chỉnh riêng)'}
+                                  </div>
                                   {isActingLeader && (
                                     <div style={{ marginTop: 8 }}>
                                       <Tag color="gold" icon={<ThunderboltOutlined />} style={{ margin: 0, marginBottom: 8 }}>Quản lý kíp</Tag>
@@ -736,7 +810,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
 
                               if (isActive) return <Tag color="processing" icon={<SyncOutlined spin />}>Đang diễn ra</Tag>;
                               if (isPast) return <Tag color="default" icon={<CloseCircleOutlined />}>Vắng mặt / Chưa điểm danh</Tag>;
-                              return null;
+                              return <Tag color="blue">Chờ điểm danh</Tag>;
                           })()}
                         </div>
                     </div>

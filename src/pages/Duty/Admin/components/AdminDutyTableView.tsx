@@ -246,14 +246,20 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                 boxSizing: 'border-box'
                               }}>
                                 {(() => {
-                                  const currentUsers = slot.assignedUsers || [];
-                                  const max = slot.capacity || row.kip?.capacity || 1;
+                                  const assignedUsers = slot.assignedUsers || [];
+                                  const attendedUsers = slot.attendedUsers || [];
+                                  const allUsers = [
+                                    ...assignedUsers,
+                                    ...attendedUsers.filter(u => !assignedUsers.some(a => a.id === u.id))
+                                  ];
+                                  const max = Math.max(slot.capacity || row.kip?.capacity || 1, allUsers.length);
                                   
                                   return (
                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                       {Array.from({ length: max }).map((_, idx) => {
-                                        const user = currentUsers[idx];
+                                        const user = allUsers[idx];
                                         const isFirst = idx === 0;
+                                        const isSupp = user && !assignedUsers.some(a => a.id === user.id);
                                         
                                         if (!user) {
                                           return (
@@ -272,25 +278,28 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                           );
                                         }
 
+                                        const displayName = getUserDisplayName(user);
+
                                         return (
-                                          <Tooltip key={idx} title={getUserDisplayName(user)}>
+                                          <Tooltip key={idx} title={`${displayName}${isSupp ? ' [Bổ sung]' : ''}`}>
                                             <div 
                                               className="stacked-user"
                                               style={{ 
                                                 padding: '4px 8px', 
                                                 borderBottom: idx < max - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none',
                                                 fontSize: '12px',
-                                                color: isFirst ? '#dc2626' : '#1e293b',
+                                                color: isFirst ? '#dc2626' : (isSupp ? '#7c3aed' : '#1e293b'),
                                                 textAlign: 'center',
-                                                fontWeight: isFirst ? 700 : 500,
+                                                fontWeight: isFirst || isSupp ? 700 : 500,
                                                 cursor: isAdmin ? 'pointer' : 'default',
-                                                transition: 'all 0.2s'
+                                                transition: 'all 0.2s',
+                                                background: isSupp ? 'rgba(124, 58, 237, 0.05)' : 'transparent'
                                               }}
                                               onMouseEnter={(e) => {
-                                                if (isAdmin) e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                                                if (isAdmin) e.currentTarget.style.backgroundColor = isSupp ? 'rgba(124, 58, 237, 0.12)' : 'rgba(0,0,0,0.05)';
                                               }}
                                               onMouseLeave={(e) => {
-                                                if (isAdmin) e.currentTarget.style.backgroundColor = 'transparent';
+                                                if (isAdmin) e.currentTarget.style.backgroundColor = isSupp ? 'rgba(124, 58, 237, 0.05)' : 'transparent';
                                               }}
                                               onClick={(e) => {
                                                 if (!isAdmin) return;
@@ -307,7 +316,7 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                                   fontWeight: 'inherit'
                                                 }}
                                               >
-                                                {getUserDisplayName(user)}
+                                                {displayName} {isSupp && <span style={{ fontSize: 10, color: '#7c3aed' }}>(BS)</span>}
                                               </Typography.Text>
                                             </div>
                                           </Tooltip>

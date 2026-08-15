@@ -288,6 +288,39 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                            {slot.startTime} - {slot.endTime}
                         </div>
 
+                        <div className="slot-users" style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                          <Avatar.Group maxCount={4} size="small" maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf', fontSize: 10 }}>
+                             {(() => {
+                               const assignedUsers = slot.assignedUsers || [];
+                               const attendedUsers = slot.attendedUsers || [];
+                               const allSlotUsers = [
+                                 ...assignedUsers,
+                                 ...attendedUsers.filter((au: any) => !assignedUsers.some((as: any) => String(as.id) === String(au.id)))
+                               ];
+                               return allSlotUsers.map((u: any) => {
+                                 const isSupp = !assignedUsers.some((as: any) => String(as.id) === String(u.id));
+                                 const displayName = getUserDisplayName(u);
+                                 return (
+                                   <Tooltip key={u.id} title={`${displayName}${isSupp ? ' (Bổ sung)' : ''}`}>
+                                     <Avatar 
+                                       size={18} 
+                                       src={u.avatar} 
+                                       style={{ 
+                                         border: isSupp ? '1.5px solid #a855f7' : '1px solid #fff',
+                                         backgroundColor: isSupp ? '#f3e8ff' : undefined,
+                                         color: isSupp ? '#7c3aed' : undefined
+                                       }}
+                                     >
+                                       {displayName.split(' ').pop()?.charAt(0)}
+                                     </Avatar>
+                                   </Tooltip>
+                                 );
+                               });
+                             })()}
+                          </Avatar.Group>
+                          {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 'auto', color: '#94a3b8' }} />}
+                        </div>
+
                         {/* Dual Action Buttons: Self Check-in vs Management */}
                         {(() => {
                           const uid = currentUserId || 0;
@@ -305,7 +338,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                           // 1. Self Check-in button (For any assigned member in window)
                           if (isAssigned && !isAttended && isCheckInWindow) {
                             return (
-                              <div style={{ marginTop: 4, marginBottom: 8 }}>
+                              <div style={{ marginTop: 4, marginBottom: 4 }}>
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -341,7 +374,7 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                           // 2. Management button (For Acting Leader during shift)
                           if (isActingLeader && isDuringShift) {
                             return (
-                              <div style={{ marginTop: 4, marginBottom: 8 }}>
+                              <div style={{ marginTop: 4, marginBottom: 4 }}>
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -376,22 +409,6 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                           
                           return null;
                         })()}
-
-                        <div className="slot-users" style={{ display: 'flex', alignItems: 'center', marginTop: 'auto' }}>
-                          <Avatar.Group maxCount={3} size="small" maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf', fontSize: 10 }}>
-                             {slot.assignedUsers?.map((u: any) => {
-                               const displayName = getUserDisplayName(u);
-                               return (
-                                 <Tooltip key={u.id} title={displayName}>
-                                   <Avatar size={18} src={u.avatar} style={{ border: '1px solid #fff' }}>
-                                     {displayName.split(' ').pop()?.charAt(0)}
-                                   </Avatar>
-                                 </Tooltip>
-                               );
-                             })}
-                          </Avatar.Group>
-                          {slot.status === 'locked' && <LockOutlined style={{ fontSize: 10, marginLeft: 'auto', color: '#94a3b8' }} />}
-                        </div>
                       </motion.div>
                     );
                   })}
