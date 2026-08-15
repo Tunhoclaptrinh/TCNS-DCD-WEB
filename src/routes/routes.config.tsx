@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from "react";
-import { RouteObject } from "react-router-dom";
+import { RouteObject, Navigate } from "react-router-dom";
 
 // Layouts
 import MainLayout from "@/layouts/MainLayout";
@@ -154,7 +154,7 @@ const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <MemberDashboard />,
+        element: <Navigate to="/duty/calendar" replace />,
       },
       {
         path: "dashboard",
@@ -190,6 +190,10 @@ const routes: RouteObject[] = [
       </AuthGuard>
     ),
     children: [
+      {
+        index: true,
+        element: <Navigate to="/admin/duty/calendar" replace />,
+      },
       {
         path: "dashboard",
         element: <Dashboard />,

@@ -299,15 +299,15 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
           <UsergroupAddOutlined style={{ color: '#6366f1' }} />
           <span>Thêm nhân sự trực bổ sung ngoài lịch</span>
         </div>
-        <Row gutter={8} align="middle">
-          <Col flex="auto">
+        <Row gutter={[8, 8]} align="middle">
+          <Col xs={24} sm={12}>
             <UserSelect
               value={selectedUser}
               onChange={(val: any) => setSelectedUser(val)}
               placeholder="Tìm kiếm nhân sự bổ sung (theo tên, MSV)..."
             />
           </Col>
-          <Col flex="100px">
+          <Col xs={12} sm={6}>
             <Tooltip title="Hệ số kíp được tính cho nhân sự này">
               <InputNumber
                 min={0}
@@ -320,11 +320,12 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
               />
             </Tooltip>
           </Col>
-          <Col>
+          <Col xs={12} sm={6}>
             <Button
               variant="primary"
               disabled={!selectedUser}
               loading={loading}
+              fullWidth
               onClick={() => {
                 if (selectedUser) {
                   markAttendance(selectedUser, suppCoeff);

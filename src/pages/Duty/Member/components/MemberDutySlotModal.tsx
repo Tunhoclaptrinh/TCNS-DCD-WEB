@@ -325,9 +325,9 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
       width={1000}
     >
       <div className="slot-detail-container" style={{ padding: '0 4px' }}>
-        <Row gutter={16}>
+        <Row gutter={[16, 16]}>
           {/* Left Column: Info */}
-          <Col span={16}>
+          <Col xs={24} md={16}>
             <Tabs 
               activeKey={activeTab} 
               onChange={setActiveTab}
@@ -342,7 +342,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                     </Space>
                   ),
                   children: (
-                    <div style={{ padding: '4px 8px', maxHeight: 450, overflowY: 'auto' }}>
+                    <div style={{ padding: '4px 8px' }}>
                       <div style={{ marginBottom: 16 }}>
                         <Text type="secondary" style={{ fontSize: 12 }}>{isSpecialEvent ? 'TÊN SỰ KIỆN' : 'TÊN CA TRỰC'}</Text>
                         <div style={{ fontSize: 16, fontWeight: 600, color: isSpecialEvent ? themeColor : undefined }}>{slot?.shiftLabel}</div>
@@ -518,7 +518,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                       </>
                     ),
                     children: (
-                      <div style={{ padding: '4px 8px', maxHeight: 450, overflowY: 'auto' }}>
+                      <div style={{ padding: '4px 8px' }}>
                         <div className="duty-slot-attendee-list">
                         {(() => {
                           const personnelList = [
@@ -662,11 +662,6 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                   {/* Middle Box: Tags & Violations */}
                                   <div className="duty-attendee-middle-box">
                                     <div className="duty-attendee-tags-row">
-                                      {isMe && (
-                                        <Tag color="magenta" className="duty-badge-tag is-leader">
-                                          Bạn
-                                        </Tag>
-                                      )}
                                       {!isAssigned ? (
                                         <Tag color="purple" className="duty-badge-tag is-leader">
                                           BỔ SUNG
@@ -683,11 +678,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                       {isVisible && isAttended && (
                                         hasCustomCoeff ? (
                                           <Tag color="gold" className="duty-badge-tag">
-                                            ⚡ {userOverriddenCoeff} kíp (Tính riêng)
+                                            <ThunderboltOutlined style={{ marginRight: 2 }} />{userOverriddenCoeff} kíp (Tính riêng)
                                           </Tag>
                                         ) : (
                                           <Tag color="blue" className="duty-badge-tag">
-                                            ⚡ {baseSlotCoeff} kíp
+                                            <ThunderboltOutlined style={{ marginRight: 2 }} />{baseSlotCoeff} kíp
                                           </Tag>
                                         )
                                       )}
@@ -750,20 +745,58 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                               </div>
                             );
 
-                            return isLeader ? (
-                              <Badge.Ribbon 
-                                key={u.id || u.studentId} 
-                                text={
-                                  <Tooltip title="Quản lý kíp" placement="top">
-                                    <span style={{ cursor: 'pointer' }}>Qlk</span>
-                                  </Tooltip>
-                                } 
-                                color="red" 
-                                placement="start"
-                              >
-                                {cardNode}
-                              </Badge.Ribbon>
-                            ) : (
+                            if (isLeader && isMe) {
+                              return (
+                                <Badge.Ribbon 
+                                  key={u.id || u.studentId} 
+                                  text={
+                                    <Tooltip title="Quản lý kíp (Bạn)" placement="top">
+                                      <span style={{ cursor: 'pointer'}}>Qlk • Bạn</span>
+                                    </Tooltip>
+                                  } 
+                                  color="red" 
+                                  placement="start"
+                                >
+                                  {cardNode}
+                                </Badge.Ribbon>
+                              );
+                            }
+
+                            if (isLeader) {
+                              return (
+                                <Badge.Ribbon 
+                                  key={u.id || u.studentId} 
+                                  text={
+                                    <Tooltip title="Quản lý kíp" placement="top">
+                                      <span style={{ cursor: 'pointer' }}>Qlk</span>
+                                    </Tooltip>
+                                  } 
+                                  color="red" 
+                                  placement="start"
+                                >
+                                  {cardNode}
+                                </Badge.Ribbon>
+                              );
+                            }
+
+                            if (isMe) {
+                              return (
+                                <Badge.Ribbon 
+                                  key={u.id || u.studentId} 
+                                  text={
+                                    <Tooltip title="Tài khoản của bạn" placement="top">
+                                      <span style={{ cursor: 'pointer' }}>Bạn</span>
+                                    </Tooltip>
+                                  } 
+                                  color="magenta" 
+                                  placement="start"
+                                >
+                                  {cardNode}
+                                </Badge.Ribbon>
+                              );
+                            }
+
+                            return (
                               <React.Fragment key={u.id || u.studentId}>
                                 {cardNode}
                               </React.Fragment>
@@ -841,7 +874,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   </Col>
 
   {/* Right Column: Actions */}
-          <Col span={8}>
+          <Col xs={24} md={8}>
             <div className={`duty-member-action-sidebar ${isSpecialEvent ? 'is-special' : 'is-normal'}`}>
               <div className={`duty-sidebar-title ${isSpecialEvent ? 'is-special' : 'is-normal'}`}>Thao tác</div>
               

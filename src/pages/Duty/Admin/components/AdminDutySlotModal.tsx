@@ -56,6 +56,9 @@ import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import DutyPersonnelPicker from '../../components/DutyPersonnelTable';
 import SlotStructureEditor from './SlotStructureEditor';
 import SlotRequestsHistoryModal from '@/pages/Duty/Member/components/SlotRequestsHistoryModal';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+
 import '../../DutyModal.less';
 
 const { Text, Title } = Typography;
@@ -143,6 +146,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
   loading: externalLoading = false,
   onOpenCa,
 }) => {
+  const { user } = useSelector((state: RootState) => state.auth);
+  const currentUserId = user?.id;
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedUsersCache, setSelectedUsersCache] = useState<any[]>([]);
@@ -864,6 +869,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     const userCoeff = overrideVal !== undefined && overrideVal !== null ? overrideVal : defaultSlotCoeff;
                     const isOverridden = overrideVal !== undefined && overrideVal !== null && overrideVal !== defaultSlotCoeff;
                     const isLeader = (currentSlot?.assignedUserIds || [])[0] === id;
+                    const isMe = String(id) === String(currentUserId);
 
                     const allBadges: React.ReactNode[] = [];
                     userViolations.forEach((v: any) => {
@@ -1186,20 +1192,58 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                       </div>
                     );
 
-                    return isLeader ? (
-                      <Badge.Ribbon 
-                        key={id} 
-                        text={
-                          <Tooltip title="Quản lý kíp" placement="top">
-                            <span style={{ cursor: 'pointer' }}>Qlk</span>
-                          </Tooltip>
-                        } 
-                        color="red" 
-                        placement="start"
-                      >
-                        {cardNode}
-                      </Badge.Ribbon>
-                    ) : (
+                    if (isLeader && isMe) {
+                      return (
+                        <Badge.Ribbon 
+                          key={id} 
+                          text={
+                            <Tooltip title="Quản lý kíp (Bạn)" placement="top">
+                              <span style={{ cursor: 'pointer' }}>Qlk • Bạn</span>
+                            </Tooltip>
+                          } 
+                          color="red" 
+                          placement="start"
+                        >
+                          {cardNode}
+                        </Badge.Ribbon>
+                      );
+                    }
+
+                    if (isLeader) {
+                      return (
+                        <Badge.Ribbon 
+                          key={id} 
+                          text={
+                            <Tooltip title="Quản lý kíp" placement="top">
+                              <span style={{ cursor: 'pointer' }}>Qlk</span>
+                            </Tooltip>
+                          } 
+                          color="red" 
+                          placement="start"
+                        >
+                          {cardNode}
+                        </Badge.Ribbon>
+                      );
+                    }
+
+                    if (isMe) {
+                      return (
+                        <Badge.Ribbon 
+                          key={id} 
+                          text={
+                            <Tooltip title="Tài khoản của bạn" placement="top">
+                              <span style={{ cursor: 'pointer' }}>Bạn</span>
+                            </Tooltip>
+                          } 
+                          color="magenta" 
+                          placement="start"
+                        >
+                          {cardNode}
+                        </Badge.Ribbon>
+                      );
+                    }
+
+                    return (
                       <React.Fragment key={id}>
                         {cardNode}
                       </React.Fragment>

@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Button, Avatar, Dropdown, Space, theme } from "antd";
-import { UserOutlined, LogoutOutlined, CalendarOutlined, DashboardOutlined } from "@ant-design/icons";
+import { UserOutlined, LogoutOutlined, CalendarOutlined } from "@ant-design/icons";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/store/slices/authSlice";
@@ -73,11 +73,11 @@ const Header: React.FC = () => {
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <Button 
               type="text" 
-              icon={isStaff ? <DashboardOutlined /> : <CalendarOutlined />}
-              onClick={() => navigate(isStaff ? "/admin/dashboard" : "/duty/dashboard")}
+              icon={<CalendarOutlined />}
+              onClick={() => navigate(isStaff ? "/admin/duty/calendar" : "/duty/calendar")}
               style={{ fontWeight: 500 }}
             >
-              {isStaff ? "Quản trị" : "Lịch trực"}
+              Lịch trực
             </Button>
             <NotificationPopover />
             <Dropdown menu={{ items: menuItems as any }} placement="bottomRight">

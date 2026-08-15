@@ -1,6 +1,6 @@
 import React from "react";
 import { Typography, Card, Space, Button } from "antd";
-import { UserOutlined, DashboardOutlined } from "@ant-design/icons";
+import { UserOutlined, CalendarOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -13,10 +13,10 @@ const Home: React.FC = () => {
 
   React.useEffect(() => {
     if (isInitialized && user) {
-      if (user.permissions?.includes('*')) {
-        navigate("/admin/dashboard");
+      if (user.permissions?.includes('*') || (user as any).role === 'admin' || (user as any).role === 'staff') {
+        navigate("/admin/duty/calendar", { replace: true });
       } else {
-        navigate("/duty/dashboard");
+        navigate("/duty/calendar", { replace: true });
       }
     }
   }, [isInitialized, user, navigate]);
@@ -34,10 +34,10 @@ const Home: React.FC = () => {
             <Space size="middle">
               <Button
                 type="primary"
-                icon={<DashboardOutlined />}
-                onClick={() => navigate("/admin/dashboard")}
+                icon={<CalendarOutlined />}
+                onClick={() => navigate(user.permissions?.includes('*') || (user as any).role === 'admin' || (user as any).role === 'staff' ? "/admin/duty/calendar" : "/duty/calendar")}
               >
-                Quản trị
+                Lịch trực
               </Button>
               <Button
                 icon={<UserOutlined />}

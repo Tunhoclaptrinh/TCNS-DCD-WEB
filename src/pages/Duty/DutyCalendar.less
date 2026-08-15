@@ -826,3 +826,150 @@
   left: 0;
   right: 0;
 }
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE STYLES
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Container & Heights */
+  .duty-calendar-pro {
+    height: auto;
+    min-height: calc(100vh - 220px);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+
+    .calendar-header,
+    .calendar-body {
+      min-width: 680px; /* Ensure 7-day grid stays readable & swipeable on mobile */
+    }
+
+    .calendar-header {
+      .header-axis-spacer {
+        width: 60px;
+      }
+      .header-day {
+        padding: 6px 0;
+        .day-name {
+          font-size: 0.7rem;
+        }
+        .day-date {
+          font-size: 0.95rem;
+        }
+      }
+    }
+
+    .calendar-body {
+      .time-axis {
+        width: 60px;
+        .axis-hour span {
+          font-size: 0.65rem;
+        }
+      }
+    }
+  }
+
+  /* Duty Calendar Main Card Header */
+  .duty-calendar-card {
+    .ant-card-head {
+      padding: 10px 12px;
+      height: auto;
+
+      .ant-card-head-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .ant-card-head-title {
+        width: 100%;
+        padding: 0;
+
+        > div {
+          flex-wrap: wrap;
+          gap: 8px !important;
+        }
+      }
+
+      .ant-card-extra {
+        width: 100%;
+        padding: 0;
+        margin-left: 0;
+
+        > div {
+          width: 100%;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 6px !important;
+        }
+      }
+    }
+  }
+
+  /* Slot Box Styling on Mobile */
+  .calendar-slot-box {
+    padding: 2px 4px;
+    border-radius: 4px;
+
+    .slot-title {
+      font-size: 0.7rem;
+    }
+
+    .slot-time {
+      font-size: 0.6rem;
+    }
+
+    .slot-users {
+      .user-avatar-mini {
+        width: 14px !important;
+        height: 14px !important;
+        font-size: 8px;
+        line-height: 14px;
+      }
+    }
+  }
+
+  /* Matrix / Table View on Mobile */
+  .matrix-view-container {
+    max-height: calc(100vh - 200px);
+
+    .matrix-table {
+      min-width: 750px;
+      font-size: 0.75rem;
+
+      .sticky-col {
+        width: 110px;
+        min-width: 110px;
+      }
+    }
+  }
+
+  /* Modals on Mobile */
+  .ant-modal {
+    max-width: 95vw !important;
+    margin: 8px auto !important;
+
+    .ant-modal-body {
+      padding: 16px 12px !important;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .duty-calendar-pro {
+    .calendar-header,
+    .calendar-body {
+      min-width: 620px;
+    }
+  }
+
+  .duty-calendar-card {
+    .week-nav-group {
+      button {
+        padding: 0 6px !important;
+        font-size: 11px !important;
+      }
+    }
+  }
+}
