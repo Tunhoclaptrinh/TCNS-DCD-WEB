@@ -334,9 +334,25 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         <Text type="secondary" style={{ fontSize: 12 }}>SỐ KÍP ĐƯỢC TÍNH</Text>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                           <ThunderboltOutlined style={{ color: '#d97706' }} />
-                          <span style={{ fontWeight: 600, color: '#d97706' }}>
-                            {(slot as any)?.coefficient ?? (slot as any)?.kip?.coefficient ?? (slot as any)?.shift?.coefficient ?? 1} kíp
-                          </span>
+                          {(() => {
+                            const baseSlotCoeff = Number((slot as any)?.coefficient ?? (slot as any)?.kip?.coefficient ?? (slot as any)?.shift?.coefficient ?? 1);
+                            const myPersonalCoeff = currentUserId && (slot as any)?.attendanceOverrides?.[String(currentUserId)] !== undefined
+                              ? Number((slot as any)?.attendanceOverrides?.[String(currentUserId)])
+                              : null;
+                            const isCustom = myPersonalCoeff !== null && myPersonalCoeff !== baseSlotCoeff;
+                            return (
+                              <>
+                                <span style={{ fontWeight: 600, color: '#d97706' }}>
+                                  {isCustom ? `${myPersonalCoeff} kíp` : `${baseSlotCoeff} kíp`}
+                                </span>
+                                {isCustom && (
+                                  <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, fontWeight: 600 }}>
+                                    Tính riêng: {myPersonalCoeff} kíp
+                                  </Tag>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -488,6 +504,9 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const displayName = isVisible ? getUserDisplayName(u) : "Nhân sự trực (Bảo mật)";
                             const displaySub = isVisible ? (u.email || u.studentId || '') : "Thông tin được ẩn theo cấu hình kíp";
                             const posInfo = getPositionInfo(u.position);
+                            const baseSlotCoeff = Number((slot as any)?.coefficient ?? (slot as any)?.kip?.coefficient ?? (slot as any)?.shift?.coefficient ?? 1);
+                            const userOverriddenCoeff = (slot as any)?.attendanceOverrides?.[String(u.id)];
+                            const hasCustomCoeff = userOverriddenCoeff !== undefined && userOverriddenCoeff !== null && Number(userOverriddenCoeff) !== baseSlotCoeff;
 
                             return (
                               <List.Item
@@ -514,6 +533,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                       <Space size={6} wrap>
                                         <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{displayName}</span>
                                         {isMe && <Tag color="magenta" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Bạn</Tag>}
+                                        {hasCustomCoeff && isVisible && (
+                                          <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>
+                                            ⚡ {userOverriddenCoeff} kíp
+                                          </Tag>
+                                        )}
                                         {(index === 0 && !isMe) && <Tag color="gold" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Quản lý kíp</Tag>}
                                         {!isAssigned && <Tag color="orange" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>Ngoài kíp</Tag>}
                                         {existingViolation && <Tag color="error" style={{ fontSize: 10, borderRadius: 4, margin: 0, padding: '0 4px', lineHeight: '16px' }}>{existingViolation.type} (x{existingViolation.coefficient})</Tag>}

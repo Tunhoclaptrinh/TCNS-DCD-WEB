@@ -68,10 +68,12 @@ export interface DutySlot {
   note?: string;
   status: 'open' | 'locked';
   capacity?: number;
+  coefficient?: number;
   attendedUserIds?: number[];
   attendedUsers?: any[];
   tempLeaderId?: number | null;
   attendanceData?: Record<number, { time: string, ip: string, method: string, markedBy?: number }>;
+  attendanceOverrides?: Record<string, number>;
   isSpecialEvent?: boolean;
   config?: any;
   order?: number;
@@ -141,11 +143,18 @@ class DutyService {
     return response;
   }
 
-  async markAttendance(slotId: number, attendedUserIds: number[], userId?: number, isIncremental?: boolean) {
+  async markAttendance(
+    slotId: number,
+    attendedUserIds: number[],
+    userId?: number,
+    isIncremental?: boolean,
+    attendanceOverrides?: Record<string, number>,
+  ) {
     const response = await apiClient.post(`/duty/slots/${slotId}/attendance`, { 
       ids: attendedUserIds, 
       userId,
-      isIncremental
+      isIncremental,
+      attendanceOverrides,
     });
     return response;
   }
@@ -153,8 +162,11 @@ class DutyService {
   /**
    * Shift Leader marks/unmarks attendance for a specific user (Toggle)
    */
-  async leaderMarkAttendance(slotId: number, targetUserId: number) {
-    const response = await apiClient.post(`/duty/slots/${slotId}/attendance`, { userId: targetUserId });
+  async leaderMarkAttendance(slotId: number, targetUserId: number, customCoefficient?: number) {
+    const response = await apiClient.post(`/duty/slots/${slotId}/attendance`, {
+      userId: targetUserId,
+      coefficient: customCoefficient,
+    });
     return response;
   }
 

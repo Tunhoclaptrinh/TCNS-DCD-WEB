@@ -100,6 +100,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         assignedUserIds: slot.assignedUserIds || [],
         attendedUserIds: slot.attendedUserIds || [],
         slotStructure: slot.slotStructure || (slot as any).kip?.slotStructure || (slot as any).shift?.slotStructure || [],
+        attendanceOverrides: slot.attendanceOverrides || {},
       });
       if (slot.assignedUsers) updateCache(slot.assignedUsers);
     }
@@ -576,13 +577,13 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             </Space>
           </div>
 
-          <Form.Item noStyle shouldUpdate={(prev, curr) =>
-            prev.assignedUserIds !== curr.assignedUserIds || prev.attendedUserIds !== curr.attendedUserIds
-          }>
+          <Form.Item noStyle shouldUpdate>
             {({ getFieldValue }) => {
               const assignedIds = getFieldValue('assignedUserIds') || [];
               const attendedIds = getFieldValue('attendedUserIds') || [];
               const allIds = [...new Set([...assignedIds, ...attendedIds])];
+              const formOverrides = getFieldValue('attendanceOverrides') || {};
+              const currentSlotCoeff = getFieldValue('coefficient') || 1;
 
               return (
                 <List
@@ -599,6 +600,11 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                       (slot?.attendedUsers || []).find((u: any) => u && String(u.id) === String(id)) ||
                       selectedUsersCache.find((u: any) => u && String(u.id) === String(id));
 
+                    const defaultSlotCoeff = currentSlotCoeff;
+                    const overrideVal = formOverrides[String(id)] ?? formOverrides[Number(id)];
+                    const userCoeff = overrideVal !== undefined && overrideVal !== null ? overrideVal : defaultSlotCoeff;
+                    const isOverridden = overrideVal !== undefined && overrideVal !== null && overrideVal !== defaultSlotCoeff;
+
                     return (
                       <List.Item
                         onClick={() => handleToggleAttendance(id, !isAttended)}
@@ -612,12 +618,45 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                           cursor: 'pointer'
                         }}
                         actions={[
-                          <Space size={12} key="actions">
+                          <Space size={10} key="actions" align="center">
+                            <Tooltip title="Hệ số kíp thực tế được tính cho nhân sự này">
+                              <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <InputNumber
+                                  size="small"
+                                  min={0}
+                                  step={0.25}
+                                  max={10}
+                                  value={userCoeff}
+                                  addonAfter="kíp"
+                                  style={{
+                                    width: 96,
+                                    borderRadius: 6,
+                                    fontWeight: 600,
+                                    borderColor: isOverridden ? '#f59e0b' : '#cbd5e1',
+                                    backgroundColor: isOverridden ? '#fffbeb' : '#fff'
+                                  }}
+                                  onChange={(val) => {
+                                    const current = form.getFieldValue('attendanceOverrides') || {};
+                                    const nextOverrides = { ...current };
+                                    if (val === null || val === undefined) {
+                                      delete nextOverrides[String(id)];
+                                    } else {
+                                      nextOverrides[String(id)] = val;
+                                    }
+                                    form.setFieldsValue({ attendanceOverrides: nextOverrides });
+                                  }}
+                                />
+                              </div>
+                            </Tooltip>
+
                             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                               <Text strong style={{ fontSize: 12, color: isAttended ? '#16a34a' : '#64748b' }}>
                                 {isAttended ? 'ĐÃ CÓ MẶT' : 'CHƯA ĐIỂM DANH'}
                               </Text>
-                              {!isAssigned && <Tag color="orange" style={{ fontSize: '0.6rem', border: 'none', margin: 0 }}>BỔ SUNG</Tag>}
+                              <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
+                                {isOverridden && <Tag color="gold" style={{ fontSize: '0.6rem', border: 'none', margin: 0, padding: '0 4px', lineHeight: '14px' }}>TÙY CHỈNH</Tag>}
+                                {!isAssigned && <Tag color="orange" style={{ fontSize: '0.6rem', border: 'none', margin: 0, padding: '0 4px', lineHeight: '14px' }}>BỔ SUNG</Tag>}
+                              </div>
                             </div>
                             <Tooltip title={existingViolation ? "Sửa lỗi vi phạm" : "Ghi lỗi vi phạm"}>
                               <Button 

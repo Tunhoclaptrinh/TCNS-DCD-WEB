@@ -51,6 +51,8 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
+  const [suppCoeff, setSuppCoeff] = useState<number>(1);
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
   // Violation Management
@@ -83,16 +85,18 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
         userMap.set(u.id, { ...(existing || u), isAttended: true, isAssigned: !!existing?.isAssigned });
       });
       setAllUsers(Array.from(userMap.values()));
+      setSuppCoeff(Number(slot.coefficient ?? (slot as any).kip?.coefficient ?? 1));
+      setOverrides(slot.attendanceOverrides || {});
     }
   }, [slot]);
 
 
 
-  const markAttendance = async (userId: number) => {
+  const markAttendance = async (userId: number, customCoeff?: number) => {
     if (!slot) return;
     setLoading(true);
     try {
-      const res = await dutyService.leaderMarkAttendance(slot.id, userId);
+      const res = await dutyService.leaderMarkAttendance(slot.id, userId, customCoeff);
       if (res.success) {
         message.success(res.message || 'Cập nhật điểm danh thành công');
         setSelectedUser(null);
@@ -205,6 +209,15 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
             onChange={setSelectedUser}
             style={{ flex: 1 }}
           />
+          <InputNumber
+            min={0}
+            step={0.25}
+            max={10}
+            value={suppCoeff}
+            onChange={(val) => setSuppCoeff(val || 1)}
+            addonAfter="kíp"
+            style={{ width: 110, height: 40, borderRadius: 0, fontWeight: 600, display: 'flex', alignItems: 'center' }}
+          />
           <AntButton 
             type="primary" 
             icon={<CheckCircleOutlined />}
@@ -212,7 +225,7 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
             disabled={!selectedUser || loading}
             onClick={() => {
               if (selectedUser) {
-                markAttendance(selectedUser);
+                markAttendance(selectedUser, suppCoeff);
               }
             }}
           >
@@ -235,6 +248,10 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
             {allUsers.map((u) => {
               const isAttended = u.isAttended;
               const isLeader = (slot?.assignedUserIds?.[0] === u.id) || (slot?.tempLeaderId === u.id);
+              const defaultSlotCoeff = Number(slot?.coefficient ?? (slot as any)?.kip?.coefficient ?? 1);
+              const overrideVal = overrides[String(u.id)] ?? overrides[Number(u.id)];
+              const userCoeff = overrideVal !== undefined && overrideVal !== null ? overrideVal : defaultSlotCoeff;
+              const isOverridden = overrideVal !== undefined && overrideVal !== null && overrideVal !== defaultSlotCoeff;
               
               return (
                 <Col span={24} key={u.id}>
@@ -260,14 +277,49 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                         {getPositionTag(u.position)}
                         {isLeader && <Tag color="warning" icon={<ThunderboltOutlined />}>Quản lý kíp</Tag>}
                         {!u.isAssigned && <Tag color="purple">Bổ sung</Tag>}
+                        {isOverridden && <Tag color="gold" style={{ fontSize: 10 }}>Tùy chỉnh: {userCoeff} kíp</Tag>}
                       </div>
                       <Text type="secondary" style={{ fontSize: 12 }}>{u.studentId || u.username || 'N/A'}</Text>
                     </div>
 
-                    <Space size={16}>
+                    <Space size={12} align="center">
+                      <Tooltip title="Hệ số kíp thực tế được tính cho nhân sự này">
+                        <InputNumber
+                          size="small"
+                          min={0}
+                          step={0.25}
+                          max={10}
+                          value={userCoeff}
+                          addonAfter="kíp"
+                          style={{
+                            width: 96,
+                            borderRadius: 6,
+                            fontWeight: 600,
+                            borderColor: isOverridden ? '#f59e0b' : '#cbd5e1',
+                            backgroundColor: isOverridden ? '#fffbeb' : '#fff'
+                          }}
+                          onChange={(val) => {
+                            setOverrides(prev => {
+                              const next = { ...prev };
+                              if (val === null || val === undefined) {
+                                delete next[String(u.id)];
+                              } else {
+                                next[String(u.id)] = val;
+                              }
+                              return next;
+                            });
+                          }}
+                          onBlur={() => {
+                            if (slot) {
+                              dutyService.updateSlot(slot.id, { attendanceOverrides: overrides });
+                            }
+                          }}
+                        />
+                      </Tooltip>
+
                       <Tooltip title={isAttended ? "Đã điểm danh" : "Bấm để điểm danh"}>
                         <div 
-                          onClick={() => markAttendance(u.id)}
+                          onClick={() => markAttendance(u.id, userCoeff)}
                           style={{ 
                             width: 36, 
                             height: 36, 
