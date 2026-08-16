@@ -324,6 +324,46 @@ const UsersForm: React.FC<UsersFormProps> = ({
               <Input placeholder="0987xxxxxx" />
             </Form.Item>
           </Col>
+          <Col xs={12} md={4}>
+            <Form.Item name="gender" label="Giới tính">
+              <Select options={[{ label: 'Nam', value: 'male' }, { label: 'Nữ', value: 'female' }, { label: 'Khác', value: 'other' }]} />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={4}>
+            <Form.Item name="dob" label="Ngày sinh">
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày sinh" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="hometown" label="Quê quán">
+              <Input prefix={<HomeOutlined />} placeholder="Tỉnh/Thành phố quê quán" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="address" label="Địa chỉ hiện tại">
+              <Input prefix={<HomeOutlined />} placeholder="Địa chỉ nơi ở hiện tại" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={12} md={8}>
+            <Form.Item name="generationId" label="Khóa/Thế hệ" rules={[{ required: true, message: 'Vui lòng chọn khóa/thế hệ' }]}>
+              <Select
+                allowClear
+                placeholder="Chọn Khóa"
+                options={generations.map(g => ({ label: g.name, value: g.id }))}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={8}>
+            <Form.Item name="joinDate" label="Ngày vào Đội">
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
+            </Form.Item>
+          </Col>
           <Col xs={24} md={8}>
             <Form.Item name="facebook" label="Link Facebook">
               <Input prefix={<FacebookOutlined />} placeholder="fb.com/username" />
@@ -331,27 +371,9 @@ const UsersForm: React.FC<UsersFormProps> = ({
           </Col>
         </Row>
 
-        <Row gutter={16}>
-          <Col xs={12} md={6}>
-            <Form.Item name="gender" label="Giới tính">
-              <Select options={[{ label: 'Nam', value: 'male' }, { label: 'Nữ', value: 'female' }, { label: 'Khác', value: 'other' }]} />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="dob" label="Ngày sinh">
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày sinh" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="hometown" label="Quê quán">
-              <Input prefix={<HomeOutlined />} placeholder="Tỉnh/Thành phố" />
-            </Form.Item>
-          </Col>
-        </Row>
-
         <Divider orientation="left">Tổ chức & Phân quyền</Divider>
         <Row gutter={16}>
-          <Col xs={24} md={6}>
+          <Col xs={24} md={12}>
             <Form.Item name="position" label="Chức vụ" rules={[{ required: true }]}>
               <Select 
                 placeholder="Chọn chức vụ" 
@@ -361,7 +383,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
               />
             </Form.Item>
           </Col>
-          <Col xs={24} md={6}>
+          <Col xs={24} md={12}>
             <Form.Item 
               name="department" 
               label="Ban chuyên môn" 
@@ -377,20 +399,6 @@ const UsersForm: React.FC<UsersFormProps> = ({
                   String(option?.value || '').toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
                 }
               />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="generationId" label="Khóa/Thế hệ" rules={[{ required: true, message: 'Vui lòng chọn khóa/thế hệ' }]}>
-              <Select
-                allowClear
-                placeholder="Chọn Khóa"
-                options={generations.map(g => ({ label: g.name, value: g.id }))}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="joinDate" label="Ngày vào Đội">
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
             </Form.Item>
           </Col>
         </Row>

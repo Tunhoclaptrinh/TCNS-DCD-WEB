@@ -125,7 +125,8 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
           <Descriptions.Item label="Giới tính">
             {user.gender === 'male' ? 'Nam' : user.gender === 'female' ? 'Nữ' : 'Khác'}
           </Descriptions.Item>
-          <Descriptions.Item label="Quê quán" span={2}>{user.hometown || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Quê quán">{user.hometown || '--'}</Descriptions.Item>
+          <Descriptions.Item label="Địa chỉ hiện tại">{user.address || '--'}</Descriptions.Item>
         </Descriptions>
 
         <Divider orientation="left" style={{ fontSize: 14 }}>Liên hệ & Tổ chức</Divider>
