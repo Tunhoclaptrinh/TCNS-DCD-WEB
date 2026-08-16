@@ -441,8 +441,20 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         <Text type="secondary" style={{ fontSize: 12 }}>CƠ CẤU NHÂN SỰ YÊU CẦU</Text>
                         <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {(() => {
-                            const structure = (slot as any)?.slotStructure || slot?.kip?.slotStructure || (slot as any)?.shift?.slotStructure || [];
-                            if (!Array.isArray(structure) || structure.length === 0) return <Text type="secondary" italic style={{ fontSize: 13 }}>Không có yêu cầu cơ cấu đặc biệt</Text>;
+                            const rawStructure = (slot as any)?.slotStructure || slot?.kip?.slotStructure || (slot as any)?.shift?.slotStructure || [];
+                            if (!Array.isArray(rawStructure) || rawStructure.length === 0) return <Text type="secondary" italic style={{ fontSize: 13 }}>Không có yêu cầu cơ cấu đặc biệt</Text>;
+                            
+                            // Tự động gộp / ẩn các cơ cấu trùng lặp
+                            const structure = rawStructure.reduce((acc: any[], item: any) => {
+                              const key = `${(item.label || '').toLowerCase().trim()}_${(item.positions || []).sort().join(',')}`;
+                              const existing = acc.find(x => `${(x.label || '').toLowerCase().trim()}_${(x.positions || []).sort().join(',')}` === key);
+                              if (existing) {
+                                existing.slots = (Number(existing.slots) || 0) + (Number(item.slots) || 0);
+                              } else {
+                                acc.push({ ...item });
+                              }
+                              return acc;
+                            }, []);
                             
                             const currentUserPos = String((currentUserData as any)?.position || '').toLowerCase().trim();
                             const currentUserRole = String((currentUserData as any)?.role || '').toLowerCase().trim();

@@ -105,31 +105,27 @@ const GroupModal: React.FC<GroupModalProps> = ({
         </Divider>
 
         <Row gutter={16}>
-          <Col span={8}>
+          <Col span={12}>
             <Form.Item 
               label={<span style={{ fontSize: 12, fontWeight: 600 }}>Định mức mặc định</span>} 
               name="defaultQuota" 
               rules={[{ required: true, message: 'Bắt buộc nhập định mức' }]}
             >
-              <InputNumber min={0} step={0.5} style={{ width: '100%' }} placeholder="Kíp" />
+              <InputNumber min={0} step={0.5} style={{ width: '100%' }} placeholder="Kíp (VD: 2.5)" />
             </Form.Item>
           </Col>
-          <Col span={8}>
+          <Col span={12}>
             <Form.Item 
-              label={<span style={{ fontSize: 12, fontWeight: 600 }}>Đơn giá kíp</span>} 
-              name="kipPrice" 
-              rules={[{ required: true, message: 'Bắt buộc nhập đơn giá' }]}
+              label={<span style={{ fontSize: 12, fontWeight: 600 }}>Đơn giá kíp (VNĐ - Tùy chọn)</span>} 
+              name="kipPrice"
             >
-              <InputNumber min={0} step={1000} style={{ width: '100%' }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item 
-              label={<span style={{ fontSize: 12, fontWeight: 600 }}>Hệ số phạt</span>} 
-              name="violationPenaltyRate" 
-              rules={[{ required: true, message: 'Bắt buộc nhập hệ số phạt' }]}
-            >
-              <InputNumber min={0} step={0.1} style={{ width: '100%' }} placeholder="0.0" />
+              <InputNumber 
+                min={0} 
+                step={1000} 
+                style={{ width: '100%' }} 
+                placeholder="Để trống nếu không đặt đơn giá"
+                formatter={v => v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''} 
+              />
             </Form.Item>
           </Col>
         </Row>

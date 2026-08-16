@@ -261,7 +261,7 @@ const AdminDutyCalendar: React.FC = () => {
     // 2. Add templates from the active group IF showDefaultBoundaries is ON
     if (showDefaultBoundaries && activeGroupId) {
       const activeGroupTemplates = templates.filter(t => 
-        String(t.templateId) === String(activeGroupId) && 
+        (String(t.templateId) === String(activeGroupId) || String((t as any).parentId) === String(activeGroupId)) && 
         !t.date // Only definitions
       );
       
@@ -488,7 +488,7 @@ const AdminDutyCalendar: React.FC = () => {
       const isInstance = !!t.date;
       if (isInstance) return true; // Always show actual instances on admin calendar
 
-      const isAutoActive = activeGroupIds.has(String(t.templateId));
+      const isAutoActive = activeGroupIds.has(String(t.templateId)) || activeGroupIds.has(String((t as any).parentId));
       const isInUse = inUseShiftIds.has(String(t.id)) || stampedShiftIds.has(String(t.id));
       const isSpecial = t.isSpecialEvent;
       

@@ -190,13 +190,13 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
             <Col span={10}>
               <Form.Item 
                 name="mode" 
-                label={<span style={{ fontSize: 13, fontWeight: 600 }}>Chế độ tạo</span>} 
+                label={<span style={{ fontSize: 13, fontWeight: 600 }}>Chế độ dập khuôn</span>} 
+                initialValue="all"
                 rules={[{ required: true }]}
               >
                 <Select options={[
-                  { label: 'Chi tiết Kíp', value: 'kips' },
-                  { label: 'Chỉ tạo Ca', value: 'shifts' },
-                  { label: 'Toàn bộ', value: 'all' }
+                  { label: 'Dập toàn bộ (Ca & Kíp)', value: 'all' },
+                  { label: 'Chỉ dập Ca (Không sinh Kíp)', value: 'shifts' }
                 ]} />
               </Form.Item>
             </Col>
@@ -208,41 +208,41 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
         </div>
 
         {/* Action Footer */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
-          {hasSlots ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 24, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
+          {hasSlots && (
             <Button 
-              buttonSize="medium" 
+              buttonSize="small" 
               variant="outline" 
               icon={<DeleteOutlined />} 
               loading={loading}
               onClick={handleClearWeek}
-              style={{ color: '#ef4444', borderColor: '#fca5a5' }}
+              style={{ color: '#ef4444', borderColor: '#fca5a5', borderRadius: 8, minWidth: 96 }}
             >
               Xóa lịch tuần
             </Button>
-          ) : <div />}
+          )}
 
-          <Space size={8}>
-            <Button 
-              buttonSize="medium" 
-              variant="outline" 
-              icon={<CopyOutlined />} 
-              loading={loading}
-              onClick={handleCopyWeek}
-            >
-              Sao chép tuần trước
-            </Button>
+          <Button 
+            buttonSize="small" 
+            variant="outline" 
+            icon={<CopyOutlined style={{ color: '#475569' }} />} 
+            loading={loading}
+            onClick={handleCopyWeek}
+            style={{ color: '#334155', borderColor: '#cbd5e1', borderRadius: 8, minWidth: 100 }}
+          >
+            Sao chép tuần trước
+          </Button>
 
-            <Button 
-              buttonSize="medium" 
-              variant="primary" 
-              icon={<ThunderboltOutlined />} 
-              loading={loading}
-              onClick={() => handleGenerate(false)}
-            >
-              Khởi tạo lịch
-            </Button>
-          </Space>
+          <Button 
+            buttonSize="small" 
+            variant="primary" 
+            icon={<ThunderboltOutlined />} 
+            loading={loading}
+            onClick={() => handleGenerate(false)}
+            style={{ borderRadius: 8, minWidth: 100 }}
+          >
+            Khởi tạo lịch
+          </Button>
         </div>
       </Form>
     </Modal>

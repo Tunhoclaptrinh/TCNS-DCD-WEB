@@ -168,9 +168,16 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
             }
 
             // Only show ghost kips if they belong to the ACTIVE group (Default or Assigned)
-            const dayTemplates = templates.flatMap(s => (s.kips || []).map(k => ({ ...k, shiftId: s.id, shiftName: s.name, sStart: s.startTime, sEnd: s.endTime })))
+            const dayTemplates = templates.flatMap(s => (s.kips || []).map(k => ({ 
+              ...k, 
+              shiftId: s.id, 
+              shiftName: s.name, 
+              sStart: s.startTime, 
+              sEnd: s.endTime,
+              shiftParent: s
+            })))
               .filter(k => {
-                const shiftParent = templates.find(s => s.id === k.shiftId);
+                const shiftParent = k.shiftParent || templates.find(s => String(s.id) === String(k.shiftId));
                 // 1. Must be in effectiveShiftIds (Belong to a valid boundary on this day)
                 if (!effectiveShiftIds.includes(String(k.shiftId))) return false;
                 
@@ -178,7 +185,8 @@ const AdminDutyTimelineView: React.FC<AdminDutyTimelineViewProps> = ({
                 if (shiftParent?.description === 'INSTANCE') return true;
 
                 // 3. Otherwise (Draft boundaries), must belong to the Authorized/Active Group for this day
-                return String(shiftParent?.templateId) === String(activeGroupId);
+                const pId = String(shiftParent?.templateId || (shiftParent as any)?.parentId || '');
+                return pId === String(activeGroupId) || !activeGroupId;
               });
 
             return (

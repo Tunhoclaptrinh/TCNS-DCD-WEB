@@ -83,7 +83,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
 
   const renderFooter = () => (
     <div style={{ display: 'flex', justifyContent: 'center', gap: 12, width: '100%' }}>
-      <Button disabled={loading} buttonSize="small" onClick={onCancel} style={{ minWidth: 100, borderRadius: 8 }}>Hủy</Button>
+      <Button disabled={loading} variant="outline" buttonSize="small" onClick={onCancel} style={{ color: '#334155', borderColor: '#cbd5e1', borderRadius: 8, minWidth: 88 }}>Hủy</Button>
       <Button 
         variant="primary" 
         loading={loading} 
@@ -91,7 +91,7 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
         icon={loading ? <InteractionOutlined spin /> : <RocketOutlined />}
         onClick={() => form.submit()} 
         style={{ 
-          minWidth: 140, 
+          minWidth: 140,
           borderRadius: 8
         }}
       >
@@ -251,11 +251,10 @@ const AssignTemplateModal: React.FC<AssignTemplateModalProps> = ({
           />
           <Row gutter={[24, 16]}>
             <Col span={11}>
-              <Form.Item name="mode" label={<span style={{ fontWeight: 500 }}>Chế độ dập khuôn</span>} initialValue="kips">
+              <Form.Item name="mode" label={<span style={{ fontWeight: 500 }}>Chế độ dập khuôn</span>} initialValue="all">
                 <Select size="small" getPopupContainer={trigger => (trigger.parentNode as HTMLElement) || document.body}>
-                  <Select.Option value="shifts">Chỉ mình Ca trực (Shifts only)</Select.Option>
-                  <Select.Option value="kips">Chỉ mình Kíp trực (Kips only)</Select.Option>
-                  <Select.Option value="all">Cả 2 cấp độ (Khuyên dùng)</Select.Option>
+                  <Select.Option value="all">Dập toàn bộ (Ca & Kíp)</Select.Option>
+                  <Select.Option value="shifts">Chỉ dập Ca (Không sinh Kíp)</Select.Option>
                 </Select>
               </Form.Item>
             </Col>

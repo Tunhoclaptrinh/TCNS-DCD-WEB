@@ -273,7 +273,19 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         assignedUserIds: allFormValues.assignedUserIds || [],
         attendedUserIds: allFormValues.attendedUserIds || [],
         attendanceOverrides: allFormValues.attendanceOverrides || {},
-        slotStructure: allFormValues.slotStructure || [],
+        slotStructure: Array.isArray(allFormValues.slotStructure)
+          ? allFormValues.slotStructure.reduce((acc: any[], item: any) => {
+              if (!item) return acc;
+              const key = `${(item.label || '').toLowerCase().trim()}_${(item.positions || []).sort().join(',')}`;
+              const existing = acc.find(x => `${(x.label || '').toLowerCase().trim()}_${(x.positions || []).sort().join(',')}` === key);
+              if (existing) {
+                existing.slots = (Number(existing.slots) || 0) + (Number(item.slots) || 0);
+              } else {
+                acc.push({ ...item });
+              }
+              return acc;
+            }, [])
+          : [],
         shiftDate: targetDateStr,
         startTime: values.timeRange?.[0]?.format('HH:mm'),
         endTime: values.timeRange?.[1]?.format('HH:mm'),
