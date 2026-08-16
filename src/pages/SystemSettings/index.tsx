@@ -5,12 +5,14 @@ import axiosInstance from '@/config/axios.config';
 import { Button as CustomButton } from '@/components/common';
 import roleService, { Role } from '@/services/role.service';
 import dutyService from '@/services/duty.service';
+import systemSettingService from '@/services/system-setting.service';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { DEFAULT_VIOLATION_TYPES } from '@/pages/Duty/Admin/components/AdminDutySlotModal';
 
 // Flag khóa không cho sửa/xóa các ban mặc định hệ thống (đổi thành false khi muốn mở khóa)
 const LOCK_DEFAULT_DEPARTMENTS = true;
 const DEFAULT_DEPARTMENT_IDS = ['nhan-su', 'truyen-thong', 'tai-chinh', 'khac'];
+const DEFAULT_POSITION_IDS = ['ctv', 'tv', 'tvb', 'pb', 'tb', 'dt'];
 const { Title, Text } = Typography;
 
 const SystemSettingsPage: React.FC = () => {
@@ -49,12 +51,15 @@ const SystemSettingsPage: React.FC = () => {
       dataList.forEach((s: any) => {
         if (s.key) {
           let val = s.value;
-          if (s.key === 'DEPARTMENT_CONFIGS' || s.key === 'DEPARTMENTCONFIGS') {
+          if (s.key === 'DEPARTMENT_CONFIGS' || s.key === 'DEPARTMENTCONFIGS' || s.key === 'POSITION_CONFIGS' || s.key === 'POSITIONCONFIGS') {
             try { val = typeof s.value === 'string' ? JSON.parse(s.value) : s.value; } catch(e) {}
           }
           settings[s.key] = val;
           if (s.key === 'DEPARTMENTCONFIGS') {
             settings['DEPARTMENT_CONFIGS'] = val;
+          }
+          if (s.key === 'POSITIONCONFIGS') {
+            settings['POSITION_CONFIGS'] = val;
           }
           const upperKey = String(s.key).replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
           settings[upperKey] = val;
@@ -99,6 +104,9 @@ const SystemSettingsPage: React.FC = () => {
       if (allValues.DEPARTMENT_CONFIGS && typeof allValues.DEPARTMENT_CONFIGS === 'object') {
          allValues.DEPARTMENT_CONFIGS = JSON.stringify(allValues.DEPARTMENT_CONFIGS);
       }
+      if (allValues.POSITION_CONFIGS && typeof allValues.POSITION_CONFIGS === 'object') {
+         allValues.POSITION_CONFIGS = JSON.stringify(allValues.POSITION_CONFIGS);
+      }
       if (allValues.DUTY_VIOLATION_TYPES && typeof allValues.DUTY_VIOLATION_TYPES === 'object') {
          allValues.DUTY_VIOLATION_TYPES = JSON.stringify(allValues.DUTY_VIOLATION_TYPES);
       }
@@ -117,6 +125,7 @@ const SystemSettingsPage: React.FC = () => {
             : allValues.DUTY_VIOLATION_TYPES;
         }
         await dutyService.updateDutySettings(allValues);
+        systemSettingService.clearCache();
         message.success('Cập nhật cài đặt thành công');
         await fetchSettings();
         return;
@@ -124,6 +133,7 @@ const SystemSettingsPage: React.FC = () => {
 
       const res: any = await axiosInstance.post('/system-settings/bulk', allValues);
       if (res?.success || res?.data?.success) {
+        systemSettingService.clearCache();
         message.success(res?.message || res?.data?.message || 'Cập nhật cài đặt thành công');
         await fetchSettings();
       }
@@ -346,6 +356,105 @@ const SystemSettingsPage: React.FC = () => {
                 )
               },
               {
+                key: 'position_configs',
+                label: <Text strong>Cấu Hình Chức Vụ Hệ Thống</Text>,
+                children: (
+                  <div>
+                    <Form.List name="POSITION_CONFIGS">
+                      {(fields, { add, remove }) => (
+                        <>
+                          {fields.map(({ key, name, ...restField }) => {
+                            const itemData = form.getFieldValue(['POSITION_CONFIGS', name]) || {};
+                            const isDefault = itemData.isDefault || DEFAULT_POSITION_IDS.includes(itemData.id);
+
+                            return (
+                              <div key={key} style={{ marginBottom: 16, padding: 16, border: '1px solid #d9d9d9', borderRadius: 8, backgroundColor: isDefault ? '#fafafa' : '#ffffff' }}>
+                                <Row gutter={16} align="middle">
+                                  <Col span={6}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'name']}
+                                      label="Tên Chức Vụ"
+                                      rules={[{ required: true, message: 'Nhập tên chức vụ' }]}
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <Input placeholder="Ví dụ: Cố vấn chuyên môn" />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={6}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'id']}
+                                      label="Mã Chức Vụ (ID)"
+                                      rules={[{ required: true, message: 'Nhập mã ID' }]}
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <Input placeholder="Ví dụ: sp_co_van" disabled={isDefault} />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={5}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'requiresDept']}
+                                      valuePropName="checked"
+                                      label="Bắt buộc chọn Ban"
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <Checkbox>Bắt buộc có Ban</Checkbox>
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={5}>
+                                    <Form.Item
+                                      {...restField}
+                                      name={[name, 'noDeptAllowed']}
+                                      valuePropName="checked"
+                                      label="Không thuộc Ban"
+                                      style={{ marginBottom: 0 }}
+                                    >
+                                      <Checkbox>Không thuộc Ban nào</Checkbox>
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={2} style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 24 }}>
+                                    <Tooltip title={isDefault ? "Chức vụ mặc định hệ thống - Không thể xóa" : "Xóa chức vụ này"}>
+                                      <Button 
+                                        type="text" 
+                                        danger 
+                                        shape="circle" 
+                                        disabled={isDefault}
+                                        icon={<DeleteOutlined style={{ fontSize: 16 }} />} 
+                                        onClick={() => !isDefault && remove(name)} 
+                                      />
+                                    </Tooltip>
+                                  </Col>
+                                </Row>
+                              </div>
+                            );
+                          })}
+                          <Form.Item>
+                            <Button type="dashed" onClick={() => add({ requiresDept: false, noDeptAllowed: false, isDefault: false })} block icon={<PlusOutlined />}>
+                              Thêm Chức Vụ Mới
+                            </Button>
+                          </Form.Item>
+                        </>
+                      )}
+                    </Form.List>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                      <CustomButton 
+                        variant="primary"
+                        buttonSize="small"
+                        icon={<SaveOutlined />} 
+                        loading={savingKey === 'position_configs'}
+                        onClick={() => saveSection('position_configs', ['POSITION_CONFIGS'])}
+                        style={{ minWidth: 88 }}
+                      >
+                        Lưu cấu hình chức vụ
+                      </CustomButton>
+                    </div>
+                  </div>
+                )
+              },
+              {
                 key: 'general_duty',
                 label: <Text strong>Cấu hình chung & Chính sách Kíp trực</Text>,
                 children: (
@@ -357,6 +466,23 @@ const SystemSettingsPage: React.FC = () => {
                           name="selfCheckInBeforeMinutes"
                           label="Mở Tự điểm danh trước ca (phút)"
                           tooltip="Số phút cho phép thành viên tự bấm điểm danh trước khi kíp trực bắt đầu. Mặc định 15 phút."
+                        >
+                          <InputNumber 
+                            min={0}
+                            max={9999}
+                            addonAfter="phút"
+                            style={{ width: '100%' }}
+                            placeholder="15" 
+                          />
+                        </Form.Item>
+                      </Col>
+
+                      {/* 2. Cho phép Tự điểm danh sau khi ca kết thúc */}
+                      <Col span={12}>
+                        <Form.Item
+                          name="selfCheckInAfterMinutes"
+                          label="Thời hạn Tự điểm danh sau ca kết thúc (phút)"
+                          tooltip="Số phút cho phép thành viên tự bấm điểm danh sau khi kíp trực kết thúc. Quá thời gian này sẽ đóng điểm danh. Mặc định 15 phút."
                         >
                           <InputNumber 
                             min={0}
@@ -457,6 +583,7 @@ const SystemSettingsPage: React.FC = () => {
                         loading={savingKey === 'general_duty'}
                         onClick={() => saveSection('general_duty', [
                           'selfCheckInBeforeMinutes', 
+                          'selfCheckInAfterMinutes',
                           'allowUnregisterWhenFull', 
                           'weeklyLimitEnabled', 
                           'weeklyKipLimit', 

@@ -231,7 +231,7 @@ const MeetingMinutesModal: React.FC<MeetingMinutesModalProps> = ({
                     {record?.minutesStatus === 'submitted' ? 'Cập nhật biên bản' : 'Kết thúc cuộc họp & Lưu biên bản'}
                 </Button>
             ]}
-            centered
+
             className="meeting-minutes-modal"
         >
             <Form form={form} layout="vertical" className="meeting-minutes-form" style={{ marginTop: 12 }}>

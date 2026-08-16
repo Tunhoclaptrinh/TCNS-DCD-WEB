@@ -336,9 +336,12 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                           const now = dayjs();
                           
                           const beforeMins = Math.max(0, Number((settings as any)?.selfCheckInBeforeMinutes ?? 15));
-                          const isActive = now.isAfter(startTime.subtract(beforeMins, 'minute')) && now.isBefore(endTime);
-                          const isDuringShift = now.isAfter(startTime) && now.isBefore(endTime);
-                          const isActingLeader = (String(slot.assignedUserIds?.[0]) === String(uid) && isAttended) || (String((slot as any).tempLeaderId) === String(uid));
+                          const afterMins = Math.max(0, Number((settings as any)?.selfCheckInAfterMinutes ?? 15));
+                          const earliestCheckIn = startTime.subtract(beforeMins, 'minute');
+                          const latestCheckIn = endTime.add(afterMins, 'minute');
+                          const isActive = now.isAfter(earliestCheckIn) && now.isBefore(latestCheckIn);
+                          const isDuringShift = now.isAfter(earliestCheckIn) && now.isBefore(latestCheckIn);
+                          const isActingLeader = (String(slot.assignedUserIds?.[0]) === String(uid)) || (String((slot as any).tempLeaderId) === String(uid));
 
                           // 1. Self Check-in button (For any assigned member when shift is active)
                           if (isAssigned && !isAttended && isActive) {
@@ -376,8 +379,8 @@ const MemberDutyTimelineView: React.FC<MemberDutyTimelineViewProps> = ({
                             );
                           }
 
-                          // 2. Management button (For Acting Leader during shift)
-                          if (isActingLeader && isDuringShift) {
+                          // 2. Management button (For Acting Leader when shift is active/during shift and already checked in or active)
+                          if (isActingLeader && (isActive || isDuringShift) && isAttended) {
                             return (
                               <div style={{ marginTop: 4, marginBottom: 4 }}>
                                 <button 

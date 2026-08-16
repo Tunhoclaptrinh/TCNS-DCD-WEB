@@ -164,7 +164,7 @@ const Profile = () => {
             </Row>
             <Form.Item style={{ textAlign: 'center', marginTop: 16 }}>
               <Button variant="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} style={{ height: 40, padding: '0 48px' }}>
-                Lưu thay đổi
+                Lưu lại
               </Button>
             </Form.Item>
           </Form>

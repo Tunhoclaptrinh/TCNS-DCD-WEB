@@ -12,6 +12,7 @@ import { DataTableColumn } from '@/components/common/DataTable/types';
 import { useCRUD } from '@/hooks/useCRUD';
 import { POSITION_LABELS, POSITION_FILTERS, DEPARTMENT_FILTERS } from '@/constants/user.constants';
 import { getUserDisplayName } from '@/utils/formatters';
+import systemSettingService from '@/services/system-setting.service';
 
 interface MeetingMemberPickerProps {
   value?: number[];
@@ -26,6 +27,24 @@ export const MeetingMemberTable: React.FC<{
   value?: number[];
   onChange?: (keys: number[], rows?: User[]) => void;
 }> = ({ value = [], onChange }) => {
+  const [positionConfigs, setPositionConfigs] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    systemSettingService.getByKey('POSITION_CONFIGS').then((res) => {
+      if (res && res.value) {
+        const parsed = typeof res.value === 'string' ? JSON.parse(res.value) : res.value;
+        if (Array.isArray(parsed)) setPositionConfigs(parsed);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const positionMap = React.useMemo(() => {
+    const map: Record<string, string> = { ...POSITION_LABELS };
+    (positionConfigs || []).forEach((p: any) => {
+      if (p.id && p.name) map[p.id] = p.name;
+    });
+    return map;
+  }, [positionConfigs]);
   const {
     data: users,
     loading,
@@ -86,7 +105,7 @@ export const MeetingMemberTable: React.FC<{
       sortable: true,
       filters: POSITION_FILTERS,
       filterMultiple: false,
-      render: (val: string) => val ? <Tag color="cyan" style={{ borderRadius: 4, fontSize: 11 }}>{POSITION_LABELS[val] || val}</Tag> : '--'
+      render: (val: string) => val ? <Tag color="cyan" style={{ borderRadius: 4, fontSize: 11 }}>{positionMap[val] || val}</Tag> : '--'
     }
   ];
 
@@ -107,7 +126,10 @@ export const MeetingMemberTable: React.FC<{
       type: 'select' as const,
       options: [
         { label: 'Tất cả chức vụ', value: '' },
-        ...POSITION_FILTERS.map(f => ({ label: f.text, value: f.value }))
+        ...Object.entries(POSITION_LABELS).map(([value, label]) => ({ label, value })),
+        ...positionConfigs
+          .filter((p: any) => p.id && !Object.keys(POSITION_LABELS).includes(p.id))
+          .map((p: any) => ({ label: p.name || p.id, value: p.id }))
       ],
       colSpan: 12,
     }

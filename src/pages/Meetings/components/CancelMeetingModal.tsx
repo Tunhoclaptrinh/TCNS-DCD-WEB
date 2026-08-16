@@ -81,7 +81,7 @@ const CancelMeetingModal: React.FC<CancelMeetingModalProps> = ({
                 icon: <StopOutlined />,
             }}
             width={540}
-            centered
+
             destroyOnClose
         >
             <div style={{ padding: '8px 0' }}>

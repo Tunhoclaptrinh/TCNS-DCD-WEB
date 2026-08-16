@@ -21,9 +21,6 @@ import {
   Badge,
   Popconfirm,
   Popover,
-  Tabs,
-  Timeline,
-  Empty,
 } from 'antd';
 import Button from '@/components/common/Button';
 import {
@@ -38,6 +35,7 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   CheckOutlined,
+  CloseCircleOutlined,
   HistoryOutlined,
   UsergroupAddOutlined,
   UserOutlined,
@@ -46,18 +44,17 @@ import {
   SaveOutlined,
   WarningOutlined,
   FileTextOutlined,
-  SwapOutlined,
-  LogoutOutlined,
-  SyncOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
 import dutyService, { DutySlot, DutyShift } from '@/services/duty.service';
 import DutyPersonnelPicker from '../../components/DutyPersonnelTable';
+import { getAttendanceState, ATTENDANCE_STATE_CONFIG } from '../../components/AttendanceStatusTag';
 import SlotStructureEditor from './SlotStructureEditor';
 import SlotRequestsHistoryModal from '@/pages/Duty/Member/components/SlotRequestsHistoryModal';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
+import { POSITION_LABELS } from '@/constants/user.constants';
 
 import '../../DutyModal.less';
 
@@ -101,7 +98,7 @@ export const getUserDisplayName = (u: any) => {
   return u.name || u.username || `#${u.id || ''}`;
 };
 
-export const getPositionInfo = (posCode: string) => {
+export const getPositionInfo = (posCode: string, positionConfigs: any[] = []) => {
   const raw = (posCode || '').toLowerCase().trim();
 
   if (raw === 'admin' || raw.includes('quản trị') || raw === 'dt' || raw.includes('đội trưởng')) {
@@ -123,7 +120,12 @@ export const getPositionInfo = (posCode: string) => {
     return { name: 'Thành viên', color: 'cyan' };
   }
 
-  return { name: posCode || 'Thành viên', color: 'cyan' };
+  const foundCfg = (positionConfigs || []).find((p: any) => p.id === posCode);
+  if (foundCfg && foundCfg.name) {
+    return { name: foundCfg.name, color: 'purple' };
+  }
+
+  return { name: POSITION_LABELS[posCode] || posCode || 'Thành viên', color: 'cyan' };
 };
 
 interface AdminDutySlotModalProps {
@@ -202,31 +204,12 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     }
   }, [open, slot, form]);
 
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
-
-  const fetchLogs = async (slotId: number) => {
-    if (!slotId) return;
-    setLoadingLogs(true);
-    try {
-      const res = await dutyService.getSlotLogs(slotId);
-      if (res.success && Array.isArray(res.data)) {
-        setLogs(res.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch slot logs:', err);
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
-
   const refreshCurrentSlot = async () => {
     if (!slot?.id) return;
     try {
       const res = await dutyService.getSlot(slot.id);
       if (res.success && res.data) {
         setCurrentSlot(res.data);
-        fetchLogs(slot.id);
       }
     } catch (err) {
       console.error('Failed to refresh slot details:', err);
@@ -262,7 +245,6 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         attendanceOverrides: currentSlot.attendanceOverrides ? { ...currentSlot.attendanceOverrides } : {},
       });
       if (currentSlot.assignedUsers) updateCache(currentSlot.assignedUsers);
-      fetchLogs(currentSlot.id);
     }
   }, [open, currentSlot, form]);
 
@@ -409,8 +391,16 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
     form.setFieldsValue({ attendedUserIds: nextAttended });
   };
 
-  // Tìm Ca bản mẫu để hiển thị context
-  const parentShift = slot?.shiftId ? templates.find(s => String(s.id) === String(slot.shiftId)) : null;
+  // Tìm Ca bản mẫu để hiển thị context từ dữ liệu thật trong cơ sở dữ liệu
+  const parentShift = React.useMemo(() => {
+    if (!slot) return null;
+    if ((slot as any).shift) return (slot as any).shift;
+    if (slot.shiftId && Array.isArray(templates)) {
+      const found = templates.find((s: any) => String(s.id) === String(slot.shiftId));
+      if (found) return found;
+    }
+    return null;
+  }, [slot, templates]);
   const isSpecial = !!parentShift?.isSpecialEvent;
 
   const handleDeleteKip = () => {
@@ -508,7 +498,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
       onOk={handleConfirm}
       loading={loading || externalLoading}
       width={900}
-      okText="Lưu thay đổi"
+      okText="Lưu lại"
       footer={
         <div className="duty-modal-footer">
           {slot?.kipId && (
@@ -525,28 +515,15 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
             Hủy
           </Button>
           <Button variant="primary" buttonSize="small" onClick={handleConfirm} loading={loading} icon={<SaveOutlined />} style={{ fontWeight: 600 }}>
-            Lưu thay đổi
+            Lưu lại
           </Button>
         </div>
       }
     >
       <div className="duty-slot-modal-container">
-        <Tabs
-          defaultActiveKey="info"
-          items={[
-            {
-              key: 'info',
-              label: (
-                <Space>
-                  <ThunderboltOutlined />
-                  <span>Cấu hình & Phân công</span>
-                </Space>
-              ),
-              children: (
-                <>
-        {/* Breadcrumb: Ca cha */}
+        {/* Breadcrumb: Ca cha (Luôn hiển thị ở trên cùng Modal nếu có) */}
         {parentShift && (
-          <div className={`duty-slot-parent-banner ${isSpecial ? 'is-special' : 'is-normal'}`}>
+          <div className={`duty-slot-parent-banner ${isSpecial ? 'is-special' : 'is-normal'}`} style={{ marginBottom: 16 }}>
             <Space size={14}>
               <div className={`duty-slot-banner-date-badge ${isSpecial ? 'is-special' : 'is-normal'}`}>
                 <div className="date-badge-dow">{dayjs(slot?.shiftDate).format('ddd')}</div>
@@ -571,7 +548,7 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
 
             {onOpenCa && slot && (
               <Button icon={<EditOutlined />} buttonSize="small" variant="outline" onClick={() => onOpenCa(slot)}>
-                Xem Ca
+                Chỉnh sửa Ca
               </Button>
             )}
           </div>
@@ -906,17 +883,45 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     });
 
                     if (leaveReq) {
+                      const isPending = leaveReq.status === 'pending';
+                      const isApproved = leaveReq.status === 'approved' || leaveReq.isApproved;
+                      const badgeColor = isPending ? 'gold' : isApproved ? 'warning' : 'default';
+                      const badgeLabel = isPending ? 'Chờ duyệt nghỉ' : isApproved ? 'Đã duyệt nghỉ' : 'Nghỉ bị từ chối';
+                      const badgeIcon = isPending ? <ClockCircleOutlined style={{ marginRight: 4 }} /> : isApproved ? <CheckCircleOutlined style={{ marginRight: 4 }} /> : <CloseCircleOutlined style={{ marginRight: 4 }} />;
+
+                      const leaveTooltipTitle = (
+                        <div>
+                          <div className="duty-tooltip-title">Đơn xin nghỉ ca</div>
+                          {leaveReq.reason && (
+                            <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Lý do xin nghỉ:</b> {leaveReq.reason}</div>
+                          )}
+                          {leaveReq.status === 'rejected' && (
+                            <div className="duty-tooltip-note" style={{ color: '#ff7875' }}>
+                              <CloseCircleOutlined style={{ marginRight: 4 }} /><b>Lý do từ chối:</b> {leaveReq.rejectionReason || 'Không có lý do cụ thể'}
+                            </div>
+                          )}
+                          <div className="duty-tooltip-note">Trạng thái: {badgeLabel}</div>
+                        </div>
+                      );
+
                       allBadges.push(
-                        <Tag key="leave" color="warning" className="duty-badge-tag">
-                          Xin nghỉ ({leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})
-                        </Tag>
+                        <Tooltip key="leave" title={leaveTooltipTitle}>
+                          <Tag color={badgeColor} className="duty-badge-tag" style={{ cursor: 'pointer' }}>
+                            {badgeIcon}{badgeLabel}
+                          </Tag>
+                        </Tooltip>
                       );
                     }
 
                     if (swapReq) {
+                      const isPending = swapReq.status === 'pending';
+                      const isApproved = swapReq.status === 'approved' || swapReq.isApproved;
+                      const badgeColor = isPending ? 'processing' : isApproved ? 'success' : 'default';
+                      const badgeLabel = isPending ? 'Chờ duyệt đổi ca' : isApproved ? 'Đã duyệt đổi ca' : 'Đổi ca bị từ chối';
+
                       allBadges.push(
-                        <Tag key="swap" color="processing" className="duty-badge-tag">
-                          Xin đổi ({swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'})
+                        <Tag key="swap" color={badgeColor} className="duty-badge-tag">
+                          {badgeLabel}
                         </Tag>
                       );
                     }
@@ -958,37 +963,49 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                               </div>
                             </Tooltip>
                           ))}
-                          {leaveReq && (
-                            <Tooltip
-                              placement="right"
-                              title={
-                                <div>
-                                  <div className="duty-tooltip-title">Đơn xin nghỉ ca</div>
-                                  <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Lý do:</b> {leaveReq.reason || 'Không có lý do'}</div>
-                                  <div className="duty-tooltip-note">Trạng thái: {leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}</div>
+                          {leaveReq && (() => {
+                            const leaveStatusLabel = leaveReq.status === 'pending' ? 'Chờ duyệt' : (leaveReq.status === 'approved' || leaveReq.isApproved ? 'Đã duyệt' : 'Bị từ chối');
+                            return (
+                              <Tooltip
+                                placement="right"
+                                title={
+                                  <div>
+                                    <div className="duty-tooltip-title">Đơn xin nghỉ ca</div>
+                                    <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Lý do xin nghỉ:</b> {leaveReq.reason || 'Không có lý do'}</div>
+                                    {leaveReq.status === 'rejected' && (
+                                      <div className="duty-tooltip-note" style={{ color: '#ff7875' }}>
+                                        <CloseCircleOutlined style={{ marginRight: 4 }} /><b>Lý do từ chối:</b> {leaveReq.rejectionReason || 'Không có lý do cụ thể'}
+                                      </div>
+                                    )}
+                                    <div className="duty-tooltip-note">Trạng thái: {leaveStatusLabel}</div>
+                                  </div>
+                                }
+                              >
+                                <div className="duty-popover-leave-item">
+                                  <b>Xin nghỉ:</b> {leaveStatusLabel} {leaveReq.reason ? ` - ${leaveReq.reason}` : ''}
+                                  {leaveReq.status === 'rejected' && leaveReq.rejectionReason ? ` (Từ chối: ${leaveReq.rejectionReason})` : ''}
                                 </div>
-                              }
-                            >
-                              <div className="duty-popover-leave-item">
-                                <b>Xin nghỉ:</b> {leaveReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'} {leaveReq.reason ? ` - ${leaveReq.reason}` : ''}
-                              </div>
-                            </Tooltip>
-                          )}
-                          {swapReq && (
-                            <Tooltip
-                              placement="right"
-                              title={
-                                <div>
-                                  <div className="duty-tooltip-title">Đơn xin đổi kíp</div>
-                                  <div className="duty-tooltip-note">Trạng thái: {swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}</div>
+                              </Tooltip>
+                            );
+                          })()}
+                          {swapReq && (() => {
+                            const swapStatusLabel = swapReq.status === 'pending' ? 'Chờ duyệt' : (swapReq.status === 'approved' || swapReq.isApproved ? 'Đã duyệt' : 'Bị từ chối');
+                            return (
+                              <Tooltip
+                                placement="right"
+                                title={
+                                  <div>
+                                    <div className="duty-tooltip-title">Đơn xin đổi kíp</div>
+                                    <div className="duty-tooltip-note">Trạng thái: {swapStatusLabel}</div>
+                                  </div>
+                                }
+                              >
+                                <div className="duty-popover-swap-item">
+                                  <b>Xin đổi kíp:</b> {swapStatusLabel}
                                 </div>
-                              }
-                            >
-                              <div className="duty-popover-swap-item">
-                                <b>Xin đổi kíp:</b> {swapReq.status === 'pending' ? 'Chờ duyệt' : 'Đã duyệt'}
-                              </div>
-                            </Tooltip>
-                          )}
+                              </Tooltip>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -1116,11 +1133,34 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                               const checkInTimeStr = attendanceInfo?.time ? dayjs(attendanceInfo.time).format('HH:mm:ss DD/MM/YYYY') : null;
                               const methodLabel = attendanceInfo?.method === 'admin' ? ' (Admin điểm danh)' : attendanceInfo?.method === 'leader' ? ' (Quản lý kíp điểm danh)' : attendanceInfo?.method === 'self_checkin' ? ' (Tự điểm danh)' : '';
 
-                              if (isAttended) {
+                              const attState = getAttendanceState(userDetail, slot);
+                              const attCfg = ATTENDANCE_STATE_CONFIG[attState];
+
+                              if (attState === 'present') {
                                 return (
                                   <Tooltip title={checkInTimeStr ? `Đã điểm danh lúc: ${checkInTimeStr}${methodLabel}` : 'Đã điểm danh có mặt'}>
-                                    <span className="status-text is-attended" style={{ color: '#16a34a', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                                      <CheckCircleOutlined /> ĐÃ CÓ MẶT
+                                    <span className="status-text is-attended" style={{ color: attCfg.textColor, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                      {attCfg.icon} ĐÃ CÓ MẶT
+                                    </span>
+                                  </Tooltip>
+                                );
+                              }
+
+                              if (attState === 'excused') {
+                                return (
+                                  <Tooltip title="Đã có đơn xin nghỉ được duyệt">
+                                    <span className="status-text is-excused" style={{ color: attCfg.textColor, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      {attCfg.icon} VẮNG CÓ LÝ DO
+                                    </span>
+                                  </Tooltip>
+                                );
+                              }
+
+                              if (attState === 'absent') {
+                                return (
+                                  <Tooltip title="Vắng mặt không phép / Chưa điểm danh khi ca kết thúc">
+                                    <span className="status-text is-absent" style={{ color: attCfg.textColor, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      {attCfg.icon} VẮNG KHÔNG LÝ DO
                                     </span>
                                   </Tooltip>
                                 );
@@ -1270,69 +1310,8 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
         <Form.Item name="note" noStyle>
           <Input.TextArea size="small" placeholder="Thông tin thêm..." rows={2} />
         </Form.Item>
-                </>
-              )
-            },
-            {
-              key: 'history',
-              label: (
-                <Space>
-                  <HistoryOutlined />
-                  <span>Lịch sử hoạt động ({logs.length})</span>
-                </Space>
-              ),
-              children: (
-                <div style={{ padding: '16px 8px', maxHeight: 500, overflowY: 'auto' }}>
-                  {loadingLogs ? (
-                    <div style={{ textAlign: 'center', padding: '24px' }}>
-                      <SyncOutlined spin style={{ fontSize: 22, color: '#3b82f6' }} />
-                      <div style={{ marginTop: 8, color: '#64748b' }}>Đang tải lịch sử kíp trực...</div>
-                    </div>
-                  ) : logs.length === 0 ? (
-                    <Empty description="Chưa có lịch sử hoạt động nào trong kíp này" style={{ padding: '32px 0' }} />
-                  ) : (
-                    <Timeline mode="left">
-                      {logs.map((log: any, idx: number) => {
-                        const isTransfer = log.action === 'transfer' || log.action === 'swap';
-                        const isRegister = log.action === 'register';
-                        const isCancel = log.action === 'cancel';
-                        const isLeave = log.action === 'leave';
-                        const isAttendance = log.action === 'attendance';
-                        
-                        let color = 'blue';
-                        let icon = <InfoCircleOutlined />;
-                        if (isTransfer) { color = 'purple'; icon = <SwapOutlined />; }
-                        if (isRegister) { color = 'green'; icon = <CheckCircleOutlined />; }
-                        if (isCancel || isLeave) { color = 'red'; icon = <LogoutOutlined />; }
-                        if (isAttendance) { color = 'gold'; icon = <CheckCircleOutlined />; }
-
-                        return (
-                          <Timeline.Item key={idx} color={color} dot={icon}>
-                            <div style={{ fontSize: 12 }}>
-                              <div style={{ fontWeight: 600, color: '#1e293b' }}>
-                                {log.details || log.description || (log.action === 'register' ? 'Đăng ký kíp trực' : (log.action === 'cancel' ? 'Hủy đăng ký kíp' : 'Hoạt động kíp'))}
-                              </div>
-                              <div style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>
-                                🕒 {dayjs(log.createdAt).format('HH:mm:ss - DD/MM/YYYY')}
-                              </div>
-                              <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <Avatar size={18} src={log.performer?.avatar} icon={<UserOutlined />} />
-                                <span style={{ fontSize: 11, color: '#475569', fontWeight: 500 }}>
-                                  {getUserDisplayName(log.performer) || 'Hệ thống'}
-                                </span>
-                              </div>
-                            </div>
-                          </Timeline.Item>
-                        );
-                      })}
-                    </Timeline>
-                  )}
-                </div>
-              )
-            }
-          ]}
-        />
       </div>
+    </FormModal>
 
       {/* Violation Modal for Admin */}
       <FormModal 
@@ -1484,7 +1463,6 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
           );
         })()}
       </FormModal>
-    </FormModal>
 
     <SlotRequestsHistoryModal
       open={isRequestsModalVisible}

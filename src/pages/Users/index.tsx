@@ -26,7 +26,7 @@ import roleService, { Role } from '../../services/role.service';
 import { getUserDisplayName } from '@/utils/formatters';
 import permissionService from '../../services/permission.service';
 import systemSettingService from '@/services/system-setting.service';
-import { POSITION_LABELS, POSITION_LEVELS, POSITION_FILTERS, USER_FIELD_LABELS, USER_VALUE_MAP, DEPARTMENTS } from '@/constants/user.constants';
+import { POSITION_LABELS, POSITION_LEVELS, USER_FIELD_LABELS, USER_VALUE_MAP, DEPARTMENTS } from '@/constants/user.constants';
 
 // Dynamic department options will be derived from stats
 
@@ -196,6 +196,8 @@ const UserPage = () => {
         }
     };
 
+    const [positionConfigs, setPositionConfigs] = useState<any[]>([]);
+
     const fetchDepartmentConfigs = async () => {
         try {
             const res = await systemSettingService.getByKey('DEPARTMENT_CONFIGS');
@@ -205,6 +207,18 @@ const UserPage = () => {
             }
         } catch (error) {
             console.error('Failed to fetch department configs:', error);
+        }
+    };
+
+    const fetchPositionConfigs = async () => {
+        try {
+            const res = await systemSettingService.getByKey('POSITION_CONFIGS');
+            if (res && res.value) {
+                const parsed = typeof res.value === 'string' ? JSON.parse(res.value) : res.value;
+                setPositionConfigs(Array.isArray(parsed) ? parsed : []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch position configs:', error);
         }
     };
 
@@ -222,9 +236,34 @@ const UserPage = () => {
             fetchPermissions();
         }
         
-        // Luôn fetch config phòng ban cho form
+        // Luôn fetch config phòng ban & chức vụ cho form
         fetchDepartmentConfigs();
+        fetchPositionConfigs();
     }, []);
+
+    const positionMap = useMemo(() => {
+        const map: Record<string, string> = { ...POSITION_LABELS };
+        (positionConfigs || []).forEach((p: any) => {
+            if (p.id && p.name) {
+                map[p.id] = p.name;
+            }
+        });
+        return map;
+    }, [positionConfigs]);
+
+    const getPositionLabel = useCallback((pos: string) => {
+        if (!pos) return '--';
+        return positionMap[pos] || pos;
+    }, [positionMap]);
+
+    const dynamicPositionFilters = useMemo(() => {
+        const baseKeys = new Set(Object.keys(POSITION_LABELS));
+        const customOptions = (positionConfigs || [])
+            .filter((p: any) => p.id && !baseKeys.has(p.id))
+            .map((p: any) => ({ text: p.name || p.id, value: p.id }));
+        const baseOptions = Object.entries(POSITION_LABELS).map(([value, text]) => ({ text, value }));
+        return [...baseOptions, ...customOptions];
+    }, [positionConfigs]);
 
     // Fetch stats for building Tabs
     const fetchUserStats = async (filters: any = {}) => {
@@ -617,10 +656,10 @@ const UserPage = () => {
             width: 180,
             resizable: true,
             required: true,
-            filters: POSITION_FILTERS,
+            filters: dynamicPositionFilters,
             render: (value: string) => {
                 if (!value) return '--';
-                return <Tag color="cyan">{POSITION_LABELS[value] || value.toUpperCase()}</Tag>;
+                return <Tag color="cyan">{getPositionLabel(value)}</Tag>;
             }
         },
         {
@@ -1280,6 +1319,7 @@ const UserPage = () => {
                 roles={roleList}
                 permissions={permissionList}
                 departmentConfigs={departmentConfigs}
+                positionConfigs={positionConfigs}
                 departments={Array.from(new Set([
                     ...(departmentConfigs.length > 0 ? departmentConfigs.map(d => d.name) : DEPARTMENTS), 
                     ...Object.keys(stats?.byDepartment || {}).filter(d => d !== '__unassigned__')
@@ -1310,6 +1350,8 @@ const UserPage = () => {
                 targetDepartment={targetDepartment}
                 setTargetDepartment={setTargetDepartment}
                 stats={stats}
+                departmentConfigs={departmentConfigs}
+                positionConfigs={positionConfigs}
             />
 
             <SyncAlumniModal

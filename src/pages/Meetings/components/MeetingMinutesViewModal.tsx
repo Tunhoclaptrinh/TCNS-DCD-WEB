@@ -80,7 +80,7 @@ const MeetingMinutesViewModal: React.FC<MeetingMinutesViewModalProps> = ({
             open={open}
             onCancel={onCancel}
             width={850}
-            centered
+
             destroyOnClose
             footer={[
                 <Button key="close" variant="outline" buttonSize="small" onClick={onCancel} style={{ minWidth: 100, borderRadius: 8 }}>

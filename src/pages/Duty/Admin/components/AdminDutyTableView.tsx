@@ -4,6 +4,7 @@ import { MinusSquareOutlined, PlusSquareOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { DutySlot, DutyShift } from '@/services/duty.service';
 import { getUserDisplayName } from '@/utils/formatters';
+import { getAttendanceState, ATTENDANCE_STATE_CONFIG } from '../../components/AttendanceStatusTag';
 
 interface AdminDutyTableViewProps {
   loading: boolean;
@@ -279,9 +280,12 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                         }
 
                                         const displayName = getUserDisplayName(user);
+                                        const attState = getAttendanceState(user, slot);
+                                        const attCfg = ATTENDANCE_STATE_CONFIG[attState];
+                                        const posDeptText = user.department ? ` [${user.department}]` : user.position ? ` [${user.position}]` : '';
 
                                         return (
-                                          <Tooltip key={idx} title={`${displayName}${isSupp ? ' [Bổ sung]' : ''}`}>
+                                          <Tooltip key={idx} title={`${displayName}${posDeptText}${isSupp ? ' [Bổ sung]' : ''} • ${attCfg.label}`}>
                                             <div 
                                               className="stacked-user"
                                               style={{ 
@@ -313,10 +317,16 @@ const AdminDutyTableView: React.FC<AdminDutyTableViewProps> = ({
                                                   width: '100%', 
                                                   fontSize: 'inherit', 
                                                   color: 'inherit',
-                                                  fontWeight: 'inherit'
+                                                  fontWeight: 'inherit',
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  justifyContent: 'center',
+                                                  gap: 4
                                                 }}
                                               >
-                                                {displayName} {isSupp && <span style={{ fontSize: 10, color: '#7c3aed' }}>(BS)</span>}
+                                                {attState !== 'pending' && attCfg.icon}
+                                                <span>{displayName}</span>
+                                                {isSupp && <span style={{ fontSize: 10, color: '#7c3aed' }}>(BS)</span>}
                                               </Typography.Text>
                                             </div>
                                           </Tooltip>

@@ -9,8 +9,6 @@ import {
   Avatar, 
   Tag, 
   message, 
-  Row, 
-  Col, 
   Input, 
   InputNumber, 
   Form, 
@@ -40,6 +38,7 @@ import DutyPersonnelPicker from '../../components/DutyPersonnelTable';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import '../../DutyModal.less';
+import './ShiftLeaderAttendanceModal.less';
 
 const { Text, Title } = Typography;
 
@@ -69,17 +68,26 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
   const [isViolationModalOpen, setIsViolationModalOpen] = useState(false);
   const [violationUser, setViolationUser] = useState<any>(null);
 
-  const getPositionTag = (pos: string) => {
-    const map: Record<string, { color: string, label: string }> = {
-      'ctv': { color: 'default', label: 'CTV' },
-      'tv': { color: 'blue', label: 'Thành viên' },
-      'tvb': { color: 'cyan', label: 'TV Chính thức' },
-      'pb': { color: 'orange', label: 'Phó ban' },
-      'tb': { color: 'volcano', label: 'Trưởng ban' },
-      'dt': { color: 'gold', label: 'Đội trưởng' }
-    };
-    const info = map[pos] || { color: 'default', label: pos || 'Thành viên' };
-    return <Tag color={info.color} style={{ fontSize: '10px', margin: 0 }}>{info.label}</Tag>;
+  const getPositionTag = (posCode: string) => {
+    const raw = (posCode || '').toLowerCase().trim();
+    let name = posCode || 'Thành viên';
+    let color = 'cyan';
+
+    if (raw === 'admin' || raw.includes('quản trị') || raw === 'dt' || raw.includes('đội trưởng')) {
+      name = 'Đội trưởng'; color = 'gold';
+    } else if (raw === 'tb' || raw.includes('trưởng ban')) {
+      name = 'Trưởng ban'; color = 'volcano';
+    } else if (raw === 'pb' || raw.includes('phó ban')) {
+      name = 'Phó ban'; color = 'orange';
+    } else if (raw === 'tvb' || raw.includes('thành viên ban') || raw.includes('chuyên viên')) {
+      name = 'TV Chính thức'; color = 'cyan';
+    } else if (raw === 'ctv' || raw.includes('cộng tác viên')) {
+      name = 'CTV'; color = 'green';
+    } else if (raw === 'tv' || raw.includes('thành viên')) {
+      name = 'Thành viên'; color = 'blue';
+    }
+
+    return <Tag color={color} style={{ fontSize: '10px', margin: 0, borderRadius: 4, fontWeight: 500 }}>{name}</Tag>;
   };
   const [violationForm] = Form.useForm();
 
@@ -365,8 +373,14 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
       open={open}
       destroyOnHidden
       onCancel={onCancel}
-      footer={null}
-      width={800}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8 }}>
+          <Button variant="primary" buttonSize="small" onClick={onCancel} style={{ minWidth: 150 }}>
+            Hoàn tất điểm danh
+          </Button>
+        </div>
+      }
+      width={820}
       centered
       title={
         <div className="duty-modal-header-row">
@@ -390,68 +404,63 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
     >
       <Divider style={{ margin: '16px 0' }} />
 
-      {/* Batch Action Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-        <Space size={8}>
-          <Button
-            variant="success"
-            buttonSize="small"
-            icon={<CheckCircleOutlined />}
-            loading={loading}
-            onClick={handleMarkAllPresent}
-          >
-            Tất cả có mặt
-          </Button>
-          <Button
-            variant="danger"
-            buttonSize="small"
-            icon={<WarningOutlined />}
-            loading={loading}
-            onClick={handleScanAbsentees}
-          >
-            Rà soát vắng & Ghi lỗi
-          </Button>
-        </Space>
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Quản lý kíp: {allUsers.filter(u => u.isAttended).length}/{allUsers.length} có mặt
-        </Text>
-      </div>
+      {/* Cụm 1: Toolbar Thao tác nhanh & Bổ sung nhân sự (Căn giữa, tối giản & đồng bộ nút) */}
+      <div className="shift-leader-toolbar-box">
+        <div className="shift-leader-toolbar-space">
+          {/* Nút 1: Tất cả có mặt */}
+          <Tooltip title="Điểm danh Tất cả nhân sự trong kíp có mặt">
+            <Button
+              variant="outline"
+              buttonSize="small"
+              icon={<CheckCircleOutlined style={{ color: '#10b981' }} />}
+              loading={loading}
+              onClick={handleMarkAllPresent}
+            >
+              Tất cả có mặt
+            </Button>
+          </Tooltip>
 
-      {/* Add supplementary user */}
-      <div className="duty-slot-info-box">
-        <div className="duty-slot-info-label">
-          <UsergroupAddOutlined style={{ color: '#6366f1' }} />
-          <span>Thêm nhân sự trực bổ sung ngoài lịch</span>
-        </div>
-        <Row gutter={[12, 12]} align="middle">
-          <Col xs={24} sm={15}>
+          {/* Nút 2: Rà soát vắng & Ghi lỗi */}
+          <Tooltip title="Tự động rà soát nhân sự vắng mặt và ghi lỗi">
+            <Button
+              variant="outline"
+              buttonSize="small"
+              icon={<WarningOutlined style={{ color: '#ef4444' }} />}
+              loading={loading}
+              onClick={handleScanAbsentees}
+            >
+              Rà soát vắng & Ghi lỗi
+            </Button>
+          </Tooltip>
+
+          <Divider type="vertical" style={{ height: 20, margin: '0 4px' }} />
+
+          {/* Nút 3: Bổ sung nhân sự ngoài lịch */}
+          <Tooltip title="Thêm nhân sự điểm danh bổ sung ngoài danh sách chính thức">
             <DutyPersonnelPicker
               variant="outline"
-              buttonSize="medium"
-              label="Chọn nhân sự điểm danh bổ sung (Thành viên & CTV)"
+              buttonSize="small"
+              label="Bổ sung nhân sự"
               icon={<UsergroupAddOutlined />}
-              style={{ width: '100%' }}
               onChange={(ids) => {
                 if (ids && ids.length > 0) {
                   handleBatchSupplementaryAttendance(ids, suppCoeff);
                 }
               }}
             />
-          </Col>
-          <Col xs={24} sm={9}>
-            <Tooltip title="Hệ số kíp được tính cho nhân sự bổ sung">
-              <InputNumber
-                min={0}
-                max={10}
-                step={0.25}
-                value={suppCoeff}
-                onChange={(val) => setSuppCoeff(val ?? 1)}
-                addonAfter="kíp tính"
-                style={{ width: '100%' }}
-              />
-            </Tooltip>
-          </Col>
-        </Row>
+          </Tooltip>
+
+          {/* Ô 4: Số kíp bổ sung mặc định (Hiển thị cố định dạng Tag/Text, không có bút chì) */}
+          <Tooltip title="Hệ số kíp tính cho nhân sự điểm danh bổ sung">
+            <Tag 
+              color="default" 
+              className="duty-attendee-coeff-badge is-default"
+              style={{ cursor: 'default', padding: '3px 10px', margin: 0 }}
+            >
+              {suppCoeff.toFixed(2)} kíp
+            </Tag>
+          </Tooltip>
+        </div>
       </div>
 
       {/* User list */}
@@ -531,7 +540,7 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                     {/* 2. Middle Box: Tags & Violations */}
                     <div className="duty-attendee-middle-box">
                       <div className="duty-attendee-tags-row">
-                        {getPositionTag(u.position)}
+                        {getPositionTag(u.position || u.positionCode || u.role)}
                         {isAssigned ? (
                           <Tag color="blue" className="duty-badge-tag">
                             Theo lịch
@@ -719,10 +728,6 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
             })
           )}
         </div>
-      </div>
-
-      <div className="duty-done-row">
-        <Button variant="primary" onClick={onCancel} style={{ padding: '0 32px' }}>Hoàn tất điểm danh</Button>
       </div>
 
       {/* Violation Modal */}

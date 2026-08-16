@@ -43,6 +43,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
   const [showAll, setShowAll] = useState(false);
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [departments, setDepartments] = useState<string[]>(DEPARTMENTS);
+  const [positionConfigs, setPositionConfigs] = useState<any[]>([]);
 
   useEffect(() => {
     generationService.getAll().then((res) => {
@@ -60,7 +61,29 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
         }
       }
     }).catch(() => {});
+
+    systemSettingService.getByKey('POSITION_CONFIGS').then((res) => {
+      if (res && res.value) {
+        const parsed = typeof res.value === 'string' ? JSON.parse(res.value) : res.value;
+        if (Array.isArray(parsed)) setPositionConfigs(parsed);
+      }
+    }).catch(() => {});
   }, []);
+
+  const positionMap = React.useMemo(() => {
+    const map: Record<string, string> = { ...POSITION_LABELS };
+    (positionConfigs || []).forEach((p: any) => {
+      if (p.id && p.name) {
+        map[p.id] = p.name;
+      }
+    });
+    return map;
+  }, [positionConfigs]);
+
+  const getPositionLabel = React.useCallback((val: string) => {
+    if (!val) return '--';
+    return positionMap[val] || val;
+  }, [positionMap]);
 
   const {
     data,
@@ -145,7 +168,7 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       dataIndex: "position",
       key: "position",
       width: 110,
-      render: (val: string) => val ? <Tag color="cyan" style={{ borderRadius: 4, fontSize: 11 }}>{POSITION_LABELS[val] || val}</Tag> : '--'
+      render: (val: string) => val ? <Tag color="cyan" style={{ borderRadius: 4, fontSize: 11 }}>{getPositionLabel(val)}</Tag> : '--'
     }
   ];
 
@@ -178,7 +201,12 @@ export const DutyPersonnelTable: React.FC<DutyPersonnelTableProps> = ({
       key: "position",
       label: "Chức vụ",
       type: "select" as const,
-      options: Object.entries(POSITION_LABELS).map(([value, label]) => ({ label, value })),
+      options: [
+        ...Object.entries(POSITION_LABELS).map(([value, label]) => ({ label, value })),
+        ...positionConfigs
+          .filter(p => p.id && !Object.keys(POSITION_LABELS).includes(p.id))
+          .map(p => ({ label: p.name || p.id, value: p.id }))
+      ],
     },
     {
       key: "generationId",

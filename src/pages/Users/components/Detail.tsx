@@ -4,6 +4,7 @@ import Button from '../../../components/common/Button';
 import Access from '@/components/common/Access';
 import { User } from '../../../types';
 import { formatDate, getUserDisplayName } from '../../../utils/formatters';
+import { POSITION_LABELS } from '@/constants/user.constants';
 
 const { Text, Link } = Typography;
 
@@ -133,7 +134,7 @@ const UsersDetailModal: React.FC<UsersDetailModalProps> = ({
         <Descriptions column={2} bordered size="small">
           <Descriptions.Item label="Hạng/Chức vụ">
             <Space>
-              <Tag color="cyan" style={{ fontWeight: 600 }}>{(user.position || '').toUpperCase()}</Tag>
+              <Tag color="cyan" style={{ fontWeight: 600 }}>{user.position ? (POSITION_LABELS[user.position] || user.position.toUpperCase()) : '--'}</Tag>
               {user.department && <span style={{ color: '#595959' }}>({user.department})</span>}
             </Space>
           </Descriptions.Item>

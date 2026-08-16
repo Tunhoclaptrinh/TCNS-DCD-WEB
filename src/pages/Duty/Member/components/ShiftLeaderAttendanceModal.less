@@ -1,0 +1,97 @@
+@import '../../../../styles/variables.less';
+
+/* ─── Shift Leader Attendance Toolbar ──────────────── */
+.shift-leader-toolbar-box {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Căn giữa toolbar cụm 1 */
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  flex-wrap: wrap;
+}
+
+.shift-leader-toolbar-space {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ─── Coefficient Display ─────────────────────────── */
+.duty-attendee-coeff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+
+  &.is-default {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+
+    &:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+  }
+
+  &.is-overridden {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+
+    &:hover {
+      background: #fde68a;
+      color: #92400e;
+    }
+  }
+}
+
+/* ─── Responsive Adjustments for Mobile (< 576px) ───── */
+@media (max-width: 576px) {
+  .shift-leader-toolbar-box {
+    padding: 8px;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .shift-leader-toolbar-space {
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+
+    .ant-btn {
+      padding: 0 6px !important;
+      font-size: 11px !important;
+    }
+  }
+
+  .duty-slot-attendee-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 10px 12px !important;
+    gap: 8px !important;
+
+    .duty-slot-attendee-left {
+      width: 100% !important;
+    }
+
+    .duty-slot-attendee-right {
+      width: 100% !important;
+      justify-content: space-between !important;
+      border-top: 1px dashed #e2e8f0;
+      padding-top: 6px;
+    }
+  }
+}

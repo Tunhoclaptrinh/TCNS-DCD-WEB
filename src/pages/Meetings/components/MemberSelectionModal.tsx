@@ -44,7 +44,7 @@ const MemberSelectionModal: React.FC<MemberSelectionModalProps> = ({
                 <Button key="cancel" variant="ghost" buttonSize="small" onClick={onCancel} style={{ borderRadius: 6 }}>Hủy</Button>,
                 <Button key="ok" variant="primary" buttonSize="small" onClick={handleOk} style={{ borderRadius: 6, padding: '0 24px' }}>Xác nhận ({tempSelected.length})</Button>
             ]}
-            centered
+
         >
             <div style={{ marginTop: -12, padding: '0 4px' }}>
                 <MeetingMemberTable 

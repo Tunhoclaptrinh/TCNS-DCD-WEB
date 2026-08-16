@@ -91,7 +91,7 @@ const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
             ),
             okText: 'Tiếp tục',
             cancelText: 'Hủy',
-            centered: true,
+            okButtonProps: { danger: true },
             onOk: () => onRsvp(nextStatus),
         });
     };

@@ -173,7 +173,7 @@ const RolePermissionModal: React.FC<RolePermissionModalProps> = ({
             disabled={role?.key === 'admin'}
             style={{ minWidth: 120 }}
           >
-            Lưu thay đổi
+            Lưu lại
           </Button>
         </div>
       }

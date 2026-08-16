@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Table, Tag, Space, Typography, Avatar, Empty, Spin, Tabs, Timeline } from 'antd';
+import { Modal, Table, Tag, Space, Typography, Avatar, Empty, Spin, Tabs, Timeline, Tooltip } from 'antd';
 import { ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, SwapOutlined, LogoutOutlined, HistoryOutlined, InfoCircleOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import dutyService from '@/services/duty.service';
@@ -55,34 +55,62 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
     return <Tag color={color} icon={icon}>{text.toUpperCase()}</Tag>;
   };
 
+  const getResponseNote = (record: any) => {
+    return record.decisionNote || record.rejectionReason || record.adminNote || record.responseNote || record.note || '';
+  };
+
   const leaveColumns = [
     {
       title: 'Thành viên',
       key: 'user',
+      width: 150,
       render: (_: any, record: any) => (
         <Space>
           <Avatar size="small" src={record.user?.avatar} />
-          <Text>{getUserDisplayName(record.user)}</Text>
+          <Text strong style={{ fontSize: 13 }}>{getUserDisplayName(record.user)}</Text>
         </Space>
       )
     },
     {
-      title: 'Lý do',
+      title: 'Lý do xin nghỉ',
       dataIndex: 'reason',
       key: 'reason',
       ellipsis: true,
+      render: (val: string) => val || <Text type="secondary" italic>Không có</Text>
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
+      width: 120,
       render: (status: string) => getStatusTag(status)
+    },
+    {
+      title: 'Ghi chú / Phản hồi',
+      key: 'responseNote',
+      ellipsis: true,
+      render: (_: any, record: any) => {
+        const note = getResponseNote(record);
+        if (!note) {
+          if (record.status === 'approved') return <Text type="secondary" italic style={{ fontSize: 12 }}>Đã phê duyệt</Text>;
+          if (record.status === 'rejected') return <Text type="secondary" italic style={{ fontSize: 12 }}>Không có ghi chú</Text>;
+          return <Text type="secondary" italic style={{ fontSize: 12 }}>Chờ xử lý</Text>;
+        }
+        return (
+          <Tooltip title={note}>
+            <Text type={record.status === 'rejected' ? 'danger' : 'success'} style={{ fontSize: 12, fontWeight: 500 }}>
+              {note}
+            </Text>
+          </Tooltip>
+        );
+      }
     },
     {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date: string) => dayjs(date).format('HH:mm DD/MM')
+      width: 110,
+      render: (date: string) => <span style={{ fontSize: 12, color: '#64748b' }}>{dayjs(date).format('HH:mm DD/MM')}</span>
     }
   ];
 
@@ -90,12 +118,13 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
     {
       title: 'Người yêu cầu',
       key: 'requester',
+      width: 150,
       render: (_: any, record: any) => {
         const u = record.requester || record.user;
         return (
           <Space>
             <Avatar size="small" src={u?.avatar} />
-            <Text>{getUserDisplayName(u)}</Text>
+            <Text strong style={{ fontSize: 13 }}>{getUserDisplayName(u)}</Text>
           </Space>
         );
       }
@@ -103,32 +132,56 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
     {
       title: 'Loại đổi',
       key: 'type',
+      width: 100,
       render: (_: any, record: any) => {
         const isFrom = record.fromSlotId === slotId;
         return (
-          <Tag color={isFrom ? 'orange' : 'blue'}>
+          <Tag color={isFrom ? 'orange' : 'blue'} style={{ fontSize: 11, margin: 0 }}>
             {isFrom ? 'Chuyển đi' : 'Chuyển đến'}
           </Tag>
         );
       }
     },
     {
-      title: 'Lý do',
+      title: 'Lý do đổi kíp',
       dataIndex: 'reason',
       key: 'reason',
       ellipsis: true,
+      render: (val: string) => val || <Text type="secondary" italic>Không có</Text>
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
+      width: 120,
       render: (status: string) => getStatusTag(status)
+    },
+    {
+      title: 'Ghi chú / Phản hồi',
+      key: 'responseNote',
+      ellipsis: true,
+      render: (_: any, record: any) => {
+        const note = getResponseNote(record);
+        if (!note) {
+          if (record.status === 'approved') return <Text type="secondary" italic style={{ fontSize: 12 }}>Đã phê duyệt</Text>;
+          if (record.status === 'rejected') return <Text type="secondary" italic style={{ fontSize: 12 }}>Không có ghi chú</Text>;
+          return <Text type="secondary" italic style={{ fontSize: 12 }}>Chờ xử lý</Text>;
+        }
+        return (
+          <Tooltip title={note}>
+            <Text type={record.status === 'rejected' ? 'danger' : 'success'} style={{ fontSize: 12, fontWeight: 500 }}>
+              {note}
+            </Text>
+          </Tooltip>
+        );
+      }
     },
     {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date: string) => dayjs(date).format('HH:mm DD/MM')
+      width: 110,
+      render: (date: string) => <span style={{ fontSize: 12, color: '#64748b' }}>{dayjs(date).format('HH:mm DD/MM')}</span>
     }
   ];
 
@@ -147,7 +200,7 @@ const SlotRequestsHistoryModal: React.FC<SlotRequestsHistoryModalProps> = ({ ope
           Đóng
         </Button>
       ]}
-      width={800}
+      width={900}
       zIndex={1100}
     >
       {loading ? (

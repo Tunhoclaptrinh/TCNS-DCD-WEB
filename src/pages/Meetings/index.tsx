@@ -621,7 +621,7 @@ const MeetingsPage = () => {
                 ]}
                 width={1000}
                 zIndex={102}
-                centered
+    
                 className="calendar-modal"
             >
                 <div style={{ marginTop: -12 }}>

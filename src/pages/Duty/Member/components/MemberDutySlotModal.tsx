@@ -38,6 +38,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import FormModal from '@/components/common/FormModal';
+import { getAttendanceState, ATTENDANCE_STATE_CONFIG } from '../../components/AttendanceStatusTag';
 import Button from '@/components/common/Button';
 import dutyService, { DutySlot } from '@/services/duty.service';
 import { useAccess } from '@/hooks';
@@ -45,6 +46,7 @@ import { getViolationTypeLabel } from '@/pages/Duty/Admin/components/AdminDutySl
 import LeaveRequestModal from './LeaveRequestModal';
 import SwapRequestModal from './SwapRequestModal';
 import { getUserDisplayName } from '@/utils/formatters';
+import { POSITION_LABELS } from '@/constants/user.constants';
 
 const { Text } = Typography;
 
@@ -112,7 +114,7 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
       return { name: 'Thành viên', color: 'cyan' };
     }
 
-    return { name: posCode || 'Thành viên', color: 'cyan' };
+    return { name: POSITION_LABELS[posCode] || posCode || 'Thành viên', color: 'cyan' };
   };
 
   const checkVisibility = (targetUser: any) => {
@@ -271,7 +273,18 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
     }
   };
 
-  const isAttendedMe = (
+  const [localAttendedUserIds, setLocalAttendedUserIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (slot) {
+      const ids = (slot.attendedUserIds || (slot as any).attendedUsers || [])
+        .map((u: any) => Number(u?.id ?? u))
+        .filter(Boolean);
+      setLocalAttendedUserIds(ids);
+    }
+  }, [slot]);
+
+  const isAttendedMe = localAttendedUserIds.some((id: any) => String(id) === String(currentUserId)) || (
     Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.some((id: any) => String(id) === String(currentUserId))
   ) || (
     Array.isArray((slot as any)?.attendedUsers) && (slot as any).attendedUsers.some((u: any) => String(u?.id ?? u) === String(currentUserId))
@@ -310,9 +323,29 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const supplementaryList = attendedList.filter((au: any) => !assignedList.some((as: any) => String(as.id) === String(au.id)));
   const totalPersonnelCount = assignedList.length + supplementaryList.length;
 
-  const isLeaderOfSlot = !!currentUserId && !!slot && (
-    (String(currentUserId) === String(slot.assignedUserIds?.[0])) ||
-    (String(currentUserId) === String(slot.tempLeaderId))
+  const myApprovedLeave = (slot?.leaveRequests || []).find((lr: any) => 
+    String(lr.userId || lr.user?.id) === String(currentUserId) && (lr.status === 'approved' || lr.isApproved)
+  );
+
+  const approvedLeaveUserIds = React.useMemo(() => {
+    return (slot?.leaveRequests || [])
+      .filter((lr: any) => lr.status === 'approved' || lr.isApproved)
+      .map((lr: any) => String(lr.userId || lr.user?.id));
+  }, [slot?.leaveRequests]);
+
+  const effectiveLeaderId = React.useMemo(() => {
+    if (!slot) return null;
+    if (slot.tempLeaderId) return String(slot.tempLeaderId);
+
+    const activeAssignedUser = (slot.assignedUserIds || []).find(
+      (id: any) => !approvedLeaveUserIds.includes(String(id))
+    );
+
+    return activeAssignedUser ? String(activeAssignedUser) : (slot.assignedUserIds?.[0] ? String(slot.assignedUserIds[0]) : null);
+  }, [slot, approvedLeaveUserIds]);
+
+  const isLeaderOfSlot = !!currentUserId && !!slot && !myApprovedLeave && (
+    String(currentUserId) === String(effectiveLeaderId)
   );
 
   return (
@@ -570,8 +603,8 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                : (slot?.assignedUsers && slot.assignedUsers.length > 0)
                                  ? slot.assignedUsers[0].id
                                  : null;
-                             const activeLeaderId = slot?.tempLeaderId || defaultLeaderId;
-                             const isLeader = !!activeLeaderId && String(activeLeaderId) === String(u.id);
+                             const effectiveLeaderId = (slot as any)?.tempLeaderId || defaultLeaderId;
+                             const isLeader = !!effectiveLeaderId && String(effectiveLeaderId) === String(u.id);
                             const isAttended = Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.some((id: any) => String(id) === String(u.id));
                             const isVisible = checkVisibility(u);
                             const isMe = String(u.id) === String(currentUserId);
@@ -583,6 +616,42 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                             const hasCustomCoeff = userOverriddenCoeff !== undefined && userOverriddenCoeff !== null && Number(userOverriddenCoeff) !== baseSlotCoeff;
 
                             const allBadges: React.ReactNode[] = [];
+
+                            // Add Leave Request status badge if exists
+                            const userLeaveReq = (slot?.leaveRequests || []).find((lr: any) => 
+                              String(lr.userId || lr.user?.id || lr.user) === String(u.id)
+                            );
+                            if (userLeaveReq) {
+                              const isPending = userLeaveReq.status === 'pending';
+                              const isApproved = userLeaveReq.status === 'approved' || userLeaveReq.isApproved;
+                              const badgeColor = isPending ? 'gold' : isApproved ? 'warning' : 'default';
+                              const badgeLabel = isPending ? 'Chờ duyệt nghỉ' : isApproved ? 'Đã duyệt nghỉ' : 'Nghỉ bị từ chối';
+                              const badgeIcon = isPending ? <ClockCircleOutlined style={{ marginRight: 4 }} /> : isApproved ? <CheckCircleOutlined style={{ marginRight: 4 }} /> : <CloseCircleOutlined style={{ marginRight: 4 }} />;
+
+                              const leaveTooltipTitle = (
+                                <div>
+                                  <div className="duty-tooltip-title">Đơn xin nghỉ ca</div>
+                                  {userLeaveReq.reason && (
+                                    <div className="duty-tooltip-note"><FileTextOutlined style={{ marginRight: 4 }} /><b>Lý do xin nghỉ:</b> {userLeaveReq.reason}</div>
+                                  )}
+                                  {userLeaveReq.status === 'rejected' && (
+                                    <div className="duty-tooltip-note" style={{ color: '#ff7875' }}>
+                                      <CloseCircleOutlined style={{ marginRight: 4 }} /><b>Lý do từ chối:</b> {userLeaveReq.rejectionReason || 'Không có lý do cụ thể'}
+                                    </div>
+                                  )}
+                                  <div className="duty-tooltip-note">Trạng thái: {badgeLabel}</div>
+                                </div>
+                              );
+
+                              allBadges.push(
+                                <Tooltip key={`lr-${u.id}`} title={leaveTooltipTitle}>
+                                  <Tag color={badgeColor} className="duty-badge-tag" style={{ cursor: 'pointer' }}>
+                                    {badgeIcon}{badgeLabel}
+                                  </Tag>
+                                </Tooltip>
+                              );
+                            }
+
                             userViolations.forEach((v: any) => {
                               allBadges.push(
                                 <Tooltip
@@ -756,12 +825,34 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                       const attendanceInfo = (slot as any)?.attendanceData?.[String(u.id)] || (slot as any)?.attendanceData?.[Number(u.id)];
                                       const checkInTimeStr = attendanceInfo?.time ? dayjs(attendanceInfo.time).format('HH:mm:ss DD/MM/YYYY') : null;
                                       const methodLabel = attendanceInfo?.method === 'admin' ? ' (Admin điểm danh)' : attendanceInfo?.method === 'leader' ? ' (Quản lý kíp điểm danh)' : attendanceInfo?.method === 'self_checkin' ? ' (Tự điểm danh)' : '';
+                                      const attState = getAttendanceState(u, slot);
+                                      const attCfg = ATTENDANCE_STATE_CONFIG[attState];
 
-                                      if (isAttended) {
+                                      if (attState === 'present') {
                                         return (
                                           <Tooltip title={checkInTimeStr ? `Đã điểm danh lúc: ${checkInTimeStr}${methodLabel}` : 'Đã điểm danh có mặt'}>
-                                            <span className="status-text is-attended" style={{ color: '#16a34a', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                                              <CheckCircleOutlined /> ĐÃ CÓ MẶT
+                                            <span className="status-text is-attended" style={{ color: attCfg.textColor, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                                              {attCfg.icon} ĐÃ CÓ MẶT
+                                            </span>
+                                          </Tooltip>
+                                        );
+                                      }
+
+                                      if (attState === 'excused') {
+                                        return (
+                                          <Tooltip title="Đã có đơn xin nghỉ được duyệt">
+                                            <span className="status-text is-excused" style={{ color: attCfg.textColor, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                              {attCfg.icon} VẮNG CÓ LÝ DO
+                                            </span>
+                                          </Tooltip>
+                                        );
+                                      }
+
+                                      if (attState === 'absent') {
+                                        return (
+                                          <Tooltip title="Vắng mặt không phép / Chưa điểm danh khi ca kết thúc">
+                                            <span className="status-text is-absent" style={{ color: attCfg.textColor, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                              {attCfg.icon} VẮNG KHÔNG LÝ DO
                                             </span>
                                           </Tooltip>
                                         );
@@ -942,9 +1033,12 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                               const slotStart = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.startTime}`);
                               const slotEnd = dayjs(`${dayjs(slot.shiftDate).format('YYYY-MM-DD')} ${slot.endTime}`);
                               const beforeMins = Math.max(0, Number(settings?.selfCheckInBeforeMinutes ?? 15));
-                              const isActive = now.isAfter(slotStart.subtract(beforeMins, 'minute')) && now.isBefore(slotEnd);
+                              const afterMins = Math.max(0, Number(settings?.selfCheckInAfterMinutes ?? 15));
+                              const earliestCheckIn = slotStart.subtract(beforeMins, 'minute');
+                              const latestCheckIn = slotEnd.add(afterMins, 'minute');
+                              const isActive = now.isAfter(earliestCheckIn) && now.isBefore(latestCheckIn);
                               const isAttended = isAttendedMe;
-                              const isPast = now.isAfter(slotEnd);
+                              const isPast = now.isAfter(latestCheckIn);
 
                               if (isAttended) return (
                                 <Space direction="vertical" size={6} style={{ width: '100%' }}>
@@ -985,21 +1079,22 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                   loading={loading || externalLoading}
                                   onClick={async () => {
                                     if (!slot) return;
-                                    if (onSelfCheckIn) {
-                                      await onSelfCheckIn(slot.id);
-                                    } else {
-                                      try {
-                                        setLoading(true);
+                                    try {
+                                      setLoading(true);
+                                      if (onSelfCheckIn) {
+                                        await onSelfCheckIn(slot.id);
+                                      } else {
                                         const res = await dutyService.selfCheckIn(slot.id);
                                         if (res.success) {
                                           message.success(res.message || 'Tự điểm danh thành công!');
-                                          onSuccess?.();
                                         }
-                                      } catch (err: any) {
-                                        message.error(err?.response?.data?.message || err?.message || 'Tự điểm danh thất bại');
-                                      } finally {
-                                        setLoading(false);
                                       }
+                                      setLocalAttendedUserIds(prev => [...prev, Number(currentUserId)]);
+                                      onSuccess?.();
+                                    } catch (err: any) {
+                                      message.error(err?.response?.data?.message || err?.message || 'Tự điểm danh thất bại');
+                                    } finally {
+                                      setLoading(false);
                                     }
                                   }}
                                   icon={<SyncOutlined />}
@@ -1059,26 +1154,46 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                         })()}
 
                         {(() => {
-                          // Disable swap/leave when slot already ended or user is already attended
+                          // Check existing requests for current user on this specific slot
+                          const myLeaveReq = (slot?.leaveRequests || []).find((lr: any) => 
+                            String(lr.userId || lr.user?.id || lr.user) === String(currentUserId)
+                          );
+                          const mySwapReq = (slot?.swapRequests || []).find((sr: any) => 
+                            String(sr.requesterId || sr.requester?.id || sr.user?.id || sr.user) === String(currentUserId)
+                          );
+
+                          const hasPendingLeave = myLeaveReq && myLeaveReq.status === 'pending';
+                          const hasApprovedLeave = myLeaveReq && (myLeaveReq.status === 'approved' || myLeaveReq.isApproved);
+                          const hasPendingSwap = mySwapReq && mySwapReq.status === 'pending';
+
+                          // Disable swap/leave when slot already ended, user is already attended, or request is pending/approved
                           const slotActionFrozen = isPastSlot || isAttendedMe;
-                          const swapDisabled = !canRegister || slotActionFrozen;
-                          const leaveDisabled = !canRegister || slotActionFrozen;
+                          
+                          let swapDisabled = !canRegister || slotActionFrozen || hasPendingLeave || hasApprovedLeave || hasPendingSwap;
+                          let leaveDisabled = !canRegister || slotActionFrozen || hasPendingLeave || hasApprovedLeave || hasPendingSwap;
 
-                          const swapLabel = !canRegister
-                            ? 'Không có quyền đổi ca'
-                            : isAttendedMe
-                              ? 'Đã điểm danh — không thể đổi ca'
-                              : isPastSlot
-                                ? 'Kíp đã kết thúc'
-                                : 'Đổi ca / Chuyển ca';
+                          let swapLabel = 'Đổi ca / Chuyển ca';
+                          let leaveLabel = 'Gửi đơn xin nghỉ';
 
-                          const leaveLabel = !canRegister
-                            ? 'Không có quyền xin nghỉ'
-                            : isAttendedMe
-                              ? 'Đã điểm danh — không cần xin nghỉ'
-                              : isPastSlot
-                                ? 'Kíp đã kết thúc'
-                                : 'Gửi đơn xin nghỉ';
+                          if (!canRegister) {
+                            swapLabel = 'Không có quyền đổi ca';
+                            leaveLabel = 'Không có quyền xin nghỉ';
+                          } else if (isAttendedMe) {
+                            swapLabel = 'Đã điểm danh — không thể đổi ca';
+                            leaveLabel = 'Đã điểm danh — không cần xin nghỉ';
+                          } else if (isPastSlot) {
+                            swapLabel = 'Kíp đã kết thúc';
+                            leaveLabel = 'Kíp đã kết thúc';
+                          } else if (hasApprovedLeave) {
+                            swapLabel = 'Đã duyệt nghỉ ca này';
+                            leaveLabel = 'Đã được duyệt xin nghỉ ca này';
+                          } else if (hasPendingLeave) {
+                            swapLabel = 'Đang chờ duyệt nghỉ — không thể đổi ca';
+                            leaveLabel = 'Đang chờ duyệt đơn xin nghỉ';
+                          } else if (hasPendingSwap) {
+                            swapLabel = 'Đang chờ duyệt đơn đổi ca';
+                            leaveLabel = 'Đang chờ duyệt đổi ca — không thể xin nghỉ';
+                          }
 
                           return (
                             <>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Col, Form, Input, Row, Select, Divider, Tooltip, Collapse, Space, Tag, Alert, DatePicker, Image, AutoComplete, Switch } from 'antd';
-import type { FormInstance } from 'antd';
 import { 
   UserOutlined, 
   SafetyOutlined, 
@@ -21,13 +20,14 @@ const { Panel } = Collapse;
 interface UsersFormProps {
   open: boolean;
   editingId: number | null;
-  form: FormInstance;
+  form: any;
   onOk: () => void;
   onCancel: () => void;
   generations: { id: number; name: string }[];
   roles: { id: number; name: string; key?: string; permissions?: string[] }[];
   permissions: { id: number; name: string; key: string; module: string }[];
   departmentConfigs: any[];
+  positionConfigs?: any[];
   departments: string[];
 }
 
@@ -52,6 +52,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
   roles,
   permissions,
   departmentConfigs,
+  positionConfigs = [],
   departments,
 }) => {
   const { hasPermission } = useAccess();
@@ -60,6 +61,40 @@ const UsersForm: React.FC<UsersFormProps> = ({
 
   // Watch position to handle department visibility/requirement
   const position = Form.useWatch('position', form);
+
+  const positionOptions = React.useMemo(() => {
+    const baseOptions = Object.entries(POSITION_LABELS).map(([val, label]) => ({ label, value: val }));
+    const baseKeys = new Set(Object.keys(POSITION_LABELS));
+
+    const customPosOptions = (positionConfigs || [])
+      .filter((p: any) => p.id && !baseKeys.has(p.id))
+      .map((p: any) => ({
+        label: p.name ? `${p.name} (${p.id})` : p.id,
+        value: p.id,
+      }));
+
+    return [...baseOptions, ...customPosOptions];
+  }, [positionConfigs]);
+
+  const selectedPosConfig = React.useMemo(() => {
+    if (!position) return null;
+    return (positionConfigs || []).find((p: any) => p.id === position);
+  }, [position, positionConfigs]);
+
+  const isDeptRequired = React.useMemo(() => {
+    if (selectedPosConfig && typeof selectedPosConfig.requiresDept === 'boolean') {
+      return selectedPosConfig.requiresDept;
+    }
+    return ['tb', 'pb', 'tvb'].includes(position);
+  }, [position, selectedPosConfig]);
+
+  const isDeptApplicable = React.useMemo(() => {
+    if (selectedPosConfig) {
+      if (selectedPosConfig.noDeptAllowed === true) return false;
+      if (selectedPosConfig.requiresDept === true) return true;
+    }
+    return position !== 'dt';
+  }, [position, selectedPosConfig]);
 
   // Watch roleIds to get permissions from selected roles
   const selectedRoleIds = Form.useWatch('roleIds', form) || [];
@@ -146,9 +181,6 @@ const UsersForm: React.FC<UsersFormProps> = ({
       form.setFieldsValue({ roleIds: suggested });
     }
   };
-
-  // Helper to determine if department is needed
-  const isDeptApplicable = !['ctv', 'tv', 'dt'].includes(position);
 
   return (
     <FormModal
@@ -378,7 +410,7 @@ const UsersForm: React.FC<UsersFormProps> = ({
               <Select 
                 placeholder="Chọn chức vụ" 
                 onChange={handlePositionChange}
-                options={Object.entries(POSITION_LABELS).map(([val, label]) => ({ label, value: val }))}
+                options={positionOptions}
                 disabled={!canEditOrg}
               />
             </Form.Item>
@@ -387,10 +419,10 @@ const UsersForm: React.FC<UsersFormProps> = ({
             <Form.Item 
               name="department" 
               label="Ban chuyên môn" 
-              rules={[{ required: isDeptApplicable, message: 'Vui lòng chọn hoặc nhập tên ban' }]}
+              rules={[{ required: isDeptRequired, message: 'Vui lòng chọn hoặc nhập tên ban' }]}
             >
               <AutoComplete
-                placeholder={isDeptApplicable ? "Chọn hoặc nhập tên ban mới" : "Không thuộc ban"} 
+                placeholder={isDeptApplicable ? (isDeptRequired ? "Chọn hoặc nhập tên ban" : "Chọn hoặc nhập tên ban (tùy chọn)") : "Không thuộc ban"} 
                 allowClear 
                 onChange={handleDepartmentChange}
                 options={departments.map(d => ({ value: d }))}

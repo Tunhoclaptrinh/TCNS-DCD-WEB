@@ -160,7 +160,7 @@ const QuotaSettingsModal: React.FC<QuotaSettingsModalProps> = ({
           loading={saving} 
           onClick={() => form.submit()}
         >
-          Lưu thay đổi
+          Lưu lại
         </Button>
       ]}
       className="base-modal"

@@ -279,7 +279,7 @@ const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
             Hủy
           </Button>
           <Button variant="primary" buttonSize="small" onClick={handleOk} loading={loading} icon={<SaveOutlined />}>
-            {viewMode === 'kip' ? "Tạo Kíp" : (shift ? "Lưu thay đổi" : "Tạo Ca")}
+            {viewMode === 'kip' ? "Tạo Kíp" : (shift ? "Lưu lại" : "Tạo Ca")}
           </Button>
         </div>
       }
