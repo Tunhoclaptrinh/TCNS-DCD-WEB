@@ -310,6 +310,11 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
   const supplementaryList = attendedList.filter((au: any) => !assignedList.some((as: any) => String(as.id) === String(au.id)));
   const totalPersonnelCount = assignedList.length + supplementaryList.length;
 
+  const isLeaderOfSlot = !!currentUserId && !!slot && (
+    (String(currentUserId) === String(slot.assignedUserIds?.[0])) ||
+    (String(currentUserId) === String(slot.tempLeaderId))
+  );
+
   return (
     <FormModal
       open={open}
@@ -519,6 +524,28 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                     ),
                     children: (
                       <div style={{ padding: '4px 8px' }}>
+                        {isLeaderOfSlot && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '8px 12px', background: '#fefce8', borderRadius: 8, border: '1px solid #fef08a' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#854d0e', fontSize: 13, fontWeight: 600 }}>
+                              <ThunderboltOutlined style={{ color: '#eab308' }} />
+                              <span>Bạn là Quản lý kíp trực này</span>
+                            </div>
+                            {openAttendanceModal && slot && (
+                              <AntButton 
+                                type="primary" 
+                                size="small" 
+                                icon={<CheckCircleOutlined />}
+                                onClick={() => {
+                                  onCancel();
+                                  openAttendanceModal(slot);
+                                }}
+                                style={{ background: '#f59e0b', borderColor: '#d97706' }}
+                              >
+                                Điểm danh & Quản lý kíp
+                              </AntButton>
+                            )}
+                          </div>
+                        )}
                         <div className="duty-slot-attendee-list">
                         {(() => {
                           const personnelList = [
@@ -538,8 +565,14 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                           return personnelList.map((u: any) => {
                             const isAssigned = (slot?.assignedUsers || []).some((as: any) => String(as.id) === String(u.id));
                             const isAdminAssignedUser = (slot as any)?.config?.adminAssignedUserIds?.some((id: any) => String(id) === String(u.id));
+                            const defaultLeaderId = (slot?.assignedUserIds && slot.assignedUserIds.length > 0)
+                               ? slot.assignedUserIds[0]
+                               : (slot?.assignedUsers && slot.assignedUsers.length > 0)
+                                 ? slot.assignedUsers[0].id
+                                 : null;
+                             const activeLeaderId = slot?.tempLeaderId || defaultLeaderId;
+                             const isLeader = !!activeLeaderId && String(activeLeaderId) === String(u.id);
                             const isAttended = Array.isArray(slot?.attendedUserIds) && slot.attendedUserIds.some((id: any) => String(id) === String(u.id));
-                            const isLeader = (String(slot?.assignedUserIds?.[0]) === String(u.id)) || (String(slot?.tempLeaderId) === String(u.id));
                             const isVisible = checkVisibility(u);
                             const isMe = String(u.id) === String(currentUserId);
                             const userViolations = slot?.violations?.filter((v: any) => String(v.userId) === String(u.id)) || [];
@@ -745,13 +778,13 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                               </div>
                             );
 
-                            if (isLeader && isMe) {
+                            if (isLeader) {
                               return (
                                 <Badge.Ribbon 
                                   key={u.id || u.studentId} 
                                   text={
-                                    <Tooltip title="Quản lý kíp (Bạn)" placement="top">
-                                      <span style={{ cursor: 'pointer'}}>Qlk • Bạn</span>
+                                    <Tooltip title={isMe ? "Quản lý kíp (Bạn)" : "Quản lý kíp"} placement="top">
+                                      <span style={{ cursor: 'pointer'}}>{isMe ? "Qlk • Bạn" : "Qlk"}</span>
                                     </Tooltip>
                                   } 
                                   color="red" 
@@ -912,10 +945,6 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                               const isActive = now.isAfter(slotStart.subtract(beforeMins, 'minute')) && now.isBefore(slotEnd);
                               const isAttended = isAttendedMe;
                               const isPast = now.isAfter(slotEnd);
-                              const isDuringShift = now.isAfter(slotStart) && now.isBefore(slotEnd);
-                              
-                              const isActingLeader = (String(currentUserId) === String(slot.assignedUserIds?.[0]) && isAttended) || 
-                                                     (String(currentUserId) === String(slot.tempLeaderId));
 
                               if (isAttended) return (
                                 <Space direction="vertical" size={6} style={{ width: '100%' }}>
@@ -925,10 +954,10 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                   <div style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>
                                     <ThunderboltOutlined style={{ marginRight: 4 }} />Được tính: {myEarnedCoeff} kíp {isCustomCoeff && '(Tùy chỉnh riêng)'}
                                   </div>
-                                  {isActingLeader && (
+                                  {isLeaderOfSlot && (
                                     <div style={{ marginTop: 8 }}>
                                       <Tag color="gold" icon={<ThunderboltOutlined />} style={{ margin: 0, marginBottom: 8 }}>Quản lý kíp</Tag>
-                                      {isDuringShift && openAttendanceModal && (
+                                      {openAttendanceModal && slot && (
                                         <Button 
                                           variant="primary" 
                                           buttonSize="small"
@@ -938,8 +967,9 @@ const MemberDutySlotModal: React.FC<MemberDutySlotModalProps> = ({
                                             openAttendanceModal(slot);
                                           }}
                                           icon={<CheckCircleOutlined />}
+                                          style={{ background: '#f59e0b', borderColor: '#d97706' }}
                                         >
-                                          QUẢN LÝ KÍP
+                                          ĐIỂM DANH & QUẢN LÝ KÍP
                                         </Button>
                                       )}
                                     </div>

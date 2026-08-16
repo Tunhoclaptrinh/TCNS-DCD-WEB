@@ -689,16 +689,16 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                 const structureTotal = Array.isArray(slotStructure) ? slotStructure.reduce((a: number, c: any) => a + (Number(c?.slots) || 0), 0) : 0;
                 const count = assignedUserIds.length;
                 if (structureTotal > 0 && capacity < structureTotal) {
-                  return <div className="duty-capacity-hint is-error">⚠️ Chỉ tiêu ({capacity}) nhỏ hơn Cơ cấu ({structureTotal} người).</div>;
+                  return <div className="duty-capacity-hint is-error"><WarningOutlined style={{ marginRight: 6 }} />Chỉ tiêu ({capacity}) nhỏ hơn Cơ cấu ({structureTotal} người).</div>;
                 }
                 if (count > 0 && count >= capacity) {
-                  return <div className="duty-capacity-hint is-warning">⚠️ Đã đạt/vượt chỉ tiêu ({count}/{capacity})</div>;
+                  return <div className="duty-capacity-hint is-warning"><WarningOutlined style={{ marginRight: 6 }} />Đã đạt/vượt chỉ tiêu ({count}/{capacity})</div>;
                 }
                 if (count > 0 && count < capacity) {
-                  return <div className="duty-capacity-hint is-success">ℹ Còn trống {capacity - count} chỗ (Chỉ tiêu: {capacity}{structureTotal > 0 ? ` - Cơ cấu: ${structureTotal}` : ''})</div>;
+                  return <div className="duty-capacity-hint is-success"><InfoCircleOutlined style={{ marginRight: 6 }} />Còn trống {capacity - count} chỗ (Chỉ tiêu: {capacity}{structureTotal > 0 ? ` - Cơ cấu: ${structureTotal}` : ''})</div>;
                 }
                 if (structureTotal > 0) {
-                  return <div className="duty-capacity-hint is-info">ℹ Đồng bộ theo cơ cấu: {structureTotal} người</div>;
+                  return <div className="duty-capacity-hint is-info"><InfoCircleOutlined style={{ marginRight: 6 }} />Đồng bộ theo cơ cấu: {structureTotal} người</div>;
                 }
                 return null;
               }}
@@ -868,7 +868,13 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                     const overrideVal = formOverrides[String(id)] ?? formOverrides[Number(id)];
                     const userCoeff = overrideVal !== undefined && overrideVal !== null ? overrideVal : defaultSlotCoeff;
                     const isOverridden = overrideVal !== undefined && overrideVal !== null && overrideVal !== defaultSlotCoeff;
-                    const isLeader = (currentSlot?.assignedUserIds || [])[0] === id;
+                    const defaultLeaderId = (currentSlot?.assignedUserIds && currentSlot.assignedUserIds.length > 0)
+                      ? currentSlot.assignedUserIds[0]
+                      : (currentSlot?.assignedUsers && currentSlot.assignedUsers.length > 0)
+                        ? currentSlot.assignedUsers[0].id
+                        : null;
+                    const activeLeaderId = currentSlot?.tempLeaderId || defaultLeaderId;
+                    const isLeader = !!activeLeaderId && String(activeLeaderId) === String(id);
                     const isMe = String(id) === String(currentUserId);
 
                     const allBadges: React.ReactNode[] = [];
@@ -1194,13 +1200,13 @@ const AdminDutySlotModal: React.FC<AdminDutySlotModalProps> = ({
                       </div>
                     );
 
-                    if (isLeader && isMe) {
+                    if (isLeader) {
                       return (
                         <Badge.Ribbon 
                           key={id} 
                           text={
-                            <Tooltip title="Quản lý kíp (Bạn)" placement="top">
-                              <span style={{ cursor: 'pointer' }}>Qlk • Bạn</span>
+                            <Tooltip title={isMe ? "Quản lý kíp (Bạn)" : "Quản lý kíp"} placement="top">
+                              <span style={{ cursor: 'pointer' }}>{isMe ? "Qlk • Bạn" : "Qlk"}</span>
                             </Tooltip>
                           } 
                           color="red" 

@@ -17,7 +17,8 @@ import {
   Empty, 
   Tooltip,
   Popconfirm,
-  Popover
+  Popover,
+  Badge
 } from 'antd';
 import { 
   CheckCircleOutlined, 
@@ -32,10 +33,12 @@ import {
 import dayjs from 'dayjs';
 import dutyService, { DutySlot } from '@/services/duty.service';
 import { getUserDisplayName } from '@/utils/formatters';
-import UserSelect from '@/pages/Users/components/UserSelect';
 import { Button } from '@/components/common';
 import FormModal from '@/components/common/FormModal';
 import { VIOLATION_TYPE_OPTIONS, getViolationTypeLabel } from '@/pages/Duty/Admin/components/AdminDutySlotModal';
+import DutyPersonnelPicker from '../../components/DutyPersonnelTable';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import '../../DutyModal.less';
 
 const { Text, Title } = Typography;
@@ -53,8 +56,9 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
   onSuccess,
   slot
 }) => {
+  const { user: currentUser } = useSelector((state: RootState) => state.auth);
+  const currentUserId = currentUser?.id;
   const [loading, setLoading] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [suppCoeff, setSuppCoeff] = useState<number>(1);
   const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -155,7 +159,6 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
             const res = await dutyService.leaderMarkAttendance(currentSlot.id, userId, customCoeff);
             if (res.success) {
               message.success(res.message || 'Đã gỡ điểm danh nhân sự bổ sung');
-              setSelectedUser(null);
               await refreshCurrentSlot();
               onSuccess();
             }
@@ -174,12 +177,32 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
       const res = await dutyService.leaderMarkAttendance(currentSlot.id, userId, customCoeff);
       if (res.success) {
         message.success(res.message || 'Cập nhật điểm danh thành công');
-        setSelectedUser(null);
         await refreshCurrentSlot();
         onSuccess();
       }
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Lỗi khi điểm danh');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBatchSupplementaryAttendance = async (userIds: number[], customCoeff: number) => {
+    if (!currentSlot || userIds.length === 0) return;
+    setLoading(true);
+    try {
+      let successCount = 0;
+      for (const uId of userIds) {
+        const res = await dutyService.leaderMarkAttendance(currentSlot.id, uId, customCoeff);
+        if (res.success) successCount++;
+      }
+      if (successCount > 0) {
+        message.success(`Đã thêm & điểm danh bổ sung ${successCount} nhân sự`);
+        await refreshCurrentSlot();
+        onSuccess();
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi điểm danh bổ sung');
     } finally {
       setLoading(false);
     }
@@ -260,6 +283,80 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
     });
   };
 
+  const handleMarkAllPresent = async () => {
+    if (!currentSlot || allUsers.length === 0) return;
+    const unAttended = allUsers.filter(u => !u.isAttended);
+    if (unAttended.length === 0) {
+      message.info('Tất cả nhân sự trong kíp đã được điểm danh có mặt.');
+      return;
+    }
+    setLoading(true);
+    try {
+      let count = 0;
+      for (const u of unAttended) {
+        const res = await dutyService.leaderMarkAttendance(currentSlot.id, u.id, Number(currentSlot.coefficient || 1));
+        if (res.success) count++;
+      }
+      message.success(`Đã đánh dấu có mặt cho ${count} nhân sự`);
+      await refreshCurrentSlot();
+      onSuccess();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi khi điểm danh tất cả');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScanAbsentees = async () => {
+    if (!currentSlot || allUsers.length === 0) return;
+    const unAttendedAssigned = allUsers.filter(u => u.isAssigned && !u.isAttended);
+    if (unAttendedAssigned.length === 0) {
+      message.success('Tất cả nhân sự theo lịch đều đã điểm danh có mặt!');
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Xác nhận rà soát vắng mặt không phép',
+      icon: <WarningOutlined style={{ color: '#ef4444' }} />,
+      content: (
+        <div>
+          <p>Phát hiện <b>{unAttendedAssigned.length} nhân sự</b> theo lịch nhưng chưa điểm danh có mặt:</p>
+          <ul style={{ paddingLeft: 20, margin: '8px 0', color: '#dc2626' }}>
+            {unAttendedAssigned.map(u => (
+              <li key={u.id}><b>{getUserDisplayName(u)}</b> (MSV: {u.studentId || 'Chưa có MSV'})</li>
+            ))}
+          </ul>
+          <p style={{ fontSize: 12, color: '#64748b' }}>Hệ thống sẽ tự động ghi nhận lỗi <b>Vắng mặt không phép</b> cho các nhân sự trên.</p>
+        </div>
+      ),
+      okText: 'Ghi nhận lỗi vắng mặt',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        setLoading(true);
+        try {
+          let count = 0;
+          for (const u of unAttendedAssigned) {
+            const res = await dutyService.reportViolation({
+              slotId: currentSlot.id,
+              userId: u.id,
+              types: ['absent_no_permission'],
+              note: 'Rà soát vắng mặt không phép bởi Quản lý kíp'
+            });
+            if (res.success) count++;
+          }
+          message.success(`Đã ghi nhận vắng mặt cho ${count} nhân sự`);
+          await refreshCurrentSlot();
+          onSuccess();
+        } catch (err: any) {
+          message.error(err.response?.data?.message || 'Lỗi khi ghi nhận vắng mặt');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
   const attendedCount = allUsers.filter(u => u.isAttended).length;
   const currentViolationsOfUser = currentSlot?.violations?.filter((v: any) => String(v.userId) === String(violationUser?.id)) || [];
 
@@ -293,47 +390,66 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
     >
       <Divider style={{ margin: '16px 0' }} />
 
+      {/* Batch Action Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+        <Space size={8}>
+          <Button
+            variant="success"
+            buttonSize="small"
+            icon={<CheckCircleOutlined />}
+            loading={loading}
+            onClick={handleMarkAllPresent}
+          >
+            Tất cả có mặt
+          </Button>
+          <Button
+            variant="danger"
+            buttonSize="small"
+            icon={<WarningOutlined />}
+            loading={loading}
+            onClick={handleScanAbsentees}
+          >
+            Rà soát vắng & Ghi lỗi
+          </Button>
+        </Space>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Quản lý kíp: {allUsers.filter(u => u.isAttended).length}/{allUsers.length} có mặt
+        </Text>
+      </div>
+
       {/* Add supplementary user */}
       <div className="duty-slot-info-box">
         <div className="duty-slot-info-label">
           <UsergroupAddOutlined style={{ color: '#6366f1' }} />
           <span>Thêm nhân sự trực bổ sung ngoài lịch</span>
         </div>
-        <Row gutter={[8, 8]} align="middle">
-          <Col xs={24} sm={12}>
-            <UserSelect
-              value={selectedUser}
-              onChange={(val: any) => setSelectedUser(val)}
-              placeholder="Tìm kiếm nhân sự bổ sung (theo tên, MSV)..."
+        <Row gutter={[12, 12]} align="middle">
+          <Col xs={24} sm={15}>
+            <DutyPersonnelPicker
+              variant="outline"
+              buttonSize="medium"
+              label="Chọn nhân sự điểm danh bổ sung (Thành viên & CTV)"
+              icon={<UsergroupAddOutlined />}
+              style={{ width: '100%' }}
+              onChange={(ids) => {
+                if (ids && ids.length > 0) {
+                  handleBatchSupplementaryAttendance(ids, suppCoeff);
+                }
+              }}
             />
           </Col>
-          <Col xs={12} sm={6}>
-            <Tooltip title="Hệ số kíp được tính cho nhân sự này">
+          <Col xs={24} sm={9}>
+            <Tooltip title="Hệ số kíp được tính cho nhân sự bổ sung">
               <InputNumber
                 min={0}
                 max={10}
                 step={0.25}
                 value={suppCoeff}
                 onChange={(val) => setSuppCoeff(val ?? 1)}
-                addonAfter="kíp"
+                addonAfter="kíp tính"
                 style={{ width: '100%' }}
               />
             </Tooltip>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Button
-              variant="primary"
-              disabled={!selectedUser}
-              loading={loading}
-              fullWidth
-              onClick={() => {
-                if (selectedUser) {
-                  markAttendance(selectedUser, suppCoeff);
-                }
-              }}
-            >
-              Thêm & Điểm danh
-            </Button>
           </Col>
         </Row>
       </div>
@@ -352,6 +468,14 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
               const overrideVal = overrides[String(u.id)] ?? overrides[Number(u.id)];
               const userCoeff = overrideVal !== undefined && overrideVal !== null ? overrideVal : defaultSlotCoeff;
               const isOverridden = overrideVal !== undefined && overrideVal !== null && overrideVal !== defaultSlotCoeff;
+              const defaultLeaderId = (currentSlot?.assignedUserIds && currentSlot.assignedUserIds.length > 0)
+                ? currentSlot.assignedUserIds[0]
+                : (currentSlot?.assignedUsers && currentSlot.assignedUsers.length > 0)
+                  ? currentSlot.assignedUsers[0].id
+                  : null;
+              const activeLeaderId = currentSlot?.tempLeaderId || defaultLeaderId;
+              const isLeader = !!activeLeaderId && String(activeLeaderId) === String(u.id);
+              const isMe = String(u.id) === String(currentUserId);
 
               const popoverViolationList = (
                 <div className="duty-popover-violation-list" onClick={(e) => e.stopPropagation()}>
@@ -378,7 +502,7 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                 </div>
               );
 
-              return (
+              const cardNode = (
                 <div 
                   key={u.id}
                   className={`duty-slot-attendee-card ${isAttended ? 'is-attended' : ''}`}
@@ -577,6 +701,21 @@ const ShiftLeaderAttendanceModal: React.FC<ShiftLeaderAttendanceModalProps> = ({
                   </div>
                 </div>
               );
+
+              if (isLeader) {
+                return (
+                  <Badge.Ribbon 
+                    key={u.id} 
+                    text={isMe ? "Qlk • Bạn" : "Qlk"} 
+                    color="red" 
+                    placement="start"
+                  >
+                    {cardNode}
+                  </Badge.Ribbon>
+                );
+              }
+
+              return cardNode;
             })
           )}
         </div>

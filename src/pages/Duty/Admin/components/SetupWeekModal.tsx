@@ -3,7 +3,7 @@ import { Modal, Form, Space, Select, Row, Col, Typography, Badge, message } from
 import Button from '@/components/common/Button';
 import { 
   SettingOutlined, CopyOutlined, DeleteOutlined, 
-  ThunderboltOutlined, AppstoreOutlined
+  ThunderboltOutlined, AppstoreOutlined, BulbOutlined
 } from '@ant-design/icons';
 const { Text } = Typography;
 import dutyService from '@/services/duty.service';
@@ -201,8 +201,9 @@ const SetupWeekModal: React.FC<SetupWeekModalProps> = ({
               </Form.Item>
             </Col>
           </Row>
-          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: -4 }}>
-            💡 Hệ thống sẽ dập khuôn toàn bộ ca/kíp từ Bản mẫu đã chọn sang 7 ngày của tuần này.
+          <Text type="secondary" style={{ fontSize: 12, display: 'flex', alignItems: 'center', marginTop: -4 }}>
+            <BulbOutlined style={{ marginRight: 6, color: '#eab308' }} />
+            Hệ thống sẽ dập khuôn toàn bộ ca/kíp từ Bản mẫu đã chọn sang 7 ngày của tuần này.
           </Text>
         </div>
 

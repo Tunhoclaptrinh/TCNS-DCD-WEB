@@ -385,13 +385,12 @@ const UsersForm: React.FC<UsersFormProps> = ({
                 allowClear
                 placeholder="Chọn Khóa"
                 options={generations.map(g => ({ label: g.name, value: g.id }))}
-                disabled={!canEditOrg}
               />
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>
             <Form.Item name="joinDate" label="Ngày vào Đội">
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" disabled={!canEditOrg} />
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
             </Form.Item>
           </Col>
         </Row>
